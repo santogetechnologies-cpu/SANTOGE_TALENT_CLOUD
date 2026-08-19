@@ -729,7 +729,7 @@ export const UserManagement: React.FC = () => {
             label="Full Name"
             value={newName}
             onChange={e => setNewName(e.target.value)}
-            placeholder="e.g. Dr. Ramesh Patel or Prof. Ananya Sen"
+            placeholder="Full Name"
             required
           />
 
@@ -738,7 +738,7 @@ export const UserManagement: React.FC = () => {
             type="email"
             value={newEmail}
             onChange={e => setNewEmail(e.target.value)}
-            placeholder="e.g. admin@apextech.edu or placement@apextech.edu"
+            placeholder="Email Address"
             required
           />
 
@@ -747,17 +747,16 @@ export const UserManagement: React.FC = () => {
             type="password"
             value={newPassword}
             onChange={e => setNewPassword(e.target.value)}
-            placeholder="••••••••"
+            placeholder=""
             required
           />
 
           {formMessage && (
             <div
-              className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
-                formMessage.type === 'success'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-rose-50 text-rose-700 border-rose-200'
-              }`}
+              className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${formMessage.type === 'success'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-rose-50 text-rose-700 border-rose-200'
+                }`}
             >
               {formMessage.type === 'success' ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -895,11 +894,10 @@ export const UserManagement: React.FC = () => {
 
           {resetMessage && (
             <div
-              className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
-                resetMessage.type === 'success'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-rose-50 text-rose-700 border-rose-200'
-              }`}
+              className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${resetMessage.type === 'success'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-rose-50 text-rose-700 border-rose-200'
+                }`}
             >
               {resetMessage.type === 'success' ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />

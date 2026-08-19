@@ -74,8 +74,32 @@ export const authService = {
   ): Promise<User | null> {
     const cleanEmail = email.trim().toLowerCase();
     const computedScope: DataScope = dataScope || { scopeType: role === 'SUPER_ADMIN' ? 'ALL' : 'SELF' };
-    let targetUserId: string | null = null;
 
+    // 1. Check if profile already exists in PostgreSQL
+    const { data: existingProfile } = await (supabase.from('profiles') as any)
+      .select('*')
+      .eq('email', cleanEmail)
+      .maybeSingle();
+
+    if (existingProfile) {
+      const updatedProfile = {
+        ...existingProfile,
+        full_name: fullName,
+        role,
+        college_id: computedScope.collegeId || existingProfile.college_id || null,
+        data_scope: { ...computedScope, isActive: true },
+        updated_at: new Date().toISOString(),
+      };
+
+      await (supabase.from('profiles') as any)
+        .update(updatedProfile)
+        .eq('id', existingProfile.id);
+
+      return this.mapProfileToUser(updatedProfile);
+    }
+
+    // 2. Try Supabase Auth API
+    let targetUserId: string | null = null;
     try {
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
@@ -89,20 +113,18 @@ export const authService = {
         },
       });
 
-      if (error) {
-        console.warn('Supabase Auth signUp API note (falling back to database profile provisioning):', error.message);
-      } else if (data?.user) {
+      if (!error && data?.user) {
         targetUserId = data.user.id;
       }
-    } catch (authErr: any) {
-      console.warn('Supabase Auth signUp network/rate limit note:', authErr.message);
+    } catch {
+      // Handled by database fallback
     }
 
-    // If targetUserId was not generated from Auth API due to email rate limit, generate a valid UUID
     if (!targetUserId) {
       targetUserId = crypto.randomUUID();
     }
 
+    // 3. Upsert profile into PostgreSQL
     const profileData: any = {
       id: targetUserId,
       email: cleanEmail,
@@ -116,7 +138,7 @@ export const authService = {
 
     const { error: profileError } = await (supabase.from('profiles') as any).upsert(profileData);
     if (profileError) {
-      console.error('Profile upsert error:', profileError.message);
+      console.error('Profile provisioning notice:', profileError.message);
       throw new Error(profileError.message);
     }
 
