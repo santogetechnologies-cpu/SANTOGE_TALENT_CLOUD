@@ -33,7 +33,9 @@ import { ContentWorkflowHub } from '../features/content/ContentWorkflowHub';
 // College CPOS
 import { CollegeDashboard } from '../features/college/CollegeDashboard';
 import { StudentDirectory } from '../features/college/StudentDirectory';
+import { CollegeStudentImport } from '../features/college/CollegeStudentImport';
 import { DepartmentView } from '../features/college/DepartmentView';
+import { PlacementReports } from '../features/college/PlacementReports';
 import { CampusDrivesHub } from '../features/placement/CampusDrivesHub';
 import { CompanyCRM } from '../features/placement/CompanyCRM';
 import { JobMarketIntel } from '../features/placement/JobMarketIntel';
@@ -117,8 +119,11 @@ export const AppRoutes: React.FC = () => {
         {/* College CPOS & Placement Officer */}
         <Route path="/college/dashboard" element={<CollegeDashboard />} />
         <Route path="/college/students" element={<StudentDirectory />} />
+        <Route path="/college/import" element={<CollegeStudentImport />} />
         <Route path="/college/departments" element={<DepartmentView />} />
         <Route path="/college/department" element={<DepartmentView />} />
+        <Route path="/college/eligibility" element={<DepartmentView />} />
+        <Route path="/college/reports" element={<PlacementReports />} />
         <Route path="/placement/drives" element={<CampusDrivesHub />} />
         <Route path="/placement/companies" element={<CompanyCRM />} />
         <Route path="/placement/outreach" element={<CompanyCRM />} />

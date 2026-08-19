@@ -116,17 +116,18 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void }> = ({ i
             title: 'College CPOS',
             items: [
               { label: 'College Dashboard', path: '/college/dashboard', icon: <Layers className="w-4 h-4" /> },
-              { label: 'Student Directory', path: '/college/students', icon: <Users className="w-4 h-4" /> },
-              { label: 'Department Performance', path: '/college/departments', icon: <Building2 className="w-4 h-4" /> },
+              { label: 'College Students', path: '/college/students', icon: <Users className="w-4 h-4" /> },
+              { label: 'Add & Import Students', path: '/college/import', icon: <FileCheck2 className="w-4 h-4" />, badge: 'Wizard' },
+              { label: 'Departments & Cutoffs', path: '/college/departments', icon: <Building2 className="w-4 h-4" /> },
             ],
           },
           {
-            title: 'Placement & Drives',
+            title: 'Placement Operations',
             items: [
               { label: 'Campus Drives Hub', path: '/placement/drives', icon: <Award className="w-4 h-4" />, badge: 'Live' },
               { label: 'Company CRM', path: '/placement/companies', icon: <Briefcase className="w-4 h-4" /> },
               { label: 'Recruiter Outreach', path: '/placement/outreach', icon: <MessageSquare className="w-4 h-4" /> },
-              { label: 'Job Market Intel', path: '/placement/market-intel', icon: <BarChart3 className="w-4 h-4" /> },
+              { label: 'Placement Reports', path: '/college/reports', icon: <BarChart3 className="w-4 h-4" />, badge: 'Audit' },
             ],
           },
         ];
