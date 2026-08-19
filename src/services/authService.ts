@@ -103,13 +103,13 @@ export const authService = {
       targetUserId = crypto.randomUUID();
     }
 
-    const profileData = {
+    const profileData: any = {
       id: targetUserId,
       email: cleanEmail,
       full_name: fullName,
       role,
-      data_scope: computedScope,
-      is_active: true,
+      college_id: computedScope.collegeId || null,
+      data_scope: { ...computedScope, isActive: true },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

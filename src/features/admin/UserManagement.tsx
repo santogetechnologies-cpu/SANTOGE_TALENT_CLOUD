@@ -47,8 +47,7 @@ interface ProfileRecord {
   role: Role;
   phone?: string;
   avatar_url?: string;
-  is_active: boolean;
-  data_scope?: DataScope;
+  data_scope?: DataScope & { isActive?: boolean };
   created_at: string;
 }
 
@@ -278,17 +277,23 @@ export const UserManagement: React.FC = () => {
 
   const handleToggleActive = async (userId: string, currentActive: boolean) => {
     try {
+      const targetUser = profiles.find(p => p.id === userId);
+      const updatedScope = {
+        ...(targetUser?.data_scope || { scopeType: 'SELF' as const }),
+        isActive: !currentActive,
+      };
+
       const { error } = await (supabase
         .from('profiles') as any)
         .update({
-          is_active: !currentActive,
+          data_scope: updatedScope,
           updated_at: new Date().toISOString(),
         })
         .eq('id', userId);
 
       if (!error) {
         setProfiles(prev =>
-          prev.map(p => (p.id === userId ? { ...p, is_active: !currentActive } : p))
+          prev.map(p => (p.id === userId ? { ...p, data_scope: updatedScope } : p))
         );
       }
     } catch (err) {
@@ -415,13 +420,16 @@ export const UserManagement: React.FC = () => {
       sortable: true,
     },
     {
-      key: 'is_active',
+      key: 'status',
       header: 'Status',
-      render: (p: ProfileRecord) => (
-        <Badge variant={p.is_active !== false ? 'success' : 'danger'} size="sm">
-          {p.is_active !== false ? 'ACTIVE' : 'DEACTIVATED'}
-        </Badge>
-      ),
+      render: (p: ProfileRecord) => {
+        const isActive = p.data_scope?.isActive !== false;
+        return (
+          <Badge variant={isActive ? 'success' : 'danger'} size="sm">
+            {isActive ? 'ACTIVE' : 'DEACTIVATED'}
+          </Badge>
+        );
+      },
       sortable: true,
     },
     {
@@ -437,50 +445,53 @@ export const UserManagement: React.FC = () => {
     {
       key: 'actions',
       header: 'Super Admin Actions',
-      render: (p: ProfileRecord) => (
-        <div className="flex items-center gap-1.5">
-          {/* Reset Password Button */}
-          <Button
-            size="xs"
-            variant="outline"
-            title="Reset User Password"
-            leftIcon={<KeyRound className="w-3 h-3 text-amber-600" />}
-            onClick={() => {
-              setUserToReset(p);
-              setNewTempPassword('Santoge@2026');
-              setResetMessage(null);
-              setIsResetModalOpen(true);
-            }}
-          >
-            Reset
-          </Button>
+      render: (p: ProfileRecord) => {
+        const isActive = p.data_scope?.isActive !== false;
+        return (
+          <div className="flex items-center gap-1.5">
+            {/* Reset Password Button */}
+            <Button
+              size="xs"
+              variant="outline"
+              title="Reset User Password"
+              leftIcon={<KeyRound className="w-3 h-3 text-amber-600" />}
+              onClick={() => {
+                setUserToReset(p);
+                setNewTempPassword('Santoge@2026');
+                setResetMessage(null);
+                setIsResetModalOpen(true);
+              }}
+            >
+              Reset
+            </Button>
 
-          {/* Toggle Active / Deactivate */}
-          <Button
-            size="xs"
-            variant={p.is_active !== false ? 'outline' : 'success'}
-            onClick={() => handleToggleActive(p.id, p.is_active !== false)}
-          >
-            {p.is_active !== false ? 'Deactivate' : 'Activate'}
-          </Button>
+            {/* Toggle Active / Deactivate */}
+            <Button
+              size="xs"
+              variant={isActive ? 'outline' : 'success'}
+              onClick={() => handleToggleActive(p.id, isActive)}
+            >
+              {isActive ? 'Deactivate' : 'Activate'}
+            </Button>
 
-          {/* Delete User Button */}
-          <Button
-            size="xs"
-            variant="danger"
-            title="Delete User Permanently"
-            disabled={p.id === currentSuperAdmin?.id}
-            leftIcon={<Trash2 className="w-3 h-3" />}
-            onClick={() => {
-              setUserToDelete(p);
-              setDeleteError(null);
-              setIsDeleteModalOpen(true);
-            }}
-          >
-            Delete
-          </Button>
-        </div>
-      ),
+            {/* Delete User Button */}
+            <Button
+              size="xs"
+              variant="danger"
+              title="Delete User Permanently"
+              disabled={p.id === currentSuperAdmin?.id}
+              leftIcon={<Trash2 className="w-3 h-3" />}
+              onClick={() => {
+                setUserToDelete(p);
+                setDeleteError(null);
+                setIsDeleteModalOpen(true);
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
