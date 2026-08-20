@@ -604,6 +604,7 @@ ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_id_fkey;
 -- Realtime publication setup
 ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.colleges;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.departments;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.candidate_applications;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.mentor_interventions;

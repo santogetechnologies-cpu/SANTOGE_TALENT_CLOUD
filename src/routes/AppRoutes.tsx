@@ -36,6 +36,7 @@ import { StudentDirectory } from '../features/college/StudentDirectory';
 import { CollegeStudentImport } from '../features/college/CollegeStudentImport';
 import { DepartmentView } from '../features/college/DepartmentView';
 import { PlacementReports } from '../features/college/PlacementReports';
+import { CollegeUserManagement } from '../features/college/CollegeUserManagement';
 import { CampusDrivesHub } from '../features/placement/CampusDrivesHub';
 import { CompanyCRM } from '../features/placement/CompanyCRM';
 import { JobMarketIntel } from '../features/placement/JobMarketIntel';
@@ -123,6 +124,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/college/departments" element={<DepartmentView />} />
         <Route path="/college/department" element={<DepartmentView />} />
         <Route path="/college/eligibility" element={<DepartmentView />} />
+        <Route path="/college/users" element={<CollegeUserManagement />} />
         <Route path="/college/reports" element={<PlacementReports />} />
         <Route path="/placement/drives" element={<CampusDrivesHub />} />
         <Route path="/placement/companies" element={<CompanyCRM />} />

@@ -599,11 +599,10 @@ export const StudentDirectory: React.FC = () => {
 
           {addMessage && (
             <div
-              className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
-                addMessage.type === 'success'
+              className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${addMessage.type === 'success'
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : 'bg-rose-50 text-rose-700 border-rose-200'
-              }`}
+                }`}
             >
               {addMessage.type === 'success' ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />

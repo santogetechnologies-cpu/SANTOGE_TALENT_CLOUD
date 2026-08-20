@@ -117,6 +117,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void }> = ({ i
             items: [
               { label: 'College Dashboard', path: '/college/dashboard', icon: <Layers className="w-4 h-4" /> },
               { label: 'College Students', path: '/college/students', icon: <Users className="w-4 h-4" /> },
+              { label: 'Staff & User Management', path: '/college/users', icon: <ShieldCheck className="w-4 h-4" /> },
               { label: 'Add & Import Students', path: '/college/import', icon: <FileCheck2 className="w-4 h-4" />, badge: 'Wizard' },
               { label: 'Departments & Cutoffs', path: '/college/departments', icon: <Building2 className="w-4 h-4" /> },
             ],
