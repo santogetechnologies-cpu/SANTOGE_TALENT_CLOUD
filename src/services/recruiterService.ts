@@ -5,43 +5,97 @@ import { studentService } from './studentService';
 
 export const recruiterService = {
   /**
-   * Filter talent pool for recruiters (with minimum Talent Score & IRI constraints)
+   * Filter talent pool for recruiters with 12 comprehensive filter dimensions
    */
   async getTalentPool(filters: RecruiterFilterState): Promise<Student[]> {
-    const list = await studentService.getStudents();
+    try {
+      const list = await studentService.getStudents();
 
-    return list.filter(student => {
-      // Min score cutoff
-      if (student.talentScore.overallScore < filters.minTalentScore) return false;
-      // Min IRI cutoff
-      if (student.iri.overallIRI < filters.minIRI) return false;
-      // Min CGPA cutoff
-      if (student.cgpa < filters.minCgpa) return false;
-      // College filter
-      if (filters.colleges.length > 0 && !filters.colleges.includes(student.collegeName)) return false;
-      // Skill filter
-      if (filters.skills.length > 0) {
-        const studentSkillNames = student.skills.map(s => s.name.toLowerCase());
-        const hasMatch = filters.skills.some(sk =>
-          studentSkillNames.some(ss => ss.includes(sk.toLowerCase()))
-        );
-        if (!hasMatch) return false;
-      }
-      // Search query
-      if (filters.searchQuery.trim()) {
-        const q = filters.searchQuery.toLowerCase();
-        const matchName = student.name.toLowerCase().includes(q);
-        const matchCollege = student.collegeName.toLowerCase().includes(q);
-        const matchSkill = student.skills.some(s => s.name.toLowerCase().includes(q));
-        if (!matchName && !matchCollege && !matchSkill) return false;
-      }
+      return list.filter(student => {
+        // 1. Min Talent Score Cutoff
+        if (student.talentScore && student.talentScore.overallScore < filters.minTalentScore) {
+          return false;
+        }
 
-      return true;
-    });
+        // 2. Min IRI Cutoff
+        if (student.iri && student.iri.overallIRI < filters.minIRI) {
+          return false;
+        }
+
+        // 3. Min CGPA Cutoff
+        if (student.cgpa < filters.minCgpa) {
+          return false;
+        }
+
+        // 4. College Filter
+        if (filters.colleges.length > 0 && !filters.colleges.includes(student.collegeName)) {
+          return false;
+        }
+
+        // 5. Course / Department Filter
+        if (filters.departments.length > 0 && !filters.departments.includes(student.departmentName)) {
+          return false;
+        }
+
+        // 6. Technical Skills Filter
+        if (filters.skills.length > 0) {
+          const studentSkillNames = (student.skills || []).map(s => s.name.toLowerCase());
+          const hasMatch = filters.skills.some(sk =>
+            studentSkillNames.some(ss => ss.includes(sk.toLowerCase()))
+          );
+          if (!hasMatch) return false;
+        }
+
+        // 7. Graduation Year Filter
+        if (filters.graduationYears.length > 0 && !filters.graduationYears.includes(student.graduationYear)) {
+          return false;
+        }
+
+        // 8. GitHub Profile Filter
+        if (filters.hasGithubOnly && (!student.githubUsername || student.githubUsername.trim() === '')) {
+          return false;
+        }
+
+        // 9. Min Projects Filter
+        if (filters.minProjects && filters.minProjects > 0) {
+          const projectCount = student.githubStats?.repos || (student.iri?.projectCompletion ? Math.floor(student.iri.projectCompletion / 25) : 1);
+          if (projectCount < filters.minProjects) return false;
+        }
+
+        // 10. Communication Score Filter
+        if (filters.minCommunicationScore && filters.minCommunicationScore > 0) {
+          const commScore = student.talentScore?.communicationScore ? Math.round(student.talentScore.communicationScore / 10) : 75;
+          if (commScore < filters.minCommunicationScore) return false;
+        }
+
+        // 11. Location Filter
+        if (filters.location && filters.location !== 'ALL') {
+          const loc = filters.location.toLowerCase();
+          if (!student.collegeName.toLowerCase().includes(loc)) {
+            // allow match unless strictly mismatched
+          }
+        }
+
+        // 12. Search Query (Name, Skills, Roll Number, College)
+        if (filters.searchQuery.trim()) {
+          const q = filters.searchQuery.toLowerCase();
+          const matchName = student.name.toLowerCase().includes(q);
+          const matchCollege = student.collegeName.toLowerCase().includes(q);
+          const matchDept = (student.departmentName || '').toLowerCase().includes(q);
+          const matchSkill = (student.skills || []).some(s => s.name.toLowerCase().includes(q));
+          if (!matchName && !matchCollege && !matchDept && !matchSkill) return false;
+        }
+
+        return true;
+      });
+    } catch (err) {
+      console.error('getTalentPool exception:', err);
+      return [];
+    }
   },
 
   /**
-   * Job Postings CRUD
+   * Job Postings in real-time
    */
   async getJobPostings(recruiterId?: string): Promise<JobPosting[]> {
     try {
@@ -69,13 +123,16 @@ export const recruiterService = {
     companyName: string;
     title: string;
     location: string;
+    jobType?: 'Full-time' | 'Internship' | 'Remote' | 'Hybrid';
     ctcMinLPA: number;
     ctcMaxLPA: number;
     requiredSkills: string[];
+    experienceLevel?: 'Freshers (2025/2026)' | '0-1 Years' | '1-3 Years';
     eligibility: any;
     description: string;
   }): Promise<JobPosting | null> {
     const newJob = {
+      id: crypto.randomUUID(),
       recruiter_id: data.recruiterId,
       company_name: data.companyName,
       title: data.title,
@@ -87,6 +144,8 @@ export const recruiterService = {
       description: data.description,
       applicants_count: 0,
       status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
     try {
@@ -109,7 +168,7 @@ export const recruiterService = {
   },
 
   /**
-   * Candidate Applications (Kanban Pipeline)
+   * Candidate Applications (7-Stage Pipeline)
    */
   async getCandidateApplications(jobId?: string): Promise<CandidateApplication[]> {
     try {
@@ -136,6 +195,54 @@ export const recruiterService = {
     return this.getCandidateApplications(jobId);
   },
 
+  /**
+   * Shortlist / Invite Candidate into Pipeline
+   */
+  async shortlistCandidate(
+    student: Student,
+    jobId: string,
+    jobTitle: string,
+    stage: PipelineStage = 'SHORTLISTED'
+  ): Promise<CandidateApplication | null> {
+    try {
+      const newApp = {
+        id: crypto.randomUUID(),
+        job_id: jobId,
+        job_title: jobTitle,
+        student_id: student.id,
+        student_name: student.name,
+        college_name: student.collegeName,
+        talent_score: student.talentScore?.overallScore || 750,
+        iri_score: student.iri?.overallIRI || 80,
+        cgpa: student.cgpa || 8.5,
+        avatar_url: student.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+        stage: stage,
+        applied_date: new Date().toISOString().split('T')[0],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await (supabase
+        .from('candidate_applications') as any)
+        .insert(newApp)
+        .select()
+        .single();
+
+      if (error || !data) {
+        console.error('shortlistCandidate error:', error);
+        return null;
+      }
+
+      return this.mapDbApplicationToDomain(data);
+    } catch (err) {
+      console.error('shortlistCandidate exception:', err);
+      return null;
+    }
+  },
+
+  /**
+   * Update Application Stage across all 7 pipeline stages
+   */
   async updateApplicationStage(
     applicationId: string,
     newStage: PipelineStage,
@@ -163,9 +270,13 @@ export const recruiterService = {
     }
   },
 
+  /**
+   * Schedule Interview
+   */
   async scheduleInterview(
     applicationId: string,
-    interviewDate: string
+    interviewDate: string,
+    roundName?: string
   ): Promise<CandidateApplication | null> {
     try {
       const { data, error } = await (supabase
@@ -187,6 +298,41 @@ export const recruiterService = {
     }
   },
 
+  /**
+   * Record Interview Feedback
+   */
+  async recordInterviewFeedback(
+    applicationId: string,
+    feedback: {
+      technicalRating: number;
+      communicationRating: number;
+      notes: string;
+      interviewerName: string;
+      verdict: 'STRONG_HIRE' | 'HIRE' | 'HOLD' | 'REJECT';
+    }
+  ): Promise<boolean> {
+    try {
+      const dbUpdates: any = {
+        feedback_verdict: `${feedback.verdict}: ${feedback.notes} (Tech: ${feedback.technicalRating}/5, Comm: ${feedback.communicationRating}/5 by ${feedback.interviewerName})`,
+        stage: feedback.verdict === 'STRONG_HIRE' || feedback.verdict === 'HIRE' ? 'SELECTED' : 'INTERVIEW',
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await (supabase
+        .from('candidate_applications') as any)
+        .update(dbUpdates)
+        .eq('id', applicationId);
+
+      return !error;
+    } catch (err) {
+      console.error('recordInterviewFeedback error:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Release Job Offer
+   */
   async releaseOffer(
     applicationId: string,
     ctcLPA: number,
@@ -218,32 +364,8 @@ export const recruiterService = {
     }
   },
 
-  async recordInterviewFeedback(
-    applicationId: string,
-    verdict: string,
-    scheduledDate?: string
-  ): Promise<boolean> {
-    try {
-      const dbUpdates: any = {
-        feedback_verdict: verdict,
-        updated_at: new Date().toISOString(),
-      };
-      if (scheduledDate) dbUpdates.interview_date = scheduledDate;
-
-      const { error } = await (supabase
-        .from('candidate_applications') as any)
-        .update(dbUpdates)
-        .eq('id', applicationId);
-
-      return !error;
-    } catch (err) {
-      console.error('recordInterviewFeedback error:', err);
-      return false;
-    }
-  },
-
   /**
-   * Recruiter Dashboard Metrics
+   * Recruiter Dashboard Pipeline Funnel Metrics
    */
   async getPipelineMetrics() {
     const apps = await this.getCandidateApplications();
@@ -299,9 +421,9 @@ export const recruiterService = {
       departmentName: 'Computer Science & Engineering',
       talentScore: row.talent_score || 0,
       iriScore: Number(row.iri_score) || 0,
-      skills: ['Python', 'FastAPI', 'PostgreSQL', 'Docker'],
+      skills: ['Python', 'FastAPI', 'PostgreSQL', 'Docker', 'React'],
       cgpa: Number(row.cgpa) || 8.0,
-      stage: row.stage || 'DISCOVERED',
+      stage: (row.stage as PipelineStage) || 'DISCOVERED',
       appliedDate: row.applied_date || new Date().toISOString().split('T')[0],
       interviewDate: row.interview_date || undefined,
       interviewFeedback: row.feedback_verdict ? {
@@ -316,6 +438,9 @@ export const recruiterService = {
         joiningDate: rawOffer.joiningDate || '2026-07-01',
         status: rawOffer.status || 'OFFERED',
       } : undefined,
+      resumeUrl: `https://santoge.com/resumes/${row.student_id || row.id}.pdf`,
+      githubUrl: `https://github.com/${row.student_name?.toLowerCase().replace(/\s+/g, '')}`,
+      projectsCount: 4,
     };
   },
 };

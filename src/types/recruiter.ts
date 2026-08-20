@@ -24,9 +24,10 @@ export interface CandidateApplication {
   stage: PipelineStage;
   appliedDate: string;
   interviewDate?: string;
+  interviewRound?: string;
   interviewFeedback?: {
     technicalRating: number; // 1 - 5
-    communicationRating: number;
+    communicationRating: number; // 1 - 5
     notes: string;
     interviewerName: string;
     verdict: 'STRONG_HIRE' | 'HIRE' | 'HOLD' | 'REJECT';
@@ -36,6 +37,9 @@ export interface CandidateApplication {
     joiningDate: string;
     status: 'OFFERED' | 'ACCEPTED' | 'DECLINED';
   };
+  resumeUrl?: string;
+  githubUrl?: string;
+  projectsCount?: number;
 }
 
 export interface JobPosting {
@@ -75,4 +79,9 @@ export interface RecruiterFilterState {
   minCgpa: number;
   graduationYears: number[];
   availability: string;
+  experienceLevel?: string;
+  location?: string;
+  minCommunicationScore?: number;
+  hasGithubOnly?: boolean;
+  minProjects?: number;
 }

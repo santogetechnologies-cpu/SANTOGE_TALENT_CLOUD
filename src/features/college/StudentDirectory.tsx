@@ -36,7 +36,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 export const StudentDirectory: React.FC = () => {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [riskFilter, setRiskFilter] = useState<RiskStatus | 'ALL'>('ALL');
@@ -310,22 +310,26 @@ export const StudentDirectory: React.FC = () => {
           >
             Refresh
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            leftIcon={<FileCheck2 className="w-4 h-4 text-brand-600" />}
-            onClick={() => navigate('/college/import')}
-          >
-            Bulk Import CSV
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            leftIcon={<UserPlus className="w-4 h-4" />}
-            onClick={() => setIsAddModalOpen(true)}
-          >
-            Add Single Student
-          </Button>
+          {(role === 'SUPER_ADMIN' || role === 'COLLEGE_SUPER_ADMIN') && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<FileCheck2 className="w-4 h-4 text-brand-600" />}
+                onClick={() => navigate('/college/import')}
+              >
+                Bulk Import CSV
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<UserPlus className="w-4 h-4" />}
+                onClick={() => setIsAddModalOpen(true)}
+              >
+                Add Single Student
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

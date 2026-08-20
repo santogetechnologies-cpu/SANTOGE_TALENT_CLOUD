@@ -20,6 +20,10 @@ import {
   Layers,
   Settings,
   Flame,
+  AlertTriangle,
+  CreditCard,
+  LifeBuoy,
+  RotateCcw,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -41,20 +45,14 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void }> = ({ i
       case 'SUPER_ADMIN':
         return [
           {
-            title: 'Platform Overview',
+            title: 'Platform Core',
             items: [
-              { label: 'Admin Dashboard', path: '/admin', icon: <Layers className="w-4 h-4" /> },
+              { label: 'Executive Dashboard', path: '/admin', icon: <Layers className="w-4 h-4" /> },
+              { label: 'Colleges Directory', path: '/admin/colleges', icon: <Building2 className="w-4 h-4" /> },
+              { label: 'Cohort Batches', path: '/admin/batches', icon: <Compass className="w-4 h-4" /> },
+              { label: 'Students Master Directory', path: '/admin/students', icon: <Users className="w-4 h-4" /> },
               { label: 'Platform Analytics', path: '/admin/analytics', icon: <BarChart3 className="w-4 h-4" /> },
-              { label: 'User Management', path: '/admin/users', icon: <ShieldCheck className="w-4 h-4" /> },
-            ],
-          },
-          {
-            title: 'Institution & Talent',
-            items: [
-              { label: 'All Students', path: '/admin/students', icon: <Users className="w-4 h-4" /> },
-              { label: 'Bulk Student Import', path: '/admin/bulk-import', icon: <FileCheck2 className="w-4 h-4" />, badge: 'Wizard' },
-              { label: 'Colleges Management', path: '/admin/colleges', icon: <Building2 className="w-4 h-4" /> },
-              { label: 'Batches & Mentors', path: '/admin/batches', icon: <Compass className="w-4 h-4" /> },
+              { label: 'User & Access Control', path: '/admin/users', icon: <ShieldCheck className="w-4 h-4" /> },
             ],
           },
           {
@@ -72,13 +70,23 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void }> = ({ i
       case 'OPERATIONS_MANAGER':
         return [
           {
-            title: 'Operations Hub',
+            title: 'Operations Command',
             items: [
-              { label: 'Operations Dashboard', path: '/operations', icon: <Layers className="w-4 h-4" /> },
-              { label: 'At-Risk Student Center', path: '/operations/at-risk', icon: <ShieldCheck className="w-4 h-4" />, badge: 'Alert' },
+              { label: 'Command Overview', path: '/operations', icon: <Layers className="w-4 h-4" /> },
+              { label: 'Students & Progress', path: '/operations/students', icon: <Users className="w-4 h-4" /> },
               { label: 'Batches & Cohorts', path: '/operations/batches', icon: <Compass className="w-4 h-4" /> },
-              { label: 'Mentors & Faculty', path: '/operations/mentors', icon: <Users className="w-4 h-4" /> },
-              { label: 'Daily Attendance Sync', path: '/operations/attendance', icon: <FileCheck2 className="w-4 h-4" /> },
+              { label: 'Mentors & Faculty', path: '/operations/mentors', icon: <Sparkles className="w-4 h-4" /> },
+            ],
+          },
+          {
+            title: 'Execution & Support',
+            items: [
+              { label: 'Attendance & Pacing', path: '/operations/attendance', icon: <FileCheck2 className="w-4 h-4" /> },
+              { label: 'Assignments & Labs', path: '/operations/assignments', icon: <Terminal className="w-4 h-4" /> },
+              { label: 'Payment Status', path: '/operations/payments', icon: <CreditCard className="w-4 h-4" /> },
+              { label: 'Support & Tickets', path: '/operations/support', icon: <LifeBuoy className="w-4 h-4" />, badge: 'Live' },
+              { label: 'Assigned Colleges', path: '/operations/colleges', icon: <Building2 className="w-4 h-4" /> },
+              { label: 'Operations Reports', path: '/operations/reports', icon: <BarChart3 className="w-4 h-4" />, badge: 'Audit' },
             ],
           },
         ];
@@ -88,9 +96,18 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void }> = ({ i
           {
             title: 'Finance & Revenue',
             items: [
-              { label: 'Payment Verification', path: '/finance/payments', icon: <DollarSign className="w-4 h-4" />, badge: 'Queue' },
-              { label: 'Student Invoices', path: '/finance/invoices', icon: <FileCheck2 className="w-4 h-4" /> },
+              { label: 'Transaction Ledger', path: '/finance/payments', icon: <DollarSign className="w-4 h-4" /> },
+              { label: 'Pending Verification', path: '/finance/pending', icon: <CreditCard className="w-4 h-4" />, badge: 'Queue' },
+              { label: 'Failed Payments', path: '/finance/failed', icon: <AlertTriangle className="w-4 h-4" /> },
+              { label: 'Refunds Settlement', path: '/finance/refunds', icon: <RotateCcw className="w-4 h-4" /> },
+            ],
+          },
+          {
+            title: 'Invoicing & Contracts',
+            items: [
               { label: 'College Subscriptions', path: '/finance/subscriptions', icon: <Building2 className="w-4 h-4" /> },
+              { label: 'GST Tax Invoices', path: '/finance/invoices', icon: <FileCheck2 className="w-4 h-4" /> },
+              { label: 'Revenue Reports', path: '/finance/reports', icon: <BarChart3 className="w-4 h-4" />, badge: 'Audit' },
             ],
           },
         ];
@@ -109,8 +126,6 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void }> = ({ i
         ];
 
       case 'COLLEGE_SUPER_ADMIN':
-      case 'COLLEGE_PLACEMENT_OFFICER':
-      case 'DEPARTMENT_COORDINATOR':
         return [
           {
             title: 'College CPOS',
@@ -129,6 +144,40 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void }> = ({ i
               { label: 'Company CRM', path: '/placement/companies', icon: <Briefcase className="w-4 h-4" /> },
               { label: 'Recruiter Outreach', path: '/placement/outreach', icon: <MessageSquare className="w-4 h-4" /> },
               { label: 'Placement Reports', path: '/college/reports', icon: <BarChart3 className="w-4 h-4" />, badge: 'Audit' },
+            ],
+          },
+        ];
+
+      case 'COLLEGE_PLACEMENT_OFFICER':
+        return [
+          {
+            title: 'Placement Execution',
+            items: [
+              { label: 'Campus Drives Hub', path: '/placement/drives', icon: <Award className="w-4 h-4" />, badge: 'Live' },
+              { label: 'Candidate Directory', path: '/college/students', icon: <Users className="w-4 h-4" /> },
+              { label: 'Company CRM', path: '/placement/companies', icon: <Briefcase className="w-4 h-4" /> },
+              { label: 'Recruiter Outreach', path: '/placement/outreach', icon: <MessageSquare className="w-4 h-4" /> },
+              { label: 'Placement Reports', path: '/college/reports', icon: <BarChart3 className="w-4 h-4" />, badge: 'Audit' },
+            ],
+          },
+        ];
+
+      case 'DEPARTMENT_COORDINATOR':
+        return [
+          {
+            title: 'Department Operations',
+            items: [
+              { label: 'Department Dashboard', path: '/department/dashboard', icon: <Building2 className="w-4 h-4" /> },
+              { label: 'Assigned Students', path: '/department/students', icon: <Users className="w-4 h-4" /> },
+              { label: 'At-Risk & Remedials', path: '/department/at-risk', icon: <AlertTriangle className="w-4 h-4" />, badge: 'Action' },
+            ],
+          },
+          {
+            title: 'Readiness & Communication',
+            items: [
+              { label: 'Assessments & Readiness', path: '/department/assessments', icon: <Award className="w-4 h-4" /> },
+              { label: 'Broadcast Notices', path: '/department/announcements', icon: <MessageSquare className="w-4 h-4" /> },
+              { label: 'Department Reports', path: '/department/reports', icon: <BarChart3 className="w-4 h-4" />, badge: 'Audit' },
             ],
           },
         ];

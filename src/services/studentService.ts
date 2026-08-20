@@ -21,12 +21,16 @@ export const studentService = {
 
       // Enforce DataScope
       if (scope) {
-        if (scope.scopeType === 'COLLEGE' && scope.collegeId) {
+        if (scope.collegeId) {
           query = query.eq('college_id', scope.collegeId);
-        } else if (scope.scopeType === 'COLLEGE_DEPARTMENT') {
-          if (scope.collegeId) query = query.eq('college_id', scope.collegeId);
-          if (scope.departmentIds?.[0]) query = query.eq('department_id', scope.departmentIds[0]);
-        } else if (scope.scopeType === 'SELF' && scope.studentId) {
+        }
+        if (scope.departmentIds?.[0]) {
+          query = query.eq('department_id', scope.departmentIds[0]);
+        }
+        if (scope.departmentNames?.[0]) {
+          query = query.ilike('department_name', `%${scope.departmentNames[0]}%`);
+        }
+        if (scope.scopeType === 'SELF' && scope.studentId) {
           query = query.eq('id', scope.studentId);
         }
       }
