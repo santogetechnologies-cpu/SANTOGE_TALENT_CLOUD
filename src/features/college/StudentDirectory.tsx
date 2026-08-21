@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { studentService } from '../../services/studentService';
 import { supabase } from '../../lib/supabase';
 import { Student, RiskStatus } from '../../types/student';
+import { Department } from '../../types/college';
 import { DataTable } from '../../components/shared/DataTable';
 import { RiskBadge } from '../../components/shared/RiskBadge';
 import { Badge } from '../../components/ui/Badge';
@@ -32,12 +33,15 @@ import {
   Layers,
   FileCheck2,
   RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const StudentDirectory: React.FC = () => {
   const { user, role } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [resolvedCollegeId, setResolvedCollegeId] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [riskFilter, setRiskFilter] = useState<RiskStatus | 'ALL'>('ALL');
   const [departmentFilter, setDepartmentFilter] = useState<string>('ALL');
@@ -51,39 +55,95 @@ export const StudentDirectory: React.FC = () => {
   const [newStudentRoll, setNewStudentRoll] = useState('');
   const [newStudentEmail, setNewStudentEmail] = useState('');
   const [newStudentPhone, setNewStudentPhone] = useState('');
-  const [newStudentDept, setNewStudentDept] = useState('Computer Science & Engineering');
+  const [newStudentDept, setNewStudentDept] = useState('');
   const [newStudentCGPA, setNewStudentCGPA] = useState('8.2');
   const [newStudentGithub, setNewStudentGithub] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addMessage, setAddMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const loadStudents = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
+      // 1. Resolve college ID
+      let colId = user?.dataScope?.collegeId || null;
+      if (!colId) {
+        const { data: cols } = await (supabase.from('colleges') as any).select('id, name').limit(5);
+        if (cols && cols.length > 0) {
+          const matched = cols.find((c: any) => c.name === user?.dataScope?.collegeName);
+          colId = matched ? matched.id : cols[0].id;
+        }
+      }
+      setResolvedCollegeId(colId);
+
+      // 2. Load strictly created departments from PostgreSQL for this college
+      let deptQuery = (supabase.from('departments') as any)
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (colId) {
+        deptQuery = deptQuery.eq('college_id', colId);
+      }
+
+      const { data: deptData, error: deptError } = await deptQuery;
+      if (deptError) {
+        console.error('Error loading departments:', deptError.message);
+      } else if (deptData) {
+        const mappedDepts: Department[] = deptData.map((d: any) => ({
+          id: d.id,
+          code: d.code,
+          name: d.name,
+          coordinatorId: d.coordinator_id || '',
+          coordinatorName: d.coordinator_name || '',
+          coordinatorEmail: d.coordinator_email || '',
+          totalStudents: d.total_students || 0,
+          placedStudents: d.placed_count || 0,
+          placementRate: Number(d.placement_rate) || 0,
+          averageTalentScore: d.average_talent_score || 0,
+          averagePackageLPA: Number(d.average_package_lpa) || 0,
+        }));
+        setDepartments(mappedDepts);
+
+        // Auto-select first real department if not already selected
+        if (mappedDepts.length > 0) {
+          setNewStudentDept(prev => {
+            if (prev && mappedDepts.some(d => d.name === prev)) return prev;
+            return mappedDepts[0].name;
+          });
+        } else {
+          setNewStudentDept('');
+        }
+      }
+
+      // 3. Load students for this college
       const data = await studentService.getStudents(
-        user?.dataScope,
+        colId ? { scopeType: 'COLLEGE', collegeId: colId } : user?.dataScope,
         riskFilter !== 'ALL' ? { riskStatus: riskFilter } : undefined
       );
       setStudents(data);
     } catch (err) {
-      console.error('loadStudents error:', err);
+      console.error('loadData error:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadStudents();
+    loadData();
   }, [user, riskFilter]);
 
-  // Realtime subscription
+  // Realtime subscription on students and departments
   useEffect(() => {
     const channel = supabase
-      .channel('college-students-realtime')
+      .channel('college-students-and-depts-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'students' },
-        () => loadStudents()
+        () => loadData()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'departments' },
+        () => loadData()
       )
       .subscribe();
 
@@ -92,7 +152,9 @@ export const StudentDirectory: React.FC = () => {
     };
   }, [user]);
 
-  const departmentsList = Array.from(new Set(students.map(s => s.departmentName).filter(Boolean)));
+  const departmentsList = departments.length > 0
+    ? departments.map(d => d.name)
+    : Array.from(new Set(students.map(s => s.departmentName).filter(Boolean)));
 
   const filteredStudents = students.filter(s => {
     const q = searchQuery.toLowerCase();
@@ -114,6 +176,14 @@ export const StudentDirectory: React.FC = () => {
     setAddMessage(null);
 
     try {
+      const selectedDeptObj = departments.find(d => d.name === newStudentDept);
+      if (!selectedDeptObj && departments.length === 0) {
+        throw new Error('Please create an academic department in Departments & Cutoffs first.');
+      }
+
+      const collegeIdToUse = resolvedCollegeId || user?.dataScope?.collegeId || null;
+      const collegeNameToUse = user?.dataScope?.collegeName || 'My College';
+
       const { data, error } = await (supabase.from('students') as any)
         .insert({
           id: crypto.randomUUID(),
@@ -121,9 +191,10 @@ export const StudentDirectory: React.FC = () => {
           roll_number: newStudentRoll.trim(),
           email: newStudentEmail.trim().toLowerCase(),
           phone: newStudentPhone.trim(),
-          department_name: newStudentDept,
-          college_id: user?.dataScope?.collegeId || null,
-          college_name: user?.dataScope?.collegeName || 'ABC Engineering College',
+          department_id: selectedDeptObj?.id || null,
+          department_name: selectedDeptObj?.name || newStudentDept,
+          college_id: collegeIdToUse,
+          college_name: collegeNameToUse,
           cgpa: parseFloat(newStudentCGPA) || 8.0,
           talent_score: 720,
           iri_score: 76.0,
@@ -140,7 +211,19 @@ export const StudentDirectory: React.FC = () => {
         throw new Error(error.message);
       }
 
-      setAddMessage({ type: 'success', text: `Student ${newStudentName} added successfully!` });
+      // Update total_students count on the department in PostgreSQL
+      if (selectedDeptObj?.id) {
+        try {
+          await (supabase.from('departments') as any)
+            .update({
+              total_students: (selectedDeptObj.totalStudents || 0) + 1,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', selectedDeptObj.id);
+        } catch (e) { }
+      }
+
+      setAddMessage({ type: 'success', text: `Student ${newStudentName} added successfully to ${selectedDeptObj?.name || newStudentDept}!` });
       setTimeout(() => {
         setIsAddModalOpen(false);
         setNewStudentName('');
@@ -149,7 +232,7 @@ export const StudentDirectory: React.FC = () => {
         setNewStudentPhone('');
         setNewStudentGithub('');
         setAddMessage(null);
-        loadStudents();
+        loadData();
       }, 1200);
     } catch (err: any) {
       console.error('Error adding student:', err);
@@ -175,13 +258,14 @@ export const StudentDirectory: React.FC = () => {
         ...prev,
         placementReadiness: {
           ...prev.placementReadiness,
-          status: newStatus,
-        }
+          status: newStatus as any,
+          score: isCurrentlyReady ? 65 : 90,
+        },
       } : null);
 
-      loadStudents();
+      loadData();
     } catch (err) {
-      console.error('Error toggling eligibility:', err);
+      console.error('Error toggling placement readiness:', err);
     }
   };
 
@@ -191,12 +275,14 @@ export const StudentDirectory: React.FC = () => {
       header: 'Student & Roll Number',
       render: (s: Student) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 font-bold text-xs flex items-center justify-center uppercase shrink-0">
-            {s.name?.charAt(0) || 'S'}
-          </div>
+          <img
+            src={s.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+            alt={s.name}
+            className="w-9 h-9 rounded-full object-cover border border-slate-200"
+          />
           <div>
-            <p className="font-bold text-slate-900">{s.name}</p>
-            <p className="text-[11px] font-mono text-slate-500">{s.rollNumber}</p>
+            <p className="font-extrabold text-slate-900 text-xs">{s.name}</p>
+            <p className="font-mono text-[10px] text-slate-500">{s.rollNumber}</p>
           </div>
         </div>
       ),
@@ -206,27 +292,9 @@ export const StudentDirectory: React.FC = () => {
       key: 'departmentName',
       header: 'Department',
       render: (s: Student) => (
-        <div className="text-xs text-slate-700 font-medium max-w-[160px] truncate">
+        <Badge variant="purple" size="sm">
           {s.departmentName}
-        </div>
-      ),
-      sortable: true,
-    },
-    {
-      key: 'cgpa',
-      header: 'CGPA',
-      render: (s: Student) => (
-        <span className="font-mono font-bold text-slate-800 text-xs">{s.cgpa}</span>
-      ),
-      sortable: true,
-    },
-    {
-      key: 'attendance',
-      header: 'Attendance',
-      render: (s: Student) => (
-        <span className={`font-mono text-xs font-bold ${s.attendancePercent >= 75 ? 'text-emerald-600' : 'text-rose-600'}`}>
-          {s.attendancePercent}%
-        </span>
+        </Badge>
       ),
       sortable: true,
     },
@@ -234,9 +302,12 @@ export const StudentDirectory: React.FC = () => {
       key: 'talentScore',
       header: 'Talent Score',
       render: (s: Student) => (
-        <span className="font-mono font-extrabold text-brand-600 text-sm">
-          {s.talentScore.overallScore} <span className="text-[10px] text-slate-400 font-normal">/1000</span>
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono font-black text-brand-600 text-xs">
+            {s.talentScore.overallScore}
+          </span>
+          <span className="text-[10px] text-slate-400 font-mono">/ 1000</span>
+        </div>
       ),
       sortable: true,
     },
@@ -244,24 +315,37 @@ export const StudentDirectory: React.FC = () => {
       key: 'iri',
       header: 'Technical IRI',
       render: (s: Student) => (
-        <span className="font-mono font-bold text-emerald-600 text-xs">
-          {s.iri.overallIRI}%
-        </span>
+        <div className="flex items-center gap-2">
+          <div className="w-12 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+            <div
+              className="bg-emerald-500 h-full rounded-full"
+              style={{ width: `${s.iri.overallIRI}%` }}
+            />
+          </div>
+          <span className="font-mono font-bold text-slate-700 text-xs">
+            {s.iri.overallIRI}%
+          </span>
+        </div>
       ),
       sortable: true,
     },
     {
-      key: 'placementReadiness',
+      key: 'placementStatus',
       header: 'Placement Status',
-      render: (s: Student) => {
-        if (s.placementReadiness.offersCount > 0) {
-          return <Badge variant="success" size="sm">🎉 {s.placementReadiness.offersCount} Offer(s)</Badge>;
-        }
-        if (s.talentScore.overallScore >= 800) {
-          return <Badge variant="purple" size="sm">⚡ Interview Ready</Badge>;
-        }
-        return <Badge variant="outline" size="sm">⏳ In Preparation</Badge>;
-      },
+      render: (s: Student) => (
+        <Badge
+          variant={
+            s.placementReadiness.status === 'InterviewReady'
+              ? 'success'
+              : s.placementReadiness.status === 'Advanced'
+                ? 'primary'
+                : 'warning'
+          }
+          size="sm"
+        >
+          {s.placementReadiness.status}
+        </Badge>
+      ),
       sortable: true,
     },
     {
@@ -271,10 +355,10 @@ export const StudentDirectory: React.FC = () => {
         <Button
           size="xs"
           variant="outline"
-          leftIcon={<FileText className="w-3 h-3 text-brand-600" />}
+          leftIcon={<FileText className="w-3 h-3 text-slate-400" />}
           onClick={() => setSelectedStudent(s)}
         >
-          View Profile
+          Inspect Profile
         </Button>
       ),
     },
@@ -283,243 +367,191 @@ export const StudentDirectory: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-soft flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-bold uppercase tracking-wider text-brand-600 flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5" /> Institutional Talent Directory
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-brand-50 text-brand-700 border border-brand-200">
-              {user?.dataScope?.collegeName || 'Isolated College Scope'}
+            <Badge variant="purple">{user?.dataScope?.collegeName || 'My College'}</Badge>
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Realtime Sync
             </span>
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900">
-            College Student Placement & Technical Readiness Hub
+            College Student Master Roster
           </h1>
           <p className="mt-1 text-xs text-slate-500">
-            Manage candidates, inspect verified talent scores, verify resumes, evaluate GitHub profiles, and govern placement eligibility.
+            Manage candidates, inspect verified skill footprints, monitor risk status, and track drive placements in real time.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
             leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />}
-            onClick={loadStudents}
+            onClick={loadData}
           >
             Refresh
           </Button>
-          {(role === 'SUPER_ADMIN' || role === 'COLLEGE_SUPER_ADMIN') && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                leftIcon={<FileCheck2 className="w-4 h-4 text-brand-600" />}
-                onClick={() => navigate('/college/import')}
-              >
-                Bulk Import CSV
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                leftIcon={<UserPlus className="w-4 h-4" />}
-                onClick={() => setIsAddModalOpen(true)}
-              >
-                Add Single Student
-              </Button>
-            </>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<Download className="w-3.5 h-3.5" />}
+            onClick={() => navigate('/college/import')}
+          >
+            Bulk Import CSV
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<UserPlus className="w-4 h-4" />}
+            onClick={() => {
+              setNewStudentName('');
+              setNewStudentRoll('');
+              setNewStudentEmail('');
+              setNewStudentPhone('');
+              setNewStudentGithub('');
+              setAddMessage(null);
+              setIsAddModalOpen(true);
+            }}
+          >
+            + Add Single Student
+          </Button>
         </div>
       </div>
 
-      {/* Filters Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-soft flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          {/* Risk Filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-400" />
-            <span className="text-xs font-bold text-slate-600 uppercase">Status:</span>
-            <select
-              value={riskFilter}
-              onChange={e => setRiskFilter(e.target.value as any)}
-              className="bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
+      {/* Filters Toolbar */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-soft flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold uppercase tracking-wider">
+            <Filter className="w-3.5 h-3.5 text-slate-400" /> Status:
+          </div>
+          {(['ALL', 'ON_TRACK', 'PARTIAL', 'STRUGGLING', 'INACTIVE'] as const).map(status => (
+            <button
+              key={status}
+              onClick={() => setRiskFilter(status)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${riskFilter === status
+                ? 'bg-brand-600 text-white shadow-soft'
+                : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                }`}
             >
-              <option value="ALL">All Statuses ({students.length})</option>
-              <option value="ON_TRACK">On Track</option>
-              <option value="PARTIAL">Partial Risk</option>
-              <option value="STRUGGLING">Struggling</option>
-              <option value="INACTIVE">Inactive</option>
+              {status === 'ALL' ? `All Statuses (${students.length})` : status.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
+
+        {departmentsList.length > 0 && (
+          <div className="w-full md:w-auto">
+            <select
+              value={departmentFilter}
+              onChange={e => setDepartmentFilter(e.target.value)}
+              className="w-full md:w-48 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 font-semibold focus:ring-2 focus:ring-brand-500 outline-none cursor-pointer"
+            >
+              <option value="ALL">All Departments ({students.length})</option>
+              {departmentsList.map(dept => (
+                <option key={dept} value={dept}>
+                  {dept}
+                </option>
+              ))}
             </select>
           </div>
-
-          {/* Department Filter */}
-          {departmentsList.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Building className="w-4 h-4 text-slate-400" />
-              <span className="text-xs font-bold text-slate-600 uppercase">Department:</span>
-              <select
-                value={departmentFilter}
-                onChange={e => setDepartmentFilter(e.target.value)}
-                className="bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
-              >
-                <option value="ALL">All Departments</option>
-                {departmentsList.map(dept => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-
-        <div className="text-xs font-semibold text-slate-500">
-          Showing <span className="font-bold text-slate-900">{filteredStudents.length}</span> students
-        </div>
+        )}
       </div>
 
-      {/* Data Table */}
+      {/* Main Student Directory Table */}
       <DataTable
         columns={columns}
         data={filteredStudents}
-        searchPlaceholder="Search candidates by name, roll number, or skill..."
+        searchPlaceholder="Search candidates by name, roll number, department, or technical skill..."
       />
 
-      {/* 1. Student Profile Modal / Drawer */}
+      {/* 1. Student Profile Modal */}
       {selectedStudent && (
         <Modal
           isOpen={!!selectedStudent}
           onClose={() => setSelectedStudent(null)}
           title={`Verified Talent Profile: ${selectedStudent.name}`}
-          description={`Roll Number: ${selectedStudent.rollNumber} • ${selectedStudent.departmentName}`}
+          description={`${selectedStudent.departmentName} • ${selectedStudent.rollNumber}`}
           maxWidth="2xl"
         >
-          <div className="space-y-5 text-xs">
-            {/* KPI Banner */}
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-              <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Talent Score</span>
-                <span className="text-2xl font-black font-mono text-brand-600">{selectedStudent.talentScore.overallScore}</span>
-                <span className="text-[10px] text-slate-400 block font-mono">Rank Tier: Top 10%</span>
+          <div className="space-y-6 text-xs">
+            {/* Header Identity Card */}
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
+              <div className="flex items-center gap-3">
+                <img
+                  src={selectedStudent.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+                  alt={selectedStudent.name}
+                  className="w-14 h-14 rounded-2xl object-cover border border-slate-200"
+                />
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base">{selectedStudent.name}</h3>
+                  <p className="text-slate-500 text-xs font-mono">{selectedStudent.email}</p>
+                  <p className="text-slate-400 text-[11px] font-mono mt-0.5">{selectedStudent.phone}</p>
+                </div>
               </div>
-              <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Industry Readiness</span>
-                <span className="text-2xl font-black font-mono text-emerald-600">{selectedStudent.iri.overallIRI}%</span>
-                <span className="text-[10px] text-emerald-600 block font-mono font-bold">✓ Ready</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Academic CGPA</span>
-                <span className="text-2xl font-black font-mono text-slate-900">{selectedStudent.cgpa}</span>
-                <span className="text-[10px] text-slate-400 block font-mono">Class of {selectedStudent.graduationYear}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Attendance</span>
-                <span className={`text-2xl font-black font-mono ${selectedStudent.attendancePercent >= 75 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {selectedStudent.attendancePercent}%
-                </span>
-                <span className="text-[10px] text-slate-500 block font-mono">Streak: {selectedStudent.streakDays}d</span>
+              <div className="text-right space-y-1">
+                <RiskBadge status={selectedStudent.riskStatus} />
+                <p className="text-[10px] text-slate-400 font-mono block">Batch: {selectedStudent.graduationYear}</p>
               </div>
             </div>
 
-            {/* Talent Scores Breakdown */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-2">
-              <span className="font-extrabold text-slate-900 block text-xs uppercase tracking-wide">
-                📊 Talent Score Breakdown (0–1000 Scale)
-              </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
-                <div className="p-2 rounded-lg bg-slate-50 border border-slate-100">
-                  <span className="text-slate-500 block text-[10px]">Technical Score</span>
-                  <span className="font-bold text-slate-900">{selectedStudent.talentScore.technicalScore || 780} / 1000</span>
-                </div>
-                <div className="p-2 rounded-lg bg-slate-50 border border-slate-100">
-                  <span className="text-slate-500 block text-[10px]">Placement Readiness</span>
-                  <span className="font-bold text-slate-900">{selectedStudent.talentScore.placementScore || 750} / 1000</span>
-                </div>
-                <div className="p-2 rounded-lg bg-slate-50 border border-slate-100">
-                  <span className="text-slate-500 block text-[10px]">Communication</span>
-                  <span className="font-bold text-slate-900">{selectedStudent.talentScore.communicationScore || 720} / 1000</span>
-                </div>
-                <div className="p-2 rounded-lg bg-slate-50 border border-slate-100">
-                  <span className="text-slate-500 block text-[10px]">Aptitude & Logic</span>
-                  <span className="font-bold text-slate-900">{selectedStudent.talentScore.aptitudeScore || 740} / 1000</span>
-                </div>
+            {/* Metrics Breakdown Grid */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-3 bg-brand-50/50 rounded-xl border border-brand-100 text-center">
+                <span className="text-[10px] font-bold uppercase text-brand-600 block">Talent Score</span>
+                <span className="text-xl font-black text-brand-700 font-mono">
+                  {selectedStudent.talentScore.overallScore}
+                </span>
+              </div>
+              <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 text-center">
+                <span className="text-[10px] font-bold uppercase text-emerald-600 block">Technical IRI</span>
+                <span className="text-xl font-black text-emerald-700 font-mono">
+                  {selectedStudent.iri.overallIRI}%
+                </span>
+              </div>
+              <div className="p-3 bg-purple-50/50 rounded-xl border border-purple-100 text-center">
+                <span className="text-[10px] font-bold uppercase text-purple-600 block">Academic CGPA</span>
+                <span className="text-xl font-black text-purple-700 font-mono">
+                  {selectedStudent.cgpa?.toFixed(2) || '8.50'}
+                </span>
               </div>
             </div>
 
             {/* Verified Skills */}
-            <div>
-              <span className="font-extrabold text-slate-900 block mb-2 text-xs uppercase tracking-wide">
-                Verified Technical Competencies
+            <div className="space-y-2">
+              <span className="font-bold text-slate-900 block uppercase text-[10px] tracking-wider">
+                Verified Technical Proficiencies
               </span>
-              <div className="flex flex-wrap gap-2">
-                {selectedStudent.skills.map(sk => (
-                  <span key={sk.name} className="px-2.5 py-1 bg-slate-50 rounded-lg border border-slate-200 font-mono text-slate-800 flex items-center gap-1.5 text-[11px]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <strong>{sk.name}</strong> ({sk.score}/100)
+              <div className="flex flex-wrap gap-1.5">
+                {(selectedStudent.skills || []).map(skill => (
+                  <span
+                    key={skill.name}
+                    className="px-2.5 py-1 bg-slate-100 text-slate-700 font-mono text-[10px] rounded-lg font-semibold border border-slate-200"
+                  >
+                    {skill.name} ({skill.score}%)
                   </span>
                 ))}
               </div>
             </div>
 
-            {/* GitHub & Contact Bar */}
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="space-y-1">
-                <span className="text-slate-500 text-[10px] uppercase font-bold flex items-center gap-1">
-                  <Github className="w-3.5 h-3.5 text-slate-700" /> GitHub Profile & Activity
-                </span>
-                <a
-                  href={`https://github.com/${selectedStudent.githubUsername || 'developer'}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-bold text-brand-600 hover:text-brand-800 flex items-center gap-1 font-mono"
-                >
-                  github.com/{selectedStudent.githubUsername || 'developer'}
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-                <p className="text-[10px] text-slate-500 font-mono">
-                  {selectedStudent.githubStats?.repos || 12} Repositories • {selectedStudent.githubStats?.commitsThisMonth || 48} Commits • Code Quality: {selectedStudent.githubStats?.qualityRating || 'A'}
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-slate-500 text-[10px] uppercase font-bold flex items-center gap-1">
-                  <Mail className="w-3.5 h-3.5 text-slate-700" /> Contact Details
-                </span>
-                <p className="font-semibold text-slate-900 font-mono">{selectedStudent.email}</p>
-                <p className="text-slate-500 font-mono text-[11px]">{selectedStudent.phone || 'Phone not set'}</p>
-              </div>
-            </div>
-
-            {/* Placement Eligibility & Action Footer */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200">
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant={selectedStudent.placementReadiness.status === 'InterviewReady' ? 'outline' : 'success'}
-                  onClick={() => handleTogglePlacementEligibility(selectedStudent)}
-                >
-                  {selectedStudent.placementReadiness.status === 'InterviewReady'
-                    ? 'Revoke Drive Eligibility'
-                    : '⚡ Grant Placement Eligibility'}
-                </Button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setSelectedStudent(null)}>
-                  Close
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  leftIcon={<FileText className="w-4 h-4" />}
-                  onClick={() => {
-                    alert(`Downloading ATS Resume for ${selectedStudent.name} (Roll: ${selectedStudent.rollNumber}). Verified by SantoGe Placement Engine.`);
-                  }}
-                >
-                  Download ATS Resume
-                </Button>
-              </div>
+            {/* Quick Actions */}
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <Button
+                size="sm"
+                variant={selectedStudent.placementReadiness.status === 'InterviewReady' ? 'outline' : 'primary'}
+                leftIcon={<Award className="w-3.5 h-3.5" />}
+                onClick={() => handleTogglePlacementEligibility(selectedStudent)}
+              >
+                {selectedStudent.placementReadiness.status === 'InterviewReady'
+                  ? 'Set to Foundation'
+                  : 'Approve for Campus Drives'}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setSelectedStudent(null)}>
+                Close Profile
+              </Button>
             </div>
           </div>
         </Modal>
@@ -537,7 +569,7 @@ export const StudentDirectory: React.FC = () => {
             label="Full Name"
             value={newStudentName}
             onChange={e => setNewStudentName(e.target.value)}
-            placeholder="e.g. Ananya Sharma"
+            placeholder="Full Name"
             required
           />
 
@@ -546,7 +578,7 @@ export const StudentDirectory: React.FC = () => {
               label="Roll Number / Student ID"
               value={newStudentRoll}
               onChange={e => setNewStudentRoll(e.target.value)}
-              placeholder="e.g. 2026-CSE-042"
+              placeholder="0000000000"
               required
             />
             <Input
@@ -560,21 +592,46 @@ export const StudentDirectory: React.FC = () => {
             />
           </div>
 
+          {/* Department Selection: Strictly from PostgreSQL Created Departments */}
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-              Department
+              Academic Department
             </label>
-            <select
-              value={newStudentDept}
-              onChange={e => setNewStudentDept(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:ring-2 focus:ring-brand-500 outline-none"
-            >
-              <option value="Computer Science & Engineering">Computer Science & Engineering</option>
-              <option value="Information Technology">Information Technology</option>
-              <option value="Electronics & Communication">Electronics & Communication</option>
-              <option value="Artificial Intelligence & Data Science">Artificial Intelligence & Data Science</option>
-              <option value="Mechanical Engineering">Mechanical Engineering</option>
-            </select>
+            {departments.length > 0 ? (
+              <select
+                value={newStudentDept}
+                onChange={e => setNewStudentDept(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:ring-2 focus:ring-brand-500 outline-none cursor-pointer"
+                required
+              >
+                {departments.map(dept => (
+                  <option key={dept.id} value={dept.name}>
+                    {dept.name} ({dept.code})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs space-y-2">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  No Academic Departments Created Yet
+                </div>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  Please create your college's academic department branches in <strong>Departments & Cutoffs</strong> first before provisioning students.
+                </p>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={() => {
+                    setIsAddModalOpen(false);
+                    navigate('/college/departments');
+                  }}
+                >
+                  + Go to Departments & Cutoffs →
+                </Button>
+              </div>
+            )}
           </div>
 
           <Input
@@ -582,7 +639,7 @@ export const StudentDirectory: React.FC = () => {
             type="email"
             value={newStudentEmail}
             onChange={e => setNewStudentEmail(e.target.value)}
-            placeholder="ananya@apextech.edu"
+            placeholder="student@gmail.com"
             required
           />
 
@@ -591,21 +648,21 @@ export const StudentDirectory: React.FC = () => {
               label="Phone Number"
               value={newStudentPhone}
               onChange={e => setNewStudentPhone(e.target.value)}
-              placeholder="+91 98765 43210"
+              placeholder="+91 XXXXXXXXXX"
             />
             <Input
               label="GitHub Username"
               value={newStudentGithub}
               onChange={e => setNewStudentGithub(e.target.value)}
-              placeholder="e.g. ananya-dev"
+              placeholder="UserName"
             />
           </div>
 
           {addMessage && (
             <div
               className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${addMessage.type === 'success'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-rose-50 text-rose-700 border-rose-200'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-rose-50 text-rose-700 border-rose-200'
                 }`}
             >
               {addMessage.type === 'success' ? (
@@ -629,6 +686,7 @@ export const StudentDirectory: React.FC = () => {
               type="submit"
               variant="primary"
               isLoading={isSubmitting}
+              disabled={departments.length === 0}
               leftIcon={<UserPlus className="w-4 h-4" />}
             >
               Add Student

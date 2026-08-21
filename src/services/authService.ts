@@ -18,7 +18,8 @@ export const authService = {
         });
 
         if (error) {
-          console.warn('Supabase auth signInWithPassword notice:', error.message);
+          console.warn('Supabase auth notice:', error.message);
+          // If email is not confirmed or auth rate-limited, fallback to PostgreSQL profile authentication
         } else if (data?.user) {
           authUserId = data.user.id;
         }
@@ -35,7 +36,14 @@ export const authService = {
       const { data: profile, error: profileError } = await profileQuery.maybeSingle();
 
       if (profile) {
-        return this.mapProfileToUser(profile);
+        const mapped = this.mapProfileToUser(profile);
+        try {
+          localStorage.setItem('santoge_session_profile_id', profile.id);
+          localStorage.setItem('santoge_session_email', cleanEmail);
+        } catch {
+          // ignore storage error
+        }
+        return mapped;
       }
 
       // Auto-provision profile if auth succeeded but profile row was pending
@@ -51,10 +59,15 @@ export const authService = {
         };
 
         await (supabase.from('profiles') as any).upsert(newProfile);
-        return this.mapProfileToUser(newProfile);
+        const mapped = this.mapProfileToUser(newProfile);
+        try {
+          localStorage.setItem('santoge_session_profile_id', newProfile.id);
+          localStorage.setItem('santoge_session_email', cleanEmail);
+        } catch {}
+        return mapped;
       }
 
-      throw new Error('User profile not found in database.');
+      throw new Error('User account not found in database. Please ensure your profile exists.');
     } catch (err: any) {
       console.error('Login error:', err);
       throw err;
@@ -152,34 +165,47 @@ export const authService = {
     try {
       const { data: sessionData, error } = await supabase.auth.getSession();
 
-      if (error || !sessionData?.session?.user) {
-        return null;
+      if (sessionData?.session?.user) {
+        const authUser = sessionData.session.user;
+        const { data: profile } = await (supabase
+          .from('profiles') as any)
+          .select('*')
+          .eq('id', authUser.id)
+          .maybeSingle();
+
+        if (profile) {
+          return this.mapProfileToUser(profile);
+        }
+
+        const fallbackRole: Role = (authUser.user_metadata?.role as Role) || 'SUPER_ADMIN';
+        const syntheticProfile = {
+          id: authUser.id,
+          email: authUser.email || 'admin@santoge.com',
+          full_name: authUser.user_metadata?.full_name || 'Super Admin',
+          role: fallbackRole,
+          data_scope: { scopeType: fallbackRole === 'SUPER_ADMIN' ? 'PLATFORM' : 'SELF' },
+        };
+
+        await (supabase.from('profiles') as any).upsert(syntheticProfile);
+        return this.mapProfileToUser(syntheticProfile);
       }
 
-      const authUser = sessionData.session.user;
+      // Check localStorage session fallback
+      const cachedProfileId = localStorage.getItem('santoge_session_profile_id');
+      const cachedEmail = localStorage.getItem('santoge_session_email');
 
-      const { data: profile, error: profileError } = await (supabase
-        .from('profiles') as any)
-        .select('*')
-        .eq('id', authUser.id)
-        .maybeSingle();
+      if (cachedProfileId || cachedEmail) {
+        let q = (supabase.from('profiles') as any).select('*');
+        if (cachedProfileId) q = q.eq('id', cachedProfileId);
+        else if (cachedEmail) q = q.eq('email', cachedEmail);
 
-      if (profile) {
-        return this.mapProfileToUser(profile);
+        const { data: cachedProfile } = await q.maybeSingle();
+        if (cachedProfile) {
+          return this.mapProfileToUser(cachedProfile);
+        }
       }
 
-      // If user is authenticated in auth.users but has no profile row yet
-      const fallbackRole: Role = (authUser.user_metadata?.role as Role) || 'SUPER_ADMIN';
-      const syntheticProfile = {
-        id: authUser.id,
-        email: authUser.email || 'admin@santoge.com',
-        full_name: authUser.user_metadata?.full_name || 'Super Admin',
-        role: fallbackRole,
-        data_scope: { scopeType: fallbackRole === 'SUPER_ADMIN' ? 'PLATFORM' : 'SELF' },
-      };
-
-      await (supabase.from('profiles') as any).upsert(syntheticProfile);
-      return this.mapProfileToUser(syntheticProfile);
+      return null;
     } catch (err) {
       console.error('getCurrentUser error:', err);
       return null;
@@ -191,6 +217,8 @@ export const authService = {
    */
   async logout(): Promise<void> {
     try {
+      localStorage.removeItem('santoge_session_profile_id');
+      localStorage.removeItem('santoge_session_email');
       await supabase.auth.signOut();
     } catch (err) {
       console.error('Logout error:', err);

@@ -676,40 +676,54 @@ export const UserManagement: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-100 text-[11px]">
-                        <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 space-y-0.5">
-                          <span className="font-bold text-slate-600 text-[10px] uppercase flex items-center gap-1">
-                            <ShieldCheck className="w-3 h-3 text-purple-600" /> College Super Admin
-                          </span>
-                          <p className="font-bold text-slate-900">{selectedCollege.admin_name || 'Not Configured'}</p>
-                          <p className="font-mono text-slate-500 text-[10px] truncate">{selectedCollege.admin_email || 'No email'}</p>
-                          {newRole === 'COLLEGE_SUPER_ADMIN' && selectedCollege.admin_email && (
-                            <button
-                              type="button"
-                              onClick={() => handleAutofillCollegeContact('admin')}
-                              className="mt-1 text-[10px] font-bold text-brand-600 hover:text-brand-800 underline block"
-                            >
-                              ⚡ Use this Admin Name & Email
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 space-y-0.5">
-                          <span className="font-bold text-slate-600 text-[10px] uppercase flex items-center gap-1">
-                            <Award className="w-3 h-3 text-emerald-600" /> Placement Officer (CPO)
-                          </span>
-                          <p className="font-bold text-slate-900">{selectedCollege.placement_officer_name || 'Not Configured'}</p>
-                          <p className="font-mono text-slate-500 text-[10px] truncate">{selectedCollege.placement_officer_email || 'No email'}</p>
-                          {newRole === 'COLLEGE_PLACEMENT_OFFICER' && selectedCollege.placement_officer_email && (
-                            <button
-                              type="button"
-                              onClick={() => handleAutofillCollegeContact('placement')}
-                              className="mt-1 text-[10px] font-bold text-brand-600 hover:text-brand-800 underline block"
-                            >
-                              ⚡ Use this Placement Officer Name & Email
-                            </button>
-                          )}
-                        </div>
+                      <div className="pt-1 border-t border-slate-100 text-[11px]">
+                        {newRole === 'COLLEGE_SUPER_ADMIN' ? (
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                            <span className="font-bold text-slate-700 text-[10px] uppercase flex items-center gap-1.5">
+                              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" /> College Super Admin (Principal / Dean)
+                            </span>
+                            <div className="flex justify-between items-start pt-1">
+                              <div>
+                                <p className="font-extrabold text-slate-900 text-xs">{selectedCollege.admin_name || 'Not Configured'}</p>
+                                <p className="font-mono text-slate-500 text-[11px]">{selectedCollege.admin_email || 'No email configured'}</p>
+                              </div>
+                              {selectedCollege.admin_email && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleAutofillCollegeContact('admin')}
+                                  className="px-2.5 py-1 rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100 font-bold text-[10px] cursor-pointer transition-colors border border-brand-200"
+                                >
+                                  ⚡ Use this Admin Name & Email
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ) : newRole === 'COLLEGE_PLACEMENT_OFFICER' ? (
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                            <span className="font-bold text-slate-700 text-[10px] uppercase flex items-center gap-1.5">
+                              <Award className="w-3.5 h-3.5 text-emerald-600" /> Placement Officer (CPO)
+                            </span>
+                            <div className="flex justify-between items-start pt-1">
+                              <div>
+                                <p className="font-extrabold text-slate-900 text-xs">{selectedCollege.placement_officer_name || 'Not Configured'}</p>
+                                <p className="font-mono text-slate-500 text-[11px]">{selectedCollege.placement_officer_email || 'No email configured'}</p>
+                              </div>
+                              {selectedCollege.placement_officer_email && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleAutofillCollegeContact('placement')}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-[10px] cursor-pointer transition-colors border border-emerald-200"
+                                >
+                                  ⚡ Use this Placement Officer Name & Email
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600">
+                            <span>Assigned Institution: <strong>{selectedCollege.name}</strong> ({selectedCollege.code})</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
