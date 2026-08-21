@@ -56,7 +56,7 @@ export const StudentDirectory: React.FC = () => {
   const [newStudentEmail, setNewStudentEmail] = useState('');
   const [newStudentPhone, setNewStudentPhone] = useState('');
   const [newStudentDept, setNewStudentDept] = useState('');
-  const [newStudentCGPA, setNewStudentCGPA] = useState('8.2');
+  const [newStudentCGPA, setNewStudentCGPA] = useState('');
   const [newStudentGithub, setNewStudentGithub] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addMessage, setAddMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -176,9 +176,28 @@ export const StudentDirectory: React.FC = () => {
     setAddMessage(null);
 
     try {
+      if (!newStudentName.trim()) {
+        throw new Error('Please enter student full name.');
+      }
+      if (!newStudentRoll.trim()) {
+        throw new Error('Please enter student roll number / ID.');
+      }
+      if (!newStudentCGPA.trim()) {
+        throw new Error('Please enter academic CGPA.');
+      }
+
+      const parsedCgpa = parseFloat(newStudentCGPA);
+      if (isNaN(parsedCgpa) || parsedCgpa < 0 || parsedCgpa > 10) {
+        throw new Error('Academic CGPA must be a valid number between 0.0 and 10.0.');
+      }
+
       const selectedDeptObj = departments.find(d => d.name === newStudentDept);
       if (!selectedDeptObj && departments.length === 0) {
         throw new Error('Please create an academic department in Departments & Cutoffs first.');
+      }
+
+      if (!newStudentEmail.trim() || !newStudentEmail.includes('@')) {
+        throw new Error('Please enter a valid student email address.');
       }
 
       const collegeIdToUse = resolvedCollegeId || user?.dataScope?.collegeId || null;
@@ -195,7 +214,7 @@ export const StudentDirectory: React.FC = () => {
           department_name: selectedDeptObj?.name || newStudentDept,
           college_id: collegeIdToUse,
           college_name: collegeNameToUse,
-          cgpa: parseFloat(newStudentCGPA) || 8.0,
+          cgpa: parsedCgpa,
           talent_score: 720,
           iri_score: 76.0,
           attendance_percent: 92.0,
@@ -228,6 +247,7 @@ export const StudentDirectory: React.FC = () => {
         setIsAddModalOpen(false);
         setNewStudentName('');
         setNewStudentRoll('');
+        setNewStudentCGPA('');
         setNewStudentEmail('');
         setNewStudentPhone('');
         setNewStudentGithub('');
@@ -411,6 +431,7 @@ export const StudentDirectory: React.FC = () => {
             onClick={() => {
               setNewStudentName('');
               setNewStudentRoll('');
+              setNewStudentCGPA('');
               setNewStudentEmail('');
               setNewStudentPhone('');
               setNewStudentGithub('');
@@ -560,7 +581,11 @@ export const StudentDirectory: React.FC = () => {
       {/* 2. Add Single Student Modal */}
       <Modal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setNewStudentCGPA('');
+          setAddMessage(null);
+        }}
         title="Add Single Student to College"
         description={`Directly provision a student record isolated to ${user?.dataScope?.collegeName || 'your college'}.`}
       >
@@ -585,9 +610,11 @@ export const StudentDirectory: React.FC = () => {
               label="Academic CGPA"
               type="number"
               step="0.01"
+              min="0"
+              max="10"
               value={newStudentCGPA}
               onChange={e => setNewStudentCGPA(e.target.value)}
-              placeholder="8.5"
+              placeholder="0.0 - 10.0"
               required
             />
           </div>
