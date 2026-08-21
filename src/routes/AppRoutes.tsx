@@ -33,7 +33,11 @@ import { ContentWorkflowHub } from '../features/content/ContentWorkflowHub';
 // College CPOS
 import { CollegeDashboard } from '../features/college/CollegeDashboard';
 import { StudentDirectory } from '../features/college/StudentDirectory';
+import { CollegeStudentImport } from '../features/college/CollegeStudentImport';
 import { DepartmentView } from '../features/college/DepartmentView';
+import { PlacementReports } from '../features/college/PlacementReports';
+import { CollegeUserManagement } from '../features/college/CollegeUserManagement';
+import { CoordinatorDashboard } from '../features/coordinator/CoordinatorDashboard';
 import { CampusDrivesHub } from '../features/placement/CampusDrivesHub';
 import { CompanyCRM } from '../features/placement/CompanyCRM';
 import { JobMarketIntel } from '../features/placement/JobMarketIntel';
@@ -95,17 +99,27 @@ export const AppRoutes: React.FC = () => {
         <Route path="/admin/settings" element={<SystemSettings />} />
 
         {/* Operations Manager */}
-        <Route path="/operations" element={<OperationsDashboard />} />
-        <Route path="/operations/batches" element={<BatchesList />} />
-        <Route path="/operations/mentors" element={<MentorDashboard />} />
-        <Route path="/operations/at-risk" element={<AtRiskCenter />} />
-        <Route path="/operations/attendance" element={<BatchCoordinatorDashboard />} />
+        <Route path="/operations" element={<OperationsDashboard initialTab="overview" />} />
+        <Route path="/operations/students" element={<OperationsDashboard initialTab="students" />} />
+        <Route path="/operations/batches" element={<OperationsDashboard initialTab="batches" />} />
+        <Route path="/operations/mentors" element={<OperationsDashboard initialTab="mentors" />} />
+        <Route path="/operations/attendance" element={<OperationsDashboard initialTab="attendance" />} />
+        <Route path="/operations/assignments" element={<OperationsDashboard initialTab="assignments" />} />
+        <Route path="/operations/payments" element={<OperationsDashboard initialTab="payments" />} />
+        <Route path="/operations/support" element={<OperationsDashboard initialTab="support" />} />
+        <Route path="/operations/at-risk" element={<OperationsDashboard initialTab="support" />} />
+        <Route path="/operations/colleges" element={<OperationsDashboard initialTab="colleges" />} />
+        <Route path="/operations/reports" element={<OperationsDashboard initialTab="reports" />} />
 
         {/* Finance Admin */}
-        <Route path="/finance" element={<PaymentsQueue />} />
-        <Route path="/finance/payments" element={<PaymentsQueue />} />
-        <Route path="/finance/invoices" element={<PaymentsQueue />} />
-        <Route path="/finance/subscriptions" element={<PaymentsQueue />} />
+        <Route path="/finance" element={<PaymentsQueue initialTab="payments" />} />
+        <Route path="/finance/payments" element={<PaymentsQueue initialTab="payments" />} />
+        <Route path="/finance/pending" element={<PaymentsQueue initialTab="pending" />} />
+        <Route path="/finance/failed" element={<PaymentsQueue initialTab="failed" />} />
+        <Route path="/finance/refunds" element={<PaymentsQueue initialTab="refunds" />} />
+        <Route path="/finance/subscriptions" element={<PaymentsQueue initialTab="subscriptions" />} />
+        <Route path="/finance/invoices" element={<PaymentsQueue initialTab="invoices" />} />
+        <Route path="/finance/reports" element={<PaymentsQueue initialTab="reports" />} />
 
         {/* Content Manager */}
         <Route path="/content" element={<ContentWorkflowHub />} />
@@ -117,8 +131,21 @@ export const AppRoutes: React.FC = () => {
         {/* College CPOS & Placement Officer */}
         <Route path="/college/dashboard" element={<CollegeDashboard />} />
         <Route path="/college/students" element={<StudentDirectory />} />
+        <Route path="/college/import" element={<CollegeStudentImport />} />
         <Route path="/college/departments" element={<DepartmentView />} />
-        <Route path="/college/department" element={<DepartmentView />} />
+        <Route path="/college/department" element={<CoordinatorDashboard />} />
+        <Route path="/college/eligibility" element={<DepartmentView />} />
+        <Route path="/college/users" element={<CollegeUserManagement />} />
+        <Route path="/college/reports" element={<PlacementReports />} />
+
+        {/* Department Placement Coordinator */}
+        <Route path="/department/dashboard" element={<CoordinatorDashboard />} />
+        <Route path="/department/students" element={<CoordinatorDashboard initialTab="students" />} />
+        <Route path="/department/at-risk" element={<CoordinatorDashboard initialTab="at-risk" />} />
+        <Route path="/department/assessments" element={<CoordinatorDashboard initialTab="assessments" />} />
+        <Route path="/department/reports" element={<CoordinatorDashboard initialTab="reports" />} />
+        <Route path="/department/announcements" element={<CoordinatorDashboard initialTab="announcements" />} />
+
         <Route path="/placement/drives" element={<CampusDrivesHub />} />
         <Route path="/placement/companies" element={<CompanyCRM />} />
         <Route path="/placement/outreach" element={<CompanyCRM />} />

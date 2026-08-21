@@ -67,9 +67,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signUp = async (email: string, password: string, fullName?: string, role?: Role, dataScope?: DataScope) => {
     setIsLoading(true);
     try {
-      const loggedUser = await authService.signUp(email, password, fullName, role, dataScope);
-      setUser(loggedUser);
-      return loggedUser;
+      const newUser = await authService.signUp(email, password, fullName, role, dataScope);
+      if (!user) {
+        setUser(newUser);
+      }
+      return newUser;
     } finally {
       setIsLoading(false);
     }

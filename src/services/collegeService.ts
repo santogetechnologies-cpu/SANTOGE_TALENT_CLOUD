@@ -62,8 +62,8 @@ export const collegeService = {
     state: string;
     adminName: string;
     adminEmail: string;
-    placementOfficerName: string;
-    placementOfficerEmail: string;
+    placementOfficerName?: string;
+    placementOfficerEmail?: string;
   }): Promise<College | null> {
     const newRecord = {
       name: data.name,
@@ -79,8 +79,8 @@ export const collegeService = {
       offers_generated_count: 0,
       admin_name: data.adminName,
       admin_email: data.adminEmail,
-      placement_officer_name: data.placementOfficerName,
-      placement_officer_email: data.placementOfficerEmail,
+      placement_officer_name: data.placementOfficerName || data.adminName,
+      placement_officer_email: data.placementOfficerEmail || data.adminEmail,
       subscription_status: 'ENTERPRISE_ACTIVE',
     };
 
@@ -122,6 +122,34 @@ export const collegeService = {
       return !error;
     } catch (err) {
       console.error('updateCollege error:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Delete college institution in real-time from Supabase
+   */
+  async deleteCollege(id: string): Promise<boolean> {
+    try {
+      // 1. Delete linked departments first if cascade is needed
+      try {
+        await (supabase.from('departments') as any).delete().eq('college_id', id);
+      } catch (e) {
+        // continue
+      }
+
+      // 2. Delete college record
+      const { error } = await (supabase.from('colleges') as any)
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('deleteCollege error:', error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('deleteCollege exception:', err);
       return false;
     }
   },
@@ -173,6 +201,37 @@ export const collegeService = {
       return this.mapDbDepartmentToDomain(created);
     } catch (err) {
       console.error('createDepartment error:', err);
+      return null;
+    }
+  },
+
+  async updateDepartment(
+    id: string,
+    data: {
+      name: string;
+      code: string;
+      coordinatorName: string;
+      coordinatorEmail: string;
+    }
+  ): Promise<Department | null> {
+    try {
+      const { data: updated, error } = await (supabase
+        .from('departments') as any)
+        .update({
+          name: data.name,
+          code: data.code,
+          coordinator_name: data.coordinatorName,
+          coordinator_email: data.coordinatorEmail,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error || !updated) return null;
+      return this.mapDbDepartmentToDomain(updated);
+    } catch (err) {
+      console.error('updateDepartment error:', err);
       return null;
     }
   },

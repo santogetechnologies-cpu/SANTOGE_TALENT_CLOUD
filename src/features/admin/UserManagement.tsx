@@ -47,8 +47,7 @@ interface ProfileRecord {
   role: Role;
   phone?: string;
   avatar_url?: string;
-  is_active: boolean;
-  data_scope?: DataScope;
+  data_scope?: DataScope & { isActive?: boolean };
   created_at: string;
 }
 
@@ -278,17 +277,23 @@ export const UserManagement: React.FC = () => {
 
   const handleToggleActive = async (userId: string, currentActive: boolean) => {
     try {
+      const targetUser = profiles.find(p => p.id === userId);
+      const updatedScope = {
+        ...(targetUser?.data_scope || { scopeType: 'SELF' as const }),
+        isActive: !currentActive,
+      };
+
       const { error } = await (supabase
         .from('profiles') as any)
         .update({
-          is_active: !currentActive,
+          data_scope: updatedScope,
           updated_at: new Date().toISOString(),
         })
         .eq('id', userId);
 
       if (!error) {
         setProfiles(prev =>
-          prev.map(p => (p.id === userId ? { ...p, is_active: !currentActive } : p))
+          prev.map(p => (p.id === userId ? { ...p, data_scope: updatedScope } : p))
         );
       }
     } catch (err) {
@@ -415,13 +420,16 @@ export const UserManagement: React.FC = () => {
       sortable: true,
     },
     {
-      key: 'is_active',
+      key: 'status',
       header: 'Status',
-      render: (p: ProfileRecord) => (
-        <Badge variant={p.is_active !== false ? 'success' : 'danger'} size="sm">
-          {p.is_active !== false ? 'ACTIVE' : 'DEACTIVATED'}
-        </Badge>
-      ),
+      render: (p: ProfileRecord) => {
+        const isActive = p.data_scope?.isActive !== false;
+        return (
+          <Badge variant={isActive ? 'success' : 'danger'} size="sm">
+            {isActive ? 'ACTIVE' : 'DEACTIVATED'}
+          </Badge>
+        );
+      },
       sortable: true,
     },
     {
@@ -437,50 +445,53 @@ export const UserManagement: React.FC = () => {
     {
       key: 'actions',
       header: 'Super Admin Actions',
-      render: (p: ProfileRecord) => (
-        <div className="flex items-center gap-1.5">
-          {/* Reset Password Button */}
-          <Button
-            size="xs"
-            variant="outline"
-            title="Reset User Password"
-            leftIcon={<KeyRound className="w-3 h-3 text-amber-600" />}
-            onClick={() => {
-              setUserToReset(p);
-              setNewTempPassword('Santoge@2026');
-              setResetMessage(null);
-              setIsResetModalOpen(true);
-            }}
-          >
-            Reset
-          </Button>
+      render: (p: ProfileRecord) => {
+        const isActive = p.data_scope?.isActive !== false;
+        return (
+          <div className="flex items-center gap-1.5">
+            {/* Reset Password Button */}
+            <Button
+              size="xs"
+              variant="outline"
+              title="Reset User Password"
+              leftIcon={<KeyRound className="w-3 h-3 text-amber-600" />}
+              onClick={() => {
+                setUserToReset(p);
+                setNewTempPassword('Santoge@2026');
+                setResetMessage(null);
+                setIsResetModalOpen(true);
+              }}
+            >
+              Reset
+            </Button>
 
-          {/* Toggle Active / Deactivate */}
-          <Button
-            size="xs"
-            variant={p.is_active !== false ? 'outline' : 'success'}
-            onClick={() => handleToggleActive(p.id, p.is_active !== false)}
-          >
-            {p.is_active !== false ? 'Deactivate' : 'Activate'}
-          </Button>
+            {/* Toggle Active / Deactivate */}
+            <Button
+              size="xs"
+              variant={isActive ? 'outline' : 'success'}
+              onClick={() => handleToggleActive(p.id, isActive)}
+            >
+              {isActive ? 'Deactivate' : 'Activate'}
+            </Button>
 
-          {/* Delete User Button */}
-          <Button
-            size="xs"
-            variant="danger"
-            title="Delete User Permanently"
-            disabled={p.id === currentSuperAdmin?.id}
-            leftIcon={<Trash2 className="w-3 h-3" />}
-            onClick={() => {
-              setUserToDelete(p);
-              setDeleteError(null);
-              setIsDeleteModalOpen(true);
-            }}
-          >
-            Delete
-          </Button>
-        </div>
-      ),
+            {/* Delete User Button */}
+            <Button
+              size="xs"
+              variant="danger"
+              title="Delete User Permanently"
+              disabled={p.id === currentSuperAdmin?.id}
+              leftIcon={<Trash2 className="w-3 h-3" />}
+              onClick={() => {
+                setUserToDelete(p);
+                setDeleteError(null);
+                setIsDeleteModalOpen(true);
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -665,40 +676,54 @@ export const UserManagement: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-100 text-[11px]">
-                        <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 space-y-0.5">
-                          <span className="font-bold text-slate-600 text-[10px] uppercase flex items-center gap-1">
-                            <ShieldCheck className="w-3 h-3 text-purple-600" /> College Super Admin
-                          </span>
-                          <p className="font-bold text-slate-900">{selectedCollege.admin_name || 'Not Configured'}</p>
-                          <p className="font-mono text-slate-500 text-[10px] truncate">{selectedCollege.admin_email || 'No email'}</p>
-                          {newRole === 'COLLEGE_SUPER_ADMIN' && selectedCollege.admin_email && (
-                            <button
-                              type="button"
-                              onClick={() => handleAutofillCollegeContact('admin')}
-                              className="mt-1 text-[10px] font-bold text-brand-600 hover:text-brand-800 underline block"
-                            >
-                              ⚡ Use this Admin Name & Email
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 space-y-0.5">
-                          <span className="font-bold text-slate-600 text-[10px] uppercase flex items-center gap-1">
-                            <Award className="w-3 h-3 text-emerald-600" /> Placement Officer (CPO)
-                          </span>
-                          <p className="font-bold text-slate-900">{selectedCollege.placement_officer_name || 'Not Configured'}</p>
-                          <p className="font-mono text-slate-500 text-[10px] truncate">{selectedCollege.placement_officer_email || 'No email'}</p>
-                          {newRole === 'COLLEGE_PLACEMENT_OFFICER' && selectedCollege.placement_officer_email && (
-                            <button
-                              type="button"
-                              onClick={() => handleAutofillCollegeContact('placement')}
-                              className="mt-1 text-[10px] font-bold text-brand-600 hover:text-brand-800 underline block"
-                            >
-                              ⚡ Use this Placement Officer Name & Email
-                            </button>
-                          )}
-                        </div>
+                      <div className="pt-1 border-t border-slate-100 text-[11px]">
+                        {newRole === 'COLLEGE_SUPER_ADMIN' ? (
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                            <span className="font-bold text-slate-700 text-[10px] uppercase flex items-center gap-1.5">
+                              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" /> College Super Admin (Principal / Dean)
+                            </span>
+                            <div className="flex justify-between items-start pt-1">
+                              <div>
+                                <p className="font-extrabold text-slate-900 text-xs">{selectedCollege.admin_name || 'Not Configured'}</p>
+                                <p className="font-mono text-slate-500 text-[11px]">{selectedCollege.admin_email || 'No email configured'}</p>
+                              </div>
+                              {selectedCollege.admin_email && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleAutofillCollegeContact('admin')}
+                                  className="px-2.5 py-1 rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100 font-bold text-[10px] cursor-pointer transition-colors border border-brand-200"
+                                >
+                                  ⚡ Use this Admin Name & Email
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ) : newRole === 'COLLEGE_PLACEMENT_OFFICER' ? (
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                            <span className="font-bold text-slate-700 text-[10px] uppercase flex items-center gap-1.5">
+                              <Award className="w-3.5 h-3.5 text-emerald-600" /> Placement Officer (CPO)
+                            </span>
+                            <div className="flex justify-between items-start pt-1">
+                              <div>
+                                <p className="font-extrabold text-slate-900 text-xs">{selectedCollege.placement_officer_name || 'Not Configured'}</p>
+                                <p className="font-mono text-slate-500 text-[11px]">{selectedCollege.placement_officer_email || 'No email configured'}</p>
+                              </div>
+                              {selectedCollege.placement_officer_email && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleAutofillCollegeContact('placement')}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-[10px] cursor-pointer transition-colors border border-emerald-200"
+                                >
+                                  ⚡ Use this Placement Officer Name & Email
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600">
+                            <span>Assigned Institution: <strong>{selectedCollege.name}</strong> ({selectedCollege.code})</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -718,7 +743,7 @@ export const UserManagement: React.FC = () => {
             label="Full Name"
             value={newName}
             onChange={e => setNewName(e.target.value)}
-            placeholder="e.g. Dr. Ramesh Patel or Prof. Ananya Sen"
+            placeholder="Full Name"
             required
           />
 
@@ -727,7 +752,7 @@ export const UserManagement: React.FC = () => {
             type="email"
             value={newEmail}
             onChange={e => setNewEmail(e.target.value)}
-            placeholder="e.g. admin@apextech.edu or placement@apextech.edu"
+            placeholder="Email Address"
             required
           />
 
@@ -736,17 +761,16 @@ export const UserManagement: React.FC = () => {
             type="password"
             value={newPassword}
             onChange={e => setNewPassword(e.target.value)}
-            placeholder="••••••••"
+            placeholder=""
             required
           />
 
           {formMessage && (
             <div
-              className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
-                formMessage.type === 'success'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-rose-50 text-rose-700 border-rose-200'
-              }`}
+              className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${formMessage.type === 'success'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-rose-50 text-rose-700 border-rose-200'
+                }`}
             >
               {formMessage.type === 'success' ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -884,11 +908,10 @@ export const UserManagement: React.FC = () => {
 
           {resetMessage && (
             <div
-              className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
-                resetMessage.type === 'success'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-rose-50 text-rose-700 border-rose-200'
-              }`}
+              className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${resetMessage.type === 'success'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-rose-50 text-rose-700 border-rose-200'
+                }`}
             >
               {resetMessage.type === 'success' ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />

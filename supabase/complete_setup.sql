@@ -597,8 +597,17 @@ CREATE POLICY "Allow read audit_logs" ON public.audit_logs FOR SELECT USING (tru
 CREATE POLICY "Allow manage audit_logs" ON public.audit_logs FOR ALL USING (true);
 
 CREATE POLICY "Allow read system_settings" ON public.system_settings FOR SELECT USING (true);
+CREATE POLICY "Allow manage system_settings" ON public.system_settings FOR ALL USING (true);
+
+-- Drop foreign key constraint on profiles.id if exists to allow direct admin user provisioning
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_id_fkey;
 
 -- Realtime publication setup
+ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.colleges;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.departments;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.students;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.system_settings;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.candidate_applications;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.mentor_interventions;

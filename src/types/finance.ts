@@ -6,13 +6,16 @@ export interface PaymentRecord {
   collegeName: string;
   amountINR: number;
   transactionRef: string;
-  paymentMethod: 'UPI' | 'Credit Card' | 'Net Banking' | 'College Sponsored';
+  paymentMethod: 'UPI' | 'Credit Card' | 'Net Banking' | 'College Sponsored' | 'Razorpay';
   status: 'PENDING_VERIFICATION' | 'VERIFIED_ACTIVE' | 'FAILED' | 'REFUNDED';
   invoiceNumber: string;
   paymentDate: string;
   verifiedBy?: string;
   verifiedAt?: string;
   remarks?: string;
+  refundAmountINR?: number;
+  refundReason?: string;
+  refundDate?: string;
 }
 
 export interface SubscriptionPlan {
@@ -26,4 +29,19 @@ export interface SubscriptionPlan {
   billingCycle: 'Annual' | 'Bi-Annual';
   amountINR: number;
   status: 'ACTIVE' | 'PAYMENT_PENDING' | 'EXPIRED';
+}
+
+export interface InvoiceRecord {
+  id: string;
+  invoiceNumber: string;
+  billedTo: string;
+  billingEmail: string;
+  collegeName: string;
+  amountINR: number;
+  gstINR: number;
+  totalAmountINR: number;
+  issueDate: string;
+  dueDate: string;
+  status: 'PAID' | 'UNPAID' | 'OVERDUE' | 'CANCELLED';
+  description: string;
 }

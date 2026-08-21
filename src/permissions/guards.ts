@@ -93,7 +93,7 @@ export function getRoleDashboardPath(role: Role): string {
     case 'COLLEGE_PLACEMENT_OFFICER':
       return '/placement/drives';
     case 'DEPARTMENT_COORDINATOR':
-      return '/college/department';
+      return '/department/dashboard';
     case 'MENTOR':
       return '/mentor/dashboard';
     case 'BATCH_COORDINATOR':
