@@ -104,8 +104,8 @@ export const STUDENT_ACCOUNTS: StudentAccount[] = [
 ];
 
 export const ADMIN_ACCOUNT = {
-  email: "admin@santoge.dev",
-  password: "admin",
+  email: "admin@gmail.com",
+  password: "admin123",
   name: "Platform Super Admin",
 };
 

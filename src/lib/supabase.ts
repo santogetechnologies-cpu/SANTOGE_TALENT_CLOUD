@@ -260,6 +260,15 @@ export const supabaseAuth = {
   /**
    * Register a new user in Supabase with technical tracks & batch preferences.
    * Called ONLY when user clicks "Sign Up" — never automatically.
+   *
+   * SECURITY: Public signup ALWAYS creates role="student".
+   * Admin accounts MUST be created manually via the Supabase Dashboard.
+   * This function ignores any caller-provided role="admin" — it is hardcoded
+   * to "student" to prevent privilege escalation from the browser.
+   *
+   * Future production hardening:
+   * - Move role authorization to Supabase app_metadata (not user_metadata)
+   * - Enforce role via database RLS policies, not frontend metadata alone
    */
   async signUp(
     email: string,
@@ -271,6 +280,10 @@ export const supabaseAuth = {
   }> {
     const config = getSupabaseConfig();
     const cleanUrl = config.url.replace(/\/+$/, "");
+
+    // SECURITY: Public signup ALWAYS forces role="student".
+    // No caller can escalate to "admin" through this endpoint.
+    const safeRole: "student" = "student";
 
     try {
       const res = await fetch(`${cleanUrl}/auth/v1/signup`, {
@@ -285,7 +298,8 @@ export const supabaseAuth = {
           password,
           data: {
             name: metadata.name ?? "Student Learner",
-            role: metadata.role ?? "student",
+            // safeRole is always "student" — metadata.role is intentionally ignored
+            role: safeRole,
             tracks: metadata.tracks ?? ["mern", "cloud", "aiml"],
             batch_id: metadata.batch_id ?? "BATCH-2026-ABC-CSE-01",
             dept: metadata.dept ?? "CSE",
