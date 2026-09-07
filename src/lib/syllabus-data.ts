@@ -757,6 +757,8 @@ export function getTrackSyllabus(trackId: TrackId): TrackSyllabus {
 }
 
 export function generateTrackSyllabus(trackId: TrackId): TrackSyllabus {
+  // curriculum is optional — tracks without it fall back to the genericCurriculum below
+  type CurriculumWeek = { w: number; title: string; theme: string; p: string; s: string; d: string[] };
   const CONFIGS: Record<TrackId, {
     name: string;
     role: string;
@@ -764,25 +766,10 @@ export function generateTrackSyllabus(trackId: TrackId): TrackSyllabus {
     pitch: string;
     phases: [string, string, string, string, string];
     skills: string[];
+    curriculum?: CurriculumWeek[];
   }> = {
     mern: { name: "", role: "", progression: [], pitch: "", phases: ["", "", "", "", ""], skills: [] },
     medical: { name: "", role: "", progression: [], pitch: "", phases: ["", "", "", "", ""], skills: [] },
-    java: {
-      name: "Java Enterprise Full Stack",
-      role: "Java Backend / Full Stack Engineer",
-      progression: ["Junior Java Developer", "Java Spring Boot Developer", "Microservices Engineer", "Cloud-Native Java Architect", "Senior Java Engineer"],
-      pitch: "I can design enterprise-grade distributed backends using Java 21, Spring Boot 3, Spring Security, Hibernate/JPA, Kafka event streams, Docker, and PostgreSQL with full JUnit 5 test coverage.",
-      phases: ["Core Java 21, OOP & Concurrency", "Spring Boot 3, Hibernate & REST", "Microservices, Kafka & Docker", "Spring Security, JWT & Cloud AWS", "Testing, CI/CD & Enterprise Capstone"],
-      skills: ["Java OOP", "Concurrency", "Spring Boot", "JPA/Hibernate", "REST APIs", "Microservices", "Kafka", "PostgreSQL", "Docker", "AWS", "JUnit 5", "CI/CD"],
-    },
-    aiml: {
-      name: "AI / ML & Generative AI",
-      role: "AI / Machine Learning Engineer",
-      progression: ["Junior ML Developer", "Applied ML Engineer", "NLP / Deep Learning Engineer", "GenAI & LLM Solutions Engineer", "Senior AI Engineer"],
-      pitch: "I can build and deploy end-to-end Machine Learning pipelines, fine-tune transformer models, design enterprise RAG systems using LangChain, Vector Databases (Pinecone/Milvus), and deploy scalable inference APIs on cloud GPUs.",
-      phases: ["Math, Statistics & Python for AI", "Classical ML & Feature Engineering", "Deep Learning & PyTorch", "Generative AI, LLMs & LangChain", "MLOps, Vector DBs & Master Capstone"],
-      skills: ["Python", "NumPy/Pandas", "Scikit-Learn", "PyTorch", "Transformers", "LangChain", "Vector DBs", "RAG", "Model Fine-tuning", "FastAPI", "MLflow", "MLOps"],
-    },
     datascience: {
       name: "Data Science & Advanced Analytics",
       role: "Data Scientist & Analytics Engineer",

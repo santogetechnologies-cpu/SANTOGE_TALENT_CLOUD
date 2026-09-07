@@ -150,9 +150,11 @@ export function AppShell({ portal }: { portal: Role }) {
 
   useEffect(() => {
     if (!store.ready || !store.isAuthed) return;
-    if (portal === "student" && store.role === "admin" && !store.student) void navigate({ to: "/admin" });
-    if (portal === "admin" && store.role === "student" && store.student) void navigate({ to: "/student" });
-  }, [store.ready, store.isAuthed, store.student, store.role, portal, navigate]);
+    // Admin trying to access student portal → redirect to admin
+    if (portal === "student" && store.role === "admin") void navigate({ to: "/admin" });
+    // Student (or unauthenticated Supabase user) trying to access admin portal → redirect to student
+    if (portal === "admin" && store.role === "student") void navigate({ to: "/student" });
+  }, [store.ready, store.isAuthed, store.role, portal, navigate]);
 
   // Keyboard shortcut Ctrl+K / Cmd+K for search
   useEffect(() => {

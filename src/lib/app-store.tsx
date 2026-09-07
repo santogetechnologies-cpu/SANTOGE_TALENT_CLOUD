@@ -220,6 +220,7 @@ const FALLBACK_PROFILE: Profile = {
   placementDay: 1,
   attendance: [1],
   assessments: {},
+  completedTechDays: [],
   mocks: {},
   certifications: [],
 };
@@ -326,10 +327,34 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const session = res.data.session;
     const user = session.user;
     const meta = user.user_metadata || {};
+
+    /**
+     * CURRENT PHASE: Role is read from Supabase user_metadata.role.
+     * Admin accounts are created manually via the Supabase Dashboard with
+     * user_metadata: { role: "admin", name: "Platform Super Admin" }
+     *
+     * FUTURE PRODUCTION HARDENING:
+     * Move admin authorization to Supabase app_metadata (set only via admin API,
+     * never from the browser) and enforce access via database RLS policies.
+     * The frontend role alone is NOT the final security boundary.
+     */
     const role: Role = meta.role === "admin" ? "admin" : "student";
     const userEmail = user.email.toLowerCase();
 
-    // Create custom student account if not present
+    setSupabaseSession(session);
+
+    if (role === "admin") {
+      // Admin users have no tracks/batch/student data — do not force them into a student profile.
+      setState((s) => ({
+        ...s,
+        role: "admin",
+        sessionEmail: userEmail,
+        authProvider: "supabase",
+      }));
+      return { ok: true, role: "admin" as Role };
+    }
+
+    // Student Supabase user — create/update local profile from metadata
     const custom: StudentAccount = {
       email: userEmail,
       password: "●●●●●●●●",
@@ -347,17 +372,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       readiness: { T: 60, C: 65, A: 58, E: 70, R: 45, M: 30 },
     };
 
-    setSupabaseSession(session);
     setState((s) => ({
       ...s,
-      role,
+      role: "student",
       sessionEmail: userEmail,
       authProvider: "supabase",
       customStudents: { ...s.customStudents, [userEmail]: custom },
       profiles: { ...s.profiles, [userEmail]: s.profiles[userEmail] ?? profileFor(custom) },
     }));
 
-    return { ok: true, role };
+    return { ok: true, role: "student" as Role };
   }, []);
 
   const signUpSupabase = useCallback(
@@ -366,6 +390,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       password: string,
       meta?: { name?: string; rollNo?: string; dept?: string; batchId?: string; tracks?: TrackId[]; college?: string; role?: Role }
     ) => {
+      // SECURITY: Do NOT forward meta.role to Supabase signUp.
+      // Public signup always creates role="student".
+      // supabaseAuth.signUp enforces this as well (second layer of defense).
       const res = await supabaseAuth.signUp(rawEmail, password, {
         name: meta?.name || "Student Learner",
         roll_no: meta?.rollNo || "STC-2026",
@@ -373,7 +400,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         batch_id: meta?.batchId || "BATCH-2026-ABC-CSE-01",
         tracks: meta?.tracks || ["mern", "cloud", "aiml"],
         college: meta?.college || "Partner Institution",
-        role: meta?.role || "student",
+        // role is intentionally omitted — supabaseAuth.signUp always sets "student"
       });
 
       if (res.error) {
@@ -385,7 +412,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }
 
       toast.success("Account created successfully! Please sign in with your credentials.");
-      return { ok: true, role: meta?.role || "student" };
+      return { ok: true, role: "student" as Role };
     },
     [signInSupabase],
   );
