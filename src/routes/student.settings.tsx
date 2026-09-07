@@ -96,7 +96,7 @@ function SettingsPage() {
               <User className="size-3.5 text-brand-cyan" /> Full Name
             </span>
             <p className="text-sm font-bold text-foreground">
-              {store.student?.firstName} {store.student?.lastName}
+              {store.student?.name ?? `${store.student?.firstName ?? ""}`}
             </p>
             <p className="text-xs text-copy-subtle font-mono">{store.student?.email || "student@santoge.edu"}</p>
           </div>

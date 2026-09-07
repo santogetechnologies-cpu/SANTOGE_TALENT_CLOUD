@@ -220,6 +220,7 @@ const FALLBACK_PROFILE: Profile = {
   placementDay: 1,
   attendance: [1],
   assessments: {},
+  completedTechDays: [],
   mocks: {},
   certifications: [],
 };
