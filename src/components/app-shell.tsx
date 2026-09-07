@@ -41,19 +41,15 @@ import { toast } from "sonner";
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; section?: string };
 
 const STUDENT_NAV: NavItem[] = [
-  { to: "/student", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/student/technical", label: "Technical Tracks", icon: Code2, section: "Technical Engine (Individual)" },
-  { to: "/student/labs", label: "Interactive Labs", icon: Terminal },
-  { to: "/student/accelerator", label: "30m Accelerator", icon: Timer, section: "Placement Engine (Cohort)" },
-  { to: "/student/batch", label: "Placement Batch", icon: Users },
-  { to: "/student/leaderboard", label: "Cohort Leaderboard", icon: Trophy },
-  { to: "/student/placement", label: "Placement Tracker", icon: Target },
-  { to: "/student/gateway", label: "Dual Gate & Phase 2", icon: FileText, section: "Career & Hiring" },
+  { to: "/student", label: "Today's Learning & Drills", icon: LayoutDashboard },
+  { to: "/student/technical", label: "90-Day Tracks & Portfolio", icon: Code2 },
+  { to: "/student/gateway", label: "Career Gateway (Phase 2)", icon: FileText, section: "Career & Placement" },
   { to: "/student/settings", label: "Settings & Courses", icon: Settings2 },
 ];
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin", label: "Executive Analytics", icon: BarChart3 },
+  { to: "/admin/content", label: "Curriculum CMS", icon: BookOpen },
   { to: "/admin/provisioning", label: "Bulk CSV Provisioning", icon: FolderUp },
   { to: "/admin/batches", label: "Batch & Telegram Hub", icon: Users },
   { to: "/admin/automations", label: "Cron & Automations", icon: Bot },
@@ -82,34 +78,28 @@ const SEARCH_ITEMS: SearchResult[] = [
     desc: `Lab: ${t.labTitle} (+50 XP)`,
   })),
   {
-    title: "30-Minute Daily Accelerator",
+    title: "Today's Learning & Drills",
     category: "Placement Tools" as const,
-    to: "/student/accelerator",
-    desc: "English & Aptitude Broadcast + Guided Practice + Voice Pitch",
+    to: "/student",
+    desc: "Twin 30-min routine: Placement Accelerator + Technical Sandbox",
   },
   {
-    title: "Placement Batch & Telegram Cohort",
+    title: "90-Day Placement Syllabus & Portfolio",
     category: "Placement Tools" as const,
-    to: "/student/batch",
-    desc: "90-day calendar, attendance, synchronized class & Telegram feed",
-  },
-  {
-    title: "Placement Guarantee Tracker",
-    category: "Placement Tools" as const,
-    to: "/student/placement",
-    desc: "Quantitative 6-pillar readiness model & live company matcher",
-  },
-  {
-    title: "Cohort Leaderboard",
-    category: "Placement Tools" as const,
-    to: "/student/leaderboard",
-    desc: "Multi-dimensional batch ranks for aptitude, attendance, & score",
+    to: "/student/technical",
+    desc: "18-week schedule, 18 Friday projects, Day 90 industry capstone",
   },
   {
     title: "Dual Completion Gate & Phase 2",
     category: "Placement Tools" as const,
     to: "/student/gateway",
     desc: "ATS Resume Scanner, AI Mock Interviews, Certifications & Marketplace",
+  },
+  {
+    title: "Curriculum Content Management System (CMS)",
+    category: "Platform Admin" as const,
+    to: "/admin/content",
+    desc: "Author and edit 90-day placement lessons, MCQs, and 15 technical tracks",
   },
   {
     title: "Bulk CSV Provisioning",
@@ -130,10 +120,10 @@ const SEARCH_ITEMS: SearchResult[] = [
     desc: "Scheduled pipelines: 06:00 broadcast, ATS parser, score recalculator",
   },
   {
-    title: "Master Architecture & 5 Flowcharts Hub",
+    title: "Master Architecture & Systems Blueprint",
     category: "Platform Admin" as const,
     to: "/admin/architecture",
-    desc: "Master Process Flow, Daily Twin 30m, Swimlanes, Automations, DFD Level 1",
+    desc: "Master Process Flow, Daily Twin 30m, Swimlanes, Automations, DFD Level 1/2",
   },
   {
     title: "System & Dual Gate Configuration",

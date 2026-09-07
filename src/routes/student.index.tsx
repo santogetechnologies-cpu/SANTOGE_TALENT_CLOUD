@@ -1,24 +1,30 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Gauge, Meter, PageHeader, Panel, Stat, Chip } from "@/components/kit";
+import { useState, useMemo } from "react";
+import { Chip, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore } from "@/lib/app-store";
-import { TRACKS, trackById } from "@/lib/tracks";
+import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
+import { getAcceleratorDay, type AcceleratorDay } from "@/lib/placement-accelerator-data";
+import { getTrackSyllabus } from "@/lib/syllabus-data";
 import {
   CheckCircle2,
   Circle,
   Flame,
-  Trophy,
   Zap,
   Sparkles,
   ArrowRight,
   Code2,
   Lock,
   Unlock,
-  Building2,
   BookOpen,
   Calendar,
   Layers,
-  Check,
+  Terminal,
+  Mic,
+  Video,
+  Play,
+  Calculator,
+  FileCheck2,
+  Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -26,20 +32,21 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/student/")({
   head: () => ({
     meta: [
-      { title: "Student Dashboard — SantoGe Talent Cloud" },
-      { name: "description", content: "Talent Score, twin 30-min routine, active technical tracks, and placement readiness." },
-      { property: "og:title", content: "Student Dashboard — SantoGe Talent Cloud" },
-      { property: "og:description", content: "Talent Score, daily accelerator streak and placement readiness in one live workspace." },
+      { title: "Today's Learning & Drills — SantoGe Talent Cloud" },
+      {
+        name: "description",
+        content:
+          "Your distraction-free daily routine: 30m Placement Accelerator (English + Aptitude + In-App Practice) and 30m Technical Sandbox Labs.",
+      },
+      { property: "og:title", content: "Today's Learning — SantoGe Talent Cloud" },
+      {
+        property: "og:description",
+        content: "Complete your daily 30m Placement + 30m Technical exercises.",
+      },
     ],
   }),
-  component: StudentDashboard,
+  component: TodayLearningPage,
 });
-
-const STEPS = [
-  { key: "english", label: "10m English Video · Group Discussion & Corporate Vocab", xp: 25 },
-  { key: "aptitude", label: "10m Aptitude Video · Speed Math & Quantitative Logic", xp: 25 },
-  { key: "practice", label: "10m Guided Practice · 5 MCQs, 2 Puzzles & 60s Voice Pitch", xp: 50 },
-] as const;
 
 export function getScoreTier(score: number) {
   if (score >= 850) return { label: "Elite Tier", tone: "emerald" as const, desc: "Top 5% · Direct Placement Shortlist" };
@@ -48,345 +55,357 @@ export function getScoreTier(score: number) {
   return { label: "Foundational", tone: "amber" as const, desc: "Accelerating Core Competency" };
 }
 
-function StudentDashboard() {
+function TodayLearningPage() {
   const store = useAppStore();
-  const [showTrackModal, setShowTrackModal] = useState(false);
-  const active = TRACKS.filter((t) => store.activeTracks.includes(t.id));
+  const currentDayNum = store.placementDay || 1;
+  const placementPlan = useMemo(() => getAcceleratorDay(currentDayNum), [currentDayNum]);
+
+  // Primary active technical track
+  const primaryTrackId: TrackId = store.activeTracks[0] ?? "mern";
+  const primaryTrack = trackById(primaryTrackId);
+  const technicalSyllabus = useMemo(() => getTrackSyllabus(primaryTrackId), [primaryTrackId]);
+
+  // Find today's technical day plan
+  const weekIdx = Math.floor((currentDayNum - 1) / 5);
+  const dayInWeekIdx = (currentDayNum - 1) % 5;
+  const currentWeekPlan = technicalSyllabus.weeks[weekIdx] || technicalSyllabus.weeks[0]!;
+  const currentTechDay = currentWeekPlan.days[dayInWeekIdx] || currentWeekPlan.days[0]!;
+
+  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [pitchRecorded, setPitchRecorded] = useState(false);
+  const [pitchLoading, setPitchLoading] = useState(false);
+
   const tier = getScoreTier(store.talentScore);
+  const completedPlacementSteps = Object.values(store.daily).filter(Boolean).length;
+  const isTechCompleted = store.skills.length > 0;
 
-  const readiness = [
-    { key: "T", label: "Technical Competency", weight: "30%" },
-    { key: "C", label: "Communication Skills", weight: "20%" },
-    { key: "A", label: "Aptitude & Logic", weight: "15%" },
-    { key: "E", label: "Professional English", weight: "15%" },
-    { key: "R", label: "ATS Resume Match", weight: "10%" },
-    { key: "M", label: "AI Mock Interview", weight: "10%" },
-  ] as const;
+  const handleRecordVoicePitch = () => {
+    setPitchLoading(true);
+    setTimeout(() => {
+      setPitchLoading(false);
+      setPitchRecorded(true);
+      store.completeDailyStep("practice");
+      toast.success("Voice Pitch evaluated & verified (+25 XP)!", {
+        description: "Clarity 88% · STAR alignment validated · Communication pillar updated.",
+      });
+    }, 1500);
+  };
 
-  const handleToggleTrack = (id: (typeof TRACKS)[number]["id"]) => {
-    const has = store.activeTracks.includes(id);
-    const next = has ? store.activeTracks.filter((t) => t !== id) : [...store.activeTracks, id];
-    if (next.length < 1) {
-      toast.error("You must have at least 1 active course track.");
-      return;
-    }
-    if (next.length > 3) {
-      toast.error("Maximum 3 concurrent technical tracks allowed.");
-      return;
-    }
-    store.setActiveTracks(next);
-    toast.success(has ? "Track removed" : "Track enrolled successfully!");
+  const handleLaunchTechLab = () => {
+    toast.success(`Launched ${primaryTrack.name} Sandbox!`, {
+      description: `Exercising: ${currentTechDay.topic} (+50 XP).`,
+    });
   };
 
   return (
     <div className="space-y-6">
+      {/* Streamlined Minimal Page Header */}
       <PageHeader
-        title={`Welcome back, ${store.student?.firstName ?? "Learner"}`}
-        subtitle={`Cohort Batch: ${store.student?.batchId || "BATCH-2026-ABC-CSE-01"} · Day ${store.placementDay} of 90 synchronized placement cycle.`}
+        title={`Today's Learning & Exercises · Day ${currentDayNum}`}
+        subtitle={`18 Weeks × 5 Working Days = 90 Days · Complete your Twin 30-Minute Routine (Placement + Technical Skill).`}
         action={
           <div className="flex items-center gap-2">
-            <Chip tone={tier.tone}>{tier.label}</Chip>
-            <Chip tone={store.gateUnlocked ? "emerald" : "amber"}>
-              {store.gateUnlocked ? "Dual Gate: Unlocked" : "Dual Gate: In Progress"}
-            </Chip>
+            <Chip tone="amber">🔥 Day {store.streak} Streak</Chip>
+            <Chip tone={tier.tone}>{tier.label} ({store.talentScore}/1000)</Chip>
           </div>
         }
       />
 
-      {/* TOP STATS */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat
-          label="Talent Score"
-          value={`${store.talentScore}/1000`}
-          accent="var(--brand-cyan)"
-          hint={tier.desc}
-        />
-        <Stat
-          label="Readiness Index"
-          value={`${Math.round(store.readinessIndex)}%`}
-          accent="var(--brand-purple)"
-          hint="Weighted 6-pillar evaluation"
-        />
-        <Stat
-          label="Matched Openings"
-          value={store.eligibleCompanies}
-          accent="var(--brand-emerald)"
-          hint="Recruiter requisition matches"
-        />
-        <Stat
-          label="Accelerator Streak"
-          value={`Day ${store.streak}`}
-          accent="var(--brand-amber)"
-          hint={`${store.xp} Total XP Accumulated`}
-        />
-      </div>
-
-      {/* TALENT SCORE GAUGE & READINESS BREAKDOWN */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Panel
-          title="Talent Score Engine"
-          subtitle="Composite readiness score (0–1000)"
-          action={<Chip tone={tier.tone}>{tier.label}</Chip>}
-          className="flex flex-col items-center justify-between"
-        >
-          <div className="my-auto py-2 flex flex-col items-center">
-            <Gauge value={store.talentScore} label="Talent Score" />
-            <p className="mt-2 text-center text-xs text-copy-subtle max-w-xs">
-              Dynamically computed from your technical verified sandboxes, 90-day accelerator, and ATS profile.
+      {/* Daily Progress Ribbon */}
+      <div className="rounded-2xl border border-line-soft bg-surface-soft/80 p-4 backdrop-blur-sm shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-4 text-brand-cyan" />
+              <span className="text-xs font-bold text-foreground">
+                Daily Completion Status: {completedPlacementSteps === 3 && isTechCompleted ? "All Daily Goals Met 🎉" : "In Progress"}
+              </span>
+            </div>
+            <p className="text-xs text-copy-subtle">
+              Engine 1: Placement Accelerator ({completedPlacementSteps}/3 complete) &nbsp;|&nbsp; Engine 2: {primaryTrack.name} (Active)
             </p>
           </div>
-          <div className="w-full border-t border-line-soft pt-3 flex items-center justify-between text-xs">
-            <span className="text-copy-subtle">Phase 2 Gate:</span>
-            <span className={cn("font-semibold", store.gateUnlocked ? "text-brand-emerald" : "text-brand-amber")}>
-              {store.gateUnlocked ? "Unlocked & Market Ready" : "Requires Dual Gate Pass"}
-            </span>
-          </div>
-        </Panel>
 
-        <Panel
-          title="6-Pillar Readiness Breakdown"
-          subtitle="Real-time multi-dimensional competency model"
-          className="lg:col-span-2"
-          action={
-            <Link to="/student/placement" className="text-xs font-semibold text-brand-cyan hover:underline">
-              Placement Simulator →
-            </Link>
-          }
-        >
-          <div className="grid gap-3.5 sm:grid-cols-2">
-            {readiness.map((r) => {
-              const val = store.readiness[r.key];
-              return (
-                <div key={r.key} className="rounded-xl border border-line-soft bg-surface-soft/60 p-3">
-                  <div className="mb-1.5 flex items-center justify-between text-xs">
-                    <span className="font-semibold text-foreground">{r.label}</span>
-                    <span className="font-mono text-copy-subtle">
-                      {val}% <span className="text-[10px] text-copy-subtle/70">({r.weight})</span>
-                    </span>
-                  </div>
-                  <Meter value={val} />
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-4 flex items-center justify-between rounded-xl bg-surface-soft border border-line-soft px-3 py-2 text-xs text-copy-subtle">
-            <span className="flex items-center gap-1.5 font-medium text-foreground">
-              <Sparkles className="size-3.5 text-brand-cyan" /> Dual Completion Gate
-            </span>
-            <span>
-              {store.technicalComplete ? "✓ Technical Complete" : "○ Technical Pending"} ·{" "}
-              {store.placementComplete ? "✓ Placement Complete" : "○ Placement Pending"}
-            </span>
-          </div>
-        </Panel>
-      </div>
-
-      {/* TWIN 30-MINUTE DAILY ROUTINE */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Morning 30m Placement Accelerator */}
-        <Panel
-          title="Twin Routine 1: Placement Accelerator (30m)"
-          subtitle="Synchronized daily batch drills (06:00 Broadcast)"
-          action={
-            <Link to="/student/accelerator" className="text-xs font-semibold text-brand-cyan hover:underline">
-              Full Accelerator →
-            </Link>
-          }
-        >
-          <ul className="space-y-2.5">
-            {STEPS.map((s) => {
-              const done = store.daily[s.key];
-              return (
-                <li key={s.key}>
-                  <button
-                    onClick={() => {
-                      store.completeDailyStep(s.key);
-                      toast.success(done ? "Step uncompleted" : `Step completed! +${s.xp} XP`);
-                    }}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm transition-all",
-                      done
-                        ? "border-brand-emerald/40 bg-brand-emerald/5"
-                        : "border-line-soft bg-surface-soft hover:border-brand-cyan/50"
-                    )}
-                  >
-                    {done ? (
-                      <CheckCircle2 className="size-4 shrink-0 text-brand-emerald" />
-                    ) : (
-                      <Circle className="size-4 shrink-0 text-copy-subtle" />
-                    )}
-                    <span className={cn("text-xs font-medium", done ? "text-copy-subtle line-through" : "text-foreground")}>
-                      {s.label}
-                    </span>
-                    <span className="ml-auto inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-brand-cyan shrink-0">
-                      <Zap className="size-3" /> +{s.xp} XP
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          <div className="mt-3.5 flex items-center justify-between border-t border-line-soft/60 pt-3 text-xs text-copy-subtle">
-            <span className="flex items-center gap-1.5">
-              <Flame className="size-3.5 text-brand-amber" /> Streak: {store.streak} Days
-            </span>
-            <Link to="/student/batch" className="font-semibold text-brand-cyan hover:underline">
-              90-Day Calendar →
-            </Link>
-          </div>
-        </Panel>
-
-        {/* Afternoon/Evening 30m ITSE Technical Learning */}
-        <Panel
-          title="Twin Routine 2: ITSE Technical Learning (30m)"
-          subtitle="Individual, self-paced competency & in-browser sandboxes"
-          action={
-            <button
-              onClick={() => setShowTrackModal(true)}
-              className="text-xs font-semibold text-brand-cyan hover:underline"
-            >
-              Manage Tracks ({store.activeTracks.length}/3) →
-            </button>
-          }
-        >
-          <div className="space-y-2.5">
-            {active.map((t, idx) => {
-              const pct = store.trackPercent(t.id);
-              return (
-                <div key={t.id} className="rounded-xl border border-line-soft bg-surface-soft p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="size-2.5 rounded-full" style={{ background: t.accent }} />
-                      <p className="text-xs font-bold text-foreground">
-                        {t.name} {idx === 0 && <span className="text-[10px] text-brand-cyan font-normal">(Primary)</span>}
-                      </p>
-                    </div>
-                    <span className="font-mono text-[11px] text-brand-cyan">{pct}%</span>
-                  </div>
-                  <p className="mt-1 text-[11px] text-copy-subtle line-clamp-1">{t.tagline}</p>
-                  <div className="mt-2 flex items-center justify-between">
-                    <Meter value={pct} accent={t.accent} className="w-2/3" />
-                    <Link
-                      to="/student/labs"
-                      className="text-[11px] font-semibold text-brand-cyan hover:underline"
-                    >
-                      Launch Lab →
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <Link
-            to="/student/technical"
-            className="mt-3.5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2.5 text-xs font-bold text-surface-dark"
-          >
-            <Code2 className="size-4" /> Explore 15 Technical Tracks Catalog
-          </Link>
-        </Panel>
-      </div>
-
-      {/* QUICK LAUNCH & HIRING MARKETPLACE PREVIEW */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Link
-          to="/student/gateway"
-          className="group rounded-2xl border border-line-soft bg-surface-soft p-4 transition-all hover:border-brand-cyan/50 hover:bg-surface-elevated"
-        >
-          <div className="flex items-center justify-between">
-            <span className="rounded-lg bg-brand-cyan/10 p-2 text-brand-cyan">
-              <Unlock className="size-5" />
-            </span>
-            <ArrowRight className="size-4 text-copy-subtle transition-transform group-hover:translate-x-1 group-hover:text-brand-cyan" />
-          </div>
-          <p className="mt-3 font-semibold text-foreground text-sm">Dual Completion Gate</p>
-          <p className="mt-1 text-xs text-copy-subtle">
-            Evaluate technical mastery & 90-day accelerator completion to unlock Phase 2.
-          </p>
-        </Link>
-
-        <Link
-          to="/student/placement"
-          className="group rounded-2xl border border-line-soft bg-surface-soft p-4 transition-all hover:border-brand-purple/50 hover:bg-surface-elevated"
-        >
-          <div className="flex items-center justify-between">
-            <span className="rounded-lg bg-brand-purple/10 p-2 text-brand-purple">
-              <Building2 className="size-5" />
-            </span>
-            <ArrowRight className="size-4 text-copy-subtle transition-transform group-hover:translate-x-1 group-hover:text-brand-purple" />
-          </div>
-          <p className="mt-3 font-semibold text-foreground text-sm">Placement Readiness</p>
-          <p className="mt-1 text-xs text-copy-subtle">
-            Tune 6-slider formula, simulate company requisitions and advance offers.
-          </p>
-        </Link>
-
-        <Link
-          to="/student/leaderboard"
-          className="group rounded-2xl border border-line-soft bg-surface-soft p-4 transition-all hover:border-brand-emerald/50 hover:bg-surface-elevated"
-        >
-          <div className="flex items-center justify-between">
-            <span className="rounded-lg bg-brand-emerald/10 p-2 text-brand-emerald">
-              <Trophy className="size-5" />
-            </span>
-            <ArrowRight className="size-4 text-copy-subtle transition-transform group-hover:translate-x-1 group-hover:text-brand-emerald" />
-          </div>
-          <p className="mt-3 font-semibold text-foreground text-sm">Cohort Leaderboard</p>
-          <p className="mt-1 text-xs text-copy-subtle">
-            Compare Talent Score and XP rank among 100–300 learners in your batch.
-          </p>
-        </Link>
-      </div>
-
-      {/* TRACK SWITCHER MODAL */}
-      {showTrackModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl border border-line-soft bg-surface-dark p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-line-soft pb-3">
-              <div>
-                <h3 className="text-base font-bold text-foreground">Select Technical Courses (1 to 3)</h3>
-                <p className="text-xs text-copy-subtle">
-                  Choose 1–3 self-paced specializations. First selection is treated as Primary.
-                </p>
+          <div className="flex items-center gap-3">
+            <div className="w-40">
+              <div className="flex justify-between text-[11px] font-mono text-copy-subtle mb-1">
+                <span>Twin 30m Progress</span>
+                <span className="text-brand-cyan font-bold">{Math.round(((completedPlacementSteps + (isTechCompleted ? 1 : 0)) / 4) * 100)}%</span>
               </div>
-              <Chip tone="purple">{store.activeTracks.length} / 3 selected</Chip>
+              <Meter value={Math.round(((completedPlacementSteps + (isTechCompleted ? 1 : 0)) / 4) * 100)} accent="var(--brand-cyan)" />
             </div>
-
-            <div className="grid gap-2 sm:grid-cols-2 max-h-80 overflow-y-auto pr-1">
-              {TRACKS.map((t) => {
-                const isSelected = store.activeTracks.includes(t.id);
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => handleToggleTrack(t.id)}
-                    className={cn(
-                      "flex items-center justify-between rounded-xl border p-3 text-left transition-all",
-                      isSelected
-                        ? "border-brand-cyan bg-brand-cyan/10"
-                        : "border-line-soft bg-surface-soft hover:border-line-strong"
-                    )}
-                  >
-                    <div>
-                      <p className="text-xs font-bold text-foreground">{t.name}</p>
-                      <p className="text-[10px] text-copy-subtle line-clamp-1">{t.tagline}</p>
-                    </div>
-                    {isSelected && <Check className="size-4 text-brand-cyan shrink-0 ml-2" />}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center justify-end gap-3 border-t border-line-soft pt-3">
-              <button
-                onClick={() => setShowTrackModal(false)}
-                className="rounded-xl bg-brand-cyan px-5 py-2 text-xs font-bold text-surface-dark hover:opacity-90"
-              >
-                Done
-              </button>
-            </div>
+            <Link
+              to="/student/technical"
+              className="rounded-xl border border-line-soft bg-surface-elevated px-3 py-1.5 text-xs font-bold text-brand-cyan hover:border-brand-cyan/60 transition-colors"
+            >
+              View 90-Day Full Syllabus →
+            </Link>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Main Twin 30-Minute Grid: Placement (30m) vs Technical (30m) */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* ENGINE 1: 30-MINUTE PLACEMENT ACCELERATOR */}
+        <Panel
+          title="1. Placement Accelerator (30 Mins Daily)"
+          subtitle={`Day ${currentDayNum}: ${placementPlan.theme} · Synchronized Cohort Routine`}
+          action={<Chip tone="purple">{completedPlacementSteps}/3 Complete</Chip>}
+        >
+          <div className="space-y-4 text-xs">
+            {/* 10m English Video & Lesson */}
+            <div
+              className={cn(
+                "rounded-xl border p-3.5 space-y-2 transition-all",
+                store.daily.english ? "border-brand-emerald/50 bg-brand-emerald/5" : "border-line-soft bg-surface-soft"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Video className="size-4 text-brand-cyan" />
+                  <span className="font-bold text-foreground">10m English &amp; Corporate Communication</span>
+                </div>
+                <button
+                  onClick={() => {
+                    store.completeDailyStep("english");
+                    toast.success("10m English Lesson completed (+25 XP)!");
+                  }}
+                  className="text-xs text-copy-subtle hover:text-foreground"
+                >
+                  {store.daily.english ? (
+                    <span className="flex items-center gap-1 text-brand-emerald font-bold font-mono text-[11px]">
+                      <CheckCircle2 className="size-3.5" /> Done (+25 XP)
+                    </span>
+                  ) : (
+                    <span className="rounded-lg bg-surface-elevated border border-line-soft px-2 py-0.5 font-mono text-[11px] text-brand-cyan hover:border-brand-cyan/60">
+                      Mark Watched
+                    </span>
+                  )}
+                </button>
+              </div>
+              <p className="text-copy-subtle">{placementPlan.english.title} · {placementPlan.english.instructorBrief}</p>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {placementPlan.english.keyVocabulary.map((v) => (
+                  <span key={v} className="rounded bg-surface-dark px-1.5 py-0.5 text-[10px] font-mono text-copy-subtle border border-line-soft">
+                    {v}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* 10m Aptitude Video & Lesson */}
+            <div
+              className={cn(
+                "rounded-xl border p-3.5 space-y-2 transition-all",
+                store.daily.aptitude ? "border-brand-emerald/50 bg-brand-emerald/5" : "border-line-soft bg-surface-soft"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calculator className="size-4 text-brand-purple" />
+                  <span className="font-bold text-foreground">10m Quantitative &amp; Logical Reasoning</span>
+                </div>
+                <button
+                  onClick={() => {
+                    store.completeDailyStep("aptitude");
+                    toast.success("10m Aptitude Lesson completed (+25 XP)!");
+                  }}
+                  className="text-xs text-copy-subtle hover:text-foreground"
+                >
+                  {store.daily.aptitude ? (
+                    <span className="flex items-center gap-1 text-brand-emerald font-bold font-mono text-[11px]">
+                      <CheckCircle2 className="size-3.5" /> Done (+25 XP)
+                    </span>
+                  ) : (
+                    <span className="rounded-lg bg-surface-elevated border border-line-soft px-2 py-0.5 font-mono text-[11px] text-brand-purple hover:border-brand-purple/60">
+                      Mark Watched
+                    </span>
+                  )}
+                </button>
+              </div>
+              <p className="text-copy-subtle">{placementPlan.aptitude.title} · {placementPlan.aptitude.instructorBrief}</p>
+              <div className="rounded-lg bg-surface-dark p-2 text-[11px] font-mono text-brand-purple border border-line-soft/80">
+                Rule: {placementPlan.aptitude.formulaShortcut}
+              </div>
+            </div>
+
+            {/* 10m In-App Guided Practice Drills */}
+            <div
+              className={cn(
+                "rounded-xl border p-3.5 space-y-3 transition-all",
+                store.daily.practice ? "border-brand-emerald/50 bg-brand-emerald/5" : "border-line-soft bg-surface-soft"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileCheck2 className="size-4 text-brand-emerald" />
+                  <span className="font-bold text-foreground">10m In-App Practice Drill &amp; Voice Pitch</span>
+                </div>
+                <span className="font-mono text-[11px] text-brand-amber font-semibold">
+                  {store.daily.practice ? "Verified ✓" : "+25 XP"}
+                </span>
+              </div>
+
+              {/* Sample MCQ */}
+              {placementPlan.practice.mcqs[0] && (
+                <div className="rounded-lg bg-surface-dark p-3 border border-line-soft/80 space-y-2">
+                  <p className="font-semibold text-foreground text-[11px]">
+                    <span className="text-brand-cyan font-mono">Q1.</span> {placementPlan.practice.mcqs[0].q}
+                  </p>
+                  <div className="grid gap-1 sm:grid-cols-2">
+                    {placementPlan.practice.mcqs[0].options.map((opt, oi) => {
+                      const isPicked = answers[0] === oi;
+                      const isRight = oi === placementPlan.practice.mcqs[0]?.answer;
+                      return (
+                        <button
+                          key={opt}
+                          onClick={() => {
+                            setAnswers((prev) => ({ ...prev, [0]: oi }));
+                            if (isRight) toast.success("Correct answer!");
+                          }}
+                          className={cn(
+                            "rounded border p-1.5 text-left text-[11px] transition-colors",
+                            isPicked
+                              ? isRight
+                                ? "border-brand-emerald bg-brand-emerald/15 text-brand-emerald font-bold"
+                                : "border-brand-rose bg-brand-rose/15 text-brand-rose"
+                              : "border-line-soft bg-surface-elevated text-copy-subtle hover:text-foreground"
+                          )}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 60s Voice Pitch Drill */}
+              <div className="rounded-lg bg-surface-dark p-3 border border-line-soft/80 space-y-2">
+                <p className="font-semibold text-foreground text-[11px]">
+                  🎙️ 60s Voice Pitch: "{placementPlan.practice.voicePrompt.prompt}"
+                </p>
+                <button
+                  onClick={handleRecordVoicePitch}
+                  disabled={pitchLoading || pitchRecorded}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-brand-cyan to-brand-purple py-2 text-[11px] font-bold text-surface-dark shadow-sm hover:opacity-90 disabled:opacity-60 transition-opacity"
+                >
+                  <Mic className="size-3.5" />
+                  {pitchLoading ? "Analyzing Audio Cadence & STAR Rubric…" : pitchRecorded ? "Voice Pitch Verified (+25 XP) ✓" : "Record 60s AI Voice Pitch"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Panel>
+
+        {/* ENGINE 2: 30-MINUTE TECHNICAL LEARNING & SANDBOX */}
+        <Panel
+          title={`2. ${primaryTrack.name} (30 Mins Daily)`}
+          subtitle={`Day ${currentDayNum} (Week ${weekIdx + 1}) · 100% In-Browser Interactive Practice`}
+          action={<Chip tone="cyan">{primaryTrack.domain}</Chip>}
+        >
+          <div className="space-y-4 text-xs">
+            {/* Concept Card (5-10 Mins) */}
+            <div className="rounded-xl border border-line-soft bg-surface-soft p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-brand-cyan flex items-center gap-1.5">
+                  <BookOpen className="size-4" /> 1. Concept Card (20 Mins)
+                </span>
+                <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">
+                  Day {currentDayNum}
+                </span>
+              </div>
+              <h4 className="text-sm font-bold text-foreground">{currentTechDay.topic}</h4>
+              <p className="text-copy-subtle leading-relaxed">
+                {currentTechDay.practice}
+              </p>
+              <div className="pt-2 border-t border-line-soft/60 flex items-center justify-between text-[11px] text-copy-subtle">
+                <span>Theme: <strong className="text-foreground">{currentWeekPlan.theme}</strong></span>
+                <span className="font-mono text-brand-cyan">Target: {currentWeekPlan.workplaceSkill}</span>
+              </div>
+            </div>
+
+            {/* In-Browser Hands-on Sandbox (15 Mins) */}
+            <div className="rounded-xl border border-brand-cyan/30 bg-surface-soft p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-brand-cyan flex items-center gap-1.5">
+                  <Terminal className="size-4" /> 2. Interactive Hands-on Sandbox (10 Mins)
+                </span>
+                <span className="font-mono text-[11px] text-brand-amber font-semibold">+50 XP</span>
+              </div>
+              <p className="text-copy-subtle">
+                Launch the in-browser runtime simulator for <strong>{primaryTrack.name}</strong> to complete today's practical code/analysis challenge.
+              </p>
+
+              <div className="rounded-lg bg-surface-dark p-3 border border-line-soft font-mono text-[11px] text-copy-subtle">
+                <p className="text-foreground font-bold">Lab: {primaryTrack.labTitle}</p>
+                <p className="mt-0.5 text-copy-subtle">Virtual terminal test runner with real-time assertions and error feedback.</p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={handleLaunchTechLab}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-brand-cyan py-2.5 text-xs font-bold text-surface-dark hover:opacity-90 transition-opacity"
+                >
+                  <Play className="size-3.5 fill-current" /> Launch Interactive Sandbox Lab
+                </button>
+                <Link
+                  to="/student/labs"
+                  className="rounded-xl border border-line-soft bg-surface-elevated px-3 py-2.5 text-xs font-bold text-foreground hover:border-brand-cyan/60 transition-colors"
+                >
+                  All 15 Labs
+                </Link>
+              </div>
+            </div>
+
+            {/* Friday Simulation Notice or Deliverable */}
+            <div className="rounded-xl border border-line-soft bg-surface-dark p-3.5 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-brand-purple flex items-center gap-1.5">
+                  <Sparkles className="size-3.5" /> Friday Workplace Simulation
+                </span>
+                <span className="text-[10px] font-mono text-copy-subtle">Week {weekIdx + 1} Mini-Project</span>
+              </div>
+              <p className="text-foreground font-medium">"{currentWeekPlan.projectTitle}"</p>
+              <p className="text-copy-subtle text-[11px]">
+                Deliverable: <span className="text-brand-cyan font-mono">{currentWeekPlan.deliverable}</span>
+              </p>
+            </div>
+          </div>
+        </Panel>
+      </div>
+
+      {/* Quick Enrolled Tracks Switcher Bar */}
+      <div className="rounded-2xl border border-line-soft bg-surface-soft/60 p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold text-foreground">Active Technical Specializations (1 to 3 Courses)</p>
+            <p className="text-xs text-copy-subtle">
+              Primary: <strong className="text-brand-cyan">{primaryTrack.name}</strong> (100% Dual Gate weight) &nbsp;|&nbsp; Enrolled: {store.activeTracks.length} of 3 maximum
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {store.activeTracks.map((tId) => {
+              const trk = trackById(tId);
+              return (
+                <span
+                  key={tId}
+                  className="rounded-xl border border-line-soft bg-surface-elevated px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm flex items-center gap-1.5"
+                >
+                  <Code2 className="size-3.5 text-brand-cyan" />
+                  {trk.name}
+                </span>
+              );
+            })}
+            <Link
+              to="/student/settings"
+              className="rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 px-3 py-1.5 text-xs font-bold text-brand-cyan hover:bg-brand-cyan/20 transition-colors"
+            >
+              Change Courses →
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
-

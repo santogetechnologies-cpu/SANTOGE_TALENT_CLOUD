@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Chip, PageHeader, Panel } from "@/components/kit";
+import { useAppStore } from "@/lib/app-store";
 import { cn } from "@/lib/utils";
 import {
   ArrowRight,
@@ -22,15 +23,28 @@ import {
   Terminal,
   FileCheck,
   Send,
+  Cpu,
+  ShieldCheck,
+  Network,
+  Radio,
+  BarChart3,
+  Gauge,
+  Key,
+  Flame,
+  Zap,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/architecture")({
   head: () => ({
     meta: [
-      { title: "Master Architecture & 5 Flowcharts Hub — SantoGe Talent Cloud" },
-      { name: "description", content: "Master operating architecture: Master Process Flow, Daily Twin 30m Workflow, Swimlanes, Automation Engine, and DFD Level 1." },
-      { property: "og:title", content: "Master Architecture & Flowcharts Hub — SantoGe Talent Cloud" },
-      { property: "og:description", content: "Master operating architecture: 5 Flowcharts & DFD Hub." },
+      { title: "Master Architecture & Systems Topology — SantoGe Talent Cloud" },
+      {
+        name: "description",
+        content:
+          "Definitive Enterprise Architecture & Systems Blueprint: Master Process Flow, Daily Twin 30m Pipeline, Super Admin & Student Swimlanes, Automation Engine, DFD L1/L2, Dual Gate Engine, and Infrastructure Topology.",
+      },
+      { property: "og:title", content: "Master Architecture & Systems Blueprint — SantoGe Talent Cloud" },
+      { property: "og:description", content: "Comprehensive Super Admin Architecture & Flowcharts Hub." },
     ],
   }),
   component: ArchitecturePage,
@@ -38,22 +52,35 @@ export const Route = createFileRoute("/admin/architecture")({
 
 const TABS = [
   { id: "process", label: "1. Master Process Flow (7-Steps)", icon: Workflow },
-  { id: "cadence", label: "2. Daily Twin 30m Workflow", icon: Layers },
-  { id: "swimlanes", label: "3. Admin & Student Swimlanes", icon: GitBranch },
-  { id: "automation", label: "4. Daily Automation Engine Flow", icon: Bot },
-  { id: "dfd", label: "5. Data Flow Diagram (DFD L1)", icon: Database },
-  { id: "gate", label: "Dual Completion Gate Rule", icon: Lock },
+  { id: "cadence", label: "2. Daily Twin 30m Execution Engine", icon: Layers },
+  { id: "topology", label: "3. Enterprise System Topology", icon: Network },
+  { id: "swimlanes", label: "4. Admin & Student Swimlanes", icon: GitBranch },
+  { id: "automation", label: "5. Cron Automation & Webhook Flow", icon: Bot },
+  { id: "dfd", label: "6. Data Flow Diagram (DFD L1 & L2)", icon: Database },
+  { id: "gate", label: "7. Dual Completion Gate & Talent Engine", icon: Lock },
 ] as const;
 
 function ArchitecturePage() {
+  const store = useAppStore();
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("process");
+  const [zoomLevel, setZoomLevel] = useState<"standard" | "deep">("deep");
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Master Architecture & 5 Flowcharts Hub"
-        subtitle="The definitive SantoGe Talent Cloud operating architecture — separating cohort placement from individual technical learning."
-        action={<Chip tone="purple">STC Master Model</Chip>}
+        title="Super Admin Master Architecture & Systems Blueprint"
+        subtitle="The definitive, multi-tier enterprise architecture separating cohort placement acceleration from individual evidence-based technical learning."
+        action={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setZoomLevel(zoomLevel === "standard" ? "deep" : "standard")}
+              className="rounded-xl border border-line-soft bg-surface-soft px-3 py-1.5 text-xs font-bold text-brand-cyan hover:border-brand-cyan/60 transition-colors"
+            >
+              {zoomLevel === "deep" ? "🔬 Deep Technical Architecture" : "📐 Standard Overview"}
+            </button>
+            <Chip tone="purple">STC Master Model v2.4</Chip>
+          </div>
+        }
       />
 
       {/* Tabs */}
@@ -63,10 +90,10 @@ function ArchitecturePage() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={cn(
-              "inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-colors",
+              "inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all",
               tab === t.id
-                ? "border-brand-cyan/60 bg-surface-soft text-foreground shadow-sm"
-                : "border-line-soft text-copy-subtle hover:text-foreground",
+                ? "border-brand-cyan/60 bg-surface-soft text-foreground shadow-sm ring-1 ring-brand-cyan/30"
+                : "border-line-soft text-copy-subtle hover:text-foreground hover:bg-surface-elevated/60"
             )}
           >
             <t.icon className="size-3.5" /> {t.label}
@@ -75,74 +102,107 @@ function ArchitecturePage() {
       </div>
 
       {/* Governing Rule Banner */}
-      <div className="rounded-2xl border border-brand-cyan/40 bg-gradient-to-r from-brand-cyan/10 via-surface-elevated to-brand-purple/10 p-5">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand-cyan">The Core Governing Rule</p>
-        <p className="mt-1 text-base font-bold text-foreground">
-          "A Batch is a Placement Accelerator cohort (English, Aptitude, Telegram, 90-Day Calendar). It is NOT a Technical Learning cohort."
+      <div className="rounded-2xl border border-brand-cyan/40 bg-gradient-to-r from-brand-cyan/10 via-surface-elevated to-brand-purple/10 p-5 shadow-sm">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-brand-cyan">
+          <ShieldCheck className="size-4" /> The Core Architectural Invariant
+        </div>
+        <p className="mt-1.5 text-base font-bold text-foreground">
+          "A Batch is exclusively a Placement Accelerator cohort (English, Aptitude, Telegram, 90-Day Calendar). Technical Learning is completely decoupled, individual, self-paced, and evidence-based."
         </p>
         <p className="mt-1.5 text-xs text-copy-subtle leading-relaxed">
-          Students share one common 90-day placement journey, but each student runs an individual, self-paced learning path across 1 to 3 assigned technical disciplines from 15 available tracks.
+          Students in the same college batch share a synchronized 90-day placement journey with daily 06:00 Telegram broadcasts, but each student independently pursues 1 to 3 assigned technical tracks from 15 available specializations in in-browser interactive sandboxes.
         </p>
       </div>
 
-      {/* DIAGRAM 1: Master 7-Step Process Flow */}
+      {/* 1. MASTER 7-STEP PROCESS FLOW */}
       {tab === "process" && (
-        <Panel title="Diagram 1: Master 7-Step Process Flow" subtitle="From Institutional Onboarding to Recruiter Digital Offers">
-          <div className="space-y-3">
+        <Panel
+          title="Diagram 1: Master 7-Step Institutional-to-Placement Process Flow"
+          subtitle="Complete enterprise lifecycle from College MoU signing to verified recruiter offer letters"
+          action={<Chip tone="cyan">End-to-End Pipeline</Chip>}
+        >
+          <div className="space-y-4">
             {[
               {
                 step: "Stage 0.1",
-                title: "College Onboarding & MoU",
-                desc: "Institutional partner signs MoU and submits verified student list for batch sizing (100–300 learners).",
+                phase: "Institutional Onboarding",
+                title: "College MoU & Batch Sizing",
+                desc: "Institutional partner signs MoU and submits verified student master list. Admin provisions cohort with 100–300 batch sizing constraint.",
+                metrics: "100–300 learners per batch · 1 Telegram channel per batch · Zero technical grouping",
                 tone: "cyan",
               },
               {
                 step: "Stage 0.2",
-                title: "Bulk CSV Provisioning",
-                desc: "Platform Admin uploads validated CSV with columns student_name, email, password, roll_no, dept, course_1, course_2, course_3, batch_id.",
+                phase: "Provisioning & Identity",
+                title: "Bulk CSV Roster Ingestion & Validation",
+                desc: "Platform Admin uploads CSV roster (student_name, email, password, roll_no, dept, course_1, course_2, course_3, batch_id). Schema and uniqueness checks pass instantly.",
+                metrics: "100% automated validation · Instant password hashing · Zero pre-test screening hurdles",
                 tone: "purple",
               },
               {
                 step: "Stage 0.3",
-                title: "Instant Auto-Enrolment (No Pre-Test)",
-                desc: "Logins are auto-provisioned with 1–3 pre-assigned courses. No gatekeeper screening tests needed.",
+                phase: "Instant Enrolment",
+                title: "Zero Pre-Test Direct Track Activation",
+                desc: "Students receive credentials with 1 to 3 pre-assigned technical specializations. Instant access without initial rejection tests.",
+                metrics: "1 Primary Specialization (100% weight) + up to 2 Secondary Tracks (50%+ weight)",
                 tone: "emerald",
               },
               {
                 step: "Phase 1",
-                title: "Days 1 to 90 — Daily Twin 30-Minute Routine",
-                desc: "Engine 1 (Placement Accelerator 30m via Telegram + guided practice) + Engine 2 (Technical ITSE 30m in-browser sandboxes).",
+                phase: "Days 1 to 90",
+                title: "Daily Twin 30-Minute Routine Execution",
+                desc: "Morning Placement Accelerator (10m English + 10m Aptitude + 10m In-App Practice via Telegram) + Technical ITSE Engine (20m Concept + 10m In-Browser Sandbox Lab).",
+                metrics: "18 Weeks × 5 Working Days = 90 Days · 18 Friday Workplace Mini Projects · Day 90 Industry Capstone",
                 tone: "amber",
               },
               {
                 step: "Gate",
-                title: "Dual-Track 100% Completion Gate",
-                desc: "Strict verification: 100% placement attendance/assessment + 100% technical mastery on assigned tracks.",
+                phase: "Verification Checkpoint",
+                title: "Dual Completion Gate Rule Enforcement",
+                desc: "Automated gate evaluates: (1) 90/90 Placement Attendance + Assessment ≥ 60% AND (2) 100% Primary Track Mastery + Secondary Tracks ≥ configured threshold.",
+                metrics: `Gate Threshold: Primary 100% + Secondary ≥ ${store.secondaryMinimum}% + 90 Days Cohort Attendance`,
                 tone: "rose",
               },
               {
                 step: "Phase 2",
-                title: "Post-90 Days — Assessment, AI Mocks & Certifications",
-                desc: "Automated ATS Resume Builder, 1:1 Industry Video Mocks, STAR panel feedback, and verifiable certifications.",
+                phase: "Post-90 Days",
+                title: "Career Gateway, AI Mock Interviews & Certifications",
+                desc: "Unlocks ATS Keyword Resume Builder, AI 1:1 Voice/Video Mock Interviews with STAR rubric evaluation, and verifiable cryptographically stamped certificates.",
+                metrics: "0–1000 Unified Talent Score Engine · ATS Compatibility Scanner · Verified Portfolio Matrix",
                 tone: "purple",
               },
               {
                 step: "Hiring",
-                title: "Recruiter Marketplace & Digital Offers",
-                desc: "Talent Score (0–1000) unlocks tier-gated enterprise campus drives, direct interviews, and job offer letters.",
+                phase: "Talent Marketplace",
+                title: "Tier-Gated Campus Placement & Digital Offers",
+                desc: "Recruiters filter verified talent based on Talent Score tier (Elite 850+, Advanced 700+, Intermediate 550+), schedule direct interviews, and issue offer letters.",
+                metrics: "Automated match forwarding · Live salary benchmarking · Direct ATS candidate export",
                 tone: "emerald",
               },
             ].map((s, idx) => (
-              <div key={s.step} className="flex items-start gap-3.5 rounded-xl border border-line-soft bg-surface-soft p-4 transition-all hover:border-brand-cyan/40">
-                <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-surface-dark font-mono text-xs font-bold text-brand-cyan border border-line-soft">
-                  {idx + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[11px] font-bold text-brand-cyan">{s.step}</span>
-                    <span className="text-xs font-bold text-foreground">· {s.title}</span>
+              <div
+                key={s.step}
+                className="flex items-start gap-4 rounded-xl border border-line-soft bg-surface-soft p-4 transition-all hover:border-brand-cyan/40"
+              >
+                <div className="flex flex-col items-center">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface-dark font-mono text-xs font-bold text-brand-cyan border border-line-soft shadow-inner">
+                    0{idx + 1}
+                  </span>
+                  {idx < 6 && <div className="h-6 w-0.5 bg-line-soft my-1" />}
+                </div>
+
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-brand-cyan">{s.step}</span>
+                    <span className="rounded bg-surface-dark px-2 py-0.5 text-[10px] font-mono text-copy-subtle border border-line-soft">
+                      {s.phase}
+                    </span>
+                    <span className="text-sm font-bold text-foreground">· {s.title}</span>
                   </div>
-                  <p className="mt-1 text-xs text-copy-subtle leading-relaxed">{s.desc}</p>
+                  <p className="text-xs text-copy-subtle leading-relaxed">{s.desc}</p>
+                  <div className="mt-2 rounded-lg bg-surface-dark/70 p-2 border border-line-soft/60 text-[11px] font-mono text-brand-amber">
+                    ⚙️ Key Architecture Metric: {s.metrics}
+                  </div>
                 </div>
               </div>
             ))}
@@ -150,103 +210,239 @@ function ArchitecturePage() {
         </Panel>
       )}
 
-      {/* DIAGRAM 2: Daily Twin 30m Execution Workflow */}
+      {/* 2. DAILY TWIN 30M EXECUTION ENGINE */}
       {tab === "cadence" && (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Technical Engine */}
           <Panel
-            title="Engine 1: Technical Self-Study Engine (ITSE)"
-            subtitle="30 Mins Daily · 100% In-Browser Practical Sandboxes (Zero Videos)"
+            title="Engine 1: Technical Learning & Sandbox Engine (ITSE)"
+            subtitle="30 Mins Daily · 100% In-Browser Interactive Practice (Zero Video Fatigue)"
+            action={<Chip tone="cyan">Individual & Self-Paced</Chip>}
           >
-            <div className="space-y-3 text-xs">
-              <div className="rounded-xl border border-brand-cyan/30 bg-surface-soft p-3.5">
-                <span className="font-bold text-brand-cyan">1. Concept Card (5 Mins)</span>
-                <p className="mt-1 text-copy-subtle">
-                  Interactive architectural breakdown, syntax patterns, and design contracts.
+            <div className="space-y-4 text-xs">
+              <div className="rounded-xl border border-brand-cyan/30 bg-surface-soft p-4 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-brand-cyan text-sm">Step 1: Architectural Concept Card (5 Mins)</span>
+                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">05 min</span>
+                </div>
+                <p className="text-copy-subtle leading-relaxed">
+                  Interactive visual schema breakdown, API contracts, domain syntax rules, and error patterns. Zero passive video watching.
                 </p>
               </div>
-              <div className="rounded-xl border border-brand-cyan/30 bg-surface-soft p-3.5">
-                <span className="font-bold text-brand-cyan">2. In-Browser Practical Sandbox (15 Mins)</span>
-                <p className="mt-1 text-copy-subtle">
-                  Live code editors, JUnit test suites, Kubernetes replicas, Nmap scanner, or Cypress test runners (+50 XP).
+
+              <div className="rounded-xl border border-brand-cyan/30 bg-surface-soft p-4 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-brand-cyan text-sm">Step 2: In-Browser Practical Sandbox (15 Mins)</span>
+                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">15 min</span>
+                </div>
+                <p className="text-copy-subtle leading-relaxed">
+                  Live code execution in WebAssembly/Dockerized virtual terminals across 15 tracks (React 19, Spring Boot, PyTorch, Nmap, Kubernetes, Cypress, SAP). Instant automated test validation (+50 XP).
                 </p>
               </div>
-              <div className="rounded-xl border border-brand-cyan/30 bg-surface-soft p-3.5">
-                <span className="font-bold text-brand-cyan">3. Practical Debug Mini-Assignment (10 Mins)</span>
-                <p className="mt-1 text-copy-subtle">
-                  Live breakpoint troubleshooting, error simulation, and competency evidence logging.
+
+              <div className="rounded-xl border border-brand-cyan/30 bg-surface-soft p-4 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-brand-cyan text-sm">Step 3: Practical Debug & Friday Mini-Project (10 Mins / 30 Mins Fri)</span>
+                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">10–30 min</span>
+                </div>
+                <p className="text-copy-subtle leading-relaxed">
+                  Mon–Thu: Breakpoint troubleshooting and edge case fixes. Every Friday: Workplace Simulation Mini-Project that logs a verified artifact to the student's 18-project Placement Portfolio.
                 </p>
+              </div>
+
+              <div className="rounded-xl bg-surface-dark p-3.5 border border-line-soft text-[11px] font-mono text-copy-subtle">
+                <p className="text-brand-cyan font-bold">Deliverable Matrix:</p>
+                <p className="mt-1">18 Friday Projects + Day 90 End-to-End Enterprise Industry Capstone</p>
               </div>
             </div>
           </Panel>
 
+          {/* Placement Engine */}
           <Panel
-            title="Engine 2: 90-Day Placement Accelerator"
-            subtitle="30 Mins Daily · Synchronized Cohort (100–300 Students)"
+            title="Engine 2: 90-Day Placement Accelerator Engine"
+            subtitle="30 Mins Daily · Synchronized Batch Cohort (100–300 Students)"
+            action={<Chip tone="purple">Cohort Telegram Sync</Chip>}
           >
-            <div className="space-y-3 text-xs">
-              <div className="rounded-xl border border-brand-purple/30 bg-surface-soft p-3.5">
-                <span className="font-bold text-brand-purple">1. English &amp; Communication Video (10 Mins)</span>
-                <p className="mt-1 text-copy-subtle">
-                  Broadcast via Telegram at 06:00 IST — corporate email etiquette, pronunciation, and fluency drills.
+            <div className="space-y-4 text-xs">
+              <div className="rounded-xl border border-brand-purple/30 bg-surface-soft p-4 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-brand-purple text-sm">Step 1: English &amp; Corporate Communication (10 Mins)</span>
+                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">10 min</span>
+                </div>
+                <p className="text-copy-subtle leading-relaxed">
+                  Broadcast via batch Telegram channel at 06:00 IST. Instructor lesson plan covering professional email structure, GD openers, vocal cadence, and eliminating filler words.
                 </p>
               </div>
-              <div className="rounded-xl border border-brand-purple/30 bg-surface-soft p-3.5">
-                <span className="font-bold text-brand-purple">2. Aptitude &amp; Reasoning Video (10 Mins)</span>
-                <p className="mt-1 text-copy-subtle">
-                  Broadcast via Telegram at 06:00 IST — speed math shortcuts, quant formulas, and logic puzzles.
+
+              <div className="rounded-xl border border-brand-purple/30 bg-surface-soft p-4 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-brand-purple text-sm">Step 2: Quantitative &amp; Logical Reasoning (10 Mins)</span>
+                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">10 min</span>
+                </div>
+                <p className="text-copy-subtle leading-relaxed">
+                  Broadcast via Telegram at 06:00 IST. Speed math shortcuts, Vedic math multiplication, work-rate formulas, syllogisms, and rapid data interpretation techniques.
                 </p>
               </div>
-              <div className="rounded-xl border border-brand-purple/30 bg-surface-soft p-3.5">
-                <span className="font-bold text-brand-purple">3. In-App Guided Practice (10 Mins)</span>
-                <p className="mt-1 text-copy-subtle">
-                  5 MCQs + 2 Logical Puzzles + 60s AI Voice Pitch Recorder with live speech analysis.
+
+              <div className="rounded-xl border border-brand-purple/30 bg-surface-soft p-4 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-brand-purple text-sm">Step 3: In-App Combined Practice &amp; AI Pitch (10 Mins)</span>
+                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">10 min</span>
+                </div>
+                <p className="text-copy-subtle leading-relaxed">
+                  In-app interactive practice: 3 Placement MCQs + 1 Logical Reasoning Brainteaser + 60s AI Voice Pitch Recorder with real-time STAR rubric speech analysis (+25 XP).
                 </p>
+              </div>
+
+              <div className="rounded-xl bg-surface-dark p-3.5 border border-line-soft text-[11px] font-mono text-copy-subtle">
+                <p className="text-brand-purple font-bold">Assessment Schedule:</p>
+                <p className="mt-1">Weekly Friday Mock Tests + Milestone Assessments on Day 30, Day 60 &amp; Day 90</p>
               </div>
             </div>
           </Panel>
         </div>
       )}
 
-      {/* DIAGRAM 3: Platform Super Admin & Student Swimlanes */}
+      {/* 3. ENTERPRISE SYSTEM TOPOLOGY */}
+      {tab === "topology" && (
+        <Panel
+          title="Diagram 3: Full Stack Infrastructure & Microservices Topology"
+          subtitle="Cloud-native deployment architecture, live event streaming, and data storage tier"
+          action={<Chip tone="emerald">Infrastructure Topology</Chip>}
+        >
+          <div className="space-y-6">
+            {/* Top Row: Client Tier & Gateway */}
+            <div className="rounded-2xl border border-line-soft bg-surface-soft p-4 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-cyan">
+                <Layers className="size-4" /> Tier 1: Client Interfaces &amp; Edge Gateway
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3 text-xs">
+                <div className="rounded-xl border border-line-soft bg-surface-elevated p-3 space-y-1">
+                  <p className="font-bold text-foreground">Student Progressive Web App</p>
+                  <p className="text-copy-subtle text-[11px]">Twin 30m Daily Dashboard, In-Browser Sandboxes, AI Voice Pitch</p>
+                </div>
+                <div className="rounded-xl border border-line-soft bg-surface-elevated p-3 space-y-1">
+                  <p className="font-bold text-foreground">Super Admin Command Center</p>
+                  <p className="text-copy-subtle text-[11px]">CSV Provisioning, Telegram Bot Hub, Content CMS, Dual Gate Engine</p>
+                </div>
+                <div className="rounded-xl border border-line-soft bg-surface-elevated p-3 space-y-1">
+                  <p className="font-bold text-foreground">Recruiter Talent Portal</p>
+                  <p className="text-copy-subtle text-[11px]">Tier-Gated Candidate Search (0–1000), STAR Scorecards, Offer Letters</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Middle Row: Core Backend Microservices */}
+            <div className="rounded-2xl border border-line-soft bg-surface-soft p-4 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-purple">
+                <Server className="size-4" /> Tier 2: Microservices &amp; Business Logic Layer
+              </div>
+              <div className="grid gap-3 sm:grid-cols-4 text-xs">
+                <div className="rounded-xl border border-brand-purple/30 bg-surface-dark p-3 space-y-1">
+                  <p className="font-bold text-brand-purple">Auth &amp; RBAC Service</p>
+                  <p className="text-copy-subtle text-[11px]">Supabase Live Auth / JWT Stateless RBAC (Admin / Student)</p>
+                </div>
+                <div className="rounded-xl border border-brand-purple/30 bg-surface-dark p-3 space-y-1">
+                  <p className="font-bold text-brand-purple">Telegram Broadcast Engine</p>
+                  <p className="text-copy-subtle text-[11px]">06:00 IST Cron Webhook Dispatcher to 54+ Batch Channels</p>
+                </div>
+                <div className="rounded-xl border border-brand-purple/30 bg-surface-dark p-3 space-y-1">
+                  <p className="font-bold text-brand-purple">Talent Scoring Microservice</p>
+                  <p className="text-copy-subtle text-[11px]">Dynamic 6-Pillar 0–1000 Weighted Engine recalculated every 15m</p>
+                </div>
+                <div className="rounded-xl border border-brand-purple/30 bg-surface-dark p-3 space-y-1">
+                  <p className="font-bold text-brand-purple">AI Speech &amp; LLM Evaluator</p>
+                  <p className="text-copy-subtle text-[11px]">WebSpeech API + ITSE STAR Speech Rubric + ATS Keyword Scanner</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Row: Database & State Management Tier */}
+            <div className="rounded-2xl border border-line-soft bg-surface-soft p-4 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-emerald">
+                <Database className="size-4" /> Tier 3: Storage &amp; Persistence Tier
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3 text-xs">
+                <div className="rounded-xl border border-brand-emerald/30 bg-surface-dark p-3 space-y-1">
+                  <p className="font-bold text-brand-emerald">Relational Database (PostgreSQL / Supabase)</p>
+                  <p className="text-copy-subtle text-[11px]">Students, Batches, Attendance, Assessments, Audit Logs, Offer Letters</p>
+                </div>
+                <div className="rounded-xl border border-brand-emerald/30 bg-surface-dark p-3 space-y-1">
+                  <p className="font-bold text-brand-emerald">High-Speed Cache (Redis / Memory Store)</p>
+                  <p className="text-copy-subtle text-[11px]">Real-time Talent Score Leaderboard, Active Streaks, Rate Limiters</p>
+                </div>
+                <div className="rounded-xl border border-brand-emerald/30 bg-surface-dark p-3 space-y-1">
+                  <p className="font-bold text-brand-emerald">Object Storage (S3 / CDN)</p>
+                  <p className="text-copy-subtle text-[11px]">Recorded Voice Pitches, ATS PDF Resumes, Verifiable Certificates</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Panel>
+      )}
+
+      {/* 4. ADMIN & STUDENT SWIMLANES */}
       {tab === "swimlanes" && (
-        <Panel title="Diagram 3: Platform Super Admin & Student Swimlanes" subtitle="Role responsibility separation matrix">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-2xl border border-brand-purple/40 bg-surface-soft p-4 space-y-3">
+        <Panel
+          title="Diagram 4: Platform Super Admin & Student Operational Swimlanes"
+          subtitle="Clear separation of platform governance vs learner execution"
+          action={<Chip tone="purple">Two-Tier Persona Model</Chip>}
+        >
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Super Admin Swimlane */}
+            <div className="rounded-2xl border border-brand-purple/40 bg-surface-soft p-5 space-y-4">
               <div className="flex items-center gap-2 text-brand-purple font-bold text-sm">
                 <Users className="size-4" /> Platform Super Admin Swimlane
               </div>
-              <ul className="space-y-2 text-xs text-copy-subtle">
-                <li className="rounded-lg bg-surface-elevated p-2.5 border border-line-soft">
-                  <span className="font-semibold text-foreground">1. Institutional Onboarding:</span> Accepts college requests and verifies 100–300 batch sizing.
+              <ul className="space-y-3 text-xs text-copy-subtle">
+                <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
+                  <span className="font-bold text-foreground">1. Institutional Onboarding &amp; Batch Creation:</span>
+                  <p>Validates college partner requests, sets 100–300 capacity slider, and establishes cohort Telegram link.</p>
                 </li>
-                <li className="rounded-lg bg-surface-elevated p-2.5 border border-line-soft">
-                  <span className="font-semibold text-foreground">2. Bulk CSV Provisioning:</span> Uploads student roster, pre-assigns 1–3 courses, issues instant credentials.
+                <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
+                  <span className="font-bold text-foreground">2. Bulk CSV Provisioning:</span>
+                  <p>Uploads student CSV with 1–3 course assignments. Zero pre-test barriers. Exports credential packet.</p>
                 </li>
-                <li className="rounded-lg bg-surface-elevated p-2.5 border border-line-soft">
-                  <span className="font-semibold text-foreground">3. Telegram Sync &amp; Broadcast:</span> Connects batch Telegram bot and monitors 06:00 cron delivery.
+                <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
+                  <span className="font-bold text-foreground">3. Content Management System (CMS):</span>
+                  <p>Authors and publishes daily English scripts, Aptitude formulas, MCQs, and 15 technical course syllabi.</p>
                 </li>
-                <li className="rounded-lg bg-surface-elevated p-2.5 border border-line-soft">
-                  <span className="font-semibold text-foreground">4. Governance &amp; Dual Gate Rules:</span> Sets completion rules, secondary min %, and scoring weights.
+                <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
+                  <span className="font-bold text-foreground">4. Cron Pipeline Monitoring:</span>
+                  <p>Supervises 06:00 broadcast, container warmer, ATS parser, and evening streak mailer cron jobs.</p>
+                </li>
+                <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
+                  <span className="font-bold text-foreground">5. Dual Gate Governance:</span>
+                  <p>Configures secondary track minimum % ({store.secondaryMinimum}%), 6-pillar score weights, and unlocks Phase 2.</p>
                 </li>
               </ul>
             </div>
 
-            <div className="rounded-2xl border border-brand-cyan/40 bg-surface-soft p-4 space-y-3">
+            {/* Student Swimlane */}
+            <div className="rounded-2xl border border-brand-cyan/40 bg-surface-soft p-5 space-y-4">
               <div className="flex items-center gap-2 text-brand-cyan font-bold text-sm">
-                <Code2 className="size-4" /> Student (e.g. Ajay) Swimlane
+                <Code2 className="size-4" /> Student (Learner) Swimlane
               </div>
-              <ul className="space-y-2 text-xs text-copy-subtle">
-                <li className="rounded-lg bg-surface-elevated p-2.5 border border-line-soft">
-                  <span className="font-semibold text-foreground">1. Credentials Sign-in:</span> Logs in with college-issued credentials (no pre-test required).
+              <ul className="space-y-3 text-xs text-copy-subtle">
+                <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
+                  <span className="font-bold text-foreground">1. Minimal Daily Login:</span>
+                  <p>Signs in with college-issued credentials directly to "Today's Learning" dashboard without clutter.</p>
                 </li>
-                <li className="rounded-lg bg-surface-elevated p-2.5 border border-line-soft">
-                  <span className="font-semibold text-foreground">2. Daily Twin 30m Execution:</span> Completes morning Placement Accelerator + technical sandbox tasks.
+                <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
+                  <span className="font-bold text-foreground">2. 30m Placement Accelerator:</span>
+                  <p>Watches 06:00 English + Aptitude video broadcasts and completes 3 MCQs + Brainteaser + 60s Voice Pitch.</p>
                 </li>
-                <li className="rounded-lg bg-surface-elevated p-2.5 border border-line-soft">
-                  <span className="font-semibold text-foreground">3. Dual Gate Clearance:</span> Achieves 90-day attendance + technical competency across assigned tracks.
+                <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
+                  <span className="font-bold text-foreground">3. 30m Technical Practice:</span>
+                  <p>Solves hands-on sandbox labs on enrolled tracks; executes 18 Friday Workplace Mini-Projects.</p>
                 </li>
-                <li className="rounded-lg bg-surface-elevated p-2.5 border border-line-soft">
-                  <span className="font-semibold text-foreground">4. Phase 2 Career Gateway:</span> Builds ATS resume, takes AI mocks, applies to recruiter marketplace.
+                <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
+                  <span className="font-bold text-foreground">4. Day 90 Industry Capstone:</span>
+                  <p>Completes 14-step real-world case defense simulation and satisfies the Dual Completion Gate.</p>
+                </li>
+                <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
+                  <span className="font-bold text-foreground">5. Phase 2 Career Gateway:</span>
+                  <p>Generates ATS resume, takes AI Mock Interviews, verifies certifications, and accepts job offers.</p>
                 </li>
               </ul>
             </div>
@@ -254,25 +450,75 @@ function ArchitecturePage() {
         </Panel>
       )}
 
-      {/* DIAGRAM 4: Daily Automation Engine & Scoring Flowchart */}
+      {/* 5. CRON AUTOMATIONS & WEBHOOK FLOW */}
       {tab === "automation" && (
-        <Panel title="Diagram 4: Daily Automation Engine & Scoring Flowchart" subtitle="Cron pipeline execution flow from 06:00 to 20:00 IST">
+        <Panel
+          title="Diagram 5: Daily Automation Engine & Cron Pipeline Architecture"
+          subtitle="Automated background cron jobs executing from 06:00 IST to 23:59 IST daily"
+          action={<Chip tone="amber">6 Automated Pipelines</Chip>}
+        >
           <div className="space-y-3">
             {[
-              { time: "06:00 IST", title: "Morning Placement Broadcast Cron", desc: "Triggers Telegram Bot API to dispatch 10m English + 10m Aptitude video links to all 54 batch channels." },
-              { time: "06:05 IST", title: "In-App Guided Practice Unlock", desc: "Unlocks 5 MCQs, 2 puzzles, and 60s voice pitch analyzer for the current day." },
-              { time: "06:15 IST", title: "Technical Sandbox Containers Warmer", desc: "Initializes in-browser simulators and code runners for all 15 technical disciplines." },
-              { time: "Every 15m", title: "Talent Score Dynamic Recalculation", desc: "Computes formula (T·25% + C·20% + A·15% + E·15% + R·15% + M·10%) and updates cohort leaderboard." },
-              { time: "Every 4h", title: "ATS Portfolio Parser Sweep", desc: "Extracts completed sandbox project milestones into students' automated ATS resume drafts." },
-              { time: "20:00 IST", title: "Streak & Digest Mailer", desc: "Verifies daily completion, increments streaks, and dispatches evening performance summary." },
-            ].map((cron, i) => (
-              <div key={cron.time} className="flex items-start gap-3 rounded-xl border border-line-soft bg-surface-soft p-3.5">
-                <span className="rounded-lg bg-brand-amber/10 border border-brand-amber/30 px-2.5 py-1 font-mono text-[11px] font-bold text-brand-amber shrink-0">
-                  {cron.time}
-                </span>
-                <div>
+              {
+                time: "06:00 IST",
+                cron: "0 6 * * 1-5",
+                title: "Morning Placement Broadcast Webhook",
+                desc: "Telegram Bot API dispatches 10m English lesson + 10m Aptitude video links to all 54 active batch channels.",
+                impact: "Wakes cohort, marks batch start, alerts students via mobile notification.",
+              },
+              {
+                time: "06:05 IST",
+                cron: "5 6 * * 1-5",
+                title: "In-App Guided Practice Unlock Pipeline",
+                desc: "Unlocks the daily 3 MCQs, 1 Logical Brainteaser, and 60s AI Voice Pitch prompt for the day.",
+                impact: "Enables instant in-app practice with live feedback.",
+              },
+              {
+                time: "06:15 IST",
+                cron: "15 6 * * *",
+                title: "Technical Sandbox Containers Warmer",
+                desc: "Pre-warms WebAssembly modules and in-browser runtimes for all 15 technical disciplines.",
+                impact: "Sub-second lab load times for MERN, Java, AI/ML, Cloud, and Medical Coding sandboxes.",
+              },
+              {
+                time: "Every 15m",
+                cron: "*/15 * * * *",
+                title: "Unified Talent Score Recalculation Engine",
+                desc: "Recalculates 0–1000 Talent Score (Technical 25% + Coding 20% + Aptitude 15% + English 15% + Real-world 15% + Mock 10%).",
+                impact: "Updates cohort leaderboards, tier badges, and recruiter match percentages.",
+              },
+              {
+                time: "Every 4h",
+                cron: "0 */4 * * *",
+                title: "ATS Portfolio Parser & Synchronizer",
+                desc: "Extracts completed sandbox project milestones into students' automated ATS resume drafts.",
+                impact: "Ensures resume bullet points always reflect verified portfolio accomplishments.",
+              },
+              {
+                time: "20:00 IST",
+                cron: "0 20 * * 1-5",
+                title: "Streak Maintenance & Daily Performance Digest Mailer",
+                desc: "Verifies daily Twin 30m completions, increments streaks, and emails digest to students and mentors.",
+                impact: "Protects placement streaks and sends gentle nudges to pending students.",
+              },
+            ].map((cron) => (
+              <div
+                key={cron.time}
+                className="flex items-start gap-4 rounded-xl border border-line-soft bg-surface-soft p-4 transition-all hover:border-brand-amber/50"
+              >
+                <div className="shrink-0 space-y-1">
+                  <span className="rounded-lg bg-brand-amber/10 border border-brand-amber/30 px-2.5 py-1 font-mono text-xs font-bold text-brand-amber block text-center">
+                    {cron.time}
+                  </span>
+                  <span className="font-mono text-[9px] text-copy-subtle block text-center opacity-70">
+                    {cron.cron}
+                  </span>
+                </div>
+
+                <div className="min-w-0 flex-1 space-y-0.5">
                   <p className="text-xs font-bold text-foreground">{cron.title}</p>
-                  <p className="mt-0.5 text-xs text-copy-subtle">{cron.desc}</p>
+                  <p className="text-xs text-copy-subtle leading-relaxed">{cron.desc}</p>
+                  <p className="text-[11px] font-mono text-brand-cyan">⚡ System Impact: {cron.impact}</p>
                 </div>
               </div>
             ))}
@@ -280,69 +526,160 @@ function ArchitecturePage() {
         </Panel>
       )}
 
-      {/* DIAGRAM 5: Data Flow Diagram (DFD Level 1) */}
+      {/* 6. DATA FLOW DIAGRAM (DFD LEVEL 1 & 2) */}
       {tab === "dfd" && (
-        <Panel title="Diagram 5: Data Flow Diagram (DFD Level 1)" subtitle="Entities, core processes (1.0, 2.0, 3.0), and data stores (D1–D4)">
-          <div className="grid gap-4 lg:grid-cols-3">
-            <div className="rounded-xl border border-line-soft bg-surface-soft p-4 text-xs space-y-2">
-              <p className="font-bold text-brand-cyan flex items-center gap-1.5">
-                <Users className="size-4" /> External Entities
+        <Panel
+          title="Diagram 6: Data Flow Diagram (DFD Level 1 & Level 2)"
+          subtitle="Entities, processes (1.0 to 4.0), data stores (D1–D5), and data boundary flows"
+          action={<Chip tone="emerald">DFD Level 1 &amp; 2</Chip>}
+        >
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="rounded-2xl border border-brand-cyan/40 bg-surface-soft p-4 text-xs space-y-3">
+              <p className="font-bold text-brand-cyan text-sm flex items-center gap-1.5">
+                <Users className="size-4" /> 1. External Entities
               </p>
-              <ul className="space-y-1.5 text-copy-subtle">
-                <li><span className="font-semibold text-foreground">Student Learner (Ajay):</span> Credentials, daily submissions, sandbox code, voice pitch.</li>
-                <li><span className="font-semibold text-foreground">Platform Super Admin:</span> Bulk CSV, batch sizing, Telegram sync, gate rules.</li>
-                <li><span className="font-semibold text-foreground">Enterprise Recruiter:</span> Hiring requisitions, shortlist criteria, offer letters.</li>
+              <ul className="space-y-2 text-copy-subtle">
+                <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
+                  <span className="font-bold text-foreground">Student Learner:</span> Submits daily practice answers, sandbox code, voice pitch audio, and capstone submissions.
+                </li>
+                <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
+                  <span className="font-bold text-foreground">Platform Super Admin:</span> Bulk CSV roster, batch sizing, Telegram credentials, CMS content updates, and gate thresholds.
+                </li>
+                <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
+                  <span className="font-bold text-foreground">Enterprise Recruiter:</span> Posts job requisitions, filters talent by Talent Score tier, schedules 1:1 mocks, and sends offers.
+                </li>
               </ul>
             </div>
 
-            <div className="rounded-xl border border-line-soft bg-surface-soft p-4 text-xs space-y-2">
-              <p className="font-bold text-brand-purple flex items-center gap-1.5">
-                <Workflow className="size-4" /> Central Processes
+            <div className="rounded-2xl border border-brand-purple/40 bg-surface-soft p-4 text-xs space-y-3">
+              <p className="font-bold text-brand-purple text-sm flex items-center gap-1.5">
+                <Workflow className="size-4" /> 2. Core Processes
               </p>
-              <ul className="space-y-1.5 text-copy-subtle">
-                <li><span className="font-semibold text-foreground">1.0 CSV Ingestion &amp; Provisioning:</span> Validates schema &amp; issues logins.</li>
-                <li><span className="font-semibold text-foreground">2.0 Daily Twin Execution Engine:</span> Orchestrates ITSE sandboxes &amp; Placement broadcasts.</li>
-                <li><span className="font-semibold text-foreground">3.0 Dual Gate &amp; Marketplace Engine:</span> Evaluates 100% completion &amp; matches requisitions.</li>
+              <ul className="space-y-2 text-copy-subtle">
+                <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
+                  <span className="font-bold text-foreground">1.0 Roster Ingestion:</span> Validates CSV, assigns 1–3 courses, hashes passwords, generates logins.
+                </li>
+                <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
+                  <span className="font-bold text-foreground">2.0 Twin Routine Dispatcher:</span> Schedules 06:00 broadcast and serves in-browser sandbox exercises.
+                </li>
+                <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
+                  <span className="font-bold text-foreground">3.0 Dual Gate Evaluator:</span> Checks 90-day attendance + technical competency on assigned tracks.
+                </li>
+                <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
+                  <span className="font-bold text-foreground">4.0 Talent Scoring &amp; Match:</span> Computes 0–1000 score and routes eligible profiles to recruiters.
+                </li>
               </ul>
             </div>
 
-            <div className="rounded-xl border border-line-soft bg-surface-soft p-4 text-xs space-y-2">
-              <p className="font-bold text-brand-emerald flex items-center gap-1.5">
-                <Database className="size-4" /> Data Stores (D1–D4)
+            <div className="rounded-2xl border border-brand-emerald/40 bg-surface-soft p-4 text-xs space-y-3">
+              <p className="font-bold text-brand-emerald text-sm flex items-center gap-1.5">
+                <Database className="size-4" /> 3. Data Stores (D1–D5)
               </p>
-              <ul className="space-y-1.5 text-copy-subtle">
-                <li><span className="font-mono text-brand-emerald">D1:</span> Student &amp; Batch Cohort DB</li>
-                <li><span className="font-mono text-brand-emerald">D2:</span> Technical Sandboxes &amp; Skills DB</li>
-                <li><span className="font-mono text-brand-emerald">D3:</span> Placement Accelerator &amp; Scoring DB</li>
-                <li><span className="font-mono text-brand-emerald">D4:</span> Recruiter Hiring Requisitions DB</li>
+              <ul className="space-y-2 text-copy-subtle font-mono text-[11px]">
+                <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
+                  <span className="font-bold text-brand-emerald">D1: Student &amp; Batch Store:</span> Profiles, enrollments, credentials, Telegram webhooks.
+                </li>
+                <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
+                  <span className="font-bold text-brand-emerald">D2: Technical Sandbox Store:</span> Track modules, 18 Friday deliverables, test outputs.
+                </li>
+                <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
+                  <span className="font-bold text-brand-emerald">D3: Placement Accelerator Store:</span> 90-day attendance, MCQs, voice pitch recordings.
+                </li>
+                <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
+                  <span className="font-bold text-brand-emerald">D4: Talent Score &amp; Tier Store:</span> 0–1000 dynamic ratings, percentile rankings.
+                </li>
+                <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
+                  <span className="font-bold text-brand-emerald">D5: Recruiter Marketplace Store:</span> Requisitions, candidate shortlists, offer letters.
+                </li>
               </ul>
             </div>
           </div>
         </Panel>
       )}
 
-      {/* DUAL COMPLETION GATE RULES */}
+      {/* 7. DUAL COMPLETION GATE & TALENT SCORE ENGINE */}
       {tab === "gate" && (
-        <Panel title="Dual Completion Gate Business Rules" subtitle="Phase 1 (Days 1–90) to Phase 2 Transition Logic">
-          <div className="rounded-xl border border-line-soft bg-surface-soft p-4 space-y-3 text-xs text-copy-subtle">
-            <p className="font-bold text-foreground text-sm">Strict Dual Gate Unlock Criteria:</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border border-brand-cyan/40 bg-surface-dark p-3">
-                <p className="font-bold text-brand-cyan">Gate 1: Technical Mastery</p>
-                <p className="mt-1">
-                  100% verified completion on Primary technical track + satisfactory minimum threshold ({store.secondaryMinimum}%) on secondary assigned tracks.
+        <Panel
+          title="Diagram 7: Dual Completion Gate State Machine & 0–1000 Talent Engine"
+          subtitle="Mathematical formulation for Phase 2 career unlocking and recruiter talent tiering"
+          action={<Chip tone="rose">Strict Phase 2 Gate</Chip>}
+        >
+          <div className="space-y-6 text-xs">
+            {/* Gate Logic Cards */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-brand-cyan/40 bg-surface-soft p-4 space-y-2">
+                <p className="font-bold text-brand-cyan text-sm flex items-center gap-1.5">
+                  <Code2 className="size-4" /> Gate Condition 1: Technical Mastery
                 </p>
+                <p className="text-copy-subtle leading-relaxed">
+                  100% verified completion on the student's Primary Specialization (all sandbox tasks + 18 Friday workplace projects + Day 90 capstone) AND ≥ {store.secondaryMinimum}% completion on any secondary enrolled courses.
+                </p>
+                <div className="rounded-lg bg-surface-dark p-2 font-mono text-[11px] text-brand-cyan">
+                  Formula: Primary == 100% &amp;&amp; Secondary ≥ {store.secondaryMinimum}%
+                </div>
               </div>
-              <div className="rounded-lg border border-brand-purple/40 bg-surface-dark p-3">
-                <p className="font-bold text-brand-purple">Gate 2: Placement Program</p>
-                <p className="mt-1">
-                  90-day synchronized cohort attendance + Day 90 final placement assessment score ≥ 60%.
+
+              <div className="rounded-xl border border-brand-purple/40 bg-surface-soft p-4 space-y-2">
+                <p className="font-bold text-brand-purple text-sm flex items-center gap-1.5">
+                  <Users className="size-4" /> Gate Condition 2: Placement Program
                 </p>
+                <p className="text-copy-subtle leading-relaxed">
+                  100% attendance recorded across the 90-day synchronized batch cohort calendar (90/90 days) AND a passing score of ≥ 60% on the Day 90 Final Placement Readiness Assessment.
+                </p>
+                <div className="rounded-lg bg-surface-dark p-2 font-mono text-[11px] text-brand-purple">
+                  Formula: Attendance == 90/90 &amp;&amp; AssessmentDay90 ≥ 60%
+                </div>
               </div>
             </div>
 
-            <div className="rounded-lg border border-brand-emerald/40 bg-brand-emerald/10 p-3 text-foreground font-medium">
-              Phase 2 Unlocks: Automated ATS Resume Builder, 1:1 Industry Video Mocks, STAR Scorecards, Verifiable Skill Certifications, and Recruiter Marketplace.
+            {/* Talent Score Mathematical Model */}
+            <div className="rounded-2xl border border-line-soft bg-surface-soft p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-foreground text-sm flex items-center gap-2">
+                  <Gauge className="size-4 text-brand-amber" />
+                  Unified Talent Score Mathematical Formulation (0–1000 Scale)
+                </span>
+                <span className="rounded bg-brand-amber/10 px-2 py-0.5 font-mono text-xs font-bold text-brand-amber">
+                  1000 Max Score
+                </span>
+              </div>
+
+              <div className="rounded-xl bg-surface-dark p-4 border border-line-soft font-mono text-xs text-foreground space-y-2">
+                <p className="text-brand-amber font-bold">
+                  Talent Score = (T × 25%) + (C × 20%) + (A × 15%) + (E × 15%) + (R × 15%) + (M × 10%)
+                </p>
+                <div className="grid gap-2 sm:grid-cols-3 pt-2 text-[11px] text-copy-subtle border-t border-line-soft/80">
+                  <div>• T = Technical Mastery (25%)</div>
+                  <div>• C = Coding &amp; Labs (20%)</div>
+                  <div>• A = Aptitude &amp; Logic (15%)</div>
+                  <div>• E = English &amp; Communication (15%)</div>
+                  <div>• R = Real-world Projects (15%)</div>
+                  <div>• M = Mock Interviews (10%)</div>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-4 text-xs font-mono">
+                <div className="rounded-xl border border-brand-purple/40 bg-brand-purple/10 p-3 text-center">
+                  <p className="font-bold text-brand-purple text-sm">Elite Tier</p>
+                  <p className="text-foreground font-bold mt-1">850 – 1000</p>
+                  <p className="text-[10px] text-copy-subtle mt-0.5">Top 5% · Direct Day-1 Placement</p>
+                </div>
+                <div className="rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 p-3 text-center">
+                  <p className="font-bold text-brand-cyan text-sm">Advanced Tier</p>
+                  <p className="text-foreground font-bold mt-1">700 – 849</p>
+                  <p className="text-[10px] text-copy-subtle mt-0.5">Top 25% · Enterprise Drives</p>
+                </div>
+                <div className="rounded-xl border border-brand-amber/40 bg-brand-amber/10 p-3 text-center">
+                  <p className="font-bold text-brand-amber text-sm">Intermediate</p>
+                  <p className="text-foreground font-bold mt-1">550 – 699</p>
+                  <p className="text-[10px] text-copy-subtle mt-0.5">Core Campus Drives</p>
+                </div>
+                <div className="rounded-xl border border-line-soft bg-surface-dark p-3 text-center">
+                  <p className="font-bold text-copy-subtle text-sm">Foundational</p>
+                  <p className="text-foreground font-bold mt-1">&lt; 550</p>
+                  <p className="text-[10px] text-copy-subtle mt-0.5">Remediation Sprints</p>
+                </div>
+              </div>
             </div>
           </div>
         </Panel>
@@ -350,4 +687,3 @@ function ArchitecturePage() {
     </div>
   );
 }
-
