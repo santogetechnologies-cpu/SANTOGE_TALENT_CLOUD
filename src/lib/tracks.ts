@@ -15,6 +15,18 @@ export type TrackId =
   | "hr"
   | "bianalytics";
 
+export type Domain = {
+  id: string;
+  label: string;
+};
+
+export const DOMAINS: Domain[] = [
+  { id: "fullstack", label: "Full Stack & Mobile" },
+  { id: "ai_data", label: "AI, Data & Analytics" },
+  { id: "cloud_sec", label: "Cloud, Security & DevOps" },
+  { id: "enterprise", label: "Enterprise & Business" },
+];
+
 export type Track = {
   id: TrackId;
   name: string;
@@ -22,6 +34,7 @@ export type Track = {
   tagline: string;
   labTitle: string;
   accent: string;
+  domain: string;
 };
 
 export const TRACKS: Track[] = [
@@ -32,6 +45,7 @@ export const TRACKS: Track[] = [
     tagline: "React, Node, Express, MongoDB",
     labTitle: "REST API Test Runner",
     accent: "var(--brand-cyan)",
+    domain: "fullstack",
   },
   {
     id: "java",
@@ -40,6 +54,7 @@ export const TRACKS: Track[] = [
     tagline: "Spring Boot, JPA, JUnit 5",
     labTitle: "Spring Boot + JUnit Runner",
     accent: "var(--brand-amber)",
+    domain: "fullstack",
   },
   {
     id: "aiml",
@@ -48,6 +63,7 @@ export const TRACKS: Track[] = [
     tagline: "LangChain, embeddings, RAG",
     labTitle: "Vector Similarity Search",
     accent: "var(--brand-purple)",
+    domain: "ai_data",
   },
   {
     id: "datascience",
@@ -56,6 +72,7 @@ export const TRACKS: Track[] = [
     tagline: "Pandas, NumPy, statistics",
     labTitle: "Dataframe Cleaner",
     accent: "var(--brand-emerald)",
+    domain: "ai_data",
   },
   {
     id: "cloud",
@@ -64,6 +81,7 @@ export const TRACKS: Track[] = [
     tagline: "Terraform, EC2, IAM",
     labTitle: "Terraform Apply Console",
     accent: "var(--brand-blue)",
+    domain: "cloud_sec",
   },
   {
     id: "cyber",
@@ -72,6 +90,7 @@ export const TRACKS: Track[] = [
     tagline: "Recon, hardening, firewalls",
     labTitle: "Nmap Port Scanner",
     accent: "var(--brand-rose)",
+    domain: "cloud_sec",
   },
   {
     id: "sre",
@@ -80,6 +99,7 @@ export const TRACKS: Track[] = [
     tagline: "Kubernetes, scaling, SLOs",
     labTitle: "Kubernetes Scaling Terminal",
     accent: "var(--brand-cyan)",
+    domain: "cloud_sec",
   },
   {
     id: "uiux",
@@ -88,6 +108,7 @@ export const TRACKS: Track[] = [
     tagline: "Design systems, accessibility",
     labTitle: "Viewport + WCAG Checker",
     accent: "var(--brand-purple)",
+    domain: "fullstack",
   },
   {
     id: "qa",
@@ -96,6 +117,7 @@ export const TRACKS: Track[] = [
     tagline: "Cypress, regression suites",
     labTitle: "Cypress Suite Runner",
     accent: "var(--brand-emerald)",
+    domain: "fullstack",
   },
   {
     id: "mobile",
@@ -104,6 +126,7 @@ export const TRACKS: Track[] = [
     tagline: "React Native, push, hot reload",
     labTitle: "Device Mock + Push",
     accent: "var(--brand-blue)",
+    domain: "fullstack",
   },
   {
     id: "medical",
@@ -112,6 +135,7 @@ export const TRACKS: Track[] = [
     tagline: "ICD-10, CPT, clean claims",
     labTitle: "ICD-10 / CPT Validator",
     accent: "var(--brand-rose)",
+    domain: "enterprise",
   },
   {
     id: "marketing",
@@ -120,6 +144,7 @@ export const TRACKS: Track[] = [
     tagline: "Paid media, ROAS modelling",
     labTitle: "ROAS Budget Reallocator",
     accent: "var(--brand-amber)",
+    domain: "enterprise",
   },
   {
     id: "sap",
@@ -128,6 +153,7 @@ export const TRACKS: Track[] = [
     tagline: "GL postings, controlling",
     labTitle: "SAP GL Document Poster",
     accent: "var(--brand-blue)",
+    domain: "enterprise",
   },
   {
     id: "hr",
@@ -136,6 +162,7 @@ export const TRACKS: Track[] = [
     tagline: "CTC structuring, statutory",
     labTitle: "CTC Salary Calculator",
     accent: "var(--brand-emerald)",
+    domain: "enterprise",
   },
   {
     id: "bianalytics",
@@ -144,7 +171,9 @@ export const TRACKS: Track[] = [
     tagline: "Excel, Power BI, DAX",
     labTitle: "DAX Formula Evaluator",
     accent: "var(--brand-purple)",
+    domain: "ai_data",
   },
 ];
 
-export const trackById = (id: TrackId) => TRACKS.find((t) => t.id === id)!;
+export const trackById = (id: TrackId): Track => TRACKS.find((t) => t.id === id) || TRACKS[0]!;
+

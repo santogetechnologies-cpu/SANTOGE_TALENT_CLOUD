@@ -147,7 +147,7 @@ const DEFAULT_STATE: Persisted = {
 
 export type CronLog = { id: string; time: string; stage: string; message: string; status: "ok" | "running" | "queued" };
 
-type Store = Omit<Persisted, "profiles"> &
+type Store = Persisted &
   Profile & {
     ready: boolean;
     student: StudentAccount | null;
@@ -183,6 +183,8 @@ type Store = Omit<Persisted, "profiles"> &
     completeDailyStep: (step: keyof DailySteps) => void;
     setReadiness: (r: Partial<ReadinessInputs>) => void;
     updateBatch: (id: string, patch: Partial<Batch>) => void;
+    createBatch: (b: Omit<Batch, "lastSync">) => void;
+    deleteBatch: (id: string) => void;
     syncBatch: (id: string) => void;
     addProvisioned: (rows: ProvisionedStudent[]) => void;
     addContent: (item: Omit<ContentItem, "id" | "updated">) => void;
@@ -239,6 +241,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           ...parsed,
           profiles: { ...DEFAULT_PROFILES, ...(parsed.profiles ?? {}) },
           customStudents: { ...(parsed.customStudents ?? {}) },
+          batches: parsed.batches && parsed.batches.length > 0 ? parsed.batches : DEFAULT_STATE.batches,
+          provisioned: parsed.provisioned ?? [],
+          content: parsed.content && parsed.content.length > 0 ? parsed.content : DEFAULT_STATE.content,
         });
       }
     } catch {
@@ -463,6 +468,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [pushCronLog],
   );
 
+  const createBatch = useCallback((b: Omit<Batch, "lastSync">) => {
+    setState((s) => ({
+      ...s,
+      batches: [{ ...b, lastSync: "just now" }, ...s.batches],
+    }));
+    toast.success(`Batch ${b.name} created`);
+  }, []);
+
+  const deleteBatch = useCallback((id: string) => {
+    setState((s) => ({
+      ...s,
+      batches: s.batches.filter((b) => b.id !== id),
+    }));
+    toast.success("Batch deleted");
+  }, []);
+
   const addProvisioned = useCallback(
     (rows: ProvisionedStudent[]) => {
       setState((s) => ({ ...s, provisioned: [...rows, ...s.provisioned].slice(0, 500) }));
@@ -595,7 +616,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const { T, C, A, E, R, M } = profile.readiness;
     const readinessIndex = T * 0.25 + C * 0.2 + A * 0.15 + E * 0.15 + R * 0.15 + M * 0.1;
     const talentScore = Math.round(clamp(readinessIndex * 8.5 + profile.completedLabs.length * 6, 0, 1000));
-    const { profiles: _profiles, ...rest } = state;
     const trackPercent = (id: TrackId) => trackPct(id, profile.skills);
     const percents = profile.activeTracks.map(trackPercent);
     const technicalComplete =
@@ -605,7 +625,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         : (percents[0] ?? 0) >= 100 && percents.slice(1).every((p) => p >= state.secondaryMinimum));
     const placementComplete = profile.attendance.length >= 90 && (profile.assessments["90"] ?? 0) >= 60;
     return {
-      ...rest,
+      ...state,
       ...profile,
       ready,
       student,
@@ -637,6 +657,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       completeDailyStep,
       setReadiness,
       updateBatch,
+      createBatch,
+      deleteBatch,
       syncBatch,
       addProvisioned,
       addContent,
@@ -645,7 +667,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       pushCronLog,
       resetProgress,
     };
-  }, [state, profile, student, supabaseSession, ready, cronLogs, completeSkill, completePlacementDay, submitAssessment, completeMock, issueCertificate, setCompletionRule, signIn, signInSupabase, signUpSupabase, signOut, setRole, toggleTheme, setActiveTracks, completeLab, completeDailyStep, setReadiness, updateBatch, syncBatch, addProvisioned, addContent, updateContent, removeContent, pushCronLog, resetProgress]);
+  }, [state, profile, student, supabaseSession, ready, cronLogs, completeSkill, completePlacementDay, submitAssessment, completeMock, issueCertificate, setCompletionRule, signIn, signInSupabase, signUpSupabase, signOut, setRole, toggleTheme, setActiveTracks, completeLab, completeDailyStep, setReadiness, updateBatch, createBatch, deleteBatch, syncBatch, addProvisioned, addContent, updateContent, removeContent, pushCronLog, resetProgress]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

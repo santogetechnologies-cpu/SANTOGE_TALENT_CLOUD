@@ -1,16 +1,32 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { toast } from "sonner";
-import { Chip, Meter, PageHeader, Panel, Stat } from "@/components/kit";
-import { useAppStore } from "@/lib/app-store";
-import { RefreshCw } from "lucide-react";
+import { Chip, Console, Meter, PageHeader, Panel, Stat } from "@/components/kit";
+import { useAppStore, type Batch } from "@/lib/app-store";
+import { STUDENT_ACCOUNTS } from "@/lib/accounts";
+import {
+  RefreshCw,
+  Plus,
+  Send,
+  Users,
+  Edit2,
+  Check,
+  X,
+  MessageSquare,
+  Sparkles,
+  Layers,
+  Radio,
+  Trash2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/batches")({
   head: () => ({
     meta: [
-      { title: "Batch Management — SantoGe Talent Cloud" },
-      { name: "description", content: "Edit capacity, monitor enrolment fill rates and sync college batches on demand." },
-      { property: "og:title", content: "Batch Management — SantoGe Talent Cloud" },
-      { property: "og:description", content: "Edit capacity, monitor fill rates and sync college batches." },
+      { title: "Batch & Telegram Hub — SantoGe Talent Cloud" },
+      { name: "description", content: "Manage 100–300 sizing constraints, batch renaming, Telegram sync webhooks, and synchronized placement broadcasts." },
+      { property: "og:title", content: "Batch & Telegram Hub — SantoGe Talent Cloud" },
+      { property: "og:description", content: "Manage batch capacity, renaming, and Telegram sync." },
     ],
   }),
   component: BatchesPage,
@@ -18,77 +34,417 @@ export const Route = createFileRoute("/admin/batches")({
 
 function BatchesPage() {
   const store = useAppStore();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [newBatchName, setNewBatchName] = useState("BATCH-2026-PSG-CSE-02");
+  const [newBatchDept, setNewBatchDept] = useState("CSE");
+  const [newBatchCapacity, setNewBatchCapacity] = useState(250);
+  
+  // Telegram broadcast simulator states
+  const [broadcastTargetBatch, setBroadcastTargetBatch] = useState<string>("BATCH-2026-ABC-CSE-01");
+  const [broadcastMessage, setBroadcastMessage] = useState(
+    "📢 Day 26 Morning Broadcast: English Idiom drills & Aptitude Work-Rate formulas are live! Join in-app guided practice before 09:00 AM."
+  );
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcastLogs, setBroadcastLogs] = useState<string[]>([
+    "[bot] Telegram Bot Webhook connected: @SantoGeTalentBot",
+    "[status] 3 Channels active · 669 listeners subscribed",
+  ]);
+
+  // Batch Roster View state
+  const [rosterBatchId, setRosterBatchId] = useState<string | null>(null);
+
   const totalCapacity = store.batches.reduce((s, b) => s + b.capacity, 0);
   const totalEnrolled = store.batches.reduce((s, b) => s + b.enrolled, 0);
+
+  const handleStartEdit = (b: Batch) => {
+    setEditingId(b.id);
+    setEditName(b.name);
+  };
+
+  const handleSaveEdit = (id: string) => {
+    if (!editName.trim()) {
+      toast.error("Batch name cannot be empty");
+      return;
+    }
+    store.updateBatch(id, { name: editName.trim() });
+    setEditingId(null);
+    toast.success("Batch renamed successfully");
+  };
+
+  const handleCreateBatch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBatchName.trim()) {
+      toast.error("Please enter a valid batch name");
+      return;
+    }
+    if (newBatchCapacity < 100 || newBatchCapacity > 300) {
+      toast.error("Batch capacity must be between 100 and 300 students");
+      return;
+    }
+
+    const newId = newBatchName.trim().toUpperCase().replace(/\s+/g, "-");
+    store.createBatch({
+      id: newId,
+      name: newBatchName.trim(),
+      dept: newBatchDept,
+      capacity: newBatchCapacity,
+      enrolled: 0,
+    });
+    setCreateModalOpen(false);
+  };
+
+  const handleDispatchTelegram = () => {
+    if (!broadcastMessage.trim()) return;
+    setIsBroadcasting(true);
+    const target = store.batches.find((b) => b.id === broadcastTargetBatch);
+    const learnerCount = target ? target.enrolled : 200;
+
+    setBroadcastLogs((prev) => [
+      `[tx] Dispatching webhook to Telegram channel: t.me/stc-${broadcastTargetBatch.toLowerCase()}`,
+      `[tx] Payload: "${broadcastMessage.slice(0, 60)}…"`,
+      ...prev,
+    ]);
+
+    setTimeout(() => {
+      setIsBroadcasting(false);
+      store.syncBatch(broadcastTargetBatch);
+      setBroadcastLogs((prev) => [
+        `[delivered] Broadcast received by ${learnerCount} active devices via Telegram Bot API (200 OK)`,
+        ...prev,
+      ]);
+      toast.success(`Broadcast delivered to ${broadcastTargetBatch}!`);
+    }, 1200);
+  };
+
+  // Filter learners in selected roster
+  const rosterLearners = STUDENT_ACCOUNTS.filter(
+    (s) => s.batchId === rosterBatchId || rosterBatchId === "all"
+  );
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Batch Management"
-        subtitle="Capacity, enrolment and sync state for every partner college batch."
-        action={<Chip tone="cyan">{store.batches.length} batches</Chip>}
+        title="Batch Management & Telegram Hub"
+        subtitle="Manage batch sizing (100–300 constraint), batch renaming, Telegram channel webhooks, and morning synchronized broadcasts."
+        action={
+          <button
+            onClick={() => setCreateModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2 text-xs font-bold text-surface-dark shadow-md"
+          >
+            <Plus className="size-4" /> Create New Batch
+          </button>
+        }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Total capacity" value={totalCapacity} />
-        <Stat label="Enrolled" value={totalEnrolled} accent="var(--brand-emerald)" />
-        <Stat label="Fill rate" value={`${Math.round((totalEnrolled / Math.max(totalCapacity, 1)) * 100)}%`} accent="var(--brand-purple)" />
+      <div className="grid gap-4 sm:grid-cols-4">
+        <Stat label="Total Cohorts" value={store.batches.length} hint="Placement Accelerator" />
+        <Stat label="Total Capacity" value={totalCapacity} accent="var(--brand-purple)" hint="Sum of batch allocations" />
+        <Stat label="Enrolled Learners" value={totalEnrolled} accent="var(--brand-emerald)" hint="Active student profiles" />
+        <Stat label="Platform Fill Rate" value={`${Math.round((totalEnrolled / Math.max(totalCapacity, 1)) * 100)}%`} accent="var(--brand-amber)" hint="Cohort utilization" />
       </div>
 
+      {/* Batch Cards Grid */}
       <div className="grid gap-4 lg:grid-cols-2">
         {store.batches.map((b) => {
           const fill = Math.round((b.enrolled / Math.max(b.capacity, 1)) * 100);
+          const isEditing = editingId === b.id;
+
           return (
             <Panel
               key={b.id}
-              title={b.name}
-              subtitle={`${b.dept} · ${b.id}`}
+              title={
+                isEditing ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="rounded-lg border border-brand-cyan/60 bg-surface-dark px-2.5 py-1 text-sm font-bold text-foreground outline-none"
+                    />
+                    <button onClick={() => handleSaveEdit(b.id)} className="text-brand-emerald hover:opacity-80">
+                      <Check className="size-4" />
+                    </button>
+                    <button onClick={() => setEditingId(null)} className="text-copy-subtle hover:text-foreground">
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span>{b.name}</span>
+                    <button
+                      onClick={() => handleStartEdit(b)}
+                      className="text-copy-subtle hover:text-brand-cyan transition-colors"
+                      title="Rename batch"
+                    >
+                      <Edit2 className="size-3.5" />
+                    </button>
+                  </div>
+                )
+              }
+              subtitle={`${b.dept} · ID: ${b.id}`}
               action={
-                <button
-                  onClick={() => {
-                    store.syncBatch(b.id);
-                    toast.success(`${b.name} synced`);
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-line-soft px-3 py-1.5 text-[11px] font-bold text-foreground hover:border-brand-cyan/60"
-                >
-                  <RefreshCw className="size-3.5" /> Sync
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setRosterBatchId(b.id)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-[11px] font-semibold text-foreground hover:border-brand-purple/60"
+                  >
+                    <Users className="size-3" /> Roster
+                  </button>
+                  <button
+                    onClick={() => {
+                      store.syncBatch(b.id);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-[11px] font-bold text-brand-cyan hover:border-brand-cyan/60"
+                  >
+                    <RefreshCw className="size-3" /> Sync
+                  </button>
+                </div>
               }
             >
-              <div className="mb-3 flex items-center justify-between text-xs">
-                <span className="text-copy-subtle">Fill rate</span>
-                <span className="font-mono text-foreground">{b.enrolled}/{b.capacity} · {fill}%</span>
+              <div className="mb-2 flex items-center justify-between text-xs">
+                <span className="text-copy-subtle">Capacity Utilization</span>
+                <span className="font-mono text-foreground font-semibold">
+                  {b.enrolled} / {b.capacity} ({fill}%)
+                </span>
               </div>
               <Meter value={fill} accent={fill >= 80 ? "var(--brand-emerald)" : "var(--brand-cyan)"} />
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <label className="text-xs">
-                  <span className="mb-1 block font-semibold text-copy-subtle">Capacity</span>
+              {/* Sizing Slider (100 - 300 constraint) */}
+              <div className="mt-4 space-y-3 rounded-xl border border-line-soft bg-surface-soft p-3.5">
+                <div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-copy-subtle">Batch Sizing Constraint (100–300):</span>
+                    <span className="font-mono font-bold text-brand-purple">{b.capacity} students</span>
+                  </div>
                   <input
-                    type="number"
+                    type="range"
+                    min={100}
+                    max={300}
+                    step={10}
                     value={b.capacity}
                     onChange={(e) => store.updateBatch(b.id, { capacity: Number(e.target.value) })}
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 font-mono text-xs text-foreground outline-none focus:border-brand-cyan/60"
+                    className="mt-2 w-full accent-[var(--brand-purple)]"
                   />
-                </label>
-                <label className="text-xs">
-                  <span className="mb-1 block font-semibold text-copy-subtle">Enrolled</span>
-                  <input
-                    type="number"
-                    value={b.enrolled}
-                    onChange={(e) => store.updateBatch(b.id, { enrolled: Number(e.target.value) })}
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 font-mono text-xs text-foreground outline-none focus:border-brand-cyan/60"
-                  />
-                </label>
+                  <div className="flex justify-between text-[10px] text-copy-subtle mt-0.5 font-mono">
+                    <span>100 Min</span>
+                    <span>200 Optimum</span>
+                    <span>300 Max</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-line-soft/60 text-xs">
+                  <div>
+                    <span className="block font-semibold text-copy-subtle">Enrolled Learners</span>
+                    <input
+                      type="number"
+                      value={b.enrolled}
+                      max={b.capacity}
+                      onChange={(e) => store.updateBatch(b.id, { enrolled: Math.min(Number(e.target.value), b.capacity) })}
+                      className="mt-1 w-full rounded-lg border border-line-soft bg-surface-dark px-2.5 py-1.5 font-mono text-xs text-foreground outline-none focus:border-brand-cyan/60"
+                    />
+                  </div>
+                  <div>
+                    <span className="block font-semibold text-copy-subtle">Department Tag</span>
+                    <input
+                      type="text"
+                      value={b.dept}
+                      onChange={(e) => store.updateBatch(b.id, { dept: e.target.value })}
+                      className="mt-1 w-full rounded-lg border border-line-soft bg-surface-dark px-2.5 py-1.5 font-mono text-xs text-foreground outline-none focus:border-brand-cyan/60"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <p className="mt-3 text-[11px] text-copy-subtle">
-                Last sync: {b.lastSync ? b.lastSync : "never"}
-              </p>
+              <div className="mt-3 flex items-center justify-between text-[11px] text-copy-subtle">
+                <span className="flex items-center gap-1 text-brand-cyan">
+                  <Send className="size-3" /> t.me/stc-{b.id.toLowerCase()}
+                </span>
+                <span>Last Synced: {b.lastSync ?? "Pending daily cron"}</span>
+              </div>
             </Panel>
           );
         })}
       </div>
+
+      {/* Telegram Webhook & Broadcast Simulator */}
+      <div className="grid gap-4 lg:grid-cols-[1fr_440px]">
+        <Panel
+          title="Telegram Cohort Broadcast Dispatcher"
+          subtitle="Push morning placement lessons, video links, or alerts to the dedicated Telegram channel"
+        >
+          <div className="space-y-3.5">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-copy-subtle">Target Batch Channel</label>
+              <select
+                value={broadcastTargetBatch}
+                onChange={(e) => setBroadcastTargetBatch(e.target.value)}
+                className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2.5 text-xs font-semibold text-foreground outline-none focus:border-brand-cyan/60"
+              >
+                {store.batches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} ({b.enrolled} learners · t.me/stc-{b.id.toLowerCase()})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-copy-subtle">Broadcast Message Content</label>
+              <textarea
+                value={broadcastMessage}
+                onChange={(e) => setBroadcastMessage(e.target.value)}
+                rows={4}
+                placeholder="Enter message for the batch Telegram cohort…"
+                className="w-full rounded-xl border border-line-soft bg-surface-soft p-3 text-xs text-foreground outline-none focus:border-brand-cyan/60"
+              />
+            </div>
+
+            <button
+              onClick={handleDispatchTelegram}
+              disabled={isBroadcasting}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-5 py-2.5 text-xs font-bold text-surface-dark shadow-md transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {isBroadcasting ? <RefreshCw className="size-4 animate-spin" /> : <Send className="size-4" />}
+              {isBroadcasting ? "Pushing to Telegram Webhook…" : "Dispatch to Telegram Channel"}
+            </button>
+          </div>
+        </Panel>
+
+        <Panel title="Telegram Webhook Terminal" subtitle="Live payload delivery logs">
+          <Console lines={broadcastLogs} empty="No broadcast records." />
+        </Panel>
+      </div>
+
+      {/* Create Batch Modal */}
+      {createModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/70 backdrop-blur-md">
+          <form onSubmit={handleCreateBatch} className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-line-soft pb-3">
+              <h3 className="font-display text-base font-bold text-foreground">Create Placement Batch</h3>
+              <button type="button" onClick={() => setCreateModalOpen(false)} className="text-copy-subtle hover:text-foreground">
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="mb-1 block font-semibold text-copy-subtle">Batch Name / Identifier</label>
+                <input
+                  type="text"
+                  required
+                  value={newBatchName}
+                  onChange={(e) => setNewBatchName(e.target.value)}
+                  placeholder="BATCH-2026-ABC-CSE-01"
+                  className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 font-mono text-xs text-foreground outline-none focus:border-brand-cyan/60"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block font-semibold text-copy-subtle">Academic Department</label>
+                <select
+                  value={newBatchDept}
+                  onChange={(e) => setNewBatchDept(e.target.value)}
+                  className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-semibold text-foreground outline-none"
+                >
+                  <option value="CSE">Computer Science &amp; Engineering (CSE)</option>
+                  <option value="IT">Information Technology (IT)</option>
+                  <option value="ECE">Electronics &amp; Communication (ECE)</option>
+                  <option value="MECH">Mechanical / Robotics</option>
+                  <option value="ALL">Interdisciplinary / Combined</option>
+                </select>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between font-semibold text-copy-subtle">
+                  <span>Batch Capacity (100–300 max):</span>
+                  <span className="font-mono font-bold text-brand-cyan">{newBatchCapacity}</span>
+                </div>
+                <input
+                  type="range"
+                  min={100}
+                  max={300}
+                  step={10}
+                  value={newBatchCapacity}
+                  onChange={(e) => setNewBatchCapacity(Number(e.target.value))}
+                  className="mt-2 w-full accent-[var(--brand-cyan)]"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-line-soft">
+              <button
+                type="button"
+                onClick={() => setCreateModalOpen(false)}
+                className="rounded-xl border border-line-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2 text-xs font-bold text-surface-dark"
+              >
+                Create Batch
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Batch Roster Modal */}
+      {rosterBatchId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/70 backdrop-blur-md">
+          <div className="w-full max-w-2xl rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-line-soft pb-3">
+              <div>
+                <h3 className="font-display text-base font-bold text-foreground">Cohort Roster: {rosterBatchId}</h3>
+                <p className="text-xs text-copy-subtle mt-0.5">Learners enrolled in this synchronized placement batch</p>
+              </div>
+              <button onClick={() => setRosterBatchId(null)} className="text-copy-subtle hover:text-foreground">
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {rosterLearners.length > 0 ? (
+                rosterLearners.map((learner) => (
+                  <div key={learner.email} className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft p-3 text-xs">
+                    <div>
+                      <p className="font-bold text-foreground">{learner.name}</p>
+                      <p className="font-mono text-copy-subtle text-[11px]">{learner.rollNo} · {learner.email}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        {learner.tracks.map((t) => (
+                          <span key={t} className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[10px] font-mono">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                      <span className="font-mono text-brand-amber text-xs font-bold">🔥 {learner.streak}d</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-8 text-center text-xs text-copy-subtle">
+                  No provisioned learners assigned to this batch yet.
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-line-soft">
+              <button
+                onClick={() => setRosterBatchId(null)}
+                className="rounded-xl border border-line-soft px-4 py-2 text-xs font-semibold text-foreground"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
