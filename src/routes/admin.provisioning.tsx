@@ -5,6 +5,7 @@ import { Chip, Console, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore, type ProvisionedStudent } from "@/lib/app-store";
 import { Download, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, RefreshCw, KeyRound, Sparkles } from "lucide-react";
 import { TRACKS } from "@/lib/tracks";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/provisioning")({
   head: () => ({
