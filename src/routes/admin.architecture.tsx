@@ -300,6 +300,64 @@ function ArchitecturePage() {
               </div>
             </div>
           </Panel>
+
+          {/* Full-width Architecture Callout: Day 1 to Day 90 Chronological To-Do Backlog & Catch-Up Workflow */}
+          <div className="lg:col-span-2 rounded-2xl border border-brand-cyan/40 bg-surface-soft p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="grid size-8 place-items-center rounded-xl bg-brand-cyan/15 text-brand-cyan border border-brand-cyan/30">
+                  <Workflow className="size-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-foreground">
+                    Chronological Day 1 to Day 90 To-Do Backlog &amp; Catch-Up Engine
+                  </h4>
+                  <p className="text-xs text-copy-subtle">
+                    Guaranteed zero-dropout remediation: Every missed day remains actionable from Day 1 to current cohort day.
+                  </p>
+                </div>
+              </div>
+              <Chip tone="cyan">Non-Blocking Remediation Pipeline</Chip>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-4 text-xs">
+              <div className="rounded-xl border border-line-soft bg-surface-dark p-3.5 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-brand-rose">
+                  <span className="font-mono">01.</span> Strict Chronological Order
+                </div>
+                <p className="text-copy-subtle text-[11px] leading-relaxed">
+                  Days are rendered from Day 1, Day 2 up to current cohort day (e.g. Day 89). Unfinished items appear chronologically so students never skip foundational prerequisites.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-line-soft bg-surface-dark p-3.5 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-brand-purple">
+                  <span className="font-mono">02.</span> Dual Sub-Task Requirement
+                </div>
+                <p className="text-copy-subtle text-[11px] leading-relaxed">
+                  Each day requires completing BOTH Placement 30m (English + Aptitude + AI Pitch) and Technical Skill 30m (Concept + Lab). Both must finish to clear that day.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-line-soft bg-surface-dark p-3.5 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-brand-cyan">
+                  <span className="font-mono">03.</span> Direct Interactive Deep-Link
+                </div>
+                <p className="text-copy-subtle text-[11px] leading-relaxed">
+                  Clicking "To-Do →" on any missed day smoothly switches and scrolls to the selected day's interactive drill workspace below without navigating away.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-line-soft bg-surface-dark p-3.5 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-brand-emerald">
+                  <span className="font-mono">04.</span> Instant Verification &amp; Dual Gate
+                </div>
+                <p className="text-copy-subtle text-[11px] leading-relaxed">
+                  Completing labs and AI pitches marks the day as "Finished &amp; Verified ✓", increments XP (+50/+25), and clears prerequisites toward Day 90 Dual Gate unlocking.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
