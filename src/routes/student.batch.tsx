@@ -130,6 +130,12 @@ function BatchPage() {
             >
               <CheckCircle2 className="size-3.5" /> {attendedToday ? "Attendance recorded" : "Mark attendance"}
             </button>
+            <a
+              href="/student/accelerator"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-brand-cyan/60 bg-brand-cyan/10 px-3 py-2 text-[11px] font-bold text-brand-cyan hover:bg-brand-cyan/20 transition-colors"
+            >
+              🚀 Launch 30m Accelerator Routine →
+            </a>
             {day.assessment && (
               <button
                 onClick={() => store.submitAssessment(day.day, 60 + ((day.day * 7) % 35))}
