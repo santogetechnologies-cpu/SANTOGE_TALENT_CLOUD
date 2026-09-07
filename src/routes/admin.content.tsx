@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
-import { Chip, PageHeader, Panel, Stat } from "@/components/kit";
+import { Chip, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore } from "@/lib/app-store";
 import { TRACKS, type TrackId, trackById } from "@/lib/tracks";
 import { getTrackSyllabus } from "@/lib/syllabus-data";

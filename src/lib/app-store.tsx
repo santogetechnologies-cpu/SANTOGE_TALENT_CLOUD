@@ -76,6 +76,7 @@ export type Profile = {
   placementDay: number;
   attendance: number[];
   assessments: Record<string, number>;
+  completedTechDays: number[];
   /** Phase 2 */
   mocks: Record<string, number>;
   certifications: string[];
@@ -110,6 +111,7 @@ const profileFor = (a: StudentAccount): Profile => ({
   placementDay: a.placementDay,
   attendance: Array.from({ length: Math.max(a.placementDay - 1, 0) }, (_, i) => i + 1),
   assessments: a.placementDay > 30 ? { "30": 74 } : {},
+  completedTechDays: Array.from({ length: Math.max(a.placementDay - 1, 0) }, (_, i) => i + 1),
   mocks: {},
   certifications: [],
 });
@@ -163,6 +165,7 @@ type Store = Persisted &
     trackPercent: (id: TrackId) => number;
     completeSkill: (trackId: TrackId, skillId: string, name: string) => void;
     completePlacementDay: (day: number) => void;
+    completeTechDay: (day: number) => void;
     submitAssessment: (day: number, score: number) => void;
     completeMock: (id: string, score: number) => void;
     issueCertificate: (label: string) => void;
@@ -555,7 +558,27 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           },
         };
       });
-      toast.success(`Day ${day} attendance recorded`, { description: "Batch placement progress updated." });
+      toast.success(`Day ${day} placement attendance recorded`, { description: "Batch placement progress updated." });
+    },
+    [patchProfile],
+  );
+
+  const completeTechDay = useCallback(
+    (day: number) => {
+      patchProfile((p) => {
+        const list = p.completedTechDays || [];
+        if (list.includes(day)) return p;
+        return {
+          ...p,
+          completedTechDays: [...list, day],
+          xp: p.xp + 50,
+          readiness: {
+            ...p.readiness,
+            T: clamp(p.readiness.T + 2, 0, 100),
+          },
+        };
+      });
+      toast.success(`Day ${day} technical lab verified (+50 XP)`, { description: "Technical competency updated." });
     },
     [patchProfile],
   );
@@ -642,6 +665,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       trackPercent,
       completeSkill,
       completePlacementDay,
+      completeTechDay,
       submitAssessment,
       completeMock,
       issueCertificate,
@@ -667,7 +691,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       pushCronLog,
       resetProgress,
     };
-  }, [state, profile, student, supabaseSession, ready, cronLogs, completeSkill, completePlacementDay, submitAssessment, completeMock, issueCertificate, setCompletionRule, signIn, signInSupabase, signUpSupabase, signOut, setRole, toggleTheme, setActiveTracks, completeLab, completeDailyStep, setReadiness, updateBatch, createBatch, deleteBatch, syncBatch, addProvisioned, addContent, updateContent, removeContent, pushCronLog, resetProgress]);
+  }, [state, profile, student, supabaseSession, ready, cronLogs, completeSkill, completePlacementDay, completeTechDay, submitAssessment, completeMock, issueCertificate, setCompletionRule, signIn, signInSupabase, signUpSupabase, signOut, setRole, toggleTheme, setActiveTracks, completeLab, completeDailyStep, setReadiness, updateBatch, createBatch, deleteBatch, syncBatch, addProvisioned, addContent, updateContent, removeContent, pushCronLog, resetProgress]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
