@@ -1,0 +1,7 @@
+- [x] Replace starter placeholder with SantoGe Talent Cloud demo workspace
+- [x] Add 8 interactive views, demo roles, simulators, modals, search, and readiness model
+- [x] Add semantic light/dark design tokens and brand typography
+- [x] Rebuild as real routed app: Student + Admin portals with role switcher
+- [x] 15 interactive technical labs, 30m accelerator, placement tracker, ATS gateway
+- [x] Admin: analytics, CSV provisioning, batches, cron automations, Architecture & Workflow Hub, settings
+- [x] Validate preview and resolve any runtime or build issues

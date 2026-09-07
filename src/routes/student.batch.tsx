@@ -1,0 +1,160 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { Chip, Meter, PageHeader, Panel, Stat } from "@/components/kit";
+import { useAppStore } from "@/lib/app-store";
+import { PLACEMENT_DAYS, placementDay } from "@/lib/curriculum";
+import { cn } from "@/lib/utils";
+import { CalendarDays, CheckCircle2, ClipboardCheck, Megaphone, Send, Users } from "lucide-react";
+
+export const Route = createFileRoute("/student/batch")({
+  head: () => ({
+    meta: [
+      { title: "Placement Accelerator Batch — SantoGe Talent Cloud" },
+      { name: "description", content: "Your batch cohort: Telegram channel, the synchronised 90-day English, aptitude and communication schedule, attendance and weekly assessments." },
+      { property: "og:title", content: "Placement Accelerator Batch — SantoGe Talent Cloud" },
+      { property: "og:description", content: "Telegram cohort, 90-day synchronised schedule, attendance and weekly assessments." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: BatchPage,
+});
+
+const CHANNELS = ["English", "Aptitude", "Communication", "Announcements", "Reminders"];
+
+function BatchPage() {
+  const store = useAppStore();
+  const batchId = store.student?.batchId ?? "BATCH";
+  const batch = store.batches.find((b) => b.id === batchId);
+  const [selected, setSelected] = useState(store.placementDay);
+  const day = placementDay(selected);
+  const attendancePct = Math.round((store.attendance.length / 90) * 100);
+  const assessmentDays = useMemo(() => PLACEMENT_DAYS.filter((d) => d.assessment), []);
+  const attendedToday = store.attendance.includes(selected);
+  const assessmentScore = store.assessments[String(selected)];
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Placement Accelerator · Batch"
+        subtitle="One cohort, one Telegram group, one synchronised 90-day placement journey — shared by every student in your batch."
+        action={<Chip tone="purple">{batchId}</Chip>}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label="Cohort day" value={`Day ${store.placementDay}/90`} hint="Same day for every batchmate" />
+        <Stat label="Attendance" value={`${attendancePct}%`} accent="var(--brand-emerald)" hint={`${store.attendance.length} of 90 days`} />
+        <Stat label="Batch size" value={batch ? batch.enrolled : 218} accent="var(--brand-purple)" hint={batch ? `${batch.dept} · capacity ${batch.capacity}` : "Enrolled learners"} />
+        <Stat label="Assessments taken" value={Object.keys(store.assessments).length} accent="var(--brand-amber)" hint="Weekly + milestone" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Panel title="Telegram cohort" subtitle="Delivery channel for the placement journey only">
+          <div className="mb-3 flex items-center gap-2 rounded-xl border border-line-soft bg-surface-soft p-3 text-xs text-foreground">
+            <Send className="size-4 text-brand-cyan" /> t.me/stc-{batchId.toLowerCase()}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {CHANNELS.map((c) => (
+              <Chip key={c} tone="muted">{c}</Chip>
+            ))}
+          </div>
+          <p className="mt-3 flex items-start gap-2 text-[11px] leading-relaxed text-copy-subtle">
+            <Megaphone className="mt-0.5 size-3.5 shrink-0 text-brand-amber" />
+            Technical courses have no Telegram group — MERN, SAP FICO or Medical Coding learning stays inside your own
+            technical journey.
+          </p>
+          <p className="mt-2 text-[11px] text-copy-subtle">Last sync: {batch?.lastSync ?? "handled by the daily 06:00 broadcast"}</p>
+        </Panel>
+
+        <Panel title="Cohort composition" subtitle="Same placement batch, many technical paths">
+          <div className="flex items-center gap-2 text-xs text-foreground">
+            <Users className="size-4 text-brand-purple" /> {batch ? batch.enrolled : 218} students · one Placement Accelerator
+          </div>
+          <ul className="mt-3 space-y-2 text-xs text-copy-subtle">
+            <li>Same English, aptitude and communication schedule</li>
+            <li>Same Telegram cohort and placement calendar</li>
+            <li>Independent technical tracks per student (1–3 courses)</li>
+          </ul>
+          <div className="mt-4">
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-widest text-copy-subtle">Placement progress</p>
+            <Meter value={attendancePct} accent="var(--brand-purple)" />
+          </div>
+        </Panel>
+      </div>
+
+      <Panel
+        title="90-day placement calendar"
+        subtitle="Fixed for the whole batch · Friday = weekly assessment"
+        action={<Chip tone="cyan">Week {day.week}</Chip>}
+      >
+        <div className="grid grid-cols-10 gap-1.5">
+          {PLACEMENT_DAYS.map((d) => {
+            const attended = store.attendance.includes(d.day);
+            return (
+              <button
+                key={d.day}
+                onClick={() => setSelected(d.day)}
+                title={`Day ${d.day} · ${d.weekday}`}
+                className={cn(
+                  "aspect-square rounded-lg border text-[10px] font-bold transition-colors",
+                  selected === d.day && "ring-2 ring-brand-cyan",
+                  attended
+                    ? "border-brand-emerald/50 bg-brand-emerald/15 text-brand-emerald"
+                    : d.milestone
+                      ? "border-brand-amber/50 text-brand-amber"
+                      : "border-line-soft text-copy-subtle hover:text-foreground",
+                )}
+              >
+                {d.day}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 rounded-xl border border-line-soft bg-surface-soft p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <CalendarDays className="size-4 text-brand-cyan" />
+            <p className="text-sm font-semibold text-foreground">Day {day.day} · {day.weekday} · Week {day.week}</p>
+            {day.milestone && <Chip tone="amber">{day.milestone}</Chip>}
+          </div>
+          <ul className="mt-3 space-y-2 text-xs text-foreground">
+            <li className="rounded-lg border border-line-soft px-3 py-2">10m · {day.english}</li>
+            <li className="rounded-lg border border-line-soft px-3 py-2">10m · {day.aptitude}</li>
+            <li className="rounded-lg border border-line-soft px-3 py-2">10m · Guided practice · {day.practice}</li>
+          </ul>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              onClick={() => store.completePlacementDay(day.day)}
+              disabled={attendedToday}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-3 py-2 text-[11px] font-bold text-surface-dark disabled:opacity-50"
+            >
+              <CheckCircle2 className="size-3.5" /> {attendedToday ? "Attendance recorded" : "Mark attendance"}
+            </button>
+            {day.assessment && (
+              <button
+                onClick={() => store.submitAssessment(day.day, 60 + ((day.day * 7) % 35))}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-line-soft px-3 py-2 text-[11px] font-bold text-foreground hover:border-brand-cyan/60"
+              >
+                <ClipboardCheck className="size-3.5" /> {assessmentScore ? `Assessment ${assessmentScore}%` : "Take assessment"}
+              </button>
+            )}
+          </div>
+        </div>
+      </Panel>
+
+      <Panel title="Assessment history" subtitle="Weekly Friday checks plus day 30 / 60 / 90 milestones">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {assessmentDays.map((d) => {
+            const score = store.assessments[String(d.day)];
+            return (
+              <div key={d.day} className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft px-3 py-2.5 text-xs">
+                <span className="text-foreground">Day {d.day} {d.milestone ? `· ${d.milestone}` : "· Weekly"}</span>
+                <span className={cn("font-mono", score ? "text-brand-emerald" : "text-copy-subtle")}>{score ? `${score}%` : "pending"}</span>
+              </div>
+            );
+          })}
+        </div>
+      </Panel>
+    </div>
+  );
+}

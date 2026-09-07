@@ -1,0 +1,16 @@
+{
+  "name": "SantoGe Talent Cloud",
+  "short_name": "SantoGe STC",
+  "description": "Interactive Technical Skill Engine, Placement Accelerator, and Talent Readiness Workspace",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070a12",
+  "theme_color": "#00e5ff",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
