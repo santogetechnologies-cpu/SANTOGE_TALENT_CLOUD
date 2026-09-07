@@ -14,14 +14,13 @@ import {
   AlertCircle,
   Settings,
   ChevronDown,
-  UserPlus,
   RefreshCw,
-  BookOpen,
+  Info,
 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { useAppStore } from "@/lib/app-store";
 import { ADMIN_ACCOUNT, STUDENT_ACCOUNTS } from "@/lib/accounts";
-import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
+import { trackById } from "@/lib/tracks";
 import {
   getSupabaseConfig,
   saveSupabaseConfig,
@@ -44,7 +43,6 @@ export const Route = createFileRoute("/login")({
 });
 
 type LoginMode = "demo" | "supabase";
-type SupabaseTab = "signin" | "signup";
 
 function LoginPage() {
   const store = useAppStore();
@@ -52,20 +50,12 @@ function LoginPage() {
 
   // Mode state: 'demo' vs 'supabase'
   const [mode, setMode] = useState<LoginMode>("demo");
-  const [supabaseTab, setSupabaseTab] = useState<SupabaseTab>("signin");
 
   // Form states
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // Sign up fields for Supabase
-  const [name, setName] = useState("");
-  const [rollNo, setRollNo] = useState("");
-  const [dept, setDept] = useState("CSE");
-  const [batchId, setBatchId] = useState("BATCH-2026-ABC-CSE-01");
-  const [selectedTracks, setSelectedTracks] = useState<TrackId[]>(["mern", "cloud", "aiml"]);
 
   // Supabase connection config & test state
   const [showConfig, setShowConfig] = useState(false);
@@ -77,7 +67,7 @@ function LoginPage() {
     setSbConfig(getSupabaseConfig());
   }, []);
 
-  // Submit handler
+  // Demo submit handler
   const handleDemoSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     setError("");
@@ -90,48 +80,24 @@ function LoginPage() {
     void navigate({ to: res.role === "admin" ? "/admin" : "/student" });
   };
 
+  // Live Supabase submit handler
   const handleSupabaseSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!email || !password) {
-      setError("Please fill in email and password");
+      setError("Please enter your email and password");
       return;
     }
     setError("");
     setLoading(true);
 
-    if (supabaseTab === "signin") {
-      const res = await store.signInSupabase(email, password);
-      setLoading(false);
-      if (!res.ok) {
-        setError(res.error || "Supabase sign in failed");
-        return;
-      }
-      toast.success(res.role === "admin" ? "Signed in as Platform Admin" : "Live Supabase session started");
-      void navigate({ to: res.role === "admin" ? "/admin" : "/student" });
-    } else {
-      // Sign up
-      if (selectedTracks.length === 0) {
-        setError("Please choose at least 1 technical course");
-        setLoading(false);
-        return;
-      }
-      const res = await store.signUpSupabase(email, password, {
-        name,
-        rollNo,
-        dept,
-        batchId,
-        tracks: selectedTracks,
-        college: "Partner Institution",
-        role: "student",
-      });
-      setLoading(false);
-      if (!res.ok) {
-        setError(res.error || "Supabase sign up failed");
-        return;
-      }
-      toast.success("Account created & signed in!");
-      void navigate({ to: "/student" });
+    const res = await store.signInSupabase(email, password);
+    setLoading(false);
+    if (!res.ok) {
+      setError(res.error || "Supabase sign in failed. Ensure your account is provisioned.");
+      return;
     }
+    toast.success(res.role === "admin" ? "Signed in as Platform Super Admin" : "Live Supabase session active");
+    void navigate({ to: res.role === "admin" ? "/admin" : "/student" });
   };
 
   const quickDemo = (e: string, p: string) => {
@@ -142,22 +108,6 @@ function LoginPage() {
     if (res.ok) {
       toast.success(`Signed in as ${e.includes("admin") ? "Super Admin" : e.split("@")[0]}`);
       void navigate({ to: res.role === "admin" ? "/admin" : "/student" });
-    }
-  };
-
-  const toggleTrack = (id: TrackId) => {
-    if (selectedTracks.includes(id)) {
-      if (selectedTracks.length > 1) {
-        setSelectedTracks(selectedTracks.filter((t) => t !== id));
-      } else {
-        toast.error("You must select at least 1 technical course");
-      }
-    } else {
-      if (selectedTracks.length < 3) {
-        setSelectedTracks([...selectedTracks, id]);
-      } else {
-        toast.error("Maximum 3 courses allowed in Phase 1");
-      }
     }
   };
 
@@ -371,7 +321,7 @@ function LoginPage() {
           </div>
         ) : (
           /* ================= LIVE SUPABASE LOGIN VIEW ================= */
-          <div className="mx-auto max-w-[620px] space-y-4">
+          <div className="mx-auto max-w-[540px] space-y-4">
             <div className="rounded-2xl border border-line-soft bg-surface-elevated/95 p-6 backdrop-blur-xl shadow-2xl">
               
               {/* Header */}
@@ -386,6 +336,11 @@ function LoginPage() {
                   <Settings className="size-3.5" /> Endpoint Settings <ChevronDown className={cn("size-3 transition-transform", showConfig && "rotate-180")} />
                 </button>
               </div>
+
+              <h1 className="mt-4 font-display text-2xl font-bold text-foreground">Live Supabase Sign in</h1>
+              <p className="mt-1 text-xs text-copy-subtle leading-relaxed">
+                Sign in with the credentials provisioned by your partner institution or platform administrator.
+              </p>
 
               {/* Collapsible Supabase Project Config Drawer */}
               {showConfig && (
@@ -436,128 +391,10 @@ function LoginPage() {
                 </div>
               )}
 
-              {/* Sign In vs Sign Up Tabs */}
-              <div className="mt-5 flex border-b border-line-soft">
-                <button
-                  onClick={() => {
-                    setSupabaseTab("signin");
-                    setError("");
-                  }}
-                  className={cn(
-                    "flex-1 pb-3 text-center text-xs font-bold transition-colors border-b-2",
-                    supabaseTab === "signin"
-                      ? "border-brand-cyan text-brand-cyan"
-                      : "border-transparent text-copy-subtle hover:text-foreground"
-                  )}
-                >
-                  <LogIn className="inline size-3.5 mr-1.5" /> Sign In
-                </button>
-                <button
-                  onClick={() => {
-                    setSupabaseTab("signup");
-                    setError("");
-                  }}
-                  className={cn(
-                    "flex-1 pb-3 text-center text-xs font-bold transition-colors border-b-2",
-                    supabaseTab === "signup"
-                      ? "border-brand-purple text-brand-purple"
-                      : "border-transparent text-copy-subtle hover:text-foreground"
-                  )}
-                >
-                  <UserPlus className="inline size-3.5 mr-1.5" /> Create Live Account
-                </button>
-              </div>
-
-              {/* Supabase Form */}
+              {/* Supabase Sign In Form */}
               <form onSubmit={handleSupabaseSubmit} className="mt-5 space-y-3.5">
-                {supabaseTab === "signup" && (
-                  <>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-copy-subtle">Full Name</label>
-                        <input
-                          type="text"
-                          required
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          placeholder="Ajay Kumar"
-                          className="w-full rounded-xl border border-line-soft bg-surface-soft px-3.5 py-2 text-sm text-foreground outline-none focus:border-brand-purple/60"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-copy-subtle">Roll Number</label>
-                        <input
-                          type="text"
-                          required
-                          value={rollNo}
-                          onChange={(e) => setRollNo(e.target.value)}
-                          placeholder="ABC22CSE014"
-                          className="w-full rounded-xl border border-line-soft bg-surface-soft px-3.5 py-2 text-sm text-foreground outline-none focus:border-brand-purple/60"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-copy-subtle">Department</label>
-                        <select
-                          value={dept}
-                          onChange={(e) => setDept(e.target.value)}
-                          className="w-full rounded-xl border border-line-soft bg-surface-soft px-3.5 py-2 text-sm text-foreground outline-none focus:border-brand-purple/60"
-                        >
-                          <option value="CSE">CSE (Computer Science)</option>
-                          <option value="IT">IT (Information Tech)</option>
-                          <option value="ECE">ECE (Electronics &amp; Comm)</option>
-                          <option value="MECH">Mechanical / Other</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-copy-subtle">Placement Batch ID</label>
-                        <input
-                          type="text"
-                          value={batchId}
-                          onChange={(e) => setBatchId(e.target.value)}
-                          placeholder="BATCH-2026-ABC-CSE-01"
-                          className="w-full rounded-xl border border-line-soft bg-surface-soft px-3.5 py-2 text-sm text-foreground outline-none focus:border-brand-purple/60"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Course Selection (1-3 Courses) */}
-                    <div>
-                      <div className="mb-1.5 flex items-center justify-between">
-                        <label className="text-xs font-semibold text-copy-subtle">
-                          Select 1 to 3 Technical Tracks ({selectedTracks.length}/3 selected)
-                        </label>
-                        <span className="text-[10px] text-brand-purple font-semibold">Self-Paced ITSE</span>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[160px] overflow-y-auto p-1 rounded-xl border border-line-soft bg-surface-soft">
-                        {TRACKS.map((t) => {
-                          const isSelected = selectedTracks.includes(t.id);
-                          return (
-                            <button
-                              key={t.id}
-                              type="button"
-                              onClick={() => toggleTrack(t.id)}
-                              className={cn(
-                                "flex items-center gap-1.5 rounded-lg border p-2 text-left text-[11px] transition-all",
-                                isSelected
-                                  ? "border-brand-purple/70 bg-brand-purple/15 text-foreground font-semibold"
-                                  : "border-line-soft/60 text-copy-subtle hover:text-foreground"
-                              )}
-                            >
-                              <BookOpen className={cn("size-3 shrink-0", isSelected ? "text-brand-purple" : "text-copy-subtle")} />
-                              <span className="truncate">{t.short}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </>
-                )}
-
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-copy-subtle">Email Address</label>
+                  <label className="mb-1 block text-xs font-semibold text-copy-subtle">Institutional Email Address</label>
                   <input
                     type="email"
                     required
@@ -593,14 +430,20 @@ function LoginPage() {
                 >
                   {loading ? (
                     <RefreshCw className="size-4 animate-spin" />
-                  ) : supabaseTab === "signin" ? (
-                    <LogIn className="size-4" />
                   ) : (
-                    <UserPlus className="size-4" />
+                    <LogIn className="size-4" />
                   )}
-                  {loading ? "Authenticating..." : supabaseTab === "signin" ? "Sign In via Supabase" : "Create Account & Launch"}
+                  {loading ? "Authenticating via Supabase..." : "Sign In via Supabase"}
                 </button>
               </form>
+
+              {/* Institutional Provisioning Notice */}
+              <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-line-soft bg-surface-soft/80 p-3 text-[11px] text-copy-subtle">
+                <Info className="size-4 shrink-0 text-brand-cyan mt-0.5" />
+                <div>
+                  <span className="font-semibold text-foreground">Stage 0 Institutional Provisioning:</span> Student accounts are created in bulk via CSV roster uploads by college administrators. Self-signup is disabled to preserve cohort batch integrity and 1–3 technical course track mappings.
+                </div>
+              </div>
             </div>
           </div>
         )}
