@@ -43,7 +43,12 @@ type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; sectio
 const STUDENT_NAV: NavItem[] = [
   { to: "/student", label: "Today's Learning & Drills", icon: LayoutDashboard },
   { to: "/student/technical", label: "90-Day Tracks & Portfolio", icon: Code2 },
-  { to: "/student/gateway", label: "Career Gateway (Phase 2)", icon: FileText, section: "Career & Placement" },
+  {
+    to: "/student/gateway",
+    label: "Career Gateway (Phase 2)",
+    icon: FileText,
+    section: "Career & Placement",
+  },
   { to: "/student/settings", label: "Settings & Courses", icon: Settings2 },
 ];
 
@@ -59,7 +64,8 @@ const ADMIN_NAV: NavItem[] = [
 
 type SearchResult = {
   title: string;
-  category: "Technical Tracks" | "Interactive Labs" | "Placement Tools" | "Platform Admin" | "Pages";
+  category:
+    "Technical Tracks" | "Interactive Labs" | "Placement Tools" | "Platform Admin" | "Pages";
   to: string;
   desc: string;
 };
@@ -177,7 +183,9 @@ export function AppShell({ portal }: { portal: Role }) {
     setPersonaDropdownOpen(false);
     const res = store.signIn(email, pass);
     if (res.ok) {
-      toast.success(`Switched account to ${email.includes("admin") ? "Platform Super Admin" : email.split("@")[0]}`);
+      toast.success(
+        `Switched account to ${email.includes("admin") ? "Platform Super Admin" : email.split("@")[0]}`,
+      );
       void navigate({ to: role === "admin" ? "/admin" : "/student" });
     }
   };
@@ -213,14 +221,15 @@ export function AppShell({ portal }: { portal: Role }) {
     );
   }
 
-  const label = portal === "student" ? (store.student?.name ?? "Student Learner") : "Platform Super Admin";
+  const label =
+    portal === "student" ? (store.student?.name ?? "Student Learner") : "Platform Super Admin";
 
   const filteredSearchResults = searchQuery.trim()
     ? SEARCH_ITEMS.filter(
         (item) =>
           item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           item.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.category.toLowerCase().includes(searchQuery.toLowerCase())
+          item.category.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : SEARCH_ITEMS.slice(0, 8);
 
@@ -240,11 +249,19 @@ export function AppShell({ portal }: { portal: Role }) {
                 <Hexagon className="size-5 text-surface-dark" />
               </span>
               <div>
-                <p className="font-display text-sm font-bold leading-tight text-foreground">SantoGe</p>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-copy-subtle">Talent Cloud</p>
+                <p className="font-display text-sm font-bold leading-tight text-foreground">
+                  SantoGe
+                </p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-copy-subtle">
+                  Talent Cloud
+                </p>
               </div>
             </div>
-            <button className="lg:hidden" onClick={() => setOpen(false)} aria-label="Close navigation">
+            <button
+              className="lg:hidden"
+              onClick={() => setOpen(false)}
+              aria-label="Close navigation"
+            >
               <X className="size-5 text-copy-subtle" />
             </button>
           </div>
@@ -253,7 +270,11 @@ export function AppShell({ portal }: { portal: Role }) {
           <div className="mb-4 rounded-xl border border-line-soft bg-surface-soft p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                {portal === "student" ? <GraduationCap className="size-4 text-brand-cyan" /> : <Shield className="size-4 text-brand-purple" />}
+                {portal === "student" ? (
+                  <GraduationCap className="size-4 text-brand-cyan" />
+                ) : (
+                  <Shield className="size-4 text-brand-purple" />
+                )}
                 <span className="truncate max-w-[140px]">{label}</span>
               </div>
               <span className="rounded bg-surface-elevated px-1.5 py-0.5 text-[9px] font-bold uppercase text-brand-cyan">
@@ -289,7 +310,12 @@ export function AppShell({ portal }: { portal: Role }) {
             {nav.map((item, idx) => (
               <div key={item.to}>
                 {item.section && (
-                  <p className={cn("px-3 text-[10px] font-bold uppercase tracking-wider text-copy-subtle/80", idx > 0 ? "mt-3 mb-1" : "mb-1")}>
+                  <p
+                    className={cn(
+                      "px-3 text-[10px] font-bold uppercase tracking-wider text-copy-subtle/80",
+                      idx > 0 ? "mt-3 mb-1" : "mb-1",
+                    )}
+                  >
                     {item.section}
                   </p>
                 )}
@@ -309,8 +335,12 @@ export function AppShell({ portal }: { portal: Role }) {
           {/* Bottom Talent Score Indicator */}
           <div className="mt-3 rounded-xl border border-line-soft bg-surface-soft p-3">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-copy-subtle">Talent Score</p>
-              <span className="font-mono text-xs font-bold text-brand-cyan">{store.talentScore}/1000</span>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-copy-subtle">
+                Talent Score
+              </p>
+              <span className="font-mono text-xs font-bold text-brand-cyan">
+                {store.talentScore}/1000
+              </span>
             </div>
             <div className="mt-1.5 flex items-center justify-between text-[10px] text-copy-subtle">
               <span>Gate: {store.gateUnlocked ? "Unlocked 🔓" : "In Progress 🔒"}</span>
@@ -319,12 +349,21 @@ export function AppShell({ portal }: { portal: Role }) {
           </div>
         </aside>
 
-        {open && <div className="fixed inset-0 z-30 bg-brand-ink/50 lg:hidden" onClick={() => setOpen(false)} />}
+        {open && (
+          <div
+            className="fixed inset-0 z-30 bg-brand-ink/50 lg:hidden"
+            onClick={() => setOpen(false)}
+          />
+        )}
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Top Header */}
           <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line-soft bg-surface/80 px-4 py-2.5 backdrop-blur-xl sm:px-6">
-            <button className="lg:hidden" onClick={() => setOpen(true)} aria-label="Open navigation">
+            <button
+              className="lg:hidden"
+              onClick={() => setOpen(true)}
+              aria-label="Open navigation"
+            >
               <Menu className="size-5 text-foreground" />
             </button>
 
@@ -355,7 +394,8 @@ export function AppShell({ portal }: { portal: Role }) {
                     onClick={() => setCourseModalOpen(true)}
                     className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 px-2.5 py-1.5 text-xs font-bold text-brand-cyan hover:bg-brand-cyan/20"
                   >
-                    <BookOpen className="size-3.5" /> Course Switcher ({store.activeTracks.length}/3)
+                    <BookOpen className="size-3.5" /> Course Switcher ({store.activeTracks.length}
+                    /3)
                   </button>
                 </>
               )}
@@ -377,17 +417,27 @@ export function AppShell({ portal }: { portal: Role }) {
                 >
                   <Sparkles className="size-3.5" />
                   <span className="hidden sm:inline">Quick Persona</span>
-                  <ChevronDown className={cn("size-3 transition-transform", personaDropdownOpen && "rotate-180")} />
+                  <ChevronDown
+                    className={cn(
+                      "size-3 transition-transform",
+                      personaDropdownOpen && "rotate-180",
+                    )}
+                  />
                 </button>
 
                 {personaDropdownOpen && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setPersonaDropdownOpen(false)} />
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setPersonaDropdownOpen(false)}
+                    />
                     <div className="absolute right-0 mt-2 z-50 w-72 rounded-2xl border border-line-soft bg-surface-elevated p-2 shadow-2xl backdrop-blur-xl">
                       <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-copy-subtle">
-                        {portal === "admin" ? "Active Admin Session" : "Switch Demo Profile (1-Click)"}
+                        {portal === "admin"
+                          ? "Active Admin Session"
+                          : "Switch Demo Profile (1-Click)"}
                       </p>
-                      
+
                       <div className="mt-1 space-y-1">
                         {portal !== "admin" &&
                           STUDENT_ACCOUNTS.map((s) => (
@@ -396,33 +446,46 @@ export function AppShell({ portal }: { portal: Role }) {
                               onClick={() => switchPersona(s.email, s.password, "student")}
                               className={cn(
                                 "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-colors hover:bg-surface-soft",
-                                store.sessionEmail === s.email && "bg-surface-soft font-bold text-brand-cyan"
+                                store.sessionEmail === s.email &&
+                                  "bg-surface-soft font-bold text-brand-cyan",
                               )}
                             >
                               <div className="min-w-0">
                                 <p className="font-semibold text-foreground">{s.name}</p>
-                                <p className="text-[10px] text-copy-subtle">{s.dept} · {s.batchId}</p>
+                                <p className="text-[10px] text-copy-subtle">
+                                  {s.dept} · {s.batchId}
+                                </p>
                               </div>
-                              {store.sessionEmail === s.email && <Check className="size-4 text-brand-cyan shrink-0" />}
+                              {store.sessionEmail === s.email && (
+                                <Check className="size-4 text-brand-cyan shrink-0" />
+                              )}
                             </button>
                           ))}
 
-                        {portal !== "admin" && <div className="border-t border-line-soft/60 my-1 pt-1" />}
+                        {portal !== "admin" && (
+                          <div className="border-t border-line-soft/60 my-1 pt-1" />
+                        )}
 
                         <button
-                          onClick={() => switchPersona(ADMIN_ACCOUNT.email, ADMIN_ACCOUNT.password, "admin")}
+                          onClick={() =>
+                            switchPersona(ADMIN_ACCOUNT.email, ADMIN_ACCOUNT.password, "admin")
+                          }
                           className={cn(
                             "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-colors hover:bg-surface-soft",
-                            store.role === "admin" && "bg-surface-soft font-bold text-brand-purple"
+                            store.role === "admin" && "bg-surface-soft font-bold text-brand-purple",
                           )}
                         >
                           <div className="min-w-0">
                             <p className="font-semibold text-brand-purple flex items-center gap-1.5">
                               <Shield className="size-3.5" /> Platform Super Admin
                             </p>
-                            <p className="text-[10px] text-copy-subtle">Executive Platform Control</p>
+                            <p className="text-[10px] text-copy-subtle">
+                              Executive Platform Control
+                            </p>
                           </div>
-                          {store.role === "admin" && <Check className="size-4 text-brand-purple shrink-0" />}
+                          {store.role === "admin" && (
+                            <Check className="size-4 text-brand-purple shrink-0" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -453,7 +516,10 @@ export function AppShell({ portal }: { portal: Role }) {
                 placeholder="Search 15 tracks, sandboxes, batch tools, cron, diagrams, ATS…"
                 className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-copy-subtle"
               />
-              <button onClick={() => setSearchOpen(false)} className="text-copy-subtle hover:text-foreground">
+              <button
+                onClick={() => setSearchOpen(false)}
+                className="text-copy-subtle hover:text-foreground"
+              >
                 <X className="size-4" />
               </button>
             </div>
@@ -471,14 +537,18 @@ export function AppShell({ portal }: { portal: Role }) {
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="font-semibold text-foreground group-hover:text-brand-cyan">{res.title}</p>
+                        <p className="font-semibold text-foreground group-hover:text-brand-cyan">
+                          {res.title}
+                        </p>
                         <span className="rounded bg-surface-dark px-1.5 py-0.5 text-[9px] font-semibold text-copy-subtle">
                           {res.category}
                         </span>
                       </div>
                       <p className="text-[11px] text-copy-subtle mt-0.5">{res.desc}</p>
                     </div>
-                    <span className="text-[10px] font-mono text-copy-subtle group-hover:text-brand-cyan">Jump →</span>
+                    <span className="text-[10px] font-mono text-copy-subtle group-hover:text-brand-cyan">
+                      Jump →
+                    </span>
                   </button>
                 ))
               ) : (
@@ -489,7 +559,13 @@ export function AppShell({ portal }: { portal: Role }) {
             </div>
 
             <div className="border-t border-line-soft px-4 py-2 bg-surface-soft/80 flex items-center justify-between text-[10px] text-copy-subtle">
-              <span>Press <kbd className="font-mono bg-surface-elevated px-1 py-0.5 rounded border border-line-soft">ESC</kbd> to close</span>
+              <span>
+                Press{" "}
+                <kbd className="font-mono bg-surface-elevated px-1 py-0.5 rounded border border-line-soft">
+                  ESC
+                </kbd>{" "}
+                to close
+              </span>
               <span>15 In-Browser Sandboxes · Synchronized Cohort</span>
             </div>
           </div>
@@ -504,20 +580,30 @@ export function AppShell({ portal }: { portal: Role }) {
               <div>
                 <div className="flex items-center gap-2">
                   <BookOpen className="size-4 text-brand-cyan" />
-                  <h3 className="font-display text-base font-bold text-foreground">Interactive Technical Course Switcher</h3>
+                  <h3 className="font-display text-base font-bold text-foreground">
+                    Interactive Technical Course Switcher
+                  </h3>
                 </div>
                 <p className="text-xs text-copy-subtle mt-0.5">
-                  Select between 1 and 3 specialized technical courses. Self-paced and independent of your placement batch cohort.
+                  Select between 1 and 3 specialized technical courses. Self-paced and independent
+                  of your placement batch cohort.
                 </p>
               </div>
-              <button onClick={() => setCourseModalOpen(false)} className="text-copy-subtle hover:text-foreground">
+              <button
+                onClick={() => setCourseModalOpen(false)}
+                className="text-copy-subtle hover:text-foreground"
+              >
                 <X className="size-5" />
               </button>
             </div>
 
             <div className="flex items-center justify-between rounded-xl border border-brand-cyan/30 bg-brand-cyan/10 p-3 text-xs">
-              <span className="font-semibold text-brand-cyan">Active Selected Tracks: {store.activeTracks.length} / 3</span>
-              <span className="text-copy-subtle text-[11px]">Rule: Min 1, Max 3 concurrent specializations</span>
+              <span className="font-semibold text-brand-cyan">
+                Active Selected Tracks: {store.activeTracks.length} / 3
+              </span>
+              <span className="text-copy-subtle text-[11px]">
+                Rule: Min 1, Max 3 concurrent specializations
+              </span>
             </div>
 
             <div className="grid gap-2.5 sm:grid-cols-2">
@@ -531,7 +617,7 @@ export function AppShell({ portal }: { portal: Role }) {
                       "flex items-start justify-between rounded-xl border p-3 text-left transition-all",
                       isSelected
                         ? "border-brand-cyan/70 bg-surface-soft shadow-sm"
-                        : "border-line-soft bg-surface-dark/40 hover:border-line-soft/80"
+                        : "border-line-soft bg-surface-dark/40 hover:border-line-soft/80",
                     )}
                   >
                     <div className="min-w-0 pr-2">
@@ -540,12 +626,18 @@ export function AppShell({ portal }: { portal: Role }) {
                         <p className="text-xs font-bold text-foreground">{t.name}</p>
                       </div>
                       <p className="mt-1 text-[11px] text-copy-subtle line-clamp-1">{t.tagline}</p>
-                      <p className="mt-1 font-mono text-[10px] text-brand-cyan">Lab: {t.labTitle}</p>
+                      <p className="mt-1 font-mono text-[10px] text-brand-cyan">
+                        Lab: {t.labTitle}
+                      </p>
                     </div>
-                    <div className={cn(
-                      "grid size-5 shrink-0 place-items-center rounded-lg border",
-                      isSelected ? "border-brand-cyan bg-brand-cyan text-surface-dark" : "border-line-soft bg-surface-soft"
-                    )}>
+                    <div
+                      className={cn(
+                        "grid size-5 shrink-0 place-items-center rounded-lg border",
+                        isSelected
+                          ? "border-brand-cyan bg-brand-cyan text-surface-dark"
+                          : "border-line-soft bg-surface-soft",
+                      )}
+                    >
                       {isSelected && <Check className="size-3.5 stroke-[3]" />}
                     </div>
                   </button>
@@ -573,4 +665,3 @@ export function AppShell({ portal }: { portal: Role }) {
 export function ShellFallback({ children }: { children: ReactNode }) {
   return <div className="p-6 text-sm text-copy-subtle">{children}</div>;
 }
-

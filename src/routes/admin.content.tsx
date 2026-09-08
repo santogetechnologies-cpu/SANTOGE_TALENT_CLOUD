@@ -56,7 +56,10 @@ function ContentManagementPage() {
 
   // Placement Accelerator CMS states
   const [selectedPlacementDay, setSelectedPlacementDay] = useState<number>(1);
-  const currentAccDay = useMemo(() => getAcceleratorDay(selectedPlacementDay), [selectedPlacementDay]);
+  const currentAccDay = useMemo(
+    () => getAcceleratorDay(selectedPlacementDay),
+    [selectedPlacementDay],
+  );
 
   const [englishTitle, setEnglishTitle] = useState(currentAccDay.english.title);
   const [englishBrief, setEnglishBrief] = useState(currentAccDay.english.instructorBrief);
@@ -153,9 +156,24 @@ function ContentManagementPage() {
       {/* KPI Stats */}
       <div className="grid gap-4 sm:grid-cols-4">
         <Stat label="Total Curriculum Days" value="90 Days" hint="18 Weeks × 5 Working Days" />
-        <Stat label="Technical Specializations" value="15 Tracks" accent="var(--brand-cyan)" hint="Individual self-paced tracks" />
-        <Stat label="Active Cohorts Managed" value={`${store.batches.length} Batches`} accent="var(--brand-purple)" hint="100–300 learners per batch" />
-        <Stat label="Total Portfolio Projects" value="270 Projects" accent="var(--brand-emerald)" hint="18 Friday Projects × 15 Tracks" />
+        <Stat
+          label="Technical Specializations"
+          value="15 Tracks"
+          accent="var(--brand-cyan)"
+          hint="Individual self-paced tracks"
+        />
+        <Stat
+          label="Active Cohorts Managed"
+          value={`${store.batches.length} Batches`}
+          accent="var(--brand-purple)"
+          hint="100–300 learners per batch"
+        />
+        <Stat
+          label="Total Portfolio Projects"
+          value="270 Projects"
+          accent="var(--brand-emerald)"
+          hint="18 Friday Projects × 15 Tracks"
+        />
       </div>
 
       {/* CMS Mode Switcher Tabs */}
@@ -166,7 +184,7 @@ function ContentManagementPage() {
             "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all",
             cmsTab === "placement-accelerator"
               ? "bg-brand-purple text-surface-dark shadow-sm"
-              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground"
+              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
           )}
         >
           <Timer className="size-4" />
@@ -179,7 +197,7 @@ function ContentManagementPage() {
             "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all",
             cmsTab === "technical-tracks"
               ? "bg-brand-cyan text-surface-dark shadow-sm"
-              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground"
+              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
           )}
         >
           <Code2 className="size-4" />
@@ -195,10 +213,13 @@ function ContentManagementPage() {
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-foreground flex items-center gap-2">
                 <Calendar className="size-4 text-brand-purple" />
-                Select Accelerator Day to Edit (Day {selectedPlacementDay} of 90 · Week {currentAccDay.week} {currentAccDay.dayOfWeek})
+                Select Accelerator Day to Edit (Day {selectedPlacementDay} of 90 · Week{" "}
+                {currentAccDay.week} {currentAccDay.dayOfWeek})
               </span>
               <span className="text-[11px] font-mono text-brand-amber font-semibold">
-                {selectedPlacementDay % 5 === 0 ? "⚡ Friday Assessment Day" : "Standard Daily Routine"}
+                {selectedPlacementDay % 5 === 0
+                  ? "⚡ Friday Assessment Day"
+                  : "Standard Daily Routine"}
               </span>
             </div>
 
@@ -216,8 +237,8 @@ function ContentManagementPage() {
                       isSelected
                         ? "border-brand-purple bg-brand-purple/20 text-brand-purple font-bold shadow-md"
                         : isFriday
-                        ? "border-brand-purple/40 bg-brand-purple/5 text-copy-subtle hover:border-brand-purple"
-                        : "border-line-soft bg-surface-elevated/70 text-copy-subtle hover:text-foreground"
+                          ? "border-brand-purple/40 bg-brand-purple/5 text-copy-subtle hover:border-brand-purple"
+                          : "border-line-soft bg-surface-elevated/70 text-copy-subtle hover:text-foreground",
                     )}
                   >
                     <span className="text-[9px] font-mono uppercase opacity-70">
@@ -250,7 +271,9 @@ function ContentManagementPage() {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-foreground block mb-1">Concept Brief &amp; Teaching Script</label>
+                  <label className="font-semibold text-foreground block mb-1">
+                    Concept Brief &amp; Teaching Script
+                  </label>
                   <textarea
                     rows={3}
                     value={englishBrief}
@@ -260,7 +283,9 @@ function ContentManagementPage() {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-foreground block mb-1">Key Corporate Vocabulary (comma-separated)</label>
+                  <label className="font-semibold text-foreground block mb-1">
+                    Key Corporate Vocabulary (comma-separated)
+                  </label>
                   <input
                     type="text"
                     value={englishVocab}
@@ -270,7 +295,9 @@ function ContentManagementPage() {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-foreground block mb-1">Spoken Grammar Focus</label>
+                  <label className="font-semibold text-foreground block mb-1">
+                    Spoken Grammar Focus
+                  </label>
                   <input
                     type="text"
                     value={englishGrammar}
@@ -280,7 +307,9 @@ function ContentManagementPage() {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-foreground block mb-1">Delivery Timeline Structure</label>
+                  <label className="font-semibold text-foreground block mb-1">
+                    Delivery Timeline Structure
+                  </label>
                   <input
                     type="text"
                     value={englishTimeline}
@@ -299,7 +328,9 @@ function ContentManagementPage() {
             >
               <div className="space-y-4 text-xs">
                 <div>
-                  <label className="font-semibold text-foreground block mb-1">Aptitude Topic Title</label>
+                  <label className="font-semibold text-foreground block mb-1">
+                    Aptitude Topic Title
+                  </label>
                   <input
                     type="text"
                     value={aptitudeTitle}
@@ -309,7 +340,9 @@ function ContentManagementPage() {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-foreground block mb-1">Mathematical Model Brief</label>
+                  <label className="font-semibold text-foreground block mb-1">
+                    Mathematical Model Brief
+                  </label>
                   <textarea
                     rows={3}
                     value={aptitudeBrief}
@@ -319,7 +352,9 @@ function ContentManagementPage() {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-foreground block mb-1">Formula &amp; Speed Math Shortcut</label>
+                  <label className="font-semibold text-foreground block mb-1">
+                    Formula &amp; Speed Math Shortcut
+                  </label>
                   <input
                     type="text"
                     value={aptitudeFormula}
@@ -329,7 +364,9 @@ function ContentManagementPage() {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-foreground block mb-1">Solved Walkthrough Demonstration</label>
+                  <label className="font-semibold text-foreground block mb-1">
+                    Solved Walkthrough Demonstration
+                  </label>
                   <textarea
                     rows={2}
                     value={aptitudeSolved}
@@ -364,12 +401,15 @@ function ContentManagementPage() {
                   className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs text-foreground focus:border-brand-cyan focus:outline-none"
                 />
                 <p className="text-[11px] text-copy-subtle">
-                  Options and explanations are automatically checked against the Placement Engine validator.
+                  Options and explanations are automatically checked against the Placement Engine
+                  validator.
                 </p>
               </div>
 
               <div className="space-y-3">
-                <label className="font-semibold text-foreground block">60-Second AI Voice Pitch Prompt</label>
+                <label className="font-semibold text-foreground block">
+                  60-Second AI Voice Pitch Prompt
+                </label>
                 <textarea
                   rows={3}
                   value={voicePromptText}
@@ -377,7 +417,8 @@ function ContentManagementPage() {
                   className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs text-foreground focus:border-brand-cyan focus:outline-none"
                 />
                 <p className="text-[11px] text-copy-subtle">
-                  Target keywords will be extracted by the Speech Analysis engine during 60s pitch grading.
+                  Target keywords will be extracted by the Speech Analysis engine during 60s pitch
+                  grading.
                 </p>
               </div>
             </div>
@@ -391,7 +432,9 @@ function ContentManagementPage() {
           {/* Track Selector & Week Selector */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border border-line-soft bg-surface-soft p-4 space-y-2">
-              <label className="text-xs font-bold text-foreground block">Select Technical Track (1 of 15)</label>
+              <label className="text-xs font-bold text-foreground block">
+                Select Technical Track (1 of 15)
+              </label>
               <select
                 value={selectedTrackId}
                 onChange={(e) => setSelectedTrackId(e.target.value as TrackId)}
@@ -406,7 +449,9 @@ function ContentManagementPage() {
             </div>
 
             <div className="rounded-2xl border border-line-soft bg-surface-soft p-4 space-y-2">
-              <label className="text-xs font-bold text-foreground block">Select Week (Week 1 to 18 = 90 Days)</label>
+              <label className="text-xs font-bold text-foreground block">
+                Select Week (Week 1 to 18 = 90 Days)
+              </label>
               <select
                 value={selectedWeekNum}
                 onChange={(e) => handleTrackWeekSelect(Number(e.target.value))}
@@ -414,7 +459,8 @@ function ContentManagementPage() {
               >
                 {Array.from({ length: 18 }, (_, i) => (
                   <option key={i + 1} value={i + 1}>
-                    Week {i + 1} (Days {i * 5 + 1}–{(i + 1) * 5}) · {trackSyllabus.weeks[i]?.theme || `Week ${i + 1}`}
+                    Week {i + 1} (Days {i * 5 + 1}–{(i + 1) * 5}) ·{" "}
+                    {trackSyllabus.weeks[i]?.theme || `Week ${i + 1}`}
                   </option>
                 ))}
               </select>
@@ -446,7 +492,9 @@ function ContentManagementPage() {
                   />
                 </div>
                 <div>
-                  <label className="font-semibold text-foreground block mb-1">Week Theme / Subtitle</label>
+                  <label className="font-semibold text-foreground block mb-1">
+                    Week Theme / Subtitle
+                  </label>
                   <input
                     type="text"
                     value={weekTheme}
@@ -460,12 +508,15 @@ function ContentManagementPage() {
 
               <div className="rounded-xl border border-brand-cyan/30 bg-surface-dark p-4 space-y-3">
                 <p className="font-bold text-brand-cyan text-sm flex items-center gap-1.5">
-                  <Sparkles className="size-4" /> Friday Workplace Simulation Mini-Project (Day {(selectedWeekNum - 1) * 5 + 5})
+                  <Sparkles className="size-4" /> Friday Workplace Simulation Mini-Project (Day{" "}
+                  {(selectedWeekNum - 1) * 5 + 5})
                 </p>
 
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div>
-                    <label className="font-semibold text-foreground block mb-1">Project Title</label>
+                    <label className="font-semibold text-foreground block mb-1">
+                      Project Title
+                    </label>
                     <input
                       type="text"
                       value={fridayProjectTitle}
@@ -474,7 +525,9 @@ function ContentManagementPage() {
                     />
                   </div>
                   <div>
-                    <label className="font-semibold text-foreground block mb-1">Deliverable Name</label>
+                    <label className="font-semibold text-foreground block mb-1">
+                      Deliverable Name
+                    </label>
                     <input
                       type="text"
                       value={fridayDeliverable}
@@ -483,7 +536,9 @@ function ContentManagementPage() {
                     />
                   </div>
                   <div>
-                    <label className="font-semibold text-foreground block mb-1">Target Workplace Skill</label>
+                    <label className="font-semibold text-foreground block mb-1">
+                      Target Workplace Skill
+                    </label>
                     <input
                       type="text"
                       value={workplaceSkill}
@@ -514,7 +569,7 @@ function ContentManagementPage() {
                       "flex flex-col justify-between rounded-2xl border p-4 transition-all bg-surface-soft/80",
                       isSelected
                         ? "border-brand-cyan/60 bg-brand-cyan/5 shadow-md ring-1 ring-brand-cyan/30"
-                        : "border-line-soft hover:border-line-soft/80"
+                        : "border-line-soft hover:border-line-soft/80",
                     )}
                   >
                     <div>
@@ -531,7 +586,9 @@ function ContentManagementPage() {
                       <div className="mt-3 space-y-1.5 text-[11px] text-copy-subtle">
                         <div className="flex items-center gap-1.5">
                           <Code2 className="size-3 text-brand-cyan" />
-                          <span className="font-mono text-foreground font-semibold">Lab: {t.labTitle}</span>
+                          <span className="font-mono text-foreground font-semibold">
+                            Lab: {t.labTitle}
+                          </span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Layers className="size-3 text-brand-purple" />
@@ -542,7 +599,9 @@ function ContentManagementPage() {
 
                     <div className="mt-4 pt-3 border-t border-line-soft/60 space-y-2">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-[11px] text-copy-subtle">Average Learner Mastery</span>
+                        <span className="text-[11px] text-copy-subtle">
+                          Average Learner Mastery
+                        </span>
                         <span className="font-mono font-bold text-foreground">{pct}%</span>
                       </div>
                       <Meter value={pct} accent={t.accent} />
@@ -559,7 +618,7 @@ function ContentManagementPage() {
                             "flex-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border",
                             isSelected
                               ? "border-brand-cyan/60 bg-brand-cyan text-surface-dark"
-                              : "border-line-soft bg-surface-elevated text-copy-subtle hover:text-foreground"
+                              : "border-line-soft bg-surface-elevated text-copy-subtle hover:text-foreground",
                           )}
                         >
                           {isSelected ? "Active in Editor" : "Edit Syllabus"}

@@ -1,83 +1,121 @@
 /**
  * SantoGe Talent Cloud — Curriculum Data Service
  *
- * CURRENT SOURCE: Mock / local data from curriculum.ts and syllabus-data.ts
- * FUTURE SOURCE:  Supabase PostgreSQL (when schema is ready)
- *
- * Egress policy:
- *   NO automatic Supabase queries.
- *   NO polling, NO realtime, NO background sync.
- *   All functions currently return mock data only.
+ * Authoritative integration for Live Supabase mode (Curriculum & Content CMS) and Demo mode.
+ * Rules:
+ * - Specific column selection only (NO select('*')).
+ * - Zero realtime subscriptions, zero continuous polling.
  */
 
+import { getSupabaseClient } from "@/lib/supabase";
 import type { TrackId } from "@/lib/tracks";
+import type { DbCurriculumTrack, DbCurriculumSkill, DbContentItem } from "./types";
+import type { ContentItem } from "@/lib/app-store";
 
-// ---------------------------------------------------------------------------
-// Types — shaped for future Supabase columns (specific, not *)
-// ---------------------------------------------------------------------------
+export async function fetchLiveCurriculumTracks(): Promise<DbCurriculumTrack[]> {
+  const supabase = getSupabaseClient();
 
-/**
- * Minimal curriculum track record for future Supabase queries.
- * Future query: .select('id,name,short_name,total_skills,category')
- */
-export type CurriculumTrackRecord = {
-  id: TrackId;
-  name: string;
-  short_name: string;
-  total_skills: number;
-  category: string;
-};
+  const { data } = await supabase
+    .from("curriculum_tracks")
+    .select("id,name,short_name,category,total_skills,accent,created_at,updated_at")
+    .order("name", { ascending: true });
 
-/**
- * Minimal skill record for future Supabase queries.
- * Future query: .select('id,track_id,title,day,type').eq('track_id', trackId).order('day')
- */
-export type SkillRecord = {
-  id: string;
-  track_id: TrackId;
-  title: string;
-  day: number;
-  type: "video" | "lab" | "quiz" | "project";
-};
-
-// ---------------------------------------------------------------------------
-// Data service — mock-first, Supabase-ready
-// ---------------------------------------------------------------------------
-
-/**
- * FUTURE: Fetch track metadata from Supabase.
- * DO NOT call automatically.
- *
- * Example:
- * ```ts
- * const { data } = await supabaseClient
- *   .from('curriculum_tracks')
- *   .select('id,name,short_name,total_skills,category')
- *   .order('name');
- * ```
- */
-export async function fetchTracksFromSupabase(): Promise<CurriculumTrackRecord[]> {
-  // TODO: Implement when Supabase curriculum_tracks table schema is finalised.
-  return [];
+  return (data || []) as DbCurriculumTrack[];
 }
 
-/**
- * FUTURE: Fetch skills for a specific track from Supabase.
- * DO NOT call automatically. Always filters by track_id — never fetches all skills.
- *
- * Example:
- * ```ts
- * const { data } = await supabaseClient
- *   .from('curriculum_skills')
- *   .select('id,track_id,title,day,type')
- *   .eq('track_id', trackId)
- *   .order('day')
- *   .limit(100);
- * ```
- */
-export async function fetchSkillsByTrackFromSupabase(
-  _trackId: TrackId,
-): Promise<SkillRecord[]> {
-  // TODO: Implement when Supabase curriculum_skills table schema is finalised.
-  return [];
+export async function fetchLiveCurriculumSkills(trackId: TrackId): Promise<DbCurriculumSkill[]> {
+  const supabase = getSupabaseClient();
+
+  const { data } = await supabase
+    .from("curriculum_skills")
+    .select("id,track_id,title,day,type,status,created_at,updated_at")
+    .eq("track_id", trackId)
+    .order("day", { ascending: true });
+
+  return (data || []) as DbCurriculumSkill[];
+}
+
+// ---------------------------------------------------------------------------
+// Content CMS Items (Admin CRUD & Student Read)
+// ---------------------------------------------------------------------------
+
+export async function fetchLiveContentItems(): Promise<ContentItem[]> {
+  const supabase = getSupabaseClient();
+
+  const { data } = await supabase
+    .from("content_items")
+    .select("id,title,kind,track,duration,status,updated_at")
+    .order("updated_at", { ascending: false });
+
+  if (!data) return [];
+
+  return (
+    data as Array<{
+      id: string;
+      title: string;
+      kind: "English video" | "Aptitude video" | "Guided practice" | "Lab brief";
+      track: string;
+      duration: string;
+      status: "published" | "draft" | "scheduled";
+      updated_at: string;
+    }>
+  ).map((c) => ({
+    id: c.id,
+    title: c.title,
+    kind: c.kind,
+    track: c.track,
+    duration: c.duration,
+    status: c.status,
+    updated: new Date(c.updated_at).toLocaleString("en-GB"),
+  }));
+}
+
+export async function createLiveContentItem(
+  item: Omit<ContentItem, "id" | "updated">,
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  const supabase = getSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("content_items")
+    .insert({
+      title: item.title,
+      kind: item.kind,
+      track: item.track,
+      duration: item.duration,
+      status: item.status,
+      updated_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, id: (data as { id: string })?.id };
+}
+
+export async function updateLiveContentItem(
+  id: string,
+  patch: Partial<ContentItem>,
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getSupabaseClient();
+
+  const updateFields: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.title) updateFields["title"] = patch.title;
+  if (patch.kind) updateFields["kind"] = patch.kind;
+  if (patch.track) updateFields["track"] = patch.track;
+  if (patch.duration) updateFields["duration"] = patch.duration;
+  if (patch.status) updateFields["status"] = patch.status;
+
+  const { error } = await supabase.from("content_items").update(updateFields).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  return { ok: true };
+}
+
+export async function deleteLiveContentItem(id: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getSupabaseClient();
+
+  const { error } = await supabase.from("content_items").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  return { ok: true };
 }

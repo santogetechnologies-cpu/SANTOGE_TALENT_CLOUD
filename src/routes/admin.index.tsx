@@ -26,7 +26,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { AdminResetPasswordModal, type ResetPasswordStudent } from "@/components/admin-reset-password-modal";
+import {
+  AdminResetPasswordModal,
+  type ResetPasswordStudent,
+} from "@/components/admin-reset-password-modal";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -135,7 +138,9 @@ function AdminAnalytics() {
           dept: p.dept,
           batchId: p.batch_id,
           college: p.college || "Partner Engineering College",
-          tracks: Array.from(new Set([p.course_1, p.course_2, p.course_3].filter(Boolean) as TrackId[])),
+          tracks: Array.from(
+            new Set([p.course_1, p.course_2, p.course_3].filter(Boolean) as TrackId[]),
+          ),
           placementDay: pr?.placementDay ?? 1,
           talentScore: score,
           gateCleared: (pr?.attendance.length ?? 0) >= 30,
@@ -159,7 +164,10 @@ function AdminAnalytics() {
     const dynamicColleges = new Map<string, string>();
     allStudents.forEach((s) => {
       if (s.college && s.college.trim()) {
-        const id = s.college.toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 25);
+        const id = s.college
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "-")
+          .slice(0, 25);
         if (!dynamicColleges.has(id)) {
           dynamicColleges.set(id, s.college.trim());
         }
@@ -167,7 +175,10 @@ function AdminAnalytics() {
     });
     const count = dynamicColleges.size;
     const list = [
-      { id: "all", name: count > 0 ? `All Partner Institutions (${count})` : "All Partner Institutions" },
+      {
+        id: "all",
+        name: count > 0 ? `All Partner Institutions (${count})` : "All Partner Institutions",
+      },
       ...Array.from(dynamicColleges.entries()).map(([id, name]) => ({ id, name })),
     ];
     return list;
@@ -252,7 +263,9 @@ function AdminAnalytics() {
     }).length;
     const stage3 = list.filter((s) => {
       const p = store.profiles?.[s.email.toLowerCase().trim()];
-      return (p?.completedLabs?.length ?? 0) > 0 || (p?.skills?.length ?? 0) >= 3 || s.talentScore >= 500;
+      return (
+        (p?.completedLabs?.length ?? 0) > 0 || (p?.skills?.length ?? 0) >= 3 || s.talentScore >= 500
+      );
     }).length;
     const stage4 = list.filter((s) => s.gateCleared || s.placementDay >= 30).length;
     const stage5 = list.filter((s) => {
@@ -323,10 +336,10 @@ function AdminAnalytics() {
         tierFilter === "all"
           ? true
           : tierFilter === "marketplace"
-          ? s.talentScore >= 700
-          : tierFilter === "ats"
-          ? s.talentScore >= 450 && s.talentScore < 700
-          : s.talentScore < 450;
+            ? s.talentScore >= 700
+            : tierFilter === "ats"
+              ? s.talentScore >= 450 && s.talentScore < 700
+              : s.talentScore < 450;
 
       const matchesDrive = !selectedDrive ? true : s.talentScore >= selectedDrive.minScore;
 
@@ -415,7 +428,7 @@ function AdminAnalytics() {
 
     if (res.ok) {
       toast.success(
-        `Learner registered! They can now log in at /login with ${newStudentEmail.trim().toLowerCase()} / ${password}`
+        `Learner registered! They can now log in at /login with ${newStudentEmail.trim().toLowerCase()} / ${password}`,
       );
       setIsAddStudentModalOpen(false);
       setNewStudentName("");
@@ -433,9 +446,12 @@ function AdminAnalytics() {
       {/* Header with Dynamic Institution Selector */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Executive Platform Analytics</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground">
+            Executive Platform Analytics
+          </h1>
           <p className="text-xs text-copy-subtle">
-            Real-time cohort readiness, throughput, bulk placement conversion, and recruiter partner drives.
+            Real-time cohort readiness, throughput, bulk placement conversion, and recruiter partner
+            drives.
           </p>
         </div>
 
@@ -524,7 +540,8 @@ function AdminAnalytics() {
           <div className="space-y-3.5">
             {cohortFunnel.length === 0 ? (
               <div className="rounded-xl border border-line-soft bg-surface-soft p-6 text-center text-xs text-copy-subtle">
-                No cohort conversion data available. Onboard student learners to visualize the 6-stage placement funnel.
+                No cohort conversion data available. Onboard student learners to visualize the
+                6-stage placement funnel.
               </div>
             ) : (
               cohortFunnel.map((f) => (
@@ -557,7 +574,10 @@ function AdminAnalytics() {
             {activeBatches.map((b) => {
               const fill = readinessOf(b);
               return (
-                <div key={b.id} className="rounded-xl border border-line-soft bg-surface-soft p-3.5">
+                <div
+                  key={b.id}
+                  className="rounded-xl border border-line-soft bg-surface-soft p-3.5"
+                >
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <p className="text-sm font-bold text-foreground">{b.name}</p>
@@ -586,7 +606,9 @@ function AdminAnalytics() {
                       {b.enrolled} / {b.capacity} learners enrolled
                     </span>
                     <span className="text-brand-cyan font-mono">
-                      {b.lastSync ? `Synced: ${b.lastSync}` : `Telegram: t.me/stc-${b.id.toLowerCase()}`}
+                      {b.lastSync
+                        ? `Synced: ${b.lastSync}`
+                        : `Telegram: t.me/stc-${b.id.toLowerCase()}`}
                     </span>
                   </div>
                 </div>
@@ -656,8 +678,12 @@ function AdminAnalytics() {
                     </div>
                     <div className="flex items-center gap-3 text-right">
                       <div>
-                        <p className="font-mono text-xs font-bold text-brand-cyan">{d.openSlots} Openings</p>
-                        <p className="text-[10px] text-copy-subtle">Min Talent Score: {d.minScore}</p>
+                        <p className="font-mono text-xs font-bold text-brand-cyan">
+                          {d.openSlots} Openings
+                        </p>
+                        <p className="text-[10px] text-copy-subtle">
+                          Min Talent Score: {d.minScore}
+                        </p>
                       </div>
                       <div className="rounded-lg bg-surface-dark border border-line-soft px-2.5 py-1 text-center">
                         <p className="font-mono text-xs font-bold text-brand-emerald">{eligible}</p>
@@ -701,7 +727,8 @@ function AdminAnalytics() {
             <div className="flex items-center gap-2 text-brand-cyan font-medium">
               <Briefcase className="size-4 shrink-0" />
               <span>
-                Filtered by requisition: <strong className="text-foreground">{selectedDrive.company}</strong> (
+                Filtered by requisition:{" "}
+                <strong className="text-foreground">{selectedDrive.company}</strong> (
                 {selectedDrive.roles}) · Requiring min Talent Score{" "}
                 <strong className="text-foreground">{selectedDrive.minScore}</strong>
               </span>
@@ -902,7 +929,9 @@ function AdminAnalytics() {
             <div className="flex items-center justify-between border-b border-line-soft pb-3">
               <div className="flex items-center gap-2">
                 <GraduationCap className="size-5 text-brand-cyan" />
-                <h3 className="font-display text-base font-bold text-foreground">Learner Profile Audit</h3>
+                <h3 className="font-display text-base font-bold text-foreground">
+                  Learner Profile Audit
+                </h3>
               </div>
               <button
                 onClick={() => setSelectedStudentEmail(null)}
@@ -920,7 +949,9 @@ function AdminAnalytics() {
                 </div>
                 <div>
                   <p className="text-copy-subtle">Roll Number</p>
-                  <p className="font-mono font-bold text-foreground mt-0.5">{activeModalStudent.rollNo}</p>
+                  <p className="font-mono font-bold text-foreground mt-0.5">
+                    {activeModalStudent.rollNo}
+                  </p>
                 </div>
                 <div>
                   <p className="text-copy-subtle">Email Address</p>
@@ -928,12 +959,16 @@ function AdminAnalytics() {
                 </div>
                 <div>
                   <p className="text-copy-subtle">Placement Batch</p>
-                  <p className="font-mono text-brand-purple font-bold mt-0.5">{activeModalStudent.batchId}</p>
+                  <p className="font-mono text-brand-purple font-bold mt-0.5">
+                    {activeModalStudent.batchId}
+                  </p>
                 </div>
               </div>
 
               <div>
-                <p className="font-semibold text-foreground mb-1.5">Assigned Technical Learning Tracks (1–3):</p>
+                <p className="font-semibold text-foreground mb-1.5">
+                  Assigned Technical Learning Tracks (1–3):
+                </p>
                 <div className="flex flex-wrap gap-1.5">
                   {Array.from(new Set(activeModalStudent.tracks || [])).map((t, idx) => (
                     <span
@@ -949,49 +984,65 @@ function AdminAnalytics() {
               {/* T·C·A·E·R·M Readiness Dimensions Audit Breakdown */}
               <div className="rounded-xl border border-line-soft bg-surface-soft p-3 space-y-2.5">
                 <div className="flex items-center justify-between border-b border-line-soft pb-1.5">
-                  <span className="font-semibold text-foreground">T·C·A·E·R·M Composite Breakdown</span>
-                  <span className="font-mono font-bold text-brand-cyan">{activeModalStudent.talentScore} / 1000</span>
+                  <span className="font-semibold text-foreground">
+                    T·C·A·E·R·M Composite Breakdown
+                  </span>
+                  <span className="font-mono font-bold text-brand-cyan">
+                    {activeModalStudent.talentScore} / 1000
+                  </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div>
                     <div className="flex justify-between text-copy-subtle mb-0.5">
                       <span>Technical (25%):</span>
-                      <span className="font-mono font-bold text-foreground">{modalReadiness.T}%</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {modalReadiness.T}%
+                      </span>
                     </div>
                     <Meter value={modalReadiness.T} accent="var(--brand-cyan)" />
                   </div>
                   <div>
                     <div className="flex justify-between text-copy-subtle mb-0.5">
                       <span>Placement (20%):</span>
-                      <span className="font-mono font-bold text-foreground">{modalReadiness.C}%</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {modalReadiness.C}%
+                      </span>
                     </div>
                     <Meter value={modalReadiness.C} accent="var(--brand-purple)" />
                   </div>
                   <div>
                     <div className="flex justify-between text-copy-subtle mb-0.5">
                       <span>Aptitude (15%):</span>
-                      <span className="font-mono font-bold text-foreground">{modalReadiness.A}%</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {modalReadiness.A}%
+                      </span>
                     </div>
                     <Meter value={modalReadiness.A} accent="var(--brand-amber)" />
                   </div>
                   <div>
                     <div className="flex justify-between text-copy-subtle mb-0.5">
                       <span>English (15%):</span>
-                      <span className="font-mono font-bold text-foreground">{modalReadiness.E}%</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {modalReadiness.E}%
+                      </span>
                     </div>
                     <Meter value={modalReadiness.E} accent="var(--brand-emerald)" />
                   </div>
                   <div>
                     <div className="flex justify-between text-copy-subtle mb-0.5">
                       <span>Resume (15%):</span>
-                      <span className="font-mono font-bold text-foreground">{modalReadiness.R}%</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {modalReadiness.R}%
+                      </span>
                     </div>
                     <Meter value={modalReadiness.R} accent="var(--brand-rose)" />
                   </div>
                   <div>
                     <div className="flex justify-between text-copy-subtle mb-0.5">
                       <span>Mock / Soft (10%):</span>
-                      <span className="font-mono font-bold text-foreground">{modalReadiness.M}%</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {modalReadiness.M}%
+                      </span>
                     </div>
                     <Meter value={modalReadiness.M} accent="#10b981" />
                   </div>
@@ -1000,7 +1051,13 @@ function AdminAnalytics() {
                 <div className="flex items-center justify-between text-copy-subtle text-[11px] pt-1 border-t border-line-soft/60">
                   <span>Attendance: {modalStudentProfile?.attendance.length ?? 1}/90 Days</span>
                   <span>Completed Labs: {modalStudentProfile?.completedLabs.length ?? 0}</span>
-                  <span className={activeModalStudent.gateCleared ? "text-brand-emerald font-bold" : "text-brand-amber"}>
+                  <span
+                    className={
+                      activeModalStudent.gateCleared
+                        ? "text-brand-emerald font-bold"
+                        : "text-brand-amber"
+                    }
+                  >
                     {activeModalStudent.gateCleared ? "Dual Gate Cleared 🔓" : "Phase 1 Active 🔒"}
                   </span>
                 </div>
@@ -1076,8 +1133,12 @@ function AdminAnalytics() {
                 <AlertTriangle className="size-5" />
               </div>
               <div>
-                <h3 className="font-display text-base font-bold text-foreground">Remove Learner from Roster?</h3>
-                <p className="text-xs text-copy-subtle">This action permanently removes the student from this cohort</p>
+                <h3 className="font-display text-base font-bold text-foreground">
+                  Remove Learner from Roster?
+                </h3>
+                <p className="text-xs text-copy-subtle">
+                  This action permanently removes the student from this cohort
+                </p>
               </div>
             </div>
 
@@ -1092,17 +1153,21 @@ function AdminAnalytics() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-copy-subtle font-medium">Roll Number:</span>
-                <span className="font-mono font-semibold text-foreground">{deleteTargetStudent.rollNo}</span>
+                <span className="font-mono font-semibold text-foreground">
+                  {deleteTargetStudent.rollNo}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-copy-subtle font-medium">Cohort Batch:</span>
-                <span className="font-mono font-bold text-brand-purple">{deleteTargetStudent.batchId}</span>
+                <span className="font-mono font-bold text-brand-purple">
+                  {deleteTargetStudent.batchId}
+                </span>
               </div>
             </div>
 
             <p className="text-xs text-copy-subtle leading-relaxed">
-              Removing this student will permanently delete their progress, revoke active portal access, update cohort
-              batch headcount, and record the removal in the audit log.
+              Removing this student will permanently delete their progress, revoke active portal
+              access, update cohort batch headcount, and record the removal in the audit log.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
@@ -1141,7 +1206,9 @@ function AdminAnalytics() {
             <div className="flex items-center justify-between border-b border-line-soft pb-3">
               <div className="flex items-center gap-2">
                 <Briefcase className="size-5 text-brand-emerald" />
-                <h3 className="font-display text-base font-bold text-foreground">New Enterprise Hiring Requisition</h3>
+                <h3 className="font-display text-base font-bold text-foreground">
+                  New Enterprise Hiring Requisition
+                </h3>
               </div>
               <button
                 type="button"
@@ -1154,7 +1221,9 @@ function AdminAnalytics() {
 
             <form onSubmit={handleCreateHiringDrive} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-semibold text-foreground mb-1">Enterprise Partner / Company</label>
+                <label className="block font-semibold text-foreground mb-1">
+                  Enterprise Partner / Company
+                </label>
                 <input
                   type="text"
                   required
@@ -1179,7 +1248,9 @@ function AdminAnalytics() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-foreground mb-1">Offered CTC Package</label>
+                  <label className="block font-semibold text-foreground mb-1">
+                    Offered CTC Package
+                  </label>
                   <input
                     type="text"
                     value={newCtc}
@@ -1189,7 +1260,9 @@ function AdminAnalytics() {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-foreground mb-1">Min Talent Score (0–1000)</label>
+                  <label className="block font-semibold text-foreground mb-1">
+                    Min Talent Score (0–1000)
+                  </label>
                   <input
                     type="number"
                     min={400}
@@ -1214,7 +1287,9 @@ function AdminAnalytics() {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-foreground mb-1">Requisition Status</label>
+                  <label className="block font-semibold text-foreground mb-1">
+                    Requisition Status
+                  </label>
                   <select
                     value={newStatus}
                     onChange={(e) => setNewStatus(e.target.value as HiringDrive["status"])}
@@ -1258,7 +1333,9 @@ function AdminAnalytics() {
                   <GraduationCap className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-display text-base font-bold text-foreground">Add New Student Learner</h3>
+                  <h3 className="font-display text-base font-bold text-foreground">
+                    Add New Student Learner
+                  </h3>
                   <p className="text-[11px] text-copy-subtle">
                     Creates instant portal credentials, cohort sync, and technical track assignment.
                   </p>
@@ -1316,10 +1393,14 @@ function AdminAnalytics() {
                     placeholder="Temp@1234"
                     className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60 font-mono"
                   />
-                  <span className="text-[10px] text-copy-subtle mt-0.5 block">Learner uses this password to log in</span>
+                  <span className="text-[10px] text-copy-subtle mt-0.5 block">
+                    Learner uses this password to log in
+                  </span>
                 </div>
                 <div>
-                  <label className="block font-semibold text-foreground mb-1">Roll / Registration Number</label>
+                  <label className="block font-semibold text-foreground mb-1">
+                    Roll / Registration Number
+                  </label>
                   <input
                     type="text"
                     value={newStudentRollNo}
@@ -1365,7 +1446,9 @@ function AdminAnalytics() {
               </div>
 
               <div>
-                <label className="block font-semibold text-foreground mb-1">Institution / College</label>
+                <label className="block font-semibold text-foreground mb-1">
+                  Institution / College
+                </label>
                 <input
                   type="text"
                   value={newStudentCollege}
@@ -1395,10 +1478,13 @@ function AdminAnalytics() {
                           "flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-left text-[11px] transition-all",
                           isSelected
                             ? "border-brand-purple bg-brand-purple/20 text-foreground font-semibold shadow-sm"
-                            : "border-line-soft bg-surface-dark/60 text-copy-subtle hover:border-line-soft/80 hover:text-foreground"
+                            : "border-line-soft bg-surface-dark/60 text-copy-subtle hover:border-line-soft/80 hover:text-foreground",
                         )}
                       >
-                        <span className="size-2 rounded-full" style={{ backgroundColor: track.accent }} />
+                        <span
+                          className="size-2 rounded-full"
+                          style={{ backgroundColor: track.accent }}
+                        />
                         <span className="truncate">{track.name}</span>
                       </button>
                     );
@@ -1409,8 +1495,9 @@ function AdminAnalytics() {
               <div className="rounded-xl border border-brand-emerald/30 bg-brand-emerald/10 p-2.5 text-[11px] text-brand-emerald flex items-center gap-2">
                 <CheckCircle2 className="size-4 shrink-0" />
                 <span>
-                  Adding this student enables immediate login at <strong className="text-foreground">/login</strong>.
-                  Credentials are automatically synced with local store authentication.
+                  Adding this student enables immediate login at{" "}
+                  <strong className="text-foreground">/login</strong>. Credentials are automatically
+                  synced with local store authentication.
                 </span>
               </div>
 

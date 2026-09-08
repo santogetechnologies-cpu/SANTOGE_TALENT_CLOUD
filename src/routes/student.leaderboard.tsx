@@ -11,9 +11,16 @@ export const Route = createFileRoute("/student/leaderboard")({
   head: () => ({
     meta: [
       { title: "Batch Leaderboard — SantoGe Talent Cloud" },
-      { name: "description", content: "Placement Accelerator cohort ranks for attendance, English, aptitude, communication and improvement." },
+      {
+        name: "description",
+        content:
+          "Placement Accelerator cohort ranks for attendance, English, aptitude, communication and improvement.",
+      },
       { property: "og:title", content: "Batch Leaderboard — SantoGe Talent Cloud" },
-      { property: "og:description", content: "Cohort ranks for attendance, English, aptitude, communication and improvement." },
+      {
+        property: "og:description",
+        content: "Cohort ranks for attendance, English, aptitude, communication and improvement.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -49,9 +56,23 @@ function LeaderboardPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Your rank" value={myRank > 0 ? `#${myRank}` : "—"} hint={METRICS.find((m) => m.key === metric)?.label ?? "Rank"} />
-        <Stat label="Cohort size" value={rows.length} accent="var(--brand-purple)" hint="Demo slice of the batch" />
-        <Stat label="Days attended" value={store.attendance.length} accent="var(--brand-emerald)" hint="Out of 90" />
+        <Stat
+          label="Your rank"
+          value={myRank > 0 ? `#${myRank}` : "—"}
+          hint={METRICS.find((m) => m.key === metric)?.label ?? "Rank"}
+        />
+        <Stat
+          label="Cohort size"
+          value={rows.length}
+          accent="var(--brand-purple)"
+          hint="Demo slice of the batch"
+        />
+        <Stat
+          label="Days attended"
+          value={store.attendance.length}
+          accent="var(--brand-emerald)"
+          hint="Out of 90"
+        />
       </div>
 
       <Panel title="Cohort ranks" subtitle="Switch the ranking metric">
@@ -62,7 +83,9 @@ function LeaderboardPage() {
               onClick={() => setMetric(m.key)}
               className={cn(
                 "rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors",
-                metric === m.key ? "border-brand-cyan/60 text-brand-cyan" : "border-line-soft text-copy-subtle hover:text-foreground",
+                metric === m.key
+                  ? "border-brand-cyan/60 text-brand-cyan"
+                  : "border-line-soft text-copy-subtle hover:text-foreground",
               )}
             >
               {m.label}
@@ -80,21 +103,30 @@ function LeaderboardPage() {
             >
               <span className="w-6 font-mono text-xs text-copy-subtle">{i + 1}</span>
               {i === 0 && <Crown className="size-3.5 text-brand-amber" />}
-              <span className="text-sm text-foreground">{r.name}{r.name === me ? " (you)" : ""}</span>
+              <span className="text-sm text-foreground">
+                {r.name}
+                {r.name === me ? " (you)" : ""}
+              </span>
               <div className="ml-auto flex w-40 items-center gap-2">
                 <Meter value={r[metric]} />
-                <span className="w-9 text-right font-mono text-[11px] text-copy-subtle">{r[metric]}</span>
+                <span className="w-9 text-right font-mono text-[11px] text-copy-subtle">
+                  {r[metric]}
+                </span>
               </div>
             </li>
           ))}
         </ol>
       </Panel>
 
-      <Panel title="Technical analytics (separate)" subtitle="Course-specific performance, not a batch ranking">
+      <Panel
+        title="Technical analytics (separate)"
+        subtitle="Course-specific performance, not a batch ranking"
+      >
         <p className="mb-3 flex items-start gap-2 text-xs text-copy-subtle">
           <Info className="mt-0.5 size-3.5 shrink-0 text-brand-cyan" />
-          MERN, SAP FICO and Medical Coding are never ranked against each other. Technical progress is measured per course
-          through skill mastery, practical completion and competency evidence.
+          MERN, SAP FICO and Medical Coding are never ranked against each other. Technical progress
+          is measured per course through skill mastery, practical completion and competency
+          evidence.
         </p>
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {store.activeTracks.map((id) => {
@@ -104,7 +136,9 @@ function LeaderboardPage() {
               <div key={id} className="rounded-xl border border-line-soft bg-surface-soft p-3">
                 <p className="text-sm font-semibold text-foreground">{t.name}</p>
                 <p className="mt-1 text-[11px] text-copy-subtle">Your competency progress</p>
-                <div className="mt-2"><Meter value={pct} accent={t.accent} /></div>
+                <div className="mt-2">
+                  <Meter value={pct} accent={t.accent} />
+                </div>
               </div>
             );
           })}

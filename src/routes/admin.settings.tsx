@@ -3,16 +3,7 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Chip, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore, type CompletionRule } from "@/lib/app-store";
-import {
-  Moon,
-  RotateCcw,
-  Sun,
-  Shield,
-  Server,
-  Lock,
-  CheckCircle2,
-  RefreshCw,
-} from "lucide-react";
+import { Moon, RotateCcw, Sun, Shield, Server, Lock, CheckCircle2, RefreshCw } from "lucide-react";
 import {
   getSupabaseConfig,
   saveSupabaseConfig,
@@ -24,9 +15,16 @@ export const Route = createFileRoute("/admin/settings")({
   head: () => ({
     meta: [
       { title: "System & Dual Gate Settings — SantoGe Talent Cloud" },
-      { name: "description", content: "Configure Dual Completion Gate rules, readiness weights, Supabase live endpoints, and appearance." },
+      {
+        name: "description",
+        content:
+          "Configure Dual Completion Gate rules, readiness weights, Supabase live endpoints, and appearance.",
+      },
       { property: "og:title", content: "System & Dual Gate Settings — SantoGe Talent Cloud" },
-      { property: "og:description", content: "Configure Dual Completion Gate rules and platform settings." },
+      {
+        property: "og:description",
+        content: "Configure Dual Completion Gate rules and platform settings.",
+      },
     ],
   }),
   component: AdminSettingsPage,
@@ -87,8 +85,18 @@ function AdminSettingsPage() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Gateway Threshold" value={threshold} hint="Min score for recruiter match" />
-        <Stat label="Daily Broadcast Time" value={broadcast} accent="var(--brand-amber)" hint="IST Morning Window" />
-        <Stat label="Max Technical Tracks" value={maxTracks} accent="var(--brand-purple)" hint="Per learner profile" />
+        <Stat
+          label="Daily Broadcast Time"
+          value={broadcast}
+          accent="var(--brand-amber)"
+          hint="IST Morning Window"
+        />
+        <Stat
+          label="Max Technical Tracks"
+          value={maxTracks}
+          accent="var(--brand-purple)"
+          hint="Per learner profile"
+        />
       </div>
 
       {/* DUAL COMPLETION GATE CONFIGURATION */}
@@ -111,9 +119,12 @@ function AdminSettingsPage() {
                     : "border-line-soft bg-surface-dark/40 text-copy-subtle"
                 }`}
               >
-                <p className="text-xs font-bold text-foreground">Primary Track 100% + Secondary Threshold</p>
+                <p className="text-xs font-bold text-foreground">
+                  Primary Track 100% + Secondary Threshold
+                </p>
                 <p className="mt-1 text-[11px] text-copy-subtle">
-                  Learner must master Primary track (100%) and reach at least {secondaryMin}% competency on secondary tracks.
+                  Learner must master Primary track (100%) and reach at least {secondaryMin}%
+                  competency on secondary tracks.
                 </p>
               </button>
 
@@ -137,7 +148,9 @@ function AdminSettingsPage() {
           {completionRule === "primary-plus-minimum" && (
             <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-foreground">Secondary Track Minimum Competency Requirement:</span>
+                <span className="font-semibold text-foreground">
+                  Secondary Track Minimum Competency Requirement:
+                </span>
                 <span className="font-mono font-bold text-brand-cyan">{secondaryMin}%</span>
               </div>
               <input
@@ -164,10 +177,16 @@ function AdminSettingsPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Scoring Weights */}
-        <Panel title="Talent Readiness Scoring Weights" subtitle="Weighted contribution to Readiness Index & Talent Score">
+        <Panel
+          title="Talent Readiness Scoring Weights"
+          subtitle="Weighted contribution to Readiness Index & Talent Score"
+        >
           <div className="space-y-2.5">
             {WEIGHTS.map((w) => (
-              <div key={w.key} className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft px-3 py-2.5">
+              <div
+                key={w.key}
+                className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft px-3 py-2.5"
+              >
                 <span className="text-xs font-medium text-foreground">{w.label}</span>
                 <span className="font-mono text-xs font-bold text-brand-cyan">{w.value}%</span>
               </div>
@@ -179,7 +198,9 @@ function AdminSettingsPage() {
         <Panel title="Live Supabase Integration" subtitle="Connected authentication and user store">
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-copy-subtle">Supabase Project URL</label>
+              <label className="mb-1 block text-xs font-semibold text-copy-subtle">
+                Supabase Project URL
+              </label>
               <input
                 type="text"
                 value={sbConfig.url}
@@ -188,7 +209,9 @@ function AdminSettingsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-copy-subtle">Supabase Anon Key</label>
+              <label className="mb-1 block text-xs font-semibold text-copy-subtle">
+                Supabase Anon Key
+              </label>
               <input
                 type="password"
                 value={sbConfig.anonKey}
@@ -203,11 +226,17 @@ function AdminSettingsPage() {
                 disabled={sbTesting}
                 className="inline-flex items-center gap-2 rounded-xl bg-surface-elevated border border-line-soft px-3.5 py-2 text-xs font-bold text-foreground hover:border-brand-cyan/60"
               >
-                {sbTesting ? <RefreshCw className="size-3.5 animate-spin" /> : <Server className="size-3.5 text-brand-cyan" />}
+                {sbTesting ? (
+                  <RefreshCw className="size-3.5 animate-spin" />
+                ) : (
+                  <Server className="size-3.5 text-brand-cyan" />
+                )}
                 Test &amp; Save Endpoint
               </button>
               {sbStatus && (
-                <span className={`text-xs font-semibold ${sbStatus.includes("Error") ? "text-brand-rose" : "text-brand-emerald"}`}>
+                <span
+                  className={`text-xs font-semibold ${sbStatus.includes("Error") ? "text-brand-rose" : "text-brand-emerald"}`}
+                >
                   {sbStatus}
                 </span>
               )}
@@ -223,7 +252,11 @@ function AdminSettingsPage() {
             onClick={store.toggleTheme}
             className="flex items-center gap-2 rounded-xl border border-line-soft bg-surface-soft px-4 py-3 text-xs font-semibold text-foreground"
           >
-            {store.theme === "dark" ? <Sun className="size-4 text-brand-amber" /> : <Moon className="size-4 text-brand-purple" />}
+            {store.theme === "dark" ? (
+              <Sun className="size-4 text-brand-amber" />
+            ) : (
+              <Moon className="size-4 text-brand-purple" />
+            )}
             Switch to {store.theme === "dark" ? "light" : "dark"} theme
           </button>
           <button

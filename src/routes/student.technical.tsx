@@ -36,9 +36,16 @@ export const Route = createFileRoute("/student/technical")({
   head: () => ({
     meta: [
       { title: "90-Day Placement Syllabus & Technical Tracks — SantoGe Talent Cloud" },
-      { name: "description", content: "18 Weeks × 5 Working Days = 90 Days. 18 Friday workplace simulations, 18 portfolio projects, and Day 90 industry capstone designed to crack technical placement interviews." },
+      {
+        name: "description",
+        content:
+          "18 Weeks × 5 Working Days = 90 Days. 18 Friday workplace simulations, 18 portfolio projects, and Day 90 industry capstone designed to crack technical placement interviews.",
+      },
       { property: "og:title", content: "90-Day Placement Syllabus — SantoGe Talent Cloud" },
-      { property: "og:description", content: "18 Weeks × 5 Days = 90 Learning Days with Friday Workplace Simulations." },
+      {
+        property: "og:description",
+        content: "18 Weeks × 5 Days = 90 Learning Days with Friday Workplace Simulations.",
+      },
     ],
   }),
   component: TechnicalPage,
@@ -46,20 +53,32 @@ export const Route = createFileRoute("/student/technical")({
 
 function TechnicalPage() {
   const store = useAppStore();
-  const tracks = store.activeTracks && store.activeTracks.length > 0 ? store.activeTracks : ["mern" as TrackId];
+  const tracks =
+    store.activeTracks && store.activeTracks.length > 0 ? store.activeTracks : ["mern" as TrackId];
   const [selectedDomain, setSelectedDomain] = useState<string>("all");
   const [open, setOpen] = useState<TrackId>(tracks[0] ?? "mern");
-  const [syllabusViewTab, setSyllabusViewTab] = useState<"90days" | "simulations" | "portfolio" | "capstone">("90days");
+  const [syllabusViewTab, setSyllabusViewTab] = useState<
+    "90days" | "simulations" | "portfolio" | "capstone"
+  >("90days");
   const [selectedPhaseFilter, setSelectedPhaseFilter] = useState<number | "all">("all");
-  const [expandedWeeks, setExpandedWeeks] = useState<Record<number, boolean>>({ 1: true, 2: true, 6: true, 11: true, 15: true, 18: true });
+  const [expandedWeeks, setExpandedWeeks] = useState<Record<number, boolean>>({
+    1: true,
+    2: true,
+    6: true,
+    11: true,
+    15: true,
+    18: true,
+  });
   const [syllabusSearch, setSyllabusSearch] = useState("");
-  
+
   const currentTrackId = tracks.includes(open) ? open : (tracks[0] ?? "mern");
   const track = trackById(currentTrackId);
   const syllabus = useMemo(() => getTrackSyllabus(track.id), [track.id]);
   const modules = modulesFor(track.id);
   const upcoming = nextSkill(track.id, store.skills);
-  const avg = Math.round(tracks.reduce((s, t) => s + store.trackPercent(t), 0) / Math.max(tracks.length, 1));
+  const avg = Math.round(
+    tracks.reduce((s, t) => s + store.trackPercent(t), 0) / Math.max(tracks.length, 1),
+  );
 
   const filteredCatalog = useMemo(() => {
     if (selectedDomain === "all") return TRACKS;
@@ -77,7 +96,9 @@ function TechnicalPage() {
       toast.success(`Removed ${trackById(id).name} from active tracks.`);
     } else {
       if (store.activeTracks.length >= 3) {
-        toast.error("Maximum 3 active technical courses allowed simultaneously. Change in settings.");
+        toast.error(
+          "Maximum 3 active technical courses allowed simultaneously. Change in settings.",
+        );
         return;
       }
       store.setActiveTracks([...store.activeTracks, id]);
@@ -91,20 +112,28 @@ function TechnicalPage() {
 
   const filteredWeeks = useMemo(() => {
     return syllabus.weeks.filter((w) => {
-      const matchesPhase = selectedPhaseFilter === "all" || (
-        selectedPhaseFilter === 1 ? w.week <= 5 :
-        selectedPhaseFilter === 2 ? w.week >= 6 && w.week <= 10 :
-        selectedPhaseFilter === 3 ? w.week >= 11 && w.week <= 14 :
-        selectedPhaseFilter === 4 ? w.week >= 15 && w.week <= 16 :
-        w.week >= 17
-      );
+      const matchesPhase =
+        selectedPhaseFilter === "all" ||
+        (selectedPhaseFilter === 1
+          ? w.week <= 5
+          : selectedPhaseFilter === 2
+            ? w.week >= 6 && w.week <= 10
+            : selectedPhaseFilter === 3
+              ? w.week >= 11 && w.week <= 14
+              : selectedPhaseFilter === 4
+                ? w.week >= 15 && w.week <= 16
+                : w.week >= 17);
 
-      const matchesSearch = !syllabusSearch.trim() || (
+      const matchesSearch =
+        !syllabusSearch.trim() ||
         w.title.toLowerCase().includes(syllabusSearch.toLowerCase()) ||
         w.theme.toLowerCase().includes(syllabusSearch.toLowerCase()) ||
         w.projectTitle.toLowerCase().includes(syllabusSearch.toLowerCase()) ||
-        w.days.some((d) => d.topic.toLowerCase().includes(syllabusSearch.toLowerCase()) || d.practice.toLowerCase().includes(syllabusSearch.toLowerCase()))
-      );
+        w.days.some(
+          (d) =>
+            d.topic.toLowerCase().includes(syllabusSearch.toLowerCase()) ||
+            d.practice.toLowerCase().includes(syllabusSearch.toLowerCase()),
+        );
 
       return matchesPhase && matchesSearch;
     });
@@ -121,9 +150,24 @@ function TechnicalPage() {
       {/* KPI Stats */}
       <div className="grid gap-4 sm:grid-cols-4">
         <Stat label="Total Curriculum Days" value="90 Days" hint="18 Weeks × 5 Working Days" />
-        <Stat label="Friday Simulations" value="18 Mini Projects" accent="var(--brand-purple)" hint="Every Friday simulation" />
-        <Stat label="Placement Portfolio" value="18 Projects + Capstone" accent="var(--brand-emerald)" hint="Interview-ready artifacts" />
-        <Stat label="Competency Mastery" value={`${store.trackPercent(track.id)}%`} accent="var(--brand-amber)" hint={`Active track: ${track.short}`} />
+        <Stat
+          label="Friday Simulations"
+          value="18 Mini Projects"
+          accent="var(--brand-purple)"
+          hint="Every Friday simulation"
+        />
+        <Stat
+          label="Placement Portfolio"
+          value="18 Projects + Capstone"
+          accent="var(--brand-emerald)"
+          hint="Interview-ready artifacts"
+        />
+        <Stat
+          label="Competency Mastery"
+          value={`${store.trackPercent(track.id)}%`}
+          accent="var(--brand-amber)"
+          hint={`Active track: ${track.short}`}
+        />
       </div>
 
       {/* Active Enrolled Tracks Selector */}
@@ -132,7 +176,9 @@ function TechnicalPage() {
           <p className="text-xs font-bold uppercase tracking-wider text-copy-subtle">
             Select Active Course Track to Inspect 90-Day Syllabus
           </p>
-          <span className="text-[11px] text-copy-subtle">Click 'View Syllabus' on any enrolled specialization</span>
+          <span className="text-[11px] text-copy-subtle">
+            Click 'View Syllabus' on any enrolled specialization
+          </span>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -146,10 +192,10 @@ function TechnicalPage() {
                 key={`${id}-${i}`}
                 title={t.name}
                 subtitle={`${i === 0 ? "Primary Track (100% Gate)" : "Secondary Track"} · ${t.short}`}
-                className={cn(isViewing && "ring-2 ring-brand-cyan/60 shadow-lg shadow-brand-cyan/5")}
-                action={
-                  <span className="size-3 rounded-full" style={{ background: t.accent }} />
-                }
+                className={cn(
+                  isViewing && "ring-2 ring-brand-cyan/60 shadow-lg shadow-brand-cyan/5",
+                )}
+                action={<span className="size-3 rounded-full" style={{ background: t.accent }} />}
               >
                 <div className="mb-2 flex items-center justify-between text-xs">
                   <span className="text-copy-subtle">90-Day Mastery</span>
@@ -164,10 +210,11 @@ function TechnicalPage() {
                       "flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-bold transition-all",
                       isViewing
                         ? "border-brand-cyan bg-brand-cyan/10 text-brand-cyan"
-                        : "border-line-soft bg-surface-soft text-foreground hover:border-brand-cyan/60"
+                        : "border-line-soft bg-surface-soft text-foreground hover:border-brand-cyan/60",
                     )}
                   >
-                    <Play className="size-3 text-brand-cyan" /> {isViewing ? "Inspecting Syllabus" : "View 90-Day Syllabus"}
+                    <Play className="size-3 text-brand-cyan" />{" "}
+                    {isViewing ? "Inspecting Syllabus" : "View 90-Day Syllabus"}
                   </button>
                   <Link
                     to="/student/labs"
@@ -201,18 +248,24 @@ function TechnicalPage() {
             <div className="space-y-2">
               {syllabus.careerProgression.map((role, rIdx) => (
                 <div key={role} className="flex items-center gap-2 text-xs">
-                  <span className={cn(
-                    "flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-mono font-bold",
-                    rIdx === syllabus.careerProgression.length - 1
-                      ? "bg-brand-emerald text-surface-dark"
-                      : "bg-surface-elevated text-copy-subtle border border-line-soft"
-                  )}>
+                  <span
+                    className={cn(
+                      "flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-mono font-bold",
+                      rIdx === syllabus.careerProgression.length - 1
+                        ? "bg-brand-emerald text-surface-dark"
+                        : "bg-surface-elevated text-copy-subtle border border-line-soft",
+                    )}
+                  >
                     {rIdx + 1}
                   </span>
-                  <span className={cn(
-                    "font-medium",
-                    rIdx === syllabus.careerProgression.length - 1 ? "text-brand-emerald font-bold" : "text-copy-subtle"
-                  )}>
+                  <span
+                    className={cn(
+                      "font-medium",
+                      rIdx === syllabus.careerProgression.length - 1
+                        ? "text-brand-emerald font-bold"
+                        : "text-copy-subtle",
+                    )}
+                  >
                     {role}
                   </span>
                 </div>
@@ -247,7 +300,7 @@ function TechnicalPage() {
                 "rounded-xl px-3.5 py-2 text-xs font-bold transition-all flex items-center gap-1.5",
                 syllabusViewTab === "90days"
                   ? "bg-gradient-to-r from-brand-cyan to-brand-purple text-surface-dark shadow-md"
-                  : "bg-surface-soft text-copy-subtle hover:text-foreground border border-line-soft"
+                  : "bg-surface-soft text-copy-subtle hover:text-foreground border border-line-soft",
               )}
             >
               <Calendar className="size-3.5" /> 90-Day Schedule (18 Weeks)
@@ -258,7 +311,7 @@ function TechnicalPage() {
                 "rounded-xl px-3.5 py-2 text-xs font-bold transition-all flex items-center gap-1.5",
                 syllabusViewTab === "simulations"
                   ? "bg-gradient-to-r from-brand-cyan to-brand-purple text-surface-dark shadow-md"
-                  : "bg-surface-soft text-copy-subtle hover:text-foreground border border-line-soft"
+                  : "bg-surface-soft text-copy-subtle hover:text-foreground border border-line-soft",
               )}
             >
               <Briefcase className="size-3.5" /> 18 Friday Workplace Simulations
@@ -269,7 +322,7 @@ function TechnicalPage() {
                 "rounded-xl px-3.5 py-2 text-xs font-bold transition-all flex items-center gap-1.5",
                 syllabusViewTab === "portfolio"
                   ? "bg-gradient-to-r from-brand-cyan to-brand-purple text-surface-dark shadow-md"
-                  : "bg-surface-soft text-copy-subtle hover:text-foreground border border-line-soft"
+                  : "bg-surface-soft text-copy-subtle hover:text-foreground border border-line-soft",
               )}
             >
               <Award className="size-3.5" /> Placement Portfolio (18 Projects)
@@ -280,7 +333,7 @@ function TechnicalPage() {
                 "rounded-xl px-3.5 py-2 text-xs font-bold transition-all flex items-center gap-1.5",
                 syllabusViewTab === "capstone"
                   ? "bg-gradient-to-r from-brand-cyan to-brand-purple text-surface-dark shadow-md"
-                  : "bg-surface-soft text-copy-subtle hover:text-foreground border border-line-soft"
+                  : "bg-surface-soft text-copy-subtle hover:text-foreground border border-line-soft",
               )}
             >
               <Sparkles className="size-3.5" /> Day 90 Master Capstone
@@ -305,14 +358,16 @@ function TechnicalPage() {
         {/* Phase Filter Bar */}
         {syllabusViewTab === "90days" && (
           <div className="my-4 flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold text-copy-subtle uppercase mr-1">Filter by Phase:</span>
+            <span className="text-[11px] font-bold text-copy-subtle uppercase mr-1">
+              Filter by Phase:
+            </span>
             <button
               onClick={() => setSelectedPhaseFilter("all")}
               className={cn(
                 "rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors border",
                 selectedPhaseFilter === "all"
                   ? "border-brand-cyan bg-brand-cyan/10 text-brand-cyan"
-                  : "border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground"
+                  : "border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
               )}
             >
               All 18 Weeks (90 Days)
@@ -325,7 +380,7 @@ function TechnicalPage() {
                   "rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors border",
                   selectedPhaseFilter === p.phaseNumber
                     ? "border-brand-purple bg-brand-purple/10 text-brand-purple font-bold"
-                    : "border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground"
+                    : "border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
                 )}
               >
                 Phase {p.phaseNumber}: {p.title.split(" ")[0]} ({p.weeksRange})
@@ -339,7 +394,8 @@ function TechnicalPage() {
           <div className="space-y-4">
             {filteredWeeks.map((w) => {
               const isOpen = Boolean(expandedWeeks[w.week]);
-              const phaseNum = w.week <= 5 ? 1 : w.week <= 10 ? 2 : w.week <= 14 ? 3 : w.week <= 16 ? 4 : 5;
+              const phaseNum =
+                w.week <= 5 ? 1 : w.week <= 10 ? 2 : w.week <= 14 ? 3 : w.week <= 16 ? 4 : 5;
               const phase = syllabus.phases.find((p) => p.phaseNumber === phaseNum);
 
               return (
@@ -347,7 +403,9 @@ function TechnicalPage() {
                   key={w.week}
                   className={cn(
                     "rounded-2xl border transition-all overflow-hidden",
-                    isOpen ? "border-brand-cyan/50 bg-surface-soft/90" : "border-line-soft bg-surface-soft/40 hover:border-line-strong"
+                    isOpen
+                      ? "border-brand-cyan/50 bg-surface-soft/90"
+                      : "border-line-soft bg-surface-soft/40 hover:border-line-strong",
                   )}
                 >
                   {/* Week Header */}
@@ -367,7 +425,9 @@ function TechnicalPage() {
                           </span>
                         </div>
                         <p className="text-xs text-copy-subtle mt-0.5">
-                          Theme: <span className="text-foreground font-medium">{w.theme}</span> · Friday Mini Project: <span className="text-brand-purple font-semibold">{w.projectTitle}</span>
+                          Theme: <span className="text-foreground font-medium">{w.theme}</span> ·
+                          Friday Mini Project:{" "}
+                          <span className="text-brand-purple font-semibold">{w.projectTitle}</span>
                         </p>
                       </div>
                     </div>
@@ -376,7 +436,11 @@ function TechnicalPage() {
                       <span className="rounded-lg bg-surface-dark px-2.5 py-1 text-[11px] font-semibold text-brand-emerald border border-line-soft">
                         Workplace Skill: {w.workplaceSkill}
                       </span>
-                      {isOpen ? <ChevronDown className="size-4 text-brand-cyan" /> : <ChevronRight className="size-4 text-copy-subtle" />}
+                      {isOpen ? (
+                        <ChevronDown className="size-4 text-brand-cyan" />
+                      ) : (
+                        <ChevronRight className="size-4 text-copy-subtle" />
+                      )}
                     </div>
                   </div>
 
@@ -394,15 +458,19 @@ function TechnicalPage() {
                                 "rounded-xl border p-3 flex flex-col justify-between transition-all",
                                 isFriday
                                   ? "border-brand-purple/60 bg-brand-purple/5 sm:col-span-1 shadow-sm"
-                                  : "border-line-soft bg-surface-soft/80"
+                                  : "border-line-soft bg-surface-soft/80",
                               )}
                             >
                               <div>
                                 <div className="flex items-center justify-between mb-1.5">
-                                  <span className={cn(
-                                    "rounded px-1.5 py-0.5 font-mono text-[10px] font-bold",
-                                    isFriday ? "bg-brand-purple text-surface-dark" : "bg-surface-elevated text-brand-cyan"
-                                  )}>
+                                  <span
+                                    className={cn(
+                                      "rounded px-1.5 py-0.5 font-mono text-[10px] font-bold",
+                                      isFriday
+                                        ? "bg-brand-purple text-surface-dark"
+                                        : "bg-surface-elevated text-brand-cyan",
+                                    )}
+                                  >
                                     Day {d.day} {isFriday && "· Friday Simulation"}
                                   </span>
                                   <span className="font-mono text-[10px] text-copy-subtle">
@@ -410,14 +478,20 @@ function TechnicalPage() {
                                   </span>
                                 </div>
 
-                                <p className={cn("text-xs font-bold", isFriday ? "text-brand-purple" : "text-foreground")}>
+                                <p
+                                  className={cn(
+                                    "text-xs font-bold",
+                                    isFriday ? "text-brand-purple" : "text-foreground",
+                                  )}
+                                >
                                   {d.topic}
                                 </p>
                               </div>
 
                               <div className="mt-3 pt-2 border-t border-line-soft/60">
                                 <p className="text-[11px] text-copy-subtle line-clamp-2">
-                                  <span className="font-semibold text-foreground">Practice:</span> {d.practice}
+                                  <span className="font-semibold text-foreground">Practice:</span>{" "}
+                                  {d.practice}
                                 </p>
                                 {d.deliverable && (
                                   <div className="mt-2 rounded bg-surface-dark px-2 py-1 text-[10px] font-mono text-brand-emerald border border-line-soft">
@@ -435,10 +509,12 @@ function TechnicalPage() {
                         <Briefcase className="size-4 text-brand-purple shrink-0 mt-0.5" />
                         <div className="min-w-0 flex-1">
                           <p className="font-bold text-foreground">
-                            Friday Workplace Simulation: <span className="text-brand-purple">{w.projectTitle}</span>
+                            Friday Workplace Simulation:{" "}
+                            <span className="text-brand-purple">{w.projectTitle}</span>
                           </p>
                           <p className="mt-0.5 text-copy-subtle leading-relaxed">
-                            {w.days.find((d) => d.isProject)?.workplaceSimulation || `Complete real-world simulated workplace assignment: ${w.projectTitle}.`}
+                            {w.days.find((d) => d.isProject)?.workplaceSimulation ||
+                              `Complete real-world simulated workplace assignment: ${w.projectTitle}.`}
                           </p>
                           <p className="mt-1.5 font-mono text-[11px] text-brand-emerald">
                             Portfolio Deliverable: <strong>{w.deliverable}</strong>
@@ -469,19 +545,24 @@ function TechnicalPage() {
                       <span className="rounded-md bg-brand-purple/10 px-2 py-0.5 font-mono text-[10px] font-bold text-brand-purple border border-brand-purple/20">
                         Week {w.week} · Day {w.week * 5}
                       </span>
-                      <span className="text-[11px] font-semibold text-brand-cyan">{w.workplaceSkill}</span>
+                      <span className="text-[11px] font-semibold text-brand-cyan">
+                        {w.workplaceSkill}
+                      </span>
                     </div>
 
                     <h4 className="mt-2 text-sm font-bold text-foreground">{w.projectTitle}</h4>
                     <p className="mt-1.5 text-xs text-copy-subtle line-clamp-3 leading-relaxed">
-                      {projectDay?.workplaceSimulation || `Real-world industry simulation challenge for ${w.theme}.`}
+                      {projectDay?.workplaceSimulation ||
+                        `Real-world industry simulation challenge for ${w.theme}.`}
                     </p>
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-line-soft/60 space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-copy-subtle">Deliverable:</span>
-                      <span className="font-mono font-semibold text-brand-emerald text-[11px]">{w.deliverable}</span>
+                      <span className="font-mono font-semibold text-brand-emerald text-[11px]">
+                        {w.deliverable}
+                      </span>
                     </div>
                     <Link
                       to="/student/labs"
@@ -501,9 +582,12 @@ function TechnicalPage() {
           <div className="space-y-4">
             <div className="rounded-xl border border-brand-emerald/30 bg-brand-emerald/5 p-4 flex items-center justify-between">
               <div>
-                <h4 className="text-sm font-bold text-foreground">18 Industry Verified Portfolio Artifacts</h4>
+                <h4 className="text-sm font-bold text-foreground">
+                  18 Industry Verified Portfolio Artifacts
+                </h4>
                 <p className="text-xs text-copy-subtle mt-0.5">
-                  Every Friday mini project produces a tangible code repository, architecture map, or audit sheet proving your ability to do the job.
+                  Every Friday mini project produces a tangible code repository, architecture map,
+                  or audit sheet proving your ability to do the job.
                 </p>
               </div>
               <Chip tone="emerald">18 / 18 Projects Mapped</Chip>
@@ -523,14 +607,18 @@ function TechnicalPage() {
                 <tbody className="divide-y divide-line-soft/60 text-foreground">
                   {syllabus.portfolio.map((p) => (
                     <tr key={p.num} className="hover:bg-surface-elevated/60 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-brand-cyan">P{String(p.num).padStart(2, "0")}</td>
+                      <td className="py-3 px-4 font-mono font-bold text-brand-cyan">
+                        P{String(p.num).padStart(2, "0")}
+                      </td>
                       <td className="py-3 px-4 font-bold">{p.project}</td>
                       <td className="py-3 px-4">
                         <span className="rounded-lg bg-surface-dark border border-line-soft px-2 py-0.5 font-mono text-[11px] text-brand-purple">
                           {p.workplaceSkill}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-copy-subtle font-mono text-[11px]">{p.phase}</td>
+                      <td className="py-3 px-4 text-copy-subtle font-mono text-[11px]">
+                        {p.phase}
+                      </td>
                       <td className="py-3 px-4 text-right">
                         <span className="inline-flex items-center gap-1 font-semibold text-brand-emerald text-[11px]">
                           <CheckCircle2 className="size-3.5" /> Verified Artifact
@@ -553,15 +641,21 @@ function TechnicalPage() {
                   <span className="rounded-md bg-brand-cyan px-2 py-0.5 text-xs font-bold text-surface-dark">
                     Day 90 Industry Capstone
                   </span>
-                  <h3 className="mt-2 text-lg font-bold text-foreground">{syllabus.day90Capstone.title}</h3>
-                  <p className="text-xs text-copy-subtle mt-1">{syllabus.day90Capstone.description}</p>
+                  <h3 className="mt-2 text-lg font-bold text-foreground">
+                    {syllabus.day90Capstone.title}
+                  </h3>
+                  <p className="text-xs text-copy-subtle mt-1">
+                    {syllabus.day90Capstone.description}
+                  </p>
                 </div>
                 <Chip tone="purple">14-Step Full Lifecycle</Chip>
               </div>
 
               {/* Architecture Flow */}
               <div className="rounded-xl border border-line-soft bg-surface-dark p-3.5">
-                <p className="text-xs font-bold text-foreground mb-2">Capstone Data & Execution Flow:</p>
+                <p className="text-xs font-bold text-foreground mb-2">
+                  Capstone Data & Execution Flow:
+                </p>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   {syllabus.day90Capstone.flow.map((node, nIdx) => (
                     <div key={node} className="flex items-center gap-2">
@@ -579,13 +673,18 @@ function TechnicalPage() {
               {/* 14 Steps Breakdown Grid */}
               <div className="grid gap-3 sm:grid-cols-2">
                 {syllabus.day90Capstone.steps.map((s) => (
-                  <div key={s.step} className="rounded-xl border border-line-soft bg-surface-dark/70 p-3 flex gap-3 items-start">
+                  <div
+                    key={s.step}
+                    className="rounded-xl border border-line-soft bg-surface-dark/70 p-3 flex gap-3 items-start"
+                  >
                     <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-brand-cyan/10 font-mono text-xs font-bold text-brand-cyan border border-brand-cyan/20">
                       {s.step}
                     </span>
                     <div>
                       <p className="text-xs font-bold text-foreground">{s.title}</p>
-                      <p className="mt-0.5 text-[11px] text-copy-subtle leading-relaxed">{s.description}</p>
+                      <p className="mt-0.5 text-[11px] text-copy-subtle leading-relaxed">
+                        {s.description}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -606,6 +705,3 @@ function TechnicalPage() {
     </div>
   );
 }
-
-
-

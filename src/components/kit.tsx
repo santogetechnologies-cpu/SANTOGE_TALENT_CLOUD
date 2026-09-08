@@ -19,7 +19,11 @@ export function Panel({
       {(title || action) && (
         <header className="mb-4 flex items-start justify-between gap-3">
           <div>
-            {title && <h2 className="font-display text-base font-700 tracking-tight text-foreground">{title}</h2>}
+            {title && (
+              <h2 className="font-display text-base font-700 tracking-tight text-foreground">
+                {title}
+              </h2>
+            )}
             {subtitle && <p className="mt-1 text-xs text-copy-subtle">{subtitle}</p>}
           </div>
           {action}
@@ -30,11 +34,21 @@ export function Panel({
   );
 }
 
-export function PageHeader({ title, subtitle, action }: { title: string; subtitle: string; action?: ReactNode }) {
+export function PageHeader({
+  title,
+  subtitle,
+  action,
+}: {
+  title: string;
+  subtitle: string;
+  action?: ReactNode;
+}) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{title}</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          {title}
+        </h1>
         <p className="mt-1.5 max-w-2xl text-sm text-copy-subtle">{subtitle}</p>
       </div>
       {action}
@@ -55,7 +69,9 @@ export function Stat({
 }) {
   return (
     <div className="glass-card rounded-2xl p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-copy-subtle">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-copy-subtle">
+        {label}
+      </p>
       <p className="mt-2 font-display text-2xl font-bold text-foreground" style={{ color: accent }}>
         {value}
       </p>
@@ -75,7 +91,15 @@ export function Meter({ value, accent = "var(--brand-cyan)" }: { value: number; 
   );
 }
 
-export function Gauge({ value, max = 1000, label }: { value: number; max?: number; label: string }) {
+export function Gauge({
+  value,
+  max = 1000,
+  label,
+}: {
+  value: number;
+  max?: number;
+  label: string;
+}) {
   const pct = Math.min(1, value / max);
   const radius = 62;
   const circumference = Math.PI * radius;
@@ -106,12 +130,20 @@ export function Gauge({ value, max = 1000, label }: { value: number; max?: numbe
         </defs>
       </svg>
       <p className="-mt-6 font-display text-3xl font-bold text-foreground">{Math.round(value)}</p>
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-copy-subtle">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-copy-subtle">
+        {label}
+      </p>
     </div>
   );
 }
 
-export function Chip({ children, tone = "cyan" }: { children: ReactNode; tone?: "cyan" | "purple" | "emerald" | "amber" | "rose" | "muted" }) {
+export function Chip({
+  children,
+  tone = "cyan",
+}: {
+  children: ReactNode;
+  tone?: "cyan" | "purple" | "emerald" | "amber" | "rose" | "muted";
+}) {
   const map: Record<string, string> = {
     cyan: "text-brand-cyan",
     purple: "text-brand-purple",
@@ -132,7 +164,13 @@ export function Chip({ children, tone = "cyan" }: { children: ReactNode; tone?: 
   );
 }
 
-export function Console({ lines, empty = "Awaiting execution…" }: { lines: string[]; empty?: string }) {
+export function Console({
+  lines,
+  empty = "Awaiting execution…",
+}: {
+  lines: string[];
+  empty?: string;
+}) {
   return (
     <pre className="terminal-grid max-h-64 overflow-auto rounded-xl border border-line-soft p-4 font-mono text-[12px] leading-relaxed text-brand-cyan">
       {lines.length === 0 ? <span className="text-copy-subtle">{empty}</span> : lines.join("\n")}

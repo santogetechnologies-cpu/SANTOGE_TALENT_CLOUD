@@ -111,28 +111,24 @@ export function getSupabaseClient(): SupabaseClient {
   if (_supabaseClient) return _supabaseClient;
 
   const config = getSupabaseConfig();
-  _supabaseClient = createClient(
-    config.url,
-    config.anonKey || "placeholder-key",
-    {
-      auth: {
-        autoRefreshToken: false,   // No background token-refresh polling
-        persistSession: true,       // Session stored in localStorage (read on mount only)
-        detectSessionInUrl: false,  // No URL scanning on every navigation
-      },
-      global: {
-        headers: {
-          "x-application-name": "santoge-talent-cloud",
-        },
-      },
-      // Realtime disabled — no websocket connections, zero egress from subscriptions.
-      realtime: {
-        params: {
-          eventsPerSecond: 0,
-        },
+  _supabaseClient = createClient(config.url, config.anonKey || "placeholder-key", {
+    auth: {
+      autoRefreshToken: true, // Standard auth token refresh
+      persistSession: true, // Session stored in localStorage
+      detectSessionInUrl: false, // No URL scanning on every navigation
+    },
+    global: {
+      headers: {
+        "x-application-name": "santoge-talent-cloud",
       },
     },
-  );
+    // Realtime disabled — no websocket connections, zero egress from subscriptions.
+    realtime: {
+      params: {
+        eventsPerSecond: 0,
+      },
+    },
+  });
 
   return _supabaseClient;
 }
@@ -236,7 +232,9 @@ export const supabaseAuth = {
     ) {
       return {
         data: { session: null, user: null },
-        error: new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY."),
+        error: new Error(
+          "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.",
+        ),
       };
     }
 
@@ -306,13 +304,15 @@ export const supabaseAuth = {
     ) {
       return {
         data: { session: null, user: null },
-        error: new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY."),
+        error: new Error(
+          "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.",
+        ),
       };
     }
 
     // SECURITY: Public signup ALWAYS forces role="student".
     // No caller can escalate to "admin" through this endpoint.
-    const safeRole: "student" = "student";
+    const safeRole = "student" as const;
 
     try {
       const client = getSupabaseClient();
@@ -347,22 +347,22 @@ export const supabaseAuth = {
           } as SupabaseUser)
         : null;
 
-      const session: SupabaseSession | null = data.session && user
-        ? {
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-            expires_in: data.session.expires_in,
-            expires_at: data.session.expires_at,
-            token_type: data.session.token_type,
-            user,
-          }
-        : null;
+      const session: SupabaseSession | null =
+        data.session && user
+          ? {
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token,
+              expires_in: data.session.expires_in,
+              expires_at: data.session.expires_at,
+              token_type: data.session.token_type,
+              user,
+            }
+          : null;
 
       if (session) saveStoredSession(session);
       return { data: { session, user }, error: null };
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to register with Supabase.";
+      const message = err instanceof Error ? err.message : "Failed to register with Supabase.";
       return { data: { session: null, user: null }, error: new Error(message) };
     }
   },
@@ -407,7 +407,8 @@ export const supabaseAuth = {
     ) {
       return {
         ok: false,
-        message: "No valid Supabase project configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.",
+        message:
+          "No valid Supabase project configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.",
       };
     }
 
@@ -425,8 +426,7 @@ export const supabaseAuth = {
     } catch (err) {
       return {
         ok: false,
-        message:
-          err instanceof Error ? err.message : "Could not reach Supabase endpoint",
+        message: err instanceof Error ? err.message : "Could not reach Supabase endpoint",
       };
     }
   },
@@ -436,9 +436,7 @@ export const supabaseAuth = {
    * MANUAL only — called when Platform Super Admin explicitly requests password reset email.
    * NEVER called automatically or on a schedule.
    */
-  async resetPasswordForEmail(
-    email: string,
-  ): Promise<{ ok: boolean; message: string }> {
+  async resetPasswordForEmail(email: string): Promise<{ ok: boolean; message: string }> {
     const config = getSupabaseConfig();
     const cleanUrl = config.url.replace(/\/+$/, "");
 

@@ -33,9 +33,16 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Sign in — SantoGe Talent Cloud" },
-      { name: "description", content: "Unified sign-in: Instant Demo login with 5 student personas or Real Supabase Live Auth." },
+      {
+        name: "description",
+        content:
+          "Unified sign-in: Instant Demo login with 5 student personas or Real Supabase Live Auth.",
+      },
       { property: "og:title", content: "Sign in — SantoGe Talent Cloud" },
-      { property: "og:description", content: "Unified sign-in: Demo personas & Live Supabase Authentication." },
+      {
+        property: "og:description",
+        content: "Unified sign-in: Demo personas & Live Supabase Authentication.",
+      },
       { property: "og:image", content: "/og-image.svg" },
     ],
   }),
@@ -74,7 +81,8 @@ function LoginPage() {
       .map((c) => ({
         name: c.name,
         email: c.email,
-        password: store.passwordOverrides?.[c.email.toLowerCase().trim()] ?? c.password ?? "Temp@1234",
+        password:
+          store.passwordOverrides?.[c.email.toLowerCase().trim()] ?? c.password ?? "Temp@1234",
         batchId: c.batchId,
         dept: c.dept,
       }));
@@ -88,13 +96,19 @@ function LoginPage() {
       .map((p) => ({
         name: p.student_name,
         email: p.email,
-        password: store.passwordOverrides?.[p.email.toLowerCase().trim()] ?? p.password ?? "Temp@1234",
+        password:
+          store.passwordOverrides?.[p.email.toLowerCase().trim()] ?? p.password ?? "Temp@1234",
         batchId: p.batch_id,
         dept: p.dept,
       }));
 
     return [...custom, ...fromProv];
-  }, [store.customStudents, store.provisioned, store.deletedStudentEmails, store.passwordOverrides]);
+  }, [
+    store.customStudents,
+    store.provisioned,
+    store.deletedStudentEmails,
+    store.passwordOverrides,
+  ]);
 
   // Demo submit handler
   const handleDemoSubmit = (e?: React.FormEvent) => {
@@ -102,10 +116,15 @@ function LoginPage() {
     setError("");
     const res = store.signIn(email, password);
     if (!res.ok) {
-      setError(res.error ?? "Invalid credentials. Choose a demo profile on the right or enter valid credentials.");
+      setError(
+        res.error ??
+          "Invalid credentials. Choose a demo profile on the right or enter valid credentials.",
+      );
       return;
     }
-    toast.success(res.role === "admin" ? "Signed in as Platform Super Admin" : "Signed in successfully");
+    toast.success(
+      res.role === "admin" ? "Signed in as Platform Super Admin" : "Signed in successfully",
+    );
     void navigate({ to: res.role === "admin" ? "/admin" : "/student" });
   };
 
@@ -125,7 +144,9 @@ function LoginPage() {
       setError(res.error || "Sign in failed. Please check your credentials.");
       return;
     }
-    toast.success(res.role === "admin" ? "Signed in as Platform Super Admin" : "Signed in to Student Portal");
+    toast.success(
+      res.role === "admin" ? "Signed in as Platform Super Admin" : "Signed in to Student Portal",
+    );
     void navigate({ to: res.role === "admin" ? "/admin" : "/student" });
   };
 
@@ -159,7 +180,6 @@ function LoginPage() {
   return (
     <div className="app-grid min-h-screen bg-background px-4 py-8 sm:py-12">
       <div className="mx-auto w-full max-w-[1140px] space-y-6">
-        
         {/* Brand Header */}
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="flex items-center gap-3">
@@ -185,7 +205,7 @@ function LoginPage() {
                 "flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all",
                 mode === "demo"
                   ? "bg-gradient-to-r from-brand-cyan to-brand-purple text-surface-dark shadow-md"
-                  : "text-copy-subtle hover:text-foreground"
+                  : "text-copy-subtle hover:text-foreground",
               )}
             >
               <Zap className="size-3.5" /> Demo Login
@@ -199,7 +219,7 @@ function LoginPage() {
                 "flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all",
                 mode === "supabase"
                   ? "bg-gradient-to-r from-brand-cyan to-brand-purple text-surface-dark shadow-md"
-                  : "text-copy-subtle hover:text-foreground"
+                  : "text-copy-subtle hover:text-foreground",
               )}
             >
               <Server className="size-3.5" /> Live Supabase Login
@@ -217,14 +237,21 @@ function LoginPage() {
                 <Sparkles className="size-3" /> Demo Mode Active
               </div>
 
-              <h1 className="mt-4 font-display text-2xl font-bold text-foreground">Sign in to your portal</h1>
+              <h1 className="mt-4 font-display text-2xl font-bold text-foreground">
+                Sign in to your portal
+              </h1>
               <p className="mt-1 text-xs text-copy-subtle leading-relaxed">
                 Click any 1-click persona on the right or enter credentials manually below.
               </p>
 
               <form onSubmit={handleDemoSubmit} className="mt-5 space-y-3.5">
                 <div>
-                  <label htmlFor="demo-email" className="mb-1 block text-xs font-semibold text-copy-subtle">Email Address</label>
+                  <label
+                    htmlFor="demo-email"
+                    className="mb-1 block text-xs font-semibold text-copy-subtle"
+                  >
+                    Email Address
+                  </label>
                   <input
                     id="demo-email"
                     type="email"
@@ -236,7 +263,12 @@ function LoginPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="demo-password" className="mb-1 block text-xs font-semibold text-copy-subtle">Password</label>
+                  <label
+                    htmlFor="demo-password"
+                    className="mb-1 block text-xs font-semibold text-copy-subtle"
+                  >
+                    Password
+                  </label>
                   <input
                     id="demo-password"
                     type="password"
@@ -265,7 +297,8 @@ function LoginPage() {
               <div className="mt-6 rounded-xl border border-line-soft bg-surface-soft p-3 text-[11px] text-copy-subtle">
                 <p className="font-semibold text-foreground">💡 Master Architecture Note</p>
                 <p className="mt-1">
-                  Students belong to one common Placement Accelerator batch cohort, while running independent self-paced technical paths across 15 tracks.
+                  Students belong to one common Placement Accelerator batch cohort, while running
+                  independent self-paced technical paths across 15 tracks.
                 </p>
               </div>
             </div>
@@ -277,7 +310,9 @@ function LoginPage() {
                 <div className="mb-3.5 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <GraduationCap className="size-4 text-brand-cyan" />
-                    <p className="text-sm font-semibold text-foreground">1-Click Student Personas</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      1-Click Student Personas
+                    </p>
                   </div>
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-copy-subtle">
                     1–3 technical tracks each · same batch
@@ -292,13 +327,15 @@ function LoginPage() {
                       className="group rounded-xl border border-line-soft bg-surface-soft p-3.5 text-left transition-all hover:border-brand-cyan/60 hover:bg-surface-soft/80"
                     >
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-bold text-foreground group-hover:text-brand-cyan">{a.name}</p>
+                        <p className="text-sm font-bold text-foreground group-hover:text-brand-cyan">
+                          {a.name}
+                        </p>
                         <span className="rounded-full bg-surface-elevated px-2 py-0.5 text-[10px] font-mono text-copy-subtle">
                           Day {a.placementDay}/90
                         </span>
                       </div>
                       <p className="mt-0.5 font-mono text-[11px] text-brand-cyan">{a.email}</p>
-                      
+
                       <div className="mt-2 flex flex-wrap gap-1">
                         {Array.from(new Set(a.tracks || [])).map((t, idx) => (
                           <span
@@ -311,7 +348,9 @@ function LoginPage() {
                       </div>
 
                       <div className="mt-2.5 flex items-center justify-between border-t border-line-soft/60 pt-2 text-[10px] text-copy-subtle">
-                        <span>{a.dept} · {a.batchId}</span>
+                        <span>
+                          {a.dept} · {a.batchId}
+                        </span>
                         <span className="font-mono text-brand-amber">🔥 {a.streak}d</span>
                       </div>
                     </button>
@@ -330,23 +369,30 @@ function LoginPage() {
                       </span>
                     </div>
                     <div className="grid gap-2 sm:grid-cols-2">
-                      {adminAddedLearners.slice(-4).reverse().map((l) => (
-                        <button
-                          key={l.email}
-                          type="button"
-                          onClick={() => quickDemo(l.email, l.password)}
-                          className="group rounded-xl border border-brand-cyan/30 bg-brand-cyan/5 p-2.5 text-left transition-all hover:border-brand-cyan hover:bg-brand-cyan/10"
-                        >
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs font-bold text-foreground group-hover:text-brand-cyan truncate">{l.name}</p>
-                            <span className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[9px] font-mono text-brand-cyan">
-                              {l.batchId}
-                            </span>
-                          </div>
-                          <p className="font-mono text-[10px] text-copy-subtle truncate">{l.email}</p>
-                          <p className="text-[9px] text-brand-cyan/80 mt-1">Pass: {l.password}</p>
-                        </button>
-                      ))}
+                      {adminAddedLearners
+                        .slice(-4)
+                        .reverse()
+                        .map((l) => (
+                          <button
+                            key={l.email}
+                            type="button"
+                            onClick={() => quickDemo(l.email, l.password)}
+                            className="group rounded-xl border border-brand-cyan/30 bg-brand-cyan/5 p-2.5 text-left transition-all hover:border-brand-cyan hover:bg-brand-cyan/10"
+                          >
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-bold text-foreground group-hover:text-brand-cyan truncate">
+                                {l.name}
+                              </p>
+                              <span className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[9px] font-mono text-brand-cyan">
+                                {l.batchId}
+                              </span>
+                            </div>
+                            <p className="font-mono text-[10px] text-copy-subtle truncate">
+                              {l.email}
+                            </p>
+                            <p className="text-[9px] text-brand-cyan/80 mt-1">Pass: {l.password}</p>
+                          </button>
+                        ))}
                     </div>
                   </div>
                 )}
@@ -357,7 +403,9 @@ function LoginPage() {
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Shield className="size-4 text-brand-purple" />
-                    <p className="text-sm font-semibold text-foreground">1-Click Platform Super Admin</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      1-Click Platform Super Admin
+                    </p>
                   </div>
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-brand-purple">
                     Executive Control
@@ -375,7 +423,8 @@ function LoginPage() {
                     </span>
                   </div>
                   <p className="mt-1.5 text-xs text-copy-subtle">
-                    Executive analytics, 300-student batch provisioning, cron pipelines, dual-gate rules, and recruiter talent marketplace.
+                    Executive analytics, 300-student batch provisioning, cron pipelines, dual-gate
+                    rules, and recruiter talent marketplace.
                   </p>
                 </button>
               </div>
@@ -385,7 +434,6 @@ function LoginPage() {
           /* ================= LIVE SUPABASE LOGIN VIEW ================= */
           <div className="mx-auto max-w-[540px] space-y-4">
             <div className="rounded-2xl border border-line-soft bg-surface-elevated/95 p-6 backdrop-blur-xl shadow-2xl">
-              
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div className="inline-flex items-center gap-2 rounded-full border border-brand-emerald/30 bg-brand-emerald/10 px-3 py-1 text-[11px] font-semibold text-brand-emerald">
@@ -395,13 +443,19 @@ function LoginPage() {
                   onClick={() => setShowConfig(!showConfig)}
                   className="flex items-center gap-1.5 text-xs font-semibold text-copy-subtle hover:text-foreground"
                 >
-                  <Settings className="size-3.5" /> Endpoint Settings <ChevronDown className={cn("size-3 transition-transform", showConfig && "rotate-180")} />
+                  <Settings className="size-3.5" /> Endpoint Settings{" "}
+                  <ChevronDown
+                    className={cn("size-3 transition-transform", showConfig && "rotate-180")}
+                  />
                 </button>
               </div>
 
-              <h1 className="mt-4 font-display text-2xl font-bold text-foreground">Live Supabase Sign in</h1>
+              <h1 className="mt-4 font-display text-2xl font-bold text-foreground">
+                Live Supabase Sign in
+              </h1>
               <p className="mt-1 text-xs text-copy-subtle leading-relaxed">
-                Sign in with the credentials provisioned by your partner institution or platform administrator.
+                Sign in with the credentials provisioned by your partner institution or platform
+                administrator.
               </p>
 
               {/* Collapsible Supabase Project Config Drawer */}
@@ -416,7 +470,9 @@ function LoginPage() {
                     )}
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11px] font-semibold text-copy-subtle">Project URL (VITE_SUPABASE_URL)</label>
+                    <label className="mb-1 block text-[11px] font-semibold text-copy-subtle">
+                      Project URL (VITE_SUPABASE_URL)
+                    </label>
                     <input
                       type="text"
                       value={sbConfig.url}
@@ -426,7 +482,9 @@ function LoginPage() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11px] font-semibold text-copy-subtle">Publishable Key (VITE_SUPABASE_PUBLISHABLE_KEY)</label>
+                    <label className="mb-1 block text-[11px] font-semibold text-copy-subtle">
+                      Publishable Key (VITE_SUPABASE_PUBLISHABLE_KEY)
+                    </label>
                     <input
                       type="password"
                       value={sbConfig.anonKey}
@@ -442,10 +500,18 @@ function LoginPage() {
                       disabled={connStatus === "testing"}
                       className="flex items-center gap-1.5 rounded-lg bg-surface-elevated border border-line-soft px-3 py-1.5 text-xs font-bold text-foreground hover:border-brand-cyan/50"
                     >
-                      <RefreshCw className={cn("size-3", connStatus === "testing" && "animate-spin")} /> Test Connection
+                      <RefreshCw
+                        className={cn("size-3", connStatus === "testing" && "animate-spin")}
+                      />{" "}
+                      Test Connection
                     </button>
                     {connMessage && (
-                      <span className={cn("text-[11px]", connStatus === "ok" ? "text-brand-emerald" : "text-brand-rose")}>
+                      <span
+                        className={cn(
+                          "text-[11px]",
+                          connStatus === "ok" ? "text-brand-emerald" : "text-brand-rose",
+                        )}
+                      >
                         {connMessage}
                       </span>
                     )}
@@ -456,7 +522,9 @@ function LoginPage() {
               {/* Supabase Sign In Form */}
               <form onSubmit={handleSupabaseSubmit} className="mt-5 space-y-3.5">
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-copy-subtle">Institutional Email Address</label>
+                  <label className="mb-1 block text-xs font-semibold text-copy-subtle">
+                    Institutional Email Address
+                  </label>
                   <input
                     type="email"
                     required
@@ -468,7 +536,9 @@ function LoginPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-copy-subtle">Password</label>
+                  <label className="mb-1 block text-xs font-semibold text-copy-subtle">
+                    Password
+                  </label>
                   <input
                     type="password"
                     required
@@ -503,7 +573,12 @@ function LoginPage() {
               <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-line-soft bg-surface-soft/80 p-3 text-[11px] text-copy-subtle">
                 <Info className="size-4 shrink-0 text-brand-cyan mt-0.5" />
                 <div>
-                  <span className="font-semibold text-foreground">Stage 0 Institutional Provisioning:</span> Student accounts are created in bulk via CSV roster uploads by college administrators. Self-signup is disabled to preserve cohort batch integrity and 1–3 technical course track mappings.
+                  <span className="font-semibold text-foreground">
+                    Stage 0 Institutional Provisioning:
+                  </span>{" "}
+                  Student accounts are created in bulk via CSV roster uploads by college
+                  administrators. Self-signup is disabled to preserve cohort batch integrity and 1–3
+                  technical course track mappings.
                 </div>
               </div>
             </div>

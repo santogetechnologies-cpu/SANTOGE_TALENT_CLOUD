@@ -9,9 +9,16 @@ export const Route = createFileRoute("/student/placement")({
   head: () => ({
     meta: [
       { title: "Placement Tracker — SantoGe Talent Cloud" },
-      { name: "description", content: "Track applications across the hiring pipeline and see which openings your Talent Score unlocks." },
+      {
+        name: "description",
+        content:
+          "Track applications across the hiring pipeline and see which openings your Talent Score unlocks.",
+      },
       { property: "og:title", content: "Placement Tracker — SantoGe Talent Cloud" },
-      { property: "og:description", content: "Track applications across the hiring pipeline in real time." },
+      {
+        property: "og:description",
+        content: "Track applications across the hiring pipeline in real time.",
+      },
     ],
   }),
   component: PlacementPage,
@@ -20,16 +27,65 @@ export const Route = createFileRoute("/student/placement")({
 type Stage = "Applied" | "Screening" | "Technical" | "HR Round" | "Offer";
 const STAGES: Stage[] = ["Applied", "Screening", "Technical", "HR Round", "Offer"];
 
-type Opening = { id: string; company: string; role: string; ctc: string; minScore: number; stage: Stage | null };
+type Opening = {
+  id: string;
+  company: string;
+  role: string;
+  ctc: string;
+  minScore: number;
+  stage: Stage | null;
+};
 
 const SEED: Opening[] = [
-  { id: "o1", company: "Zoho", role: "Member Technical Staff", ctc: "₹7.2 LPA", minScore: 520, stage: "Technical" },
-  { id: "o2", company: "Freshworks", role: "Associate SDE", ctc: "₹9.0 LPA", minScore: 640, stage: "Screening" },
-  { id: "o3", company: "TCS Digital", role: "Systems Engineer", ctc: "₹7.0 LPA", minScore: 480, stage: "Applied" },
-  { id: "o4", company: "Cognizant GenC Next", role: "Programmer Analyst", ctc: "₹6.5 LPA", minScore: 450, stage: null },
-  { id: "o5", company: "Hexaware", role: "Cloud Associate", ctc: "₹5.5 LPA", minScore: 400, stage: null },
+  {
+    id: "o1",
+    company: "Zoho",
+    role: "Member Technical Staff",
+    ctc: "₹7.2 LPA",
+    minScore: 520,
+    stage: "Technical",
+  },
+  {
+    id: "o2",
+    company: "Freshworks",
+    role: "Associate SDE",
+    ctc: "₹9.0 LPA",
+    minScore: 640,
+    stage: "Screening",
+  },
+  {
+    id: "o3",
+    company: "TCS Digital",
+    role: "Systems Engineer",
+    ctc: "₹7.0 LPA",
+    minScore: 480,
+    stage: "Applied",
+  },
+  {
+    id: "o4",
+    company: "Cognizant GenC Next",
+    role: "Programmer Analyst",
+    ctc: "₹6.5 LPA",
+    minScore: 450,
+    stage: null,
+  },
+  {
+    id: "o5",
+    company: "Hexaware",
+    role: "Cloud Associate",
+    ctc: "₹5.5 LPA",
+    minScore: 400,
+    stage: null,
+  },
   { id: "o6", company: "Razorpay", role: "SDE-1", ctc: "₹16 LPA", minScore: 780, stage: null },
-  { id: "o7", company: "Chargebee", role: "QA Engineer", ctc: "₹8.0 LPA", minScore: 600, stage: "HR Round" },
+  {
+    id: "o7",
+    company: "Chargebee",
+    role: "QA Engineer",
+    ctc: "₹8.0 LPA",
+    minScore: 600,
+    stage: "HR Round",
+  },
 ];
 
 function PlacementPage() {
@@ -70,8 +126,16 @@ function PlacementPage() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Talent Score" value={store.talentScore} />
-        <Stat label="Unlocked openings" value={rows.filter((r) => store.talentScore >= r.minScore).length} accent="var(--brand-emerald)" />
-        <Stat label="Offers" value={rows.filter((r) => r.stage === "Offer").length} accent="var(--brand-amber)" />
+        <Stat
+          label="Unlocked openings"
+          value={rows.filter((r) => store.talentScore >= r.minScore).length}
+          accent="var(--brand-emerald)"
+        />
+        <Stat
+          label="Offers"
+          value={rows.filter((r) => r.stage === "Offer").length}
+          accent="var(--brand-amber)"
+        />
       </div>
 
       <Panel
@@ -101,7 +165,9 @@ function PlacementPage() {
                   </span>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground">{r.company}</p>
-                    <p className="text-xs text-copy-subtle">{r.role} · {r.ctc}</p>
+                    <p className="text-xs text-copy-subtle">
+                      {r.role} · {r.ctc}
+                    </p>
                   </div>
                   <div className="ml-auto flex items-center gap-2">
                     <Chip tone={unlocked ? "emerald" : "rose"}>Min {r.minScore}</Chip>
@@ -116,7 +182,11 @@ function PlacementPage() {
                             Advance
                           </button>
                         )}
-                        <button onClick={() => withdraw(r.id)} aria-label="Withdraw" className="text-copy-subtle hover:text-brand-rose">
+                        <button
+                          onClick={() => withdraw(r.id)}
+                          aria-label="Withdraw"
+                          className="text-copy-subtle hover:text-brand-rose"
+                        >
                           <X className="size-4" />
                         </button>
                       </>
@@ -139,7 +209,11 @@ function PlacementPage() {
               </div>
             );
           })}
-          {filtered.length === 0 && <p className="py-6 text-center text-xs text-copy-subtle">No openings match "{query}".</p>}
+          {filtered.length === 0 && (
+            <p className="py-6 text-center text-xs text-copy-subtle">
+              No openings match "{query}".
+            </p>
+          )}
         </div>
       </Panel>
     </div>

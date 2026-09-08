@@ -1,27 +1,16 @@
 /**
  * SantoGe Talent Cloud — Placement Data Service
  *
- * CURRENT SOURCE: Mock / local data from app-store.tsx
- * FUTURE SOURCE:  Supabase PostgreSQL (when schema is ready)
- *
- * Egress policy:
- *   NO automatic Supabase queries.
- *   NO polling, NO realtime, NO background sync.
- *   All functions currently return mock data only.
+ * Authoritative integration for Live Supabase mode (Hiring Drives, Leaderboard, Placements) and Demo mode.
+ * Rules:
+ * - Specific column selection only (NO select('*')).
+ * - Zero realtime subscriptions, zero continuous polling.
  */
 
-// ---------------------------------------------------------------------------
-// Types — shaped for future Supabase columns (specific, not *)
-// ---------------------------------------------------------------------------
+import { getSupabaseClient } from "@/lib/supabase";
+import type { HiringDrive } from "@/lib/app-store";
+import type { DbHiringDrive, DbPlacement } from "./types";
 
-/**
- * Minimal leaderboard entry for future Supabase queries.
- * Future query:
- *   .select('student_id,name,talent_score,rank,batch_id')
- *   .eq('batch_id', batchId)
- *   .order('talent_score', { ascending: false })
- *   .limit(50)
- */
 export type LeaderboardEntry = {
   student_id: string;
   name: string;
@@ -30,90 +19,114 @@ export type LeaderboardEntry = {
   batch_id: string;
 };
 
-/**
- * Minimal placement record for future Supabase queries.
- * Future query:
- *   .select('student_id,company_name,offer_date,package_lpa,status')
- *   .eq('student_id', studentId)
- */
-export type PlacementRecord = {
-  student_id: string;
-  company_name: string;
-  offer_date: string;
-  package_lpa: number;
-  status: "offered" | "accepted" | "declined";
-};
+export async function fetchLiveHiringDrives(): Promise<HiringDrive[]> {
+  const supabase = getSupabaseClient();
 
-/**
- * Minimal mock interview record for future Supabase queries.
- * Future query:
- *   .select('id,student_id,score,feedback_summary,completed_at')
- *   .eq('student_id', studentId)
- *   .order('completed_at', { ascending: false })
- *   .limit(10)
- */
-export type MockInterviewRecord = {
-  id: string;
-  student_id: string;
-  score: number;
-  feedback_summary: string;
-  completed_at: string;
-};
+  const { data } = await supabase
+    .from("hiring_drives")
+    .select("id,company,roles,ctc,min_score,open_slots,status,created_at,updated_at")
+    .order("created_at", { ascending: false });
 
-// ---------------------------------------------------------------------------
-// Data service — mock-first, Supabase-ready
-// ---------------------------------------------------------------------------
+  if (!data) return [];
 
-/**
- * FUTURE: Fetch leaderboard for a batch from Supabase.
- * DO NOT call automatically. Always filters by batch_id and applies a limit.
- * NEVER downloads all students to compute rank in the browser.
- *
- * Example:
- * ```ts
- * const { data } = await supabaseClient
- *   .from('talent_scores')
- *   .select('student_id,name,talent_score,rank,batch_id')
- *   .eq('batch_id', batchId)
- *   .order('talent_score', { ascending: false })
- *   .limit(50);
- * ```
- */
-export async function fetchLeaderboardFromSupabase(
-  _batchId: string,
-  _limit: number = 50,
+  return (data as DbHiringDrive[]).map((d) => ({
+    id: d.id,
+    company: d.company,
+    roles: d.roles,
+    ctc: d.ctc,
+    minScore: d.min_score,
+    openSlots: d.open_slots,
+    status: d.status,
+  }));
+}
+
+export async function createLiveHiringDrive(
+  drive: Omit<HiringDrive, "id">,
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  const supabase = getSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("hiring_drives")
+    .insert({
+      company: drive.company,
+      roles: drive.roles,
+      ctc: drive.ctc,
+      min_score: drive.minScore,
+      open_slots: drive.openSlots,
+      status: drive.status,
+      updated_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, id: (data as { id: string })?.id };
+}
+
+export async function updateLiveHiringDrive(
+  id: string,
+  patch: Partial<HiringDrive>,
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getSupabaseClient();
+
+  const updateFields: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.company) updateFields["company"] = patch.company;
+  if (patch.roles) updateFields["roles"] = patch.roles;
+  if (patch.ctc) updateFields["ctc"] = patch.ctc;
+  if (typeof patch.minScore === "number") updateFields["min_score"] = patch.minScore;
+  if (typeof patch.openSlots === "number") updateFields["open_slots"] = patch.openSlots;
+  if (patch.status) updateFields["status"] = patch.status;
+
+  const { error } = await supabase.from("hiring_drives").update(updateFields).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  return { ok: true };
+}
+
+export async function deleteLiveHiringDrive(id: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getSupabaseClient();
+
+  const { error } = await supabase.from("hiring_drives").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  return { ok: true };
+}
+
+export async function fetchLiveBatchLeaderboard(
+  batchId: string,
+  limit: number = 50,
 ): Promise<LeaderboardEntry[]> {
-  // TODO: Implement when Supabase talent_scores table schema is finalised.
-  return [];
+  const supabase = getSupabaseClient();
+
+  const { data } = await supabase
+    .from("student_profiles")
+    .select("id,name,talent_score,batch_id")
+    .eq("batch_id", batchId)
+    .eq("status", "active")
+    .order("talent_score", { ascending: false })
+    .limit(limit);
+
+  if (!data) return [];
+
+  return (data as Array<{ id: string; name: string; talent_score: number; batch_id: string }>).map(
+    (s, idx) => ({
+      student_id: s.id,
+      name: s.name,
+      talent_score: s.talent_score,
+      rank: idx + 1,
+      batch_id: s.batch_id,
+    }),
+  );
 }
 
-/**
- * FUTURE: Fetch placement records for a student from Supabase.
- * DO NOT call automatically. Always filters by student_id.
- *
- * Example:
- * ```ts
- * const { data } = await supabaseClient
- *   .from('placements')
- *   .select('student_id,company_name,offer_date,package_lpa,status')
- *   .eq('student_id', studentId)
- *   .order('offer_date', { ascending: false });
- * ```
- */
-export async function fetchPlacementRecordsFromSupabase(
-  _studentId: string,
-): Promise<PlacementRecord[]> {
-  // TODO: Implement when Supabase placements table schema is finalised.
-  return [];
-}
+export async function fetchLivePlacements(studentId: string): Promise<DbPlacement[]> {
+  const supabase = getSupabaseClient();
 
-/**
- * FUTURE: Fetch mock interview history for a student from Supabase.
- * DO NOT call automatically. Always filters by student_id and uses a limit.
- */
-export async function fetchMockInterviewsFromSupabase(
-  _studentId: string,
-): Promise<MockInterviewRecord[]> {
-  // TODO: Implement when Supabase mock_interviews table schema is finalised.
-  return [];
+  const { data } = await supabase
+    .from("placements")
+    .select("id,student_id,company_name,offer_date,package_lpa,status,created_at,updated_at")
+    .eq("student_id", studentId)
+    .order("offer_date", { ascending: false });
+
+  return (data || []) as DbPlacement[];
 }

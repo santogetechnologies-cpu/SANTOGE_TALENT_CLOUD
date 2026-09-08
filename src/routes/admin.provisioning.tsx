@@ -24,7 +24,10 @@ import {
 } from "lucide-react";
 import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
-import { AdminResetPasswordModal, type ResetPasswordStudent } from "@/components/admin-reset-password-modal";
+import {
+  AdminResetPasswordModal,
+  type ResetPasswordStudent,
+} from "@/components/admin-reset-password-modal";
 
 export const Route = createFileRoute("/admin/provisioning")({
   head: () => ({
@@ -38,7 +41,8 @@ export const Route = createFileRoute("/admin/provisioning")({
       { property: "og:title", content: "Bulk CSV Provisioning — SantoGe Talent Cloud" },
       {
         property: "og:description",
-        content: "Stage 0 Institutional Onboarding: Provision entire college batches from validated CSV.",
+        content:
+          "Stage 0 Institutional Onboarding: Provision entire college batches from validated CSV.",
       },
     ],
   }),
@@ -119,7 +123,10 @@ const COURSE_ALIASES: Record<string, TrackId> = {
 
 /** Normalizes flexible column header titles */
 const normalizeHeader = (raw: string): string => {
-  const clean = raw.trim().toLowerCase().replace(/[\s\-_]+/g, "");
+  const clean = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[\s\-_]+/g, "");
   if (["studentname", "name", "learnername", "fullname"].includes(clean)) return "student_name";
   if (["email", "emailaddress", "studentemail"].includes(clean)) return "email";
   if (["password", "pass", "temppassword"].includes(clean)) return "password";
@@ -224,7 +231,10 @@ function ProvisioningPage() {
 
   const normalizeCourse = (raw: string | undefined): TrackId | null => {
     if (!raw) return null;
-    const cleaned = raw.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    const cleaned = raw
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
     if (!cleaned) return null;
     return COURSE_ALIASES[cleaned] || null;
   };
@@ -326,7 +336,9 @@ function ProvisioningPage() {
     // Check batch sizing rule: 100-300 students per batch
     Object.entries(batchCounts).forEach(([bid, count]) => {
       if (count > 300) {
-        out.push(`[alert] Batch ${bid} has ${count} students (Exceeds maximum recommended 300/batch).`);
+        out.push(
+          `[alert] Batch ${bid} has ${count} students (Exceeds maximum recommended 300/batch).`,
+        );
       } else {
         out.push(`[batch] Batch ${bid}: ${count} learners mapped (Capacity compliant).`);
       }
@@ -510,7 +522,11 @@ function ProvisioningPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-4">
-        <Stat label="Total Provisioned" value={provisionedList.length} hint="Active portal logins" />
+        <Stat
+          label="Total Provisioned"
+          value={provisionedList.length}
+          hint="Active portal logins"
+        />
         <Stat
           label="Required CSV Headers"
           value="10 Columns"
@@ -580,7 +596,9 @@ function ProvisioningPage() {
             onDrop={handleDrop}
             className={cn(
               "relative rounded-xl border transition-colors",
-              isDragging ? "border-brand-cyan bg-brand-cyan/10" : "border-line-soft bg-surface-dark",
+              isDragging
+                ? "border-brand-cyan bg-brand-cyan/10"
+                : "border-line-soft bg-surface-dark",
             )}
           >
             <textarea
@@ -739,7 +757,10 @@ function ProvisioningPage() {
               </thead>
               <tbody className="divide-y divide-line-soft/60 text-foreground">
                 {filteredProvisioned.slice(0, 50).map((p, idx) => (
-                  <tr key={`${p.email}-${idx}`} className="hover:bg-surface-soft/60 transition-colors">
+                  <tr
+                    key={`${p.email}-${idx}`}
+                    className="hover:bg-surface-soft/60 transition-colors"
+                  >
                     <td className="py-2.5 pr-4">
                       <p className="font-bold text-foreground">{p.student_name}</p>
                       <span className="inline-flex items-center gap-1 text-[10px] text-brand-emerald">
@@ -760,7 +781,9 @@ function ProvisioningPage() {
                     </td>
                     <td className="py-2.5 pr-4">
                       <div className="flex flex-wrap gap-1">
-                        {Array.from(new Set([p.course_1, p.course_2, p.course_3].filter(Boolean))).map((c, cIdx) => (
+                        {Array.from(
+                          new Set([p.course_1, p.course_2, p.course_3].filter(Boolean)),
+                        ).map((c, cIdx) => (
                           <span
                             key={`${p.email}-${c}-${cIdx}`}
                             className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[10px] font-mono text-foreground"
@@ -842,7 +865,9 @@ function ProvisioningPage() {
                   <Plus className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-display text-base font-bold text-foreground">Add Single Learner</h3>
+                  <h3 className="font-display text-base font-bold text-foreground">
+                    Add Single Learner
+                  </h3>
                   <p className="text-[11px] text-copy-subtle">
                     Creates instant portal credentials, cohort sync, and technical track assignment.
                   </p>
@@ -900,10 +925,14 @@ function ProvisioningPage() {
                     placeholder="Temp@1234"
                     className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60 font-mono"
                   />
-                  <span className="text-[10px] text-copy-subtle mt-0.5 block">Learner uses this password to log in</span>
+                  <span className="text-[10px] text-copy-subtle mt-0.5 block">
+                    Learner uses this password to log in
+                  </span>
                 </div>
                 <div>
-                  <label className="block font-semibold text-foreground mb-1">Roll / Registration Number</label>
+                  <label className="block font-semibold text-foreground mb-1">
+                    Roll / Registration Number
+                  </label>
                   <input
                     type="text"
                     value={singleRollNo}
@@ -949,7 +978,9 @@ function ProvisioningPage() {
               </div>
 
               <div>
-                <label className="block font-semibold text-foreground mb-1">Institution / College</label>
+                <label className="block font-semibold text-foreground mb-1">
+                  Institution / College
+                </label>
                 <input
                   type="text"
                   value={singleCollege}
@@ -982,7 +1013,10 @@ function ProvisioningPage() {
                             : "border-line-soft bg-surface-dark/60 text-copy-subtle hover:border-line-soft/80 hover:text-foreground",
                         )}
                       >
-                        <span className="size-2 rounded-full" style={{ backgroundColor: track.accent }} />
+                        <span
+                          className="size-2 rounded-full"
+                          style={{ backgroundColor: track.accent }}
+                        />
                         <span className="truncate">{track.name}</span>
                       </button>
                     );
@@ -1035,8 +1069,12 @@ function ProvisioningPage() {
                 <AlertTriangle className="size-5" />
               </div>
               <div>
-                <h3 className="font-display text-base font-bold text-foreground">Remove Provisioned Learner?</h3>
-                <p className="text-xs text-copy-subtle">This action permanently deletes the student account</p>
+                <h3 className="font-display text-base font-bold text-foreground">
+                  Remove Provisioned Learner?
+                </h3>
+                <p className="text-xs text-copy-subtle">
+                  This action permanently deletes the student account
+                </p>
               </div>
             </div>
 
@@ -1051,17 +1089,21 @@ function ProvisioningPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-copy-subtle font-medium">Roll Number:</span>
-                <span className="font-mono font-semibold text-foreground">{deleteTargetStudent.rollNo}</span>
+                <span className="font-mono font-semibold text-foreground">
+                  {deleteTargetStudent.rollNo}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-copy-subtle font-medium">Cohort Batch:</span>
-                <span className="font-mono font-bold text-brand-purple">{deleteTargetStudent.batchId}</span>
+                <span className="font-mono font-bold text-brand-purple">
+                  {deleteTargetStudent.batchId}
+                </span>
               </div>
             </div>
 
             <p className="text-xs text-copy-subtle leading-relaxed">
-              Removing this student will permanently revoke credentials, update cohort batch headcount, and record the
-              removal in the audit trail.
+              Removing this student will permanently revoke credentials, update cohort batch
+              headcount, and record the removal in the audit trail.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
@@ -1099,7 +1141,9 @@ function ProvisioningPage() {
                 <AlertTriangle className="size-5" />
               </div>
               <div>
-                <h3 className="font-display text-base font-bold text-foreground">Clear All Provisioned Accounts?</h3>
+                <h3 className="font-display text-base font-bold text-foreground">
+                  Clear All Provisioned Accounts?
+                </h3>
                 <p className="text-xs text-copy-subtle">
                   Removes all {provisionedList.length} CSV provisioned learners from the system
                 </p>
@@ -1107,8 +1151,8 @@ function ProvisioningPage() {
             </div>
 
             <p className="text-xs text-copy-subtle leading-relaxed">
-              This action resets the bulk provisioning directory. Static demo accounts and manually created institutional
-              batches remain untouched.
+              This action resets the bulk provisioning directory. Static demo accounts and manually
+              created institutional batches remain untouched.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
