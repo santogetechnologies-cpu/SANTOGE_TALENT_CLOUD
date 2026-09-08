@@ -114,13 +114,8 @@ type Persisted = {
 
 const STORAGE_KEY = "santoge-talent-cloud-v3";
 
-const DEFAULT_HIRING_DRIVES: HiringDrive[] = [
-  { id: "hd-1", company: "TCS Digital", roles: "Full Stack & Cloud", ctc: "₹7.5 - ₹9.0 LPA", minScore: 650, openSlots: 120, status: "Active Drive" },
-  { id: "hd-2", company: "Infosys Wingspan", roles: "Java & DevOps Associates", ctc: "₹8.0 - ₹9.5 LPA", minScore: 680, openSlots: 85, status: "Active Drive" },
-  { id: "hd-3", company: "Wipro Turbo", roles: "AI/ML Solutions Engineers", ctc: "₹9.5 - ₹12.0 LPA", minScore: 720, openSlots: 60, status: "Shortlisting" },
-  { id: "hd-4", company: "Deloitte USI", roles: "SAP FICO & Business Analysts", ctc: "₹8.5 - ₹10.5 LPA", minScore: 670, openSlots: 45, status: "Interviews Live" },
-  { id: "hd-5", company: "Cognizant GenC Next", roles: "QA Automation & Cyber", ctc: "₹7.0 - ₹8.5 LPA", minScore: 640, openSlots: 110, status: "Active Drive" },
-];
+const DEFAULT_HIRING_DRIVES: HiringDrive[] = [];
+
 
 const profileFor = (a: StudentAccount): Profile => ({
   activeTracks: [...a.tracks],
@@ -212,9 +207,9 @@ const DEFAULT_STATE: Persisted = {
   customStudents: {},
   passwordOverrides: {},
   batches: [
-    { id: "BATCH-2026-ABC-CSE-01", name: "BATCH-2026-ABC-CSE-01", capacity: 240, enrolled: 218, dept: "CSE", lastSync: null },
-    { id: "BATCH-2026-ABC-IT-02", name: "BATCH-2026-ABC-IT-02", capacity: 180, enrolled: 164, dept: "IT", lastSync: null },
-    { id: "BATCH-2026-XYZ-ECE-01", name: "BATCH-2026-XYZ-ECE-01", capacity: 300, enrolled: 287, dept: "ECE", lastSync: null },
+    { id: "BATCH-2026-ABC-CSE-01", name: "BATCH-2026-ABC-CSE-01", capacity: 240, enrolled: 0, dept: "CSE", lastSync: null },
+    { id: "BATCH-2026-ABC-IT-02", name: "BATCH-2026-ABC-IT-02", capacity: 180, enrolled: 0, dept: "IT", lastSync: null },
+    { id: "BATCH-2026-XYZ-ECE-01", name: "BATCH-2026-XYZ-ECE-01", capacity: 300, enrolled: 0, dept: "ECE", lastSync: null },
   ],
   provisioned: [],
   deletedStudentEmails: [],
@@ -308,11 +303,11 @@ const StoreContext = createContext<Store | null>(null);
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 
 const INITIAL_LOGS: CronLog[] = [
-  { id: "l1", time: "06:00:02", stage: "broadcast", message: "Morning 10m English video broadcast queued to 3 batches (669 learners)", status: "ok" },
-  { id: "l2", time: "06:00:44", stage: "broadcast", message: "Morning 10m Aptitude video broadcast delivered · Telegram + in-app", status: "ok" },
-  { id: "l3", time: "06:05:10", stage: "unlock", message: "In-app 10m guided practice unlocked (5 MCQ · 2 logic · 1 voice pitch)", status: "ok" },
+  { id: "l1", time: "06:00:02", stage: "broadcast", message: "Placement broadcast pipeline initialized", status: "ok" },
+  { id: "l2", time: "06:00:44", stage: "broadcast", message: "Telegram webhook gateway connected · @SantoGeTalentBot", status: "ok" },
+  { id: "l3", time: "06:05:10", stage: "unlock", message: "In-app guided practice pipeline active (MCQ · logic · pitch)", status: "ok" },
   { id: "l4", time: "06:12:33", stage: "sandbox", message: "Sandbox containers warmed for 15 technical tracks", status: "ok" },
-  { id: "l5", time: "06:30:00", stage: "scoring", message: "Talent Score recalculation pass · 669 profiles", status: "running" },
+  { id: "l5", time: "06:30:00", stage: "scoring", message: "Talent Score formula engine standby (T·C·A·E·R·M)", status: "ok" },
 ];
 
 const FALLBACK_PROFILE: Profile = {
@@ -370,15 +365,28 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        // Filter out any legacy mock hiring drives
+        const cleanedDrives = (parsed.hiringDrives ?? []).filter(
+          (d) => !["hd-1", "hd-2", "hd-3", "hd-4", "hd-5"].includes(d.id),
+        );
+
+        // Sanitize batches to ensure enrolled reflects actual learners
+        const rawBatches = parsed.batches && parsed.batches.length > 0 ? parsed.batches : DEFAULT_STATE.batches;
+        const cleanedBatches = rawBatches.map((b) => ({
+          ...b,
+          enrolled: typeof b.enrolled === "number" ? Math.max(0, b.enrolled) : 0,
+        }));
+
         setState({
           ...DEFAULT_STATE,
           ...parsed,
           profiles: loadedProfiles,
           customStudents: loadedCustom,
           passwordOverrides: { ...(parsed.passwordOverrides ?? {}) },
-          batches: parsed.batches && parsed.batches.length > 0 ? parsed.batches : DEFAULT_STATE.batches,
+          batches: cleanedBatches,
           provisioned: parsed.provisioned ?? [],
           deletedStudentEmails: parsed.deletedStudentEmails ?? [],
+          hiringDrives: cleanedDrives,
           content: parsed.content && parsed.content.length > 0 ? parsed.content : DEFAULT_STATE.content,
         });
       } else if (activeSession && activeSession.user?.email) {

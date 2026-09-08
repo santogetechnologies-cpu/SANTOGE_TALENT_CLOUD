@@ -385,28 +385,29 @@ export function AppShell({ portal }: { portal: Role }) {
                     <div className="fixed inset-0 z-40" onClick={() => setPersonaDropdownOpen(false)} />
                     <div className="absolute right-0 mt-2 z-50 w-72 rounded-2xl border border-line-soft bg-surface-elevated p-2 shadow-2xl backdrop-blur-xl">
                       <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-copy-subtle">
-                        Switch Demo Profile (1-Click)
+                        {portal === "admin" ? "Active Admin Session" : "Switch Demo Profile (1-Click)"}
                       </p>
                       
                       <div className="mt-1 space-y-1">
-                        {STUDENT_ACCOUNTS.map((s) => (
-                          <button
-                            key={s.email}
-                            onClick={() => switchPersona(s.email, s.password, "student")}
-                            className={cn(
-                              "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-colors hover:bg-surface-soft",
-                              store.sessionEmail === s.email && "bg-surface-soft font-bold text-brand-cyan"
-                            )}
-                          >
-                            <div className="min-w-0">
-                              <p className="font-semibold text-foreground">{s.name}</p>
-                              <p className="text-[10px] text-copy-subtle">{s.dept} · {s.batchId}</p>
-                            </div>
-                            {store.sessionEmail === s.email && <Check className="size-4 text-brand-cyan shrink-0" />}
-                          </button>
-                        ))}
+                        {portal !== "admin" &&
+                          STUDENT_ACCOUNTS.map((s) => (
+                            <button
+                              key={s.email}
+                              onClick={() => switchPersona(s.email, s.password, "student")}
+                              className={cn(
+                                "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-colors hover:bg-surface-soft",
+                                store.sessionEmail === s.email && "bg-surface-soft font-bold text-brand-cyan"
+                              )}
+                            >
+                              <div className="min-w-0">
+                                <p className="font-semibold text-foreground">{s.name}</p>
+                                <p className="text-[10px] text-copy-subtle">{s.dept} · {s.batchId}</p>
+                              </div>
+                              {store.sessionEmail === s.email && <Check className="size-4 text-brand-cyan shrink-0" />}
+                            </button>
+                          ))}
 
-                        <div className="border-t border-line-soft/60 my-1 pt-1" />
+                        {portal !== "admin" && <div className="border-t border-line-soft/60 my-1 pt-1" />}
 
                         <button
                           onClick={() => switchPersona(ADMIN_ACCOUNT.email, ADMIN_ACCOUNT.password, "admin")}

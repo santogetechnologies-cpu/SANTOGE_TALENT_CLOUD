@@ -22,8 +22,8 @@ const JOBS = [
     id: "broadcast",
     cron: "0 6 * * *",
     name: "Daily 30m Placement Broadcast",
-    detail: "Delivers 10m English video, 10m Aptitude drill & in-app guided practice to all 54 batch channels at 06:00 IST.",
-    target: "14,280 Learners",
+    detail: "Delivers 10m English video, 10m Aptitude drill & in-app guided practice to all active cohort channels at 06:00 IST.",
+    target: "Active Cohort Batches",
   },
   {
     id: "score",
