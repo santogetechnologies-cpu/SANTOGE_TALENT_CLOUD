@@ -136,14 +136,14 @@ function TechnicalPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {tracks.map((id, i) => {
+          {Array.from(new Set(tracks || [])).map((id, i) => {
             const t = trackById(id);
             const pct = store.trackPercent(id);
             const isViewing = currentTrackId === id;
 
             return (
               <Panel
-                key={id}
+                key={`${id}-${i}`}
                 title={t.name}
                 subtitle={`${i === 0 ? "Primary Track (100% Gate)" : "Secondary Track"} · ${t.short}`}
                 className={cn(isViewing && "ring-2 ring-brand-cyan/60 shadow-lg shadow-brand-cyan/5")}

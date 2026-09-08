@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { useAppStore } from "@/lib/app-store";
 import { supabaseAuth, getSupabaseConfig } from "@/lib/supabase";
-import { STUDENT_ACCOUNTS } from "@/lib/accounts";
 
 export interface ResetPasswordStudent {
   name?: string;
@@ -62,9 +61,9 @@ export function AdminResetPasswordModal({
 
   const hasSupabase = Boolean(getSupabaseConfig().url && getSupabaseConfig().anonKey);
 
-  // Available students for quick picker if no student was pre-selected
+  // Available students for quick picker if no student was pre-selected (strictly real learners)
   const allKnownLearners = [
-    ...STUDENT_ACCOUNTS.map((s) => ({
+    ...Object.values(store.customStudents || {}).map((s) => ({
       name: s.name,
       email: s.email,
       rollNo: s.rollNo,
@@ -78,7 +77,7 @@ export function AdminResetPasswordModal({
       batchId: p.batch_id,
       dept: p.dept,
     })),
-  ];
+  ].filter((s) => !(store.deletedStudentEmails || []).map((e) => e.toLowerCase().trim()).includes(s.email.toLowerCase().trim()));
 
   useEffect(() => {
     if (isOpen) {

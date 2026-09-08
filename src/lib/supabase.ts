@@ -86,9 +86,13 @@ const ENV_KEY: string | undefined =
     ? (import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] as string | undefined)
     : undefined;
 
-// Fallback URL is clearly a placeholder so devs know it is not configured.
-const DEFAULT_SUPABASE_URL = ENV_URL ?? "https://placeholder.supabase.co";
-const DEFAULT_SUPABASE_ANON_KEY = ENV_KEY ?? "";
+const REAL_PROJECT_URL = "https://ylofqmmbwgrqtsrclnww.supabase.co";
+const REAL_PROJECT_KEY = "sb_publishable_bIuZOdaZ_m3jp6s6cyoV_A_P8mKwqXf";
+
+const DEFAULT_SUPABASE_URL =
+  ENV_URL && !ENV_URL.includes("placeholder") ? ENV_URL : REAL_PROJECT_URL;
+const DEFAULT_SUPABASE_ANON_KEY =
+  ENV_KEY && ENV_KEY !== "placeholder-key" ? ENV_KEY : REAL_PROJECT_KEY;
 
 // ---------------------------------------------------------------------------
 // Singleton @supabase/supabase-js client
@@ -154,7 +158,14 @@ export function getSupabaseConfig(): SupabaseAuthConfig {
     const saved = localStorage.getItem(STORAGE_KEY_CONFIG);
     if (saved) {
       const parsed = JSON.parse(saved) as Partial<SupabaseAuthConfig>;
-      if (parsed.url && parsed.anonKey) return parsed as SupabaseAuthConfig;
+      if (
+        parsed.url &&
+        !parsed.url.includes("placeholder") &&
+        parsed.anonKey &&
+        parsed.anonKey !== "placeholder-key"
+      ) {
+        return { url: parsed.url, anonKey: parsed.anonKey };
+      }
     }
   } catch {
     // fallback to env defaults
@@ -217,7 +228,12 @@ export const supabaseAuth = {
     const config = getSupabaseConfig();
     const cleanUrl = config.url.replace(/\/+$/, "");
 
-    if (!cleanUrl || !config.anonKey || config.anonKey === "placeholder-key") {
+    if (
+      !cleanUrl ||
+      cleanUrl.includes("placeholder") ||
+      !config.anonKey ||
+      config.anonKey === "placeholder-key"
+    ) {
       return {
         data: { session: null, user: null },
         error: new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY."),
@@ -282,7 +298,12 @@ export const supabaseAuth = {
     const config = getSupabaseConfig();
     const cleanUrl = config.url.replace(/\/+$/, "");
 
-    if (!cleanUrl || !config.anonKey || config.anonKey === "placeholder-key") {
+    if (
+      !cleanUrl ||
+      cleanUrl.includes("placeholder") ||
+      !config.anonKey ||
+      config.anonKey === "placeholder-key"
+    ) {
       return {
         data: { session: null, user: null },
         error: new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY."),
@@ -378,10 +399,15 @@ export const supabaseAuth = {
       return { ok: false, message: "URL must start with https:// or http://" };
     }
 
-    if (!cfg.anonKey || cfg.anonKey === "placeholder-key") {
+    if (
+      !cleanUrl ||
+      cleanUrl.includes("placeholder") ||
+      !cfg.anonKey ||
+      cfg.anonKey === "placeholder-key"
+    ) {
       return {
         ok: false,
-        message: "No Publishable Key configured. Set VITE_SUPABASE_PUBLISHABLE_KEY.",
+        message: "No valid Supabase project configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.",
       };
     }
 

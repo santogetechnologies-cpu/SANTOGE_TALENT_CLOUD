@@ -3,7 +3,6 @@ import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Chip, Console, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore, type Batch } from "@/lib/app-store";
-import { STUDENT_ACCOUNTS } from "@/lib/accounts";
 import {
   RefreshCw,
   Plus,
@@ -52,7 +51,7 @@ function BatchesPage() {
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [broadcastLogs, setBroadcastLogs] = useState<string[]>([
     "[bot] Telegram Bot Webhook connected: @SantoGeTalentBot",
-    "[status] 3 Channels active · 669 listeners subscribed",
+    "[status] Broadcast channels ready for scheduled daily drops",
   ]);
 
   // Batch Roster View state
@@ -66,8 +65,59 @@ function BatchesPage() {
     batchId: string;
   } | null>(null);
 
-  const totalCapacity = store.batches.reduce((s, b) => s + b.capacity, 0);
-  const totalEnrolled = store.batches.reduce((s, b) => s + b.enrolled, 0);
+  // Real learners only: custom students + provisioned students
+  const allLearners = useMemo(() => {
+    const deleted = new Set((store.deletedStudentEmails || []).map((e) => e.toLowerCase().trim()));
+
+    const fromCustom = Object.values(store.customStudents || {})
+      .filter((s) => !deleted.has(s.email.toLowerCase().trim()))
+      .map((s) => ({
+        name: s.name,
+        email: s.email,
+        rollNo: s.rollNo,
+        dept: s.dept,
+        batchId: s.batchId,
+        college: s.college || "Partner Engineering College",
+        tracks: s.tracks as string[],
+        streak: s.streak,
+        placementDay: s.placementDay,
+      }));
+
+    const fromProvisioned = (store.provisioned || [])
+      .filter((p) => !deleted.has(p.email.toLowerCase().trim()))
+      .map((p) => ({
+        name: p.student_name,
+        email: p.email,
+        rollNo: p.roll_no,
+        dept: p.dept,
+        batchId: p.batch_id,
+        college: p.college || "Partner Engineering College",
+        tracks: [p.course_1, p.course_2, p.course_3].filter(Boolean) as string[],
+        streak: 1,
+        placementDay: 1,
+      }));
+
+    const seen = new Set<string>();
+    const result = [];
+    for (const item of [...fromCustom, ...fromProvisioned]) {
+      const em = item.email.toLowerCase().trim();
+      if (!seen.has(em)) {
+        seen.add(em);
+        result.push(item);
+      }
+    }
+    return result;
+  }, [store.customStudents, store.provisioned, store.deletedStudentEmails]);
+
+  const batchesWithCounts = useMemo(() => {
+    return store.batches.map((b) => ({
+      ...b,
+      enrolled: allLearners.filter((l) => l.batchId === b.id).length,
+    }));
+  }, [store.batches, allLearners]);
+
+  const totalCapacity = batchesWithCounts.reduce((s, b) => s + b.capacity, 0);
+  const totalEnrolled = allLearners.length;
 
   const handleStartEdit = (b: Batch) => {
     setEditingId(b.id);
@@ -109,8 +159,7 @@ function BatchesPage() {
   const handleDispatchTelegram = () => {
     if (!broadcastMessage.trim()) return;
     setIsBroadcasting(true);
-    const target = store.batches.find((b) => b.id === broadcastTargetBatch);
-    const learnerCount = target ? target.enrolled : 200;
+    const learnerCount = allLearners.filter((l) => l.batchId === broadcastTargetBatch).length;
 
     setBroadcastLogs((prev) => [
       `[tx] Dispatching webhook to Telegram channel: t.me/stc-${broadcastTargetBatch.toLowerCase()}`,
@@ -129,63 +178,10 @@ function BatchesPage() {
     }, 1200);
   };
 
-  // Filter learners in selected roster (combines demo accounts + custom + CSV provisioned, filtering deleted)
+  // Filter learners in selected roster (strictly real custom + CSV provisioned, filtering deleted)
   const rosterLearners = useMemo(() => {
-    const deleted = new Set((store.deletedStudentEmails || []).map((e) => e.toLowerCase()));
-
-    const fromAccounts = STUDENT_ACCOUNTS
-      .filter((s) => !deleted.has(s.email.toLowerCase()) && (s.batchId === rosterBatchId || rosterBatchId === "all"))
-      .map((s) => ({
-        name: s.name,
-        email: s.email,
-        rollNo: s.rollNo,
-        dept: s.dept,
-        batchId: s.batchId,
-        college: s.college,
-        tracks: s.tracks as string[],
-        streak: s.streak,
-        placementDay: s.placementDay,
-      }));
-
-    const fromCustom = Object.values(store.customStudents || {})
-      .filter((s) => !deleted.has(s.email.toLowerCase()) && (s.batchId === rosterBatchId || rosterBatchId === "all"))
-      .map((s) => ({
-        name: s.name,
-        email: s.email,
-        rollNo: s.rollNo,
-        dept: s.dept,
-        batchId: s.batchId,
-        college: s.college,
-        tracks: s.tracks as string[],
-        streak: s.streak,
-        placementDay: s.placementDay,
-      }));
-
-    const fromProvisioned = (store.provisioned || [])
-      .filter((p) => !deleted.has(p.email.toLowerCase()) && (p.batch_id === rosterBatchId || rosterBatchId === "all"))
-      .map((p) => ({
-        name: p.student_name,
-        email: p.email,
-        rollNo: p.roll_no,
-        dept: p.dept,
-        batchId: p.batch_id,
-        college: "Partner College",
-        tracks: [p.course_1, p.course_2, p.course_3].filter(Boolean),
-        streak: 1,
-        placementDay: 1,
-      }));
-
-    const seen = new Set<string>();
-    const result = [];
-    for (const item of [...fromAccounts, ...fromCustom, ...fromProvisioned]) {
-      const em = item.email.toLowerCase();
-      if (!seen.has(em)) {
-        seen.add(em);
-        result.push(item);
-      }
-    }
-    return result;
-  }, [rosterBatchId, store.provisioned, store.customStudents, store.deletedStudentEmails]);
+    return allLearners.filter((s) => s.batchId === rosterBatchId || rosterBatchId === "all");
+  }, [rosterBatchId, allLearners]);
 
   return (
     <div className="space-y-6">
@@ -203,7 +199,7 @@ function BatchesPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-4">
-        <Stat label="Total Cohorts" value={store.batches.length} hint="Placement Accelerator" />
+        <Stat label="Total Cohorts" value={batchesWithCounts.length} hint="Placement Accelerator" />
         <Stat label="Total Capacity" value={totalCapacity} accent="var(--brand-purple)" hint="Sum of batch allocations" />
         <Stat label="Enrolled Learners" value={totalEnrolled} accent="var(--brand-emerald)" hint="Active student profiles" />
         <Stat label="Platform Fill Rate" value={`${Math.round((totalEnrolled / Math.max(totalCapacity, 1)) * 100)}%`} accent="var(--brand-amber)" hint="Cohort utilization" />
@@ -211,7 +207,7 @@ function BatchesPage() {
 
       {/* Batch Cards Grid */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {store.batches.map((b) => {
+        {batchesWithCounts.map((b) => {
           const fill = Math.round((b.enrolled / Math.max(b.capacity, 1)) * 100);
           const isEditing = editingId === b.id;
 
@@ -346,7 +342,7 @@ function BatchesPage() {
                 onChange={(e) => setBroadcastTargetBatch(e.target.value)}
                 className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2.5 text-xs font-semibold text-foreground outline-none focus:border-brand-cyan/60"
               >
-                {store.batches.map((b) => (
+                {batchesWithCounts.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name} ({b.enrolled} learners · t.me/stc-{b.id.toLowerCase()})
                   </option>
@@ -480,8 +476,8 @@ function BatchesPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex gap-1">
-                        {learner.tracks.map((t) => (
-                          <span key={t} className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[10px] font-mono">
+                        {Array.from(new Set(learner.tracks || [])).map((t, idx) => (
+                          <span key={`${learner.email}-${t}-${idx}`} className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[10px] font-mono">
                             {t}
                           </span>
                         ))}
