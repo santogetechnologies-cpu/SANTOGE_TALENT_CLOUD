@@ -57,7 +57,7 @@ function ContentManagementPage() {
   const isLive = store.authProvider === "supabase";
 
   const liveBatchesQuery = useQuery({
-    queryKey: ["liveBatches"],
+    queryKey: ["live", "batches"],
     queryFn: fetchLiveBatches,
     enabled: isLive,
   });

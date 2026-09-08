@@ -155,13 +155,13 @@ function ProvisioningPage() {
 
   // Authoritative Live queries
   const liveRosterQuery = useQuery({
-    queryKey: ["liveStudentRoster"],
+    queryKey: ["live", "student-roster"],
     queryFn: () => fetchLiveStudentRoster({ pageSize: 500 }),
     enabled: isLive,
   });
 
   const liveBatchesQuery = useQuery({
-    queryKey: ["liveBatches"],
+    queryKey: ["live", "batches"],
     queryFn: fetchLiveBatches,
     enabled: isLive,
   });
@@ -385,9 +385,9 @@ function ProvisioningPage() {
         setLog(out);
         toast.success(`${res.count} learners onboarded to Live Supabase backend!`);
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["liveStudentRoster"] }),
-          queryClient.invalidateQueries({ queryKey: ["liveBatches"] }),
-          queryClient.invalidateQueries({ queryKey: ["liveAdminAnalytics"] }),
+          queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
+          queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+          queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
         ]);
       } else {
         toast.error(res.message || "Failed to provision students to Supabase backend");
@@ -556,9 +556,9 @@ function ProvisioningPage() {
           ...prev,
         ]);
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["liveStudentRoster"] }),
-          queryClient.invalidateQueries({ queryKey: ["liveBatches"] }),
-          queryClient.invalidateQueries({ queryKey: ["liveAdminAnalytics"] }),
+          queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
+          queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+          queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
         ]);
         setIsSingleAddModalOpen(false);
         setSingleName("");
@@ -1228,9 +1228,9 @@ function ProvisioningPage() {
                     if (res.ok) {
                       toast.success(`Removed student ${deleteTargetStudent.name}`);
                       await Promise.all([
-                        queryClient.invalidateQueries({ queryKey: ["liveStudentRoster"] }),
-                        queryClient.invalidateQueries({ queryKey: ["liveBatches"] }),
-                        queryClient.invalidateQueries({ queryKey: ["liveAdminAnalytics"] }),
+                        queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
+                        queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+                        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
                       ]);
                       setDeleteTargetStudent(null);
                     } else {

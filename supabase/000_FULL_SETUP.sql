@@ -808,37 +808,40 @@ VALUES
 ON CONFLICT (key) DO NOTHING;
 
 -- ============================================================================
--- 9. SCHEMA GRANTS, AUTH TRIGGERS & ROLES SYNC
+-- 9. SCHEMA GRANTS, AUTH TRIGGERS & ROLES SYNC (Least Privilege)
 -- ============================================================================
 
--- Ensure public schema usage and table grants for PostgREST
+-- Ensure public schema usage
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_role;
 
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
+-- Authenticated application users get standard CRUD on RLS-governed tables
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO service_role;
 
--- Auth trigger to automatically assign role to any newly created auth user
+-- Anon gets only read access to public curriculum metadata
+GRANT SELECT ON public.curriculum_tracks TO anon;
+GRANT SELECT ON public.curriculum_skills TO anon;
+GRANT SELECT ON public.content_items TO anon;
+
+-- Default privileges for future objects
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO authenticated, service_role;
+
+-- Auth trigger to automatically assign role to any newly created auth user (strictly student)
 CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-  v_role TEXT := 'student';
 BEGIN
-  IF NEW.raw_user_meta_data->>'role' IN ('admin', 'super_admin') 
-     OR NEW.email ILIKE '%admin%' THEN
-    v_role := 'super_admin';
-  END IF;
-
   INSERT INTO public.user_roles (auth_user_id, role)
-  VALUES (NEW.id, v_role)
-  ON CONFLICT (auth_user_id) DO UPDATE SET role = EXCLUDED.role;
+  VALUES (NEW.id, 'student')
+  ON CONFLICT (auth_user_id) DO NOTHING;
 
   RETURN NEW;
 END;
@@ -849,13 +852,9 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
 
--- Auto-sync existing auth.users to public.user_roles
+-- Seed Super Admin Role explicitly for designated bootstrap user
 INSERT INTO public.user_roles (auth_user_id, role)
-SELECT id, 'super_admin'
-FROM auth.users
-WHERE email ILIKE '%admin%' 
-   OR raw_user_meta_data->>'role' IN ('admin', 'super_admin')
-   OR id = 'e6c4e39c-b521-4c37-96a1-be3720e57cb8'
+VALUES ('e6c4e39c-b521-4c37-96a1-be3720e57cb8', 'super_admin')
 ON CONFLICT (auth_user_id) DO UPDATE SET role = 'super_admin';
 
 -- Auto-sync remaining users as students if not already present

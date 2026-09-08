@@ -457,18 +457,18 @@ export const supabaseAuth = {
 
 /**
  * Fetch authoritative user role from public.user_roles in Supabase PostgreSQL.
- * Uses get_my_role RPC first, falls back to direct table query, then metadata/email.
+ * Strictly verifies role in database.
  */
 export async function fetchLiveUserRole(
   authUserId: string,
-  metadataRole?: string | undefined,
-  userEmail?: string | undefined,
+  _metadataRole?: string | undefined,
+  _userEmail?: string | undefined,
 ): Promise<Role> {
   if (!authUserId) return "student";
   try {
     const client = getSupabaseClient();
 
-    // 1. First try secure RPC get_my_role
+    // 1. Primary check: Secure SECURITY DEFINER RPC get_my_role
     try {
       const { data: rpcRole, error: rpcErr } = await client.rpc("get_my_role");
       if (!rpcErr && rpcRole) {
@@ -477,10 +477,10 @@ export async function fetchLiveUserRole(
         if (r === "student") return "student";
       }
     } catch {
-      // RPC may not be present yet on unmigrated instances
+      // Fall through to direct table check
     }
 
-    // 2. Query user_roles table directly
+    // 2. Direct query on public.user_roles
     const { data, error } = await client
       .from("user_roles")
       .select("role")
@@ -490,35 +490,11 @@ export async function fetchLiveUserRole(
     if (!error && data?.role) {
       const r = String(data.role).toLowerCase();
       if (r === "admin" || r === "super_admin") return "admin";
-      if (r === "student") return "student";
-    }
-
-    // 3. Fallback to user_metadata or email pattern if database permissions are temporarily restricted
-    if (metadataRole === "admin" || metadataRole === "super_admin") {
-      return "admin";
-    }
-    if (
-      userEmail &&
-      (userEmail.toLowerCase().includes("admin") ||
-        userEmail.toLowerCase().includes("superadmin") ||
-        userEmail.toLowerCase() === "admin@santoge.com" ||
-        userEmail.toLowerCase() === "superadmin@santoge.com")
-    ) {
-      return "admin";
+      return "student";
     }
 
     return "student";
   } catch {
-    if (metadataRole === "admin" || metadataRole === "super_admin") {
-      return "admin";
-    }
-    if (
-      userEmail &&
-      (userEmail.toLowerCase().includes("admin") ||
-        userEmail.toLowerCase().includes("superadmin"))
-    ) {
-      return "admin";
-    }
     return "student";
   }
 }

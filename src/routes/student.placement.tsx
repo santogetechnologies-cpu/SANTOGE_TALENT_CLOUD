@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Chip, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore } from "@/lib/app-store";
+import { fetchLiveHiringDrives } from "@/lib/data";
 import { Building2, Search, X } from "lucide-react";
 
 export const Route = createFileRoute("/student/placement")({
@@ -90,8 +92,30 @@ const SEED: Opening[] = [
 
 function PlacementPage() {
   const store = useAppStore();
-  const [rows, setRows] = useState(SEED);
+  const isLive = store.authProvider === "supabase";
+  const [demoRows, setDemoRows] = useState(SEED);
+  const [liveStages, setLiveStages] = useState<Record<string, Stage | null>>({});
   const [query, setQuery] = useState("");
+
+  const { data: liveDrives } = useQuery({
+    queryKey: ["live", "hiring-drives"],
+    queryFn: () => fetchLiveHiringDrives(),
+    enabled: isLive,
+  });
+
+  const rows: Opening[] = useMemo(() => {
+    if (isLive) {
+      return (liveDrives || []).map((d) => ({
+        id: d.id,
+        company: d.company,
+        role: d.roles,
+        ctc: d.ctc,
+        minScore: d.minScore,
+        stage: liveStages[d.id] ?? null,
+      }));
+    }
+    return demoRows;
+  }, [isLive, liveDrives, liveStages, demoRows]);
 
   const filtered = useMemo(
     () => rows.filter((r) => (r.company + r.role).toLowerCase().includes(query.toLowerCase())),
@@ -100,20 +124,33 @@ function PlacementPage() {
   const applied = rows.filter((r) => r.stage);
 
   const advance = (id: string) => {
-    setRows((rs) =>
-      rs.map((r) => {
-        if (r.id !== id) return r;
-        const idx = r.stage ? STAGES.indexOf(r.stage) : -1;
-        const next: Stage = STAGES[Math.min(idx + 1, STAGES.length - 1)] ?? "Offer";
-        toast.success(`${r.company} → ${next}`);
-        return { ...r, stage: next };
-      }),
-    );
+    if (isLive) {
+      const current = liveStages[id] ?? null;
+      const idx = current ? STAGES.indexOf(current) : -1;
+      const next: Stage = STAGES[Math.min(idx + 1, STAGES.length - 1)] ?? "Offer";
+      setLiveStages((prev) => ({ ...prev, [id]: next }));
+      toast.success(`Application updated → ${next}`);
+    } else {
+      setDemoRows((rs) =>
+        rs.map((r) => {
+          if (r.id !== id) return r;
+          const idx = r.stage ? STAGES.indexOf(r.stage) : -1;
+          const next: Stage = STAGES[Math.min(idx + 1, STAGES.length - 1)] ?? "Offer";
+          toast.success(`${r.company} → ${next}`);
+          return { ...r, stage: next };
+        }),
+      );
+    }
   };
 
   const withdraw = (id: string) => {
-    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, stage: null } : r)));
-    toast("Application withdrawn");
+    if (isLive) {
+      setLiveStages((prev) => ({ ...prev, [id]: null }));
+      toast("Application withdrawn");
+    } else {
+      setDemoRows((rs) => rs.map((r) => (r.id === id ? { ...r, stage: null } : r)));
+      toast("Application withdrawn");
+    }
   };
 
   return (

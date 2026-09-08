@@ -47,56 +47,40 @@ function LeaderboardPage() {
   const [metric, setMetric] = useState<Metric>("aptitude");
 
   const liveLeaderboardQuery = useQuery({
-    queryKey: ["liveBatchLeaderboard", batchId],
+    queryKey: ["live", "student-leaderboard", batchId],
     queryFn: () => fetchLiveBatchLeaderboard(batchId),
     enabled: isLive && !!batchId,
   });
 
-  const rows: LeaderRow[] = useMemo(() => {
-    if (isLive && liveLeaderboardQuery.data && liveLeaderboardQuery.data.length > 0) {
-      const liveList: LeaderRow[] = liveLeaderboardQuery.data.map((item) => {
-        const isCurrentStudent = item.name === me || item.student_id === store.liveStudentId;
-        const daysAttended = isCurrentStudent
-          ? store.attendance.length
-          : Math.max(1, Math.min(90, Math.round(item.talent_score / 12)));
-        return {
-          name: item.name,
-          attendance: daysAttended,
-          english: Math.min(100, Math.max(40, Math.round(item.talent_score * 0.1))),
-          aptitude: Math.min(100, Math.max(40, Math.round(item.talent_score * 0.1))),
-          communication: Math.min(100, Math.max(40, Math.round(item.talent_score * 0.095))),
-          improvement: Math.min(100, Math.max(30, Math.round(item.talent_score * 0.085))),
-        };
-      });
-
-      if (!liveList.some((r) => r.name === me)) {
-        liveList.push({
-          name: me,
-          attendance: store.attendance.length,
-          english: Math.min(100, Math.max(40, Math.round((store.talentScore || 500) * 0.1))),
-          aptitude: Math.min(100, Math.max(40, Math.round((store.talentScore || 500) * 0.1))),
-          communication: Math.min(
-            100,
-            Math.max(40, Math.round((store.talentScore || 500) * 0.095)),
-          ),
-          improvement: Math.min(100, Math.max(30, Math.round((store.talentScore || 500) * 0.085))),
-        });
-      }
-
-      return liveList;
+  const rows = useMemo(() => {
+    if (isLive && liveLeaderboardQuery.data) {
+      return liveLeaderboardQuery.data.map((item) => ({
+        name: item.name,
+        talentScore: item.talent_score,
+        rank: item.rank,
+        studentId: item.student_id,
+      }));
     }
+    return null;
+  }, [isLive, liveLeaderboardQuery.data]);
+
+  // Demo fallback
+  const demoRows: LeaderRow[] = useMemo(() => {
     return leaderboard(batchId, me);
-  }, [
-    isLive,
-    liveLeaderboardQuery.data,
-    batchId,
-    me,
-    store.attendance.length,
-    store.liveStudentId,
-    store.talentScore,
-  ]);
-  const ranked = [...rows].sort((a, b) => b[metric] - a[metric]);
-  const myRank = ranked.findIndex((r) => r.name === me) + 1;
+  }, [batchId, me]);
+
+  const demoRanked = useMemo(() => {
+    return [...demoRows].sort((a, b) => b[metric] - a[metric]);
+  }, [demoRows, metric]);
+
+  const liveRank = rows
+    ? rows.findIndex((r) => r.name === me || r.studentId === store.liveStudentId) + 1
+    : 0;
+  const myRank = isLive
+    ? liveRank > 0
+      ? liveRank
+      : 1
+    : demoRanked.findIndex((r) => r.name === me) + 1;
 
   return (
     <div className="space-y-6">
@@ -110,13 +94,15 @@ function LeaderboardPage() {
         <Stat
           label="Your rank"
           value={myRank > 0 ? `#${myRank}` : "—"}
-          hint={METRICS.find((m) => m.key === metric)?.label ?? "Rank"}
+          hint={
+            isLive ? "Talent Score Rank" : (METRICS.find((m) => m.key === metric)?.label ?? "Rank")
+          }
         />
         <Stat
           label="Cohort size"
-          value={rows.length}
+          value={isLive ? rows?.length || 0 : demoRows.length}
           accent="var(--brand-purple)"
-          hint="Demo slice of the batch"
+          hint={isLive ? "Active enrolled learners in batch" : "Demo slice of the batch"}
         />
         <Stat
           label="Days attended"
@@ -126,47 +112,96 @@ function LeaderboardPage() {
         />
       </div>
 
-      <Panel title="Cohort ranks" subtitle="Switch the ranking metric">
-        <div className="mb-4 flex flex-wrap gap-2">
-          {METRICS.map((m) => (
-            <button
-              key={m.key}
-              onClick={() => setMetric(m.key)}
-              className={cn(
-                "rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors",
-                metric === m.key
-                  ? "border-brand-cyan/60 text-brand-cyan"
-                  : "border-line-soft text-copy-subtle hover:text-foreground",
-              )}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-        <ol className="space-y-2">
-          {ranked.map((r, i) => (
-            <li
-              key={r.name}
-              className={cn(
-                "flex items-center gap-3 rounded-xl border px-3 py-2.5",
-                r.name === me ? "border-brand-cyan/60 bg-surface-soft" : "border-line-soft",
-              )}
-            >
-              <span className="w-6 font-mono text-xs text-copy-subtle">{i + 1}</span>
-              {i === 0 && <Crown className="size-3.5 text-brand-amber" />}
-              <span className="text-sm text-foreground">
-                {r.name}
-                {r.name === me ? " (you)" : ""}
-              </span>
-              <div className="ml-auto flex w-40 items-center gap-2">
-                <Meter value={r[metric]} />
-                <span className="w-9 text-right font-mono text-[11px] text-copy-subtle">
-                  {r[metric]}
+      <Panel
+        title={isLive ? "Batch Talent Score Leaderboard" : "Cohort ranks"}
+        subtitle={
+          isLive
+            ? "Live Supabase ranking based on authoritative composite Talent Score (0–1000)"
+            : "Switch the ranking metric"
+        }
+      >
+        {!isLive && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {METRICS.map((m) => (
+              <button
+                key={m.key}
+                onClick={() => setMetric(m.key)}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors",
+                  metric === m.key
+                    ? "border-brand-cyan/60 text-brand-cyan"
+                    : "border-line-soft text-copy-subtle hover:text-foreground",
+                )}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {isLive ? (
+          rows && rows.length > 0 ? (
+            <ol className="space-y-2">
+              {rows.map((r, i) => {
+                const isMe = r.name === me || r.studentId === store.liveStudentId;
+                return (
+                  <li
+                    key={r.studentId || r.name}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl border px-3 py-2.5",
+                      isMe ? "border-brand-cyan/60 bg-surface-soft" : "border-line-soft",
+                    )}
+                  >
+                    <span className="w-6 font-mono text-xs text-copy-subtle">{i + 1}</span>
+                    {i === 0 && <Crown className="size-3.5 text-brand-amber" />}
+                    <span className="text-sm text-foreground">
+                      {r.name}
+                      {isMe ? " (you)" : ""}
+                    </span>
+                    <div className="ml-auto flex w-48 items-center gap-2">
+                      <Meter
+                        value={Math.min(100, Math.round((r.talentScore / 1000) * 100))}
+                        accent="var(--brand-cyan)"
+                      />
+                      <span className="w-16 text-right font-mono text-[11px] text-brand-cyan font-bold">
+                        {r.talentScore} pts
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          ) : (
+            <div className="rounded-xl border border-line-soft bg-surface-soft p-6 text-center text-xs text-copy-subtle">
+              No learners enrolled in this batch yet.
+            </div>
+          )
+        ) : (
+          <ol className="space-y-2">
+            {demoRanked.map((r, i) => (
+              <li
+                key={r.name}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl border px-3 py-2.5",
+                  r.name === me ? "border-brand-cyan/60 bg-surface-soft" : "border-line-soft",
+                )}
+              >
+                <span className="w-6 font-mono text-xs text-copy-subtle">{i + 1}</span>
+                {i === 0 && <Crown className="size-3.5 text-brand-amber" />}
+                <span className="text-sm text-foreground">
+                  {r.name}
+                  {r.name === me ? " (you)" : ""}
                 </span>
-              </div>
-            </li>
-          ))}
-        </ol>
+                <div className="ml-auto flex w-40 items-center gap-2">
+                  <Meter value={r[metric]} />
+                  <span className="w-9 text-right font-mono text-[11px] text-copy-subtle">
+                    {r[metric]}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
       </Panel>
 
       <Panel

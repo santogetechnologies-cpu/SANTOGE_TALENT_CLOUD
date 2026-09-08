@@ -76,6 +76,78 @@ export async function fetchLiveStudentProfile(
 }
 
 /**
+ * Ensures an authenticated student has a valid PostgreSQL profile record in Supabase.
+ * Initial metrics start at authentic zero (0 XP, 0 talent score), never fabricated numbers.
+ */
+export async function ensureLiveStudentProfile(
+  authUserId: string,
+  email: string,
+  metadata?:
+    | {
+        name?: string | undefined;
+        roll_no?: string | undefined;
+        rollNo?: string | undefined;
+        dept?: string | undefined;
+        college?: string | undefined;
+        tracks?: TrackId[] | undefined;
+      }
+    | undefined,
+): Promise<{ profile: DbStudentProfile; tracks: TrackId[] }> {
+  const existing = await fetchLiveStudentProfile(authUserId);
+  if (existing) return existing;
+
+  const supabase = getSupabaseClient();
+  const name = metadata?.name || email.split("@")[0] || "Student Learner";
+  const roll_no = metadata?.roll_no || metadata?.rollNo || "2026-LIVE";
+  const dept = metadata?.dept || "CSE";
+  const college = metadata?.college || "Partner Engineering College";
+  const rawTracks = metadata?.tracks || (["mern", "cloud", "aiml"] as TrackId[]);
+
+  const { data: inserted } = await supabase
+    .from("student_profiles")
+    .insert({
+      auth_user_id: authUserId,
+      email: email.toLowerCase().trim(),
+      name,
+      roll_no,
+      dept,
+      college,
+      status: "active",
+      xp: 0,
+      streak: 0,
+      placement_day: 1,
+      talent_score: 0,
+      readiness_t: 50,
+      readiness_c: 50,
+      readiness_a: 50,
+      readiness_e: 50,
+      readiness_r: 50,
+      readiness_m: 50,
+      updated_at: new Date().toISOString(),
+    })
+    .select(
+      "id,auth_user_id,institution_id,batch_id,name,email,roll_no,dept,college,status,xp,streak,placement_day,talent_score,readiness_t,readiness_c,readiness_a,readiness_e,readiness_r,readiness_m,created_at,updated_at",
+    )
+    .single();
+
+  const profile = (inserted || {}) as DbStudentProfile;
+
+  if (profile.id) {
+    const trackRows = rawTracks.slice(0, 3).map((track_id, idx) => ({
+      student_id: profile.id,
+      track_id,
+      position: idx + 1,
+    }));
+    await supabase.from("student_tracks").insert(trackRows);
+  }
+
+  return {
+    profile,
+    tracks: rawTracks.slice(0, 3),
+  };
+}
+
+/**
  * Fetch complete live student progress data for the authenticated student.
  */
 export async function fetchLiveStudentProgress(studentId: string): Promise<{

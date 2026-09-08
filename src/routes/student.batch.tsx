@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Chip, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore } from "@/lib/app-store";
 import { PLACEMENT_DAYS, placementDay } from "@/lib/curriculum";
+import { getSupabaseClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { CalendarDays, CheckCircle2, ClipboardCheck, Megaphone, Send, Users } from "lucide-react";
 
@@ -32,8 +34,63 @@ const CHANNELS = ["English", "Aptitude", "Communication", "Announcements", "Remi
 
 function BatchPage() {
   const store = useAppStore();
+  const isLive = store.authProvider === "supabase";
   const batchId = store.student?.batchId ?? "BATCH";
-  const batch = store.batches.find((b) => b.id === batchId);
+
+  // In Live mode, fetch real batch details and enrolled count from Supabase
+  const liveBatchQuery = useQuery({
+    queryKey: ["live", "student-batch", batchId],
+    queryFn: async () => {
+      const supabase = getSupabaseClient();
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        batchId,
+      );
+      const batchPromise = isUuid
+        ? supabase
+            .from("batches")
+            .select("id,name,capacity,dept,last_sync_at")
+            .eq("id", batchId)
+            .maybeSingle()
+        : supabase
+            .from("batches")
+            .select("id,name,capacity,dept,last_sync_at")
+            .eq("name", batchId)
+            .maybeSingle();
+
+      const countPromise = isUuid
+        ? supabase
+            .from("student_profiles")
+            .select("id", { count: "exact", head: true })
+            .eq("batch_id", batchId)
+            .eq("status", "active")
+        : Promise.resolve({ count: 0 });
+
+      const [bRes, cRes] = await Promise.all([batchPromise, countPromise]);
+      return {
+        batch: bRes.data,
+        enrolled: cRes?.count || 0,
+      };
+    },
+    enabled: isLive && !!batchId && batchId !== "BATCH",
+  });
+
+  const demoBatch = store.batches.find((b) => b.id === batchId);
+  const batchName = isLive
+    ? liveBatchQuery.data?.batch?.name || batchId
+    : demoBatch?.name || batchId;
+  const batchCapacity = isLive
+    ? liveBatchQuery.data?.batch?.capacity || 300
+    : demoBatch?.capacity || 300;
+  const batchDept = isLive
+    ? liveBatchQuery.data?.batch?.dept || "Engineering"
+    : demoBatch?.dept || "Engineering";
+  const batchEnrolled = isLive ? liveBatchQuery.data?.enrolled || 0 : demoBatch?.enrolled || 218;
+  const lastSync = isLive
+    ? liveBatchQuery.data?.batch?.last_sync_at
+      ? new Date(liveBatchQuery.data.batch.last_sync_at).toLocaleString("en-GB")
+      : "Daily 06:00 broadcast"
+    : (demoBatch?.lastSync ?? "handled by the daily 06:00 broadcast");
+
   const [selected, setSelected] = useState(store.placementDay);
   const day = placementDay(selected);
   const attendancePct = Math.round((store.attendance.length / 90) * 100);
@@ -46,7 +103,7 @@ function BatchPage() {
       <PageHeader
         title="Placement Accelerator · Batch"
         subtitle="One cohort, one Telegram group, one synchronised 90-day placement journey — shared by every student in your batch."
-        action={<Chip tone="purple">{batchId}</Chip>}
+        action={<Chip tone="purple">{batchName}</Chip>}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -63,9 +120,9 @@ function BatchPage() {
         />
         <Stat
           label="Batch size"
-          value={batch ? batch.enrolled : 218}
+          value={batchEnrolled}
           accent="var(--brand-purple)"
-          hint={batch ? `${batch.dept} · capacity ${batch.capacity}` : "Enrolled learners"}
+          hint={`${batchDept} · capacity ${batchCapacity}`}
         />
         <Stat
           label="Assessments taken"
@@ -78,7 +135,8 @@ function BatchPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Telegram cohort" subtitle="Delivery channel for the placement journey only">
           <div className="mb-3 flex items-center gap-2 rounded-xl border border-line-soft bg-surface-soft p-3 text-xs text-foreground">
-            <Send className="size-4 text-brand-cyan" /> t.me/stc-{batchId.toLowerCase()}
+            <Send className="size-4 text-brand-cyan" /> t.me/stc-
+            {batchName.toLowerCase().replace(/\s+/g, "-")}
           </div>
           <div className="flex flex-wrap gap-2">
             {CHANNELS.map((c) => (
@@ -89,18 +147,16 @@ function BatchPage() {
           </div>
           <p className="mt-3 flex items-start gap-2 text-[11px] leading-relaxed text-copy-subtle">
             <Megaphone className="mt-0.5 size-3.5 shrink-0 text-brand-amber" />
-            Technical courses have no Telegram group — MERN, SAP FICO or Medical Coding learning
-            stays inside your own technical journey.
+            Technical courses have no Telegram group — MERN, Cloud or AI/ML learning stays inside
+            your own technical journey.
           </p>
-          <p className="mt-2 text-[11px] text-copy-subtle">
-            Last sync: {batch?.lastSync ?? "handled by the daily 06:00 broadcast"}
-          </p>
+          <p className="mt-2 text-[11px] text-copy-subtle">Last sync: {lastSync}</p>
         </Panel>
 
         <Panel title="Cohort composition" subtitle="Same placement batch, many technical paths">
           <div className="flex items-center gap-2 text-xs text-foreground">
-            <Users className="size-4 text-brand-purple" /> {batch ? batch.enrolled : 218} students ·
-            one Placement Accelerator
+            <Users className="size-4 text-brand-purple" /> {batchEnrolled} students · one Placement
+            Accelerator
           </div>
           <ul className="mt-3 space-y-2 text-xs text-copy-subtle">
             <li>Same English, aptitude and communication schedule</li>

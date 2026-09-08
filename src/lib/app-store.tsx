@@ -22,6 +22,7 @@ import {
 } from "./supabase";
 import {
   fetchLiveStudentProfile,
+  ensureLiveStudentProfile,
   fetchLiveStudentProgress,
   completeLiveSkill,
   completeLivePlacementDay,
@@ -484,11 +485,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           const userEmail = user.email.toLowerCase();
 
           // Resolve live role strictly from public.user_roles in PostgreSQL
-          const role = await fetchLiveUserRole(user.id, user.user_metadata?.role, user.email);
+          const [role, liveDrives, platformSettings] = await Promise.all([
+            fetchLiveUserRole(user.id, user.user_metadata?.role, user.email),
+            fetchLiveHiringDrives(),
+            fetchLivePlatformSettings(),
+          ]);
+
+          const completionRule = platformSettings?.completionRule ?? "primary-plus-minimum";
+          const secondaryMinimum = platformSettings?.secondaryMinimum ?? 50;
 
           if (role === "student") {
-            const liveData = await fetchLiveStudentProfile(user.id);
-            if (liveData) {
+            const liveData = await ensureLiveStudentProfile(user.id, userEmail, user.user_metadata);
+            if (liveData?.profile) {
               setLiveStudentId(liveData.profile.id);
               const progress = await fetchLiveStudentProgress(liveData.profile.id);
 
@@ -537,35 +545,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                 role: "student",
                 sessionEmail: userEmail,
                 authProvider: "supabase",
+                hiringDrives: liveDrives,
+                completionRule,
+                secondaryMinimum,
                 customStudents: { [userEmail]: studentAcc },
                 profiles: { [userEmail]: liveProf },
-              }));
-            } else {
-              const meta = user.user_metadata || {};
-              const fallbackName = meta.name || userEmail.split("@")[0] || "Student Learner";
-              const studentAcc: StudentAccount = {
-                email: userEmail,
-                password: "●●●●●●●●",
-                name: fallbackName,
-                firstName: fallbackName.split(" ")[0] || "Student",
-                rollNo: meta.roll_no || "2026-LIVE",
-                dept: meta.dept || "CSE",
-                batchId: meta.batch_id || "BATCH-2026-LIVE-01",
-                college: meta.college || "Partner Engineering College",
-                tracks: sanitizeTracks((meta.tracks as TrackId[]) || ["mern", "cloud"]),
-                xp: 250,
-                streak: 1,
-                seedOffsets: [1, 1, 1],
-                placementDay: 1,
-                readiness: { T: 60, C: 55, A: 55, E: 60, R: 40, M: 25 },
-              };
-              setState((prev) => ({
-                ...prev,
-                role: "student",
-                sessionEmail: userEmail,
-                authProvider: "supabase",
-                customStudents: { [userEmail]: studentAcc },
-                profiles: { [userEmail]: profileFor(studentAcc) },
               }));
             }
           } else {
@@ -575,6 +559,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               role: "admin",
               sessionEmail: userEmail,
               authProvider: "supabase",
+              hiringDrives: liveDrives,
+              completionRule,
+              secondaryMinimum,
             }));
           }
         } else if (raw) {
@@ -710,7 +697,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const userEmail = user.email.toLowerCase();
 
     // Resolve live role strictly from public.user_roles in PostgreSQL
-    const role: Role = await fetchLiveUserRole(user.id, user.user_metadata?.role, user.email);
+    const [role, liveDrives, platformSettings] = await Promise.all([
+      fetchLiveUserRole(user.id, user.user_metadata?.role, user.email),
+      fetchLiveHiringDrives(),
+      fetchLivePlatformSettings(),
+    ]);
+
+    const completionRule = platformSettings?.completionRule ?? "primary-plus-minimum";
+    const secondaryMinimum = platformSettings?.secondaryMinimum ?? 50;
 
     setSupabaseSession(session);
 
@@ -720,13 +714,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         role: "admin",
         sessionEmail: userEmail,
         authProvider: "supabase",
+        hiringDrives: liveDrives,
+        completionRule,
+        secondaryMinimum,
       }));
       return { ok: true, role: "admin" as Role };
     }
 
     // Live student login — fetch from Supabase
-    const liveData = await fetchLiveStudentProfile(user.id);
-    if (liveData) {
+    const liveData = await ensureLiveStudentProfile(user.id, userEmail, user.user_metadata);
+    if (liveData?.profile) {
       setLiveStudentId(liveData.profile.id);
       const progress = await fetchLiveStudentProgress(liveData.profile.id);
 
@@ -775,36 +772,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         role: "student",
         sessionEmail: userEmail,
         authProvider: "supabase",
+        hiringDrives: liveDrives,
+        completionRule,
+        secondaryMinimum,
         customStudents: { [userEmail]: studentAcc },
         profiles: { [userEmail]: liveProf },
-      }));
-    } else {
-      const meta = user.user_metadata || {};
-      const fallbackName = meta.name || userEmail.split("@")[0] || "Student Learner";
-      const studentAcc: StudentAccount = {
-        email: userEmail,
-        password: "●●●●●●●●",
-        name: fallbackName,
-        firstName: fallbackName.split(" ")[0] || "Student",
-        rollNo: meta.roll_no || "2026-LIVE",
-        dept: meta.dept || "CSE",
-        batchId: meta.batch_id || "BATCH-2026-LIVE-01",
-        college: meta.college || "Partner Engineering College",
-        tracks: sanitizeTracks((meta.tracks as TrackId[]) || ["mern", "cloud"]),
-        xp: 250,
-        streak: 1,
-        seedOffsets: [1, 1, 1],
-        placementDay: 1,
-        readiness: { T: 60, C: 55, A: 55, E: 60, R: 40, M: 25 },
-      };
-
-      setState((s) => ({
-        ...s,
-        role: "student",
-        sessionEmail: userEmail,
-        authProvider: "supabase",
-        customStudents: { [userEmail]: studentAcc },
-        profiles: { [userEmail]: profileFor(studentAcc) },
       }));
     }
 
