@@ -69,11 +69,15 @@ function AutomationsPage() {
 
     setTimeout(() => {
       setRunningJob(null);
-      store.pushCronLog({
-        stage: job.id,
-        message: `Pipeline execution complete: 100% success rate across ${job.target}`,
-        status: "ok",
-      });
+      if (job.id === "score") {
+        store.recalculateAllScores();
+      } else {
+        store.pushCronLog({
+          stage: job.id,
+          message: `Pipeline execution complete: 100% success rate across ${job.target}`,
+          status: "ok",
+        });
+      }
       toast.success(`${job.name} finished successfully`);
     }, 1400);
   };

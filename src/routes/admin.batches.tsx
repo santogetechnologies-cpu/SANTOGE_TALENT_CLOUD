@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Chip, Console, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore, type Batch } from "@/lib/app-store";
@@ -17,8 +17,11 @@ import {
   Layers,
   Radio,
   Trash2,
+  KeyRound,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AdminResetPasswordModal, type ResetPasswordStudent } from "@/components/admin-reset-password-modal";
 
 export const Route = createFileRoute("/admin/batches")({
   head: () => ({
@@ -54,6 +57,14 @@ function BatchesPage() {
 
   // Batch Roster View state
   const [rosterBatchId, setRosterBatchId] = useState<string | null>(null);
+  const [resetTargetStudent, setResetTargetStudent] = useState<ResetPasswordStudent | null>(null);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [deleteTargetStudent, setDeleteTargetStudent] = useState<{
+    name: string;
+    email: string;
+    rollNo: string;
+    batchId: string;
+  } | null>(null);
 
   const totalCapacity = store.batches.reduce((s, b) => s + b.capacity, 0);
   const totalEnrolled = store.batches.reduce((s, b) => s + b.enrolled, 0);
@@ -118,10 +129,63 @@ function BatchesPage() {
     }, 1200);
   };
 
-  // Filter learners in selected roster
-  const rosterLearners = STUDENT_ACCOUNTS.filter(
-    (s) => s.batchId === rosterBatchId || rosterBatchId === "all"
-  );
+  // Filter learners in selected roster (combines demo accounts + custom + CSV provisioned, filtering deleted)
+  const rosterLearners = useMemo(() => {
+    const deleted = new Set((store.deletedStudentEmails || []).map((e) => e.toLowerCase()));
+
+    const fromAccounts = STUDENT_ACCOUNTS
+      .filter((s) => !deleted.has(s.email.toLowerCase()) && (s.batchId === rosterBatchId || rosterBatchId === "all"))
+      .map((s) => ({
+        name: s.name,
+        email: s.email,
+        rollNo: s.rollNo,
+        dept: s.dept,
+        batchId: s.batchId,
+        college: s.college,
+        tracks: s.tracks as string[],
+        streak: s.streak,
+        placementDay: s.placementDay,
+      }));
+
+    const fromCustom = Object.values(store.customStudents || {})
+      .filter((s) => !deleted.has(s.email.toLowerCase()) && (s.batchId === rosterBatchId || rosterBatchId === "all"))
+      .map((s) => ({
+        name: s.name,
+        email: s.email,
+        rollNo: s.rollNo,
+        dept: s.dept,
+        batchId: s.batchId,
+        college: s.college,
+        tracks: s.tracks as string[],
+        streak: s.streak,
+        placementDay: s.placementDay,
+      }));
+
+    const fromProvisioned = (store.provisioned || [])
+      .filter((p) => !deleted.has(p.email.toLowerCase()) && (p.batch_id === rosterBatchId || rosterBatchId === "all"))
+      .map((p) => ({
+        name: p.student_name,
+        email: p.email,
+        rollNo: p.roll_no,
+        dept: p.dept,
+        batchId: p.batch_id,
+        college: "Partner College",
+        tracks: [p.course_1, p.course_2, p.course_3].filter(Boolean),
+        streak: 1,
+        placementDay: 1,
+      }));
+
+    const seen = new Set<string>();
+    const result = [];
+    for (const item of [...fromAccounts, ...fromCustom, ...fromProvisioned]) {
+      const em = item.email.toLowerCase();
+      if (!seen.has(em)) {
+        seen.add(em);
+        result.push(item);
+      }
+    }
+    return result;
+  }, [rosterBatchId, store.provisioned, store.customStudents, store.deletedStudentEmails]);
 
   return (
     <div className="space-y-6">
@@ -423,6 +487,39 @@ function BatchesPage() {
                         ))}
                       </div>
                       <span className="font-mono text-brand-amber text-xs font-bold">🔥 {learner.streak}d</span>
+                      <button
+                        onClick={() => {
+                          setResetTargetStudent({
+                            name: learner.name,
+                            email: learner.email,
+                            rollNo: learner.rollNo,
+                            batchId: learner.batchId,
+                            dept: learner.dept,
+                            college: learner.college,
+                          });
+                          setIsResetModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-dark px-2 py-1 text-[11px] font-semibold text-copy-subtle hover:text-brand-purple hover:border-brand-purple/60 transition-colors ml-1"
+                        title="Reset Student Password"
+                      >
+                        <KeyRound className="size-3" />
+                        <span className="hidden sm:inline">Reset Pass</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDeleteTargetStudent({
+                            name: learner.name,
+                            email: learner.email,
+                            rollNo: learner.rollNo,
+                            batchId: learner.batchId,
+                          });
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-dark px-2 py-1 text-[11px] font-semibold text-copy-subtle hover:text-brand-rose hover:border-brand-rose/60 hover:bg-brand-rose/10 transition-colors ml-1"
+                        title="Delete Student from Cohort"
+                      >
+                        <Trash2 className="size-3" />
+                        <span className="hidden sm:inline">Delete</span>
+                      </button>
                     </div>
                   </div>
                 ))
@@ -439,6 +536,79 @@ function BatchesPage() {
                 className="rounded-xl border border-line-soft px-4 py-2 text-xs font-semibold text-foreground"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Reset Password Modal */}
+      <AdminResetPasswordModal
+        isOpen={isResetModalOpen}
+        student={resetTargetStudent}
+        onClose={() => {
+          setIsResetModalOpen(false);
+          setResetTargetStudent(null);
+        }}
+      />
+
+      {/* Delete Confirmation Modal */}
+      {deleteTargetStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 border-b border-line-soft pb-3">
+              <div className="grid size-10 place-items-center rounded-xl bg-brand-rose/15 text-brand-rose border border-brand-rose/30">
+                <AlertTriangle className="size-5" />
+              </div>
+              <div>
+                <h3 className="font-display text-base font-bold text-foreground">Remove Learner from Roster?</h3>
+                <p className="text-xs text-copy-subtle">This action permanently removes the student from this cohort</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-copy-subtle font-medium">Student Name:</span>
+                <span className="font-bold text-foreground">{deleteTargetStudent.name}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-copy-subtle font-medium">Email Address:</span>
+                <span className="font-mono text-copy-subtle">{deleteTargetStudent.email}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-copy-subtle font-medium">Roll Number:</span>
+                <span className="font-mono font-semibold text-foreground">{deleteTargetStudent.rollNo}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-copy-subtle font-medium">Cohort Batch:</span>
+                <span className="font-mono font-bold text-brand-purple">{deleteTargetStudent.batchId}</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-copy-subtle leading-relaxed">
+              Removing this student will permanently delete their progress, revoke active portal access, update cohort batch headcount, and record the removal in the audit log.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
+              <button
+                type="button"
+                onClick={() => setDeleteTargetStudent(null)}
+                className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground hover:bg-surface-elevated transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const res = store.deleteStudent(deleteTargetStudent.email);
+                  if (res.ok) {
+                    setDeleteTargetStudent(null);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors"
+              >
+                <Trash2 className="size-3.5" />
+                <span>Confirm Delete</span>
               </button>
             </div>
           </div>
