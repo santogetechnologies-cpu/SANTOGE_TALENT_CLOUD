@@ -480,8 +480,8 @@ function BatchesPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex gap-1">
-                        {learner.tracks.map((t) => (
-                          <span key={t} className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[10px] font-mono">
+                        {Array.from(new Set(learner.tracks || [])).map((t, idx) => (
+                          <span key={`${learner.email}-${t}-${idx}`} className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[10px] font-mono">
                             {t}
                           </span>
                         ))}

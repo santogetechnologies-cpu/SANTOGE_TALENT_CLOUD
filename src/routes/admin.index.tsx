@@ -71,6 +71,17 @@ function AdminAnalytics() {
   const [newSlots, setNewSlots] = useState(50);
   const [newStatus, setNewStatus] = useState<HiringDrive["status"]>("Active Drive");
 
+  // Add Student modal states
+  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+  const [newStudentName, setNewStudentName] = useState("");
+  const [newStudentEmail, setNewStudentEmail] = useState("");
+  const [newStudentPassword, setNewStudentPassword] = useState("Temp@1234");
+  const [newStudentRollNo, setNewStudentRollNo] = useState("");
+  const [newStudentDept, setNewStudentDept] = useState("CSE");
+  const [newStudentBatchId, setNewStudentBatchId] = useState("");
+  const [newStudentCollege, setNewStudentCollege] = useState("Partner Engineering College");
+  const [newStudentTracks, setNewStudentTracks] = useState<TrackId[]>(["mern", "cloud"]);
+
   const readinessOf = (b: { enrolled: number; capacity: number }) =>
     Math.round((b.enrolled / Math.max(b.capacity, 1)) * 100);
 
@@ -98,7 +109,7 @@ function AdminAnalytics() {
           dept: a.dept,
           batchId: a.batchId,
           college: a.college,
-          tracks: a.tracks as TrackId[],
+          tracks: Array.from(new Set(a.tracks as TrackId[])),
           placementDay: p?.placementDay ?? a.placementDay,
           talentScore: score,
           gateCleared: (p?.attendance.length ?? 0) >= 30,
@@ -125,7 +136,7 @@ function AdminAnalytics() {
           dept: c.dept,
           batchId: c.batchId,
           college: c.college,
-          tracks: c.tracks as TrackId[],
+          tracks: Array.from(new Set(c.tracks as TrackId[])),
           placementDay: p?.placementDay ?? c.placementDay,
           talentScore: score,
           gateCleared: (p?.attendance.length ?? 0) >= 30,
@@ -152,7 +163,7 @@ function AdminAnalytics() {
           dept: p.dept,
           batchId: p.batch_id,
           college: "Partner Engineering College",
-          tracks: [p.course_1, p.course_2, p.course_3].filter(Boolean) as TrackId[],
+          tracks: Array.from(new Set([p.course_1, p.course_2, p.course_3].filter(Boolean) as TrackId[])),
           placementDay: pr?.placementDay ?? 1,
           talentScore: score,
           gateCleared: (pr?.attendance.length ?? 0) >= 30,
@@ -386,6 +397,68 @@ function AdminAnalytics() {
     setIsNewDriveModalOpen(false);
   };
 
+  const toggleNewStudentTrack = (trackId: TrackId) => {
+    setNewStudentTracks((prev) => {
+      if (prev.includes(trackId)) {
+        if (prev.length === 1) {
+          toast.info("Learners must have at least 1 technical track assigned");
+          return prev;
+        }
+        return prev.filter((t) => t !== trackId);
+      } else {
+        if (prev.length >= 3) {
+          toast.warning("Maximum 3 technical tracks can be assigned per learner");
+          return prev;
+        }
+        return [...prev, trackId];
+      }
+    });
+  };
+
+  const handleAddStudent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStudentName.trim()) {
+      toast.error("Please enter the student's full name");
+      return;
+    }
+    if (!newStudentEmail.trim() || !newStudentEmail.includes("@")) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    if (newStudentTracks.length === 0) {
+      toast.error("Please select at least 1 technical track (max 3)");
+      return;
+    }
+
+    const batchId = newStudentBatchId || store.batches[0]?.id || "BATCH-2026-ABC-CSE-01";
+    const password = newStudentPassword.trim() || "Temp@1234";
+
+    const res = store.addStudent({
+      name: newStudentName.trim(),
+      email: newStudentEmail.trim().toLowerCase(),
+      password: password,
+      rollNo: newStudentRollNo.trim() || `STC${Date.now().toString().slice(-4)}`,
+      dept: newStudentDept.trim() || "CSE",
+      batchId: batchId,
+      college: newStudentCollege.trim() || "Partner Engineering College",
+      tracks: newStudentTracks,
+    });
+
+    if (res.ok) {
+      toast.success(
+        `Learner registered! They can now log in at /login with ${newStudentEmail.trim().toLowerCase()} / ${password}`
+      );
+      setIsAddStudentModalOpen(false);
+      setNewStudentName("");
+      setNewStudentEmail("");
+      setNewStudentPassword("Temp@1234");
+      setNewStudentRollNo("");
+      setNewStudentDept("CSE");
+    } else {
+      toast.error(res.message);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header with Dynamic Institution Selector */}
@@ -612,7 +685,24 @@ function AdminAnalytics() {
       <Panel
         title="Student Roster & Cohort Management"
         subtitle="Individual 1–3 technical tracks & placement accelerator progress across all provisioned learners"
-        action={<Chip tone="purple">{filteredStudents.length} Students Shown</Chip>}
+        action={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (!newStudentBatchId && store.batches.length > 0) {
+                  setNewStudentBatchId(store.batches[0]?.id || "BATCH-2026-ABC-CSE-01");
+                }
+                setIsAddStudentModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-brand-purple/40 bg-brand-purple/10 px-3 py-1.5 text-xs font-semibold text-brand-purple hover:bg-brand-purple/20 transition-colors shadow-sm"
+            >
+              <Plus className="size-3.5" />
+              <span>+ Add Student</span>
+            </button>
+            <Chip tone="purple">{filteredStudents.length} Students Shown</Chip>
+          </div>
+        }
       >
         {/* Active Hiring Drive Filter Banner */}
         {selectedDrive && (
@@ -716,11 +806,11 @@ function AdminAnalytics() {
                   </td>
                   <td className="py-3 pr-4">
                     <div className="flex flex-wrap gap-1">
-                      {s.tracks.map((tid) => {
+                      {Array.from(new Set(s.tracks || [])).map((tid, idx) => {
                         const track = trackById(tid);
                         return (
                           <span
-                            key={tid}
+                            key={`${s.email}-${tid}-${idx}`}
                             className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-line-soft bg-surface-dark"
                           >
                             {track.short}
@@ -844,9 +934,9 @@ function AdminAnalytics() {
               <div>
                 <p className="font-semibold text-foreground mb-1.5">Assigned Technical Learning Tracks (1–3):</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {activeModalStudent.tracks.map((t) => (
+                  {Array.from(new Set(activeModalStudent.tracks || [])).map((t, idx) => (
                     <span
-                      key={t}
+                      key={`${activeModalStudent.email}-${t}-${idx}`}
                       className="rounded-lg border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-1 text-xs font-semibold text-brand-cyan"
                     >
                       {trackById(t).name}
@@ -1150,6 +1240,193 @@ function AdminAnalytics() {
                 >
                   <Plus className="size-3.5" />
                   <span>Create Requisition</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add New Student Learner Modal */}
+      {isAddStudentModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md overflow-y-auto">
+          <div className="w-full max-w-lg rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 my-8">
+            <div className="flex items-center justify-between border-b border-line-soft pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="grid size-9 place-items-center rounded-xl bg-brand-purple/15 text-brand-purple border border-brand-purple/30">
+                  <GraduationCap className="size-5" />
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-bold text-foreground">Add New Student Learner</h3>
+                  <p className="text-[11px] text-copy-subtle">
+                    Creates instant portal credentials, cohort sync, and technical track assignment.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddStudentModalOpen(false)}
+                className="text-copy-subtle hover:text-foreground text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddStudent} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-foreground mb-1">
+                    Student Full Name <span className="text-brand-rose">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newStudentName}
+                    onChange={(e) => setNewStudentName(e.target.value)}
+                    placeholder="e.g. Arun Kumar"
+                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-foreground mb-1">
+                    Student Login Email <span className="text-brand-rose">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={newStudentEmail}
+                    onChange={(e) => setNewStudentEmail(e.target.value)}
+                    placeholder="e.g. arun@college.edu"
+                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-foreground mb-1">
+                    Login Password <span className="text-brand-rose">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newStudentPassword}
+                    onChange={(e) => setNewStudentPassword(e.target.value)}
+                    placeholder="Temp@1234"
+                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60 font-mono"
+                  />
+                  <span className="text-[10px] text-copy-subtle mt-0.5 block">Learner uses this password to log in</span>
+                </div>
+                <div>
+                  <label className="block font-semibold text-foreground mb-1">Roll / Registration Number</label>
+                  <input
+                    type="text"
+                    value={newStudentRollNo}
+                    onChange={(e) => setNewStudentRollNo(e.target.value)}
+                    placeholder="e.g. 22CS099"
+                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-foreground mb-1">Department</label>
+                  <select
+                    value={newStudentDept}
+                    onChange={(e) => setNewStudentDept(e.target.value)}
+                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60"
+                  >
+                    <option value="CSE">CSE (Computer Science)</option>
+                    <option value="IT">IT (Information Technology)</option>
+                    <option value="ECE">ECE (Electronics & Comm)</option>
+                    <option value="EEE">EEE (Electrical & Electronics)</option>
+                    <option value="MECH">MECH (Mechanical)</option>
+                    <option value="AIDS">AI & Data Science</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-foreground mb-1">
+                    Placement Accelerator Cohort <span className="text-brand-rose">*</span>
+                  </label>
+                  <select
+                    value={newStudentBatchId || store.batches[0]?.id || ""}
+                    onChange={(e) => setNewStudentBatchId(e.target.value)}
+                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60"
+                  >
+                    {store.batches.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name} ({b.enrolled}/{b.capacity})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-foreground mb-1">Institution / College</label>
+                <input
+                  type="text"
+                  value={newStudentCollege}
+                  onChange={(e) => setNewStudentCollege(e.target.value)}
+                  placeholder="e.g. PSG College of Technology"
+                  className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60"
+                />
+              </div>
+
+              {/* Technical Tracks Picker (1 to 3 tracks) */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="font-semibold text-foreground">
+                    Assign Technical Learning Tracks ({newStudentTracks.length}/3 selected)
+                  </label>
+                  <span className="text-[10px] text-copy-subtle">Choose 1 to 3 tracks</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-40 overflow-y-auto p-1.5 rounded-xl border border-line-soft bg-surface-soft">
+                  {TRACKS.map((track) => {
+                    const isSelected = newStudentTracks.includes(track.id);
+                    return (
+                      <button
+                        type="button"
+                        key={track.id}
+                        onClick={() => toggleNewStudentTrack(track.id)}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-left text-[11px] transition-all",
+                          isSelected
+                            ? "border-brand-purple bg-brand-purple/20 text-foreground font-semibold shadow-sm"
+                            : "border-line-soft bg-surface-dark/60 text-copy-subtle hover:border-line-soft/80 hover:text-foreground"
+                        )}
+                      >
+                        <span className="size-2 rounded-full" style={{ backgroundColor: track.accent }} />
+                        <span className="truncate">{track.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-brand-emerald/30 bg-brand-emerald/10 p-2.5 text-[11px] text-brand-emerald flex items-center gap-2">
+                <CheckCircle2 className="size-4 shrink-0" />
+                <span>
+                  Adding this student enables immediate login at <strong className="text-foreground">/login</strong>.
+                  Credentials are automatically synced with local store authentication.
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
+                <button
+                  type="button"
+                  onClick={() => setIsAddStudentModalOpen(false)}
+                  className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-purple to-brand-cyan px-4 py-2 text-xs font-bold text-surface-dark hover:opacity-95 shadow-lg shadow-brand-purple/20 transition-opacity"
+                >
+                  <Plus className="size-3.5" />
+                  <span>Register & Enable Login</span>
                 </button>
               </div>
             </form>

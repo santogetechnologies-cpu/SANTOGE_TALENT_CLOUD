@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import {
   Hexagon,
@@ -67,6 +67,35 @@ function LoginPage() {
     setSbConfig(getSupabaseConfig());
   }, []);
 
+  const adminAddedLearners = useMemo(() => {
+    const deleted = new Set((store.deletedStudentEmails || []).map((e) => e.toLowerCase().trim()));
+    const custom = Object.values(store.customStudents || {})
+      .filter((c) => !deleted.has(c.email.toLowerCase().trim()))
+      .map((c) => ({
+        name: c.name,
+        email: c.email,
+        password: store.passwordOverrides?.[c.email.toLowerCase().trim()] ?? c.password ?? "Temp@1234",
+        batchId: c.batchId,
+        dept: c.dept,
+      }));
+
+    const customEmails = new Set(custom.map((c) => c.email.toLowerCase().trim()));
+    const fromProv = (store.provisioned || [])
+      .filter((p) => {
+        const em = p.email.toLowerCase().trim();
+        return !deleted.has(em) && !customEmails.has(em);
+      })
+      .map((p) => ({
+        name: p.student_name,
+        email: p.email,
+        password: store.passwordOverrides?.[p.email.toLowerCase().trim()] ?? p.password ?? "Temp@1234",
+        batchId: p.batch_id,
+        dept: p.dept,
+      }));
+
+    return [...custom, ...fromProv];
+  }, [store.customStudents, store.provisioned, store.deletedStudentEmails, store.passwordOverrides]);
+
   // Demo submit handler
   const handleDemoSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -93,21 +122,10 @@ function LoginPage() {
     const res = await store.signInSupabase(email, password);
     setLoading(false);
     if (!res.ok) {
-      let errMsg = res.error || "Supabase sign in failed. Ensure your account is provisioned.";
-      const isDemo =
-        email.trim().toLowerCase() === ADMIN_ACCOUNT.email.toLowerCase() ||
-        STUDENT_ACCOUNTS.some((s) => s.email.toLowerCase() === email.trim().toLowerCase());
-      if (
-        isDemo &&
-        (res.error?.toLowerCase().includes("invalid login credentials") ||
-          res.error?.toLowerCase().includes("invalid_credentials"))
-      ) {
-        errMsg = `${res.error}. Tip: "${email}" is currently configured as a local Demo account. Switch to the "Demo Login" tab above to sign in instantly, or add this user in your Supabase Auth dashboard.`;
-      }
-      setError(errMsg);
+      setError(res.error || "Sign in failed. Please check your credentials.");
       return;
     }
-    toast.success(res.role === "admin" ? "Signed in as Platform Super Admin" : "Live Supabase session active");
+    toast.success(res.role === "admin" ? "Signed in as Platform Super Admin" : "Signed in to Student Portal");
     void navigate({ to: res.role === "admin" ? "/admin" : "/student" });
   };
 
@@ -282,9 +300,9 @@ function LoginPage() {
                       <p className="mt-0.5 font-mono text-[11px] text-brand-cyan">{a.email}</p>
                       
                       <div className="mt-2 flex flex-wrap gap-1">
-                        {a.tracks.map((t) => (
+                        {Array.from(new Set(a.tracks || [])).map((t, idx) => (
                           <span
-                            key={t}
+                            key={`${a.email}-${t}-${idx}`}
                             className="rounded-md border border-line-soft bg-surface-elevated px-1.5 py-0.5 text-[10px] font-medium text-foreground"
                           >
                             {trackById(t).short}
@@ -299,6 +317,39 @@ function LoginPage() {
                     </button>
                   ))}
                 </div>
+
+                {adminAddedLearners.length > 0 && (
+                  <div className="mt-4 border-t border-line-soft/60 pt-3.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <Sparkles className="size-3.5 text-brand-cyan" />
+                        Admin-Added Learners ({adminAddedLearners.length})
+                      </span>
+                      <span className="text-[10px] font-semibold text-brand-cyan uppercase tracking-wider">
+                        1-Click Login
+                      </span>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {adminAddedLearners.slice(-4).reverse().map((l) => (
+                        <button
+                          key={l.email}
+                          type="button"
+                          onClick={() => quickDemo(l.email, l.password)}
+                          className="group rounded-xl border border-brand-cyan/30 bg-brand-cyan/5 p-2.5 text-left transition-all hover:border-brand-cyan hover:bg-brand-cyan/10"
+                        >
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-bold text-foreground group-hover:text-brand-cyan truncate">{l.name}</p>
+                            <span className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[9px] font-mono text-brand-cyan">
+                              {l.batchId}
+                            </span>
+                          </div>
+                          <p className="font-mono text-[10px] text-copy-subtle truncate">{l.email}</p>
+                          <p className="text-[9px] text-brand-cyan/80 mt-1">Pass: {l.password}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Admin Persona */}

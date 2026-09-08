@@ -137,6 +137,58 @@ const profileFor = (a: StudentAccount): Profile => ({
   certifications: [],
 });
 
+const FALLBACK_TRACK_POOL: TrackId[] = ["mern", "cloud", "aiml", "java", "cyber", "datascience"];
+
+export const sanitizeTracks = (tracks?: (TrackId | string)[]): [TrackId, TrackId, TrackId] => {
+  const seen = new Set<TrackId>();
+  const validTracks: TrackId[] = [];
+
+  if (tracks && Array.isArray(tracks)) {
+    for (const t of tracks) {
+      if (t && typeof t === "string") {
+        const trimmed = t.trim() as TrackId;
+        if (trimmed && !seen.has(trimmed)) {
+          seen.add(trimmed);
+          validTracks.push(trimmed);
+        }
+      }
+    }
+  }
+
+  for (const fallback of FALLBACK_TRACK_POOL) {
+    if (validTracks.length >= 3) break;
+    if (!seen.has(fallback)) {
+      seen.add(fallback);
+      validTracks.push(fallback);
+    }
+  }
+
+  return [validTracks[0] ?? "mern", validTracks[1] ?? "cloud", validTracks[2] ?? "aiml"];
+};
+
+export const createStudentFromProvisioned = (p: ProvisionedStudent): StudentAccount => {
+  const email = p.email.trim().toLowerCase();
+  const rawTracks = [p.course_1, p.course_2, p.course_3].filter(Boolean) as TrackId[];
+  const tracks = sanitizeTracks(rawTracks);
+
+  return {
+    email,
+    password: p.password || "Temp@1234",
+    name: p.student_name || email.split("@")[0] || "Learner",
+    firstName: (p.student_name || email).split(" ")[0] || "Learner",
+    rollNo: p.roll_no || "2026-ROLL",
+    dept: p.dept || "CSE",
+    batchId: p.batch_id || "BATCH-2026-ABC-CSE-01",
+    college: "Partner Engineering College",
+    tracks,
+    xp: 250,
+    streak: 1,
+    seedOffsets: [2, 1, 1],
+    placementDay: 1,
+    readiness: { T: 60, C: 55, A: 55, E: 60, R: 40, M: 25 },
+  };
+};
+
 const DEFAULT_PROFILES: Record<string, Profile> = Object.fromEntries(
   STUDENT_ACCOUNTS.map((a) => [a.email, profileFor(a)]),
 );
@@ -224,6 +276,16 @@ type Store = Persisted &
     createBatch: (b: Omit<Batch, "lastSync">) => void;
     deleteBatch: (id: string) => void;
     deleteStudent: (email: string) => { ok: boolean; message: string };
+    addStudent: (student: {
+      name: string;
+      email: string;
+      password?: string;
+      rollNo: string;
+      dept: string;
+      batchId: string;
+      college?: string;
+      tracks?: TrackId[];
+    }) => { ok: boolean; message: string };
     syncBatch: (id: string) => void;
     hiringDrives: HiringDrive[];
     addHiringDrive: (drive: Omit<HiringDrive, "id">) => void;
@@ -286,11 +348,31 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         if (parsed.authProvider === "supabase" && !activeSession) {
           parsed.sessionEmail = null;
         }
+
+        const loadedCustom = { ...(parsed.customStudents ?? {}) };
+        for (const [key, val] of Object.entries(loadedCustom)) {
+          if (val && val.tracks) {
+            loadedCustom[key] = {
+              ...val,
+              tracks: sanitizeTracks(val.tracks),
+            };
+          }
+        }
+        const loadedProfiles = { ...DEFAULT_PROFILES, ...(parsed.profiles ?? {}) };
+        for (const [key, prof] of Object.entries(loadedProfiles)) {
+          if (prof && prof.activeTracks) {
+            loadedProfiles[key] = {
+              ...prof,
+              activeTracks: Array.from(new Set(prof.activeTracks)) as TrackId[],
+            };
+          }
+        }
+
         setState({
           ...DEFAULT_STATE,
           ...parsed,
-          profiles: { ...DEFAULT_PROFILES, ...(parsed.profiles ?? {}) },
-          customStudents: { ...(parsed.customStudents ?? {}) },
+          profiles: loadedProfiles,
+          customStudents: loadedCustom,
           passwordOverrides: { ...(parsed.passwordOverrides ?? {}) },
           batches: parsed.batches && parsed.batches.length > 0 ? parsed.batches : DEFAULT_STATE.batches,
           provisioned: parsed.provisioned ?? [],
@@ -313,6 +395,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             ? meta.tracks
             : (["mern", "cloud", "aiml"] as TrackId[]);
 
+        const customTracks = sanitizeTracks(metaTracks);
         const custom: StudentAccount = {
           email: userEmail,
           password: "●●●●●●●●",
@@ -322,9 +405,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           dept,
           batchId,
           college,
-          tracks: (metaTracks.length >= 3
-            ? metaTracks.slice(0, 3)
-            : [...metaTracks, "mern", "cloud", "aiml"].slice(0, 3)) as [TrackId, TrackId, TrackId],
+          tracks: customTracks,
           xp: 500,
           streak: 7,
           seedOffsets: [3, 2, 1],
@@ -344,7 +425,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                   ...DEFAULT_PROFILES,
                   [userEmail]: {
                     ...profileFor(custom),
-                    activeTracks: metaTracks.slice(0, 3),
+                    activeTracks: Array.from(new Set(customTracks)),
                   },
                 }
               : DEFAULT_PROFILES,
@@ -366,16 +447,63 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     root.classList.toggle("dark", state.theme === "dark");
   }, [state.theme]);
 
+  // Sync state across browser tabs when admin adds learners or updates state
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue) as Partial<Persisted>;
+          setState((prev) => ({
+            ...prev,
+            ...parsed,
+            customStudents: parsed.customStudents ? { ...parsed.customStudents } : prev.customStudents,
+            provisioned: parsed.provisioned ?? prev.provisioned,
+            passwordOverrides: parsed.passwordOverrides ? { ...parsed.passwordOverrides } : prev.passwordOverrides,
+            deletedStudentEmails: parsed.deletedStudentEmails ?? prev.deletedStudentEmails ?? [],
+            batches: parsed.batches ?? prev.batches,
+            profiles: parsed.profiles ? { ...prev.profiles, ...parsed.profiles } : prev.profiles,
+          }));
+        } catch {
+          /* ignore JSON parse errors */
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
   const patch = useCallback((p: Partial<Persisted>) => setState((s) => ({ ...s, ...p })), []);
 
   const email = state.sessionEmail;
   const student = useMemo<StudentAccount | null>(() => {
     if (!email) return null;
-    if (state.deletedStudentEmails?.includes(email.toLowerCase())) return null;
-    return studentByEmail(email) || state.customStudents[email] || null;
-  }, [email, state.customStudents, state.deletedStudentEmails]);
+    const value = email.trim().toLowerCase();
+    if (state.deletedStudentEmails?.some((d) => d.toLowerCase().trim() === value)) return null;
 
-  const profile = (email && state.profiles[email]) || (student ? profileFor(student) : FALLBACK_PROFILE);
+    // Check customStudents
+    const custom =
+      state.customStudents[value] ||
+      Object.values(state.customStudents || {}).find(
+        (c) => c.email.trim().toLowerCase() === value,
+      );
+    if (custom) return custom;
+
+    // Check demo accounts
+    const demo = STUDENT_ACCOUNTS.find((a) => a.email.trim().toLowerCase() === value);
+    if (demo) return demo;
+
+    // Check provisioned records
+    const prov = (state.provisioned ?? []).find(
+      (p) => p.email.trim().toLowerCase() === value,
+    );
+    if (prov) return createStudentFromProvisioned(prov);
+
+    return null;
+  }, [email, state.customStudents, state.provisioned, state.deletedStudentEmails]);
+
+  const profile =
+    (email && (state.profiles[email] || state.profiles[email.toLowerCase().trim()])) ||
+    (student ? profileFor(student) : FALLBACK_PROFILE);
 
   const patchProfile = useCallback(
     (fn: (p: Profile) => Profile) =>
@@ -400,29 +528,73 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const signIn = useCallback((rawEmail: string, password: string) => {
-    const value = rawEmail.trim().toLowerCase();
-    if (state.deletedStudentEmails?.includes(value)) {
-      return { ok: false as const, error: "This student account has been removed by administrator." };
-    }
-    if (value === ADMIN_ACCOUNT.email && password === ADMIN_ACCOUNT.password) {
-      setState((s) => ({ ...s, role: "admin", sessionEmail: ADMIN_ACCOUNT.email, authProvider: "demo" }));
-      return { ok: true as const, role: "admin" as Role };
-    }
-    const found = STUDENT_ACCOUNTS.find((a) => a.email === value) || state.customStudents[value];
-    const expectedPassword = state.passwordOverrides?.[value] ?? found?.password;
-    if (found && expectedPassword === password) {
-      setState((s) => ({
-        ...s,
-        role: "student",
-        sessionEmail: found.email,
-        authProvider: "demo",
-        profiles: { ...s.profiles, [found.email]: s.profiles[found.email] ?? profileFor(found) },
-      }));
-      return { ok: true as const, role: "student" as Role };
-    }
-    return { ok: false as const, error: "Invalid email or password" };
-  }, [state.customStudents, state.passwordOverrides]);
+  const signIn = useCallback(
+    (rawEmail: string, password: string) => {
+      const value = rawEmail.trim().toLowerCase();
+      if (state.deletedStudentEmails?.some((d) => d.toLowerCase().trim() === value)) {
+        return { ok: false as const, error: "This student account has been removed by administrator." };
+      }
+      if (value === ADMIN_ACCOUNT.email.toLowerCase() && password === ADMIN_ACCOUNT.password) {
+        setState((s) => ({ ...s, role: "admin", sessionEmail: ADMIN_ACCOUNT.email, authProvider: "demo" }));
+        return { ok: true as const, role: "admin" as Role };
+      }
+
+      // 1. Check customStudents
+      let found: StudentAccount | undefined =
+        state.customStudents[value] ||
+        Object.values(state.customStudents || {}).find(
+          (c) => c.email.trim().toLowerCase() === value,
+        );
+
+      // 2. Check static demo accounts
+      if (!found) {
+        found = STUDENT_ACCOUNTS.find((a) => a.email.trim().toLowerCase() === value);
+      }
+
+      // 3. Check provisioned students
+      if (!found) {
+        const prov = (state.provisioned ?? []).find(
+          (p) => p.email.trim().toLowerCase() === value,
+        );
+        if (prov) {
+          found = createStudentFromProvisioned(prov);
+        }
+      }
+
+      if (!found) {
+        return { ok: false as const, error: "No student account found with this email address." };
+      }
+
+      const expectedPassword = state.passwordOverrides?.[value] ?? found.password;
+      if (expectedPassword === password) {
+        const studentAccount = found;
+        const normalizedEmail = studentAccount.email.toLowerCase().trim();
+
+        setState((s) => ({
+          ...s,
+          role: "student",
+          sessionEmail: normalizedEmail,
+          authProvider: "demo",
+          customStudents: {
+            ...s.customStudents,
+            [normalizedEmail]: studentAccount,
+          },
+          profiles: {
+            ...s.profiles,
+            [normalizedEmail]: s.profiles[normalizedEmail] ?? profileFor(studentAccount),
+          },
+        }));
+
+        return { ok: true as const, role: "student" as Role };
+      }
+
+      return {
+        ok: false as const,
+        error: `Invalid password for this learner account. (Default password: Temp@1234)`,
+      };
+    },
+    [state.customStudents, state.provisioned, state.passwordOverrides, state.deletedStudentEmails],
+  );
 
   const resetStudentPassword = useCallback(
     (rawEmail: string, newPassword: string) => {
@@ -468,93 +640,115 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [pushCronLog],
   );
 
-  const signInSupabase = useCallback(async (rawEmail: string, password: string) => {
-    const res = await supabaseAuth.signInWithPassword(rawEmail, password);
-    if (res.error || !res.data.session) {
-      return { ok: false, error: res.error?.message || "Supabase sign in failed" };
-    }
-    const session = res.data.session;
-    const user = session.user;
-    const meta = user.user_metadata || {};
+  const signInSupabase = useCallback(
+    async (rawEmail: string, password: string) => {
+      const value = rawEmail.trim().toLowerCase();
 
-    /**
-     * CURRENT PHASE: Role is read from Supabase user_metadata.role.
-     * Admin accounts are created manually via the Supabase Dashboard with
-     * user_metadata: { role: "admin", name: "Platform Super Admin" }
-     *
-     * FUTURE PRODUCTION HARDENING:
-     * Move admin authorization to Supabase app_metadata (set only via admin API,
-     * never from the browser) and enforce access via database RLS policies.
-     * The frontend role alone is NOT the final security boundary.
-     */
-    const role: Role = meta.role === "admin" ? "admin" : "student";
-    const userEmail = user.email.toLowerCase();
+      if (state.deletedStudentEmails?.some((d) => d.toLowerCase().trim() === value)) {
+        return { ok: false, error: "This student account has been removed by administrator." };
+      }
 
-    if (state.deletedStudentEmails?.includes(userEmail)) {
-      return { ok: false, error: "This student account has been removed by administrator." };
-    }
+      // Check if this account is registered as an admin-added / provisioned learner or demo account
+      const isLocalStudent =
+        Boolean(state.customStudents[value]) ||
+        Object.values(state.customStudents || {}).some((c) => c.email.trim().toLowerCase() === value) ||
+        (state.provisioned ?? []).some((p) => p.email.trim().toLowerCase() === value) ||
+        STUDENT_ACCOUNTS.some((a) => a.email.trim().toLowerCase() === value);
 
-    setSupabaseSession(session);
+      if (isLocalStudent) {
+        // Authenticate directly with local student credentials to avoid 400 Bad Request
+        const localRes = signIn(rawEmail, password);
+        if (localRes.ok) {
+          return localRes;
+        }
+        return {
+          ok: false,
+          error: localRes.error || `Invalid password for learner ${rawEmail}. Default password: Temp@1234`,
+        };
+      }
 
-    if (role === "admin") {
-      // Admin users have no tracks/batch/student data — do not force them into a student profile.
+      // Real remote Supabase Auth user
+      const res = await supabaseAuth.signInWithPassword(rawEmail, password);
+      if (res.error || !res.data.session) {
+        // Secondary fallback in case student was added just now in another window
+        const localFallback = signIn(rawEmail, password);
+        if (localFallback.ok) {
+          return localFallback;
+        }
+        return { ok: false, error: res.error?.message || "Supabase sign in failed" };
+      }
+      const session = res.data.session;
+      const user = session.user;
+      const meta = user.user_metadata || {};
+
+      const role: Role = meta.role === "admin" ? "admin" : "student";
+      const userEmail = user.email.toLowerCase();
+
+      if (state.deletedStudentEmails?.includes(userEmail)) {
+        return { ok: false, error: "This student account has been removed by administrator." };
+      }
+
+      setSupabaseSession(session);
+
+      if (role === "admin") {
+        setState((s) => ({
+          ...s,
+          role: "admin",
+          sessionEmail: userEmail,
+          authProvider: "supabase",
+        }));
+        return { ok: true, role: "admin" as Role };
+      }
+
+      // Student Supabase user — create/update local profile from metadata
+      const studentName = meta.name?.trim() || userEmail.split("@")[0] || "Student Learner";
+      const firstName = meta.first_name?.trim() || studentName.split(" ")[0] || "Student";
+      const rollNo = meta.roll_no?.trim() || meta.rollNo?.trim() || "STC-2026-LIVE";
+      const dept = meta.dept?.trim() || "CSE";
+      const batchId = meta.batch_id?.trim() || meta.batchId?.trim() || "BATCH-2026-ABC-CSE-01";
+      const college = meta.college?.trim() || "Partner Institution";
+      const metaTracks =
+        meta.tracks && meta.tracks.length > 0
+          ? meta.tracks
+          : (["mern", "cloud", "aiml"] as TrackId[]);
+
+      const customTracks = sanitizeTracks(metaTracks);
+      const custom: StudentAccount = {
+        email: userEmail,
+        password: "●●●●●●●●",
+        name: studentName,
+        firstName,
+        rollNo,
+        dept,
+        batchId,
+        college,
+        tracks: customTracks,
+        xp: 500,
+        streak: 7,
+        seedOffsets: [3, 2, 1],
+        placementDay: 15,
+        readiness: { T: 60, C: 65, A: 58, E: 70, R: 45, M: 30 },
+      };
+
       setState((s) => ({
         ...s,
-        role: "admin",
+        role: "student",
         sessionEmail: userEmail,
         authProvider: "supabase",
-      }));
-      return { ok: true, role: "admin" as Role };
-    }
-
-    // Student Supabase user — create/update local profile from metadata
-    const studentName = meta.name?.trim() || userEmail.split("@")[0] || "Student Learner";
-    const firstName = meta.first_name?.trim() || studentName.split(" ")[0] || "Student";
-    const rollNo = meta.roll_no?.trim() || meta.rollNo?.trim() || "STC-2026-LIVE";
-    const dept = meta.dept?.trim() || "CSE";
-    const batchId = meta.batch_id?.trim() || meta.batchId?.trim() || "BATCH-2026-ABC-CSE-01";
-    const college = meta.college?.trim() || "Partner Institution";
-    const metaTracks =
-      meta.tracks && meta.tracks.length > 0
-        ? meta.tracks
-        : (["mern", "cloud", "aiml"] as TrackId[]);
-
-    const custom: StudentAccount = {
-      email: userEmail,
-      password: "●●●●●●●●",
-      name: studentName,
-      firstName,
-      rollNo,
-      dept,
-      batchId,
-      college,
-      tracks: (metaTracks.length >= 3
-        ? metaTracks.slice(0, 3)
-        : [...metaTracks, "mern", "cloud", "aiml"].slice(0, 3)) as [TrackId, TrackId, TrackId],
-      xp: 500,
-      streak: 7,
-      seedOffsets: [3, 2, 1],
-      placementDay: 15,
-      readiness: { T: 60, C: 65, A: 58, E: 70, R: 45, M: 30 },
-    };
-
-    setState((s) => ({
-      ...s,
-      role: "student",
-      sessionEmail: userEmail,
-      authProvider: "supabase",
-      customStudents: { ...s.customStudents, [userEmail]: custom },
-      profiles: {
-        ...s.profiles,
-        [userEmail]: s.profiles[userEmail] ?? {
-          ...profileFor(custom),
-          activeTracks: metaTracks.slice(0, 3),
+        customStudents: { ...s.customStudents, [userEmail]: custom },
+        profiles: {
+          ...s.profiles,
+          [userEmail]: s.profiles[userEmail] ?? {
+            ...profileFor(custom),
+            activeTracks: Array.from(new Set(customTracks)),
+          },
         },
-      },
-    }));
+      }));
 
-    return { ok: true, role: "student" as Role };
-  }, []);
+      return { ok: true, role: "student" as Role };
+    },
+    [state.customStudents, state.provisioned, state.deletedStudentEmails, signIn],
+  );
 
   const signUpSupabase = useCallback(
     async (
@@ -603,7 +797,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const setActiveTracks = useCallback(
     (activeTracks: TrackId[]) => {
       if (activeTracks.length < 1 || activeTracks.length > 3) return;
-      patchProfile((p) => ({ ...p, activeTracks }));
+      const uniqueTracks = Array.from(new Set(activeTracks)) as TrackId[];
+      patchProfile((p) => ({ ...p, activeTracks: uniqueTracks }));
     },
     [patchProfile],
   );
@@ -865,10 +1060,169 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     toast.success("Hiring drive removed");
   }, []);
 
+  const addStudent = useCallback(
+    (input: {
+      name: string;
+      email: string;
+      password?: string;
+      rollNo: string;
+      dept: string;
+      batchId: string;
+      college?: string;
+      tracks?: TrackId[];
+    }) => {
+      const email = input.email.trim().toLowerCase();
+      if (!email || !email.includes("@")) {
+        return { ok: false, message: "A valid email address is required" };
+      }
+      if (!input.name.trim()) {
+        return { ok: false, message: "Student name is required" };
+      }
+
+      const password = input.password?.trim() || "Temp@1234";
+      const rawTracks = (input.tracks && input.tracks.length > 0
+        ? input.tracks
+        : ["mern", "cloud", "aiml"]) as TrackId[];
+      const tracks = sanitizeTracks(rawTracks);
+
+      const newAccount: StudentAccount = {
+        email,
+        password,
+        name: input.name.trim(),
+        firstName: input.name.trim().split(" ")[0] || "Student",
+        rollNo: input.rollNo.trim() || "2026-ROLL",
+        dept: input.dept.trim() || "CSE",
+        batchId: input.batchId.trim() || "BATCH-2026-ABC-CSE-01",
+        college: input.college?.trim() || "Partner Institution",
+        tracks,
+        xp: 250,
+        streak: 1,
+        seedOffsets: [2, 1, 1],
+        placementDay: 1,
+        readiness: { T: 60, C: 55, A: 55, E: 60, R: 40, M: 25 },
+      };
+
+      const provRecord: ProvisionedStudent = {
+        student_name: newAccount.name,
+        email: newAccount.email,
+        password: newAccount.password,
+        roll_no: newAccount.rollNo,
+        dept: newAccount.dept,
+        batch_id: newAccount.batchId,
+        course_1: tracks[0],
+        course_2: tracks[1],
+        course_3: tracks[2],
+      };
+
+      setState((s) => {
+        const nextDeleted = (s.deletedStudentEmails ?? []).filter(
+          (e) => e.toLowerCase().trim() !== email,
+        );
+
+        const nextBatches = (s.batches ?? []).map((b) =>
+          b.id === newAccount.batchId ? { ...b, enrolled: b.enrolled + 1 } : b,
+        );
+
+        const nextProvisioned = [
+          provRecord,
+          ...(s.provisioned ?? []).filter((p) => p.email.trim().toLowerCase() !== email),
+        ];
+
+        return {
+          ...s,
+          deletedStudentEmails: nextDeleted,
+          customStudents: {
+            ...s.customStudents,
+            [email]: newAccount,
+          },
+          profiles: {
+            ...s.profiles,
+            [email]: s.profiles[email] ?? profileFor(newAccount),
+          },
+          batches: nextBatches,
+          provisioned: nextProvisioned,
+          passwordOverrides: {
+            ...(s.passwordOverrides ?? {}),
+            [email]: password,
+          },
+        };
+      });
+
+      pushCronLog({
+        stage: "provisioning",
+        message: `Student learner provisioned: ${newAccount.name} (${email}) → Batch ${newAccount.batchId}`,
+        status: "ok",
+      });
+
+      // Background attempt to register in Supabase Auth as well
+      void supabaseAuth
+        .signUp(email, password, {
+          name: newAccount.name,
+          roll_no: newAccount.rollNo,
+          dept: newAccount.dept,
+          batch_id: newAccount.batchId,
+          college: newAccount.college,
+          tracks: newAccount.tracks,
+          role: "student",
+        })
+        .catch(() => {
+          /* ignore network/domain errors */
+        });
+
+      toast.success(
+        `Student ${newAccount.name} added! Login credentials: ${email} / ${password}`,
+      );
+      return { ok: true, message: `Student account created for ${email}` };
+    },
+    [pushCronLog],
+  );
+
   const addProvisioned = useCallback(
     (rows: ProvisionedStudent[]) => {
-      setState((s) => ({ ...s, provisioned: [...rows, ...s.provisioned].slice(0, 500) }));
-      pushCronLog({ stage: "provisioning", message: `${rows.length} student logins provisioned · no assessment required`, status: "ok" });
+      setState((s) => {
+        const nextCustom = { ...s.customStudents };
+        const nextProfiles = { ...s.profiles };
+        const nextOverrides = { ...(s.passwordOverrides ?? {}) };
+        const batchDeltas: Record<string, number> = {};
+
+        rows.forEach((r) => {
+          const email = r.email.trim().toLowerCase();
+          if (!email) return;
+          const account = createStudentFromProvisioned(r);
+          nextCustom[email] = account;
+          nextProfiles[email] = nextProfiles[email] ?? profileFor(account);
+          if (r.password) {
+            nextOverrides[email] = r.password;
+          }
+          const bid = r.batch_id || "BATCH-2026-ABC-CSE-01";
+          batchDeltas[bid] = (batchDeltas[bid] || 0) + 1;
+        });
+
+        const nextBatches = (s.batches ?? []).map((b) => {
+          const added = batchDeltas[b.id];
+          return added ? { ...b, enrolled: b.enrolled + added } : b;
+        });
+
+        const newEmails = new Set(rows.map((r) => r.email.trim().toLowerCase()));
+        const filteredOld = (s.provisioned ?? []).filter(
+          (p) => !newEmails.has(p.email.trim().toLowerCase()),
+        );
+
+        return {
+          ...s,
+          customStudents: nextCustom,
+          profiles: nextProfiles,
+          passwordOverrides: nextOverrides,
+          batches: nextBatches,
+          provisioned: [...rows, ...filteredOld].slice(0, 500),
+        };
+      });
+
+      pushCronLog({
+        stage: "provisioning",
+        message: `${rows.length} student logins provisioned and activated · Ready for student dashboard login`,
+        status: "ok",
+      });
     },
     [pushCronLog],
   );
@@ -1063,6 +1417,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       createBatch,
       deleteBatch,
       deleteStudent,
+      addStudent,
       syncBatch,
       hiringDrives: state.hiringDrives ?? DEFAULT_HIRING_DRIVES,
       addHiringDrive,
@@ -1077,7 +1432,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       pushCronLog,
       resetProgress,
     };
-  }, [state, profile, student, supabaseSession, ready, cronLogs, completeSkill, completePlacementDay, completeTechDay, submitAssessment, completeMock, issueCertificate, setCompletionRule, signIn, signInSupabase, signUpSupabase, signOut, resetStudentPassword, setRole, toggleTheme, setActiveTracks, completeLab, completeDailyStep, setReadiness, updateBatch, createBatch, deleteBatch, deleteStudent, syncBatch, addHiringDrive, updateHiringDrive, deleteHiringDrive, recalculateStudentScore, recalculateAllScores, addProvisioned, addContent, updateContent, removeContent, pushCronLog, resetProgress]);
+  }, [state, profile, student, supabaseSession, ready, cronLogs, completeSkill, completePlacementDay, completeTechDay, submitAssessment, completeMock, issueCertificate, setCompletionRule, signIn, signInSupabase, signUpSupabase, signOut, resetStudentPassword, setRole, toggleTheme, setActiveTracks, completeLab, completeDailyStep, setReadiness, updateBatch, createBatch, deleteBatch, deleteStudent, addStudent, syncBatch, addHiringDrive, updateHiringDrive, deleteHiringDrive, recalculateStudentScore, recalculateAllScores, addProvisioned, addContent, updateContent, removeContent, pushCronLog, resetProgress]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
