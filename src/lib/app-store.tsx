@@ -51,6 +51,7 @@ export type ProvisionedStudent = {
   course_2: string;
   course_3: string;
   batch_id: string;
+  college?: string;
 };
 
 export type ContentItem = {
@@ -179,7 +180,7 @@ export const createStudentFromProvisioned = (p: ProvisionedStudent): StudentAcco
     rollNo: p.roll_no || "2026-ROLL",
     dept: p.dept || "CSE",
     batchId: p.batch_id || "BATCH-2026-ABC-CSE-01",
-    college: "Partner Engineering College",
+    college: p.college?.trim() || "Partner Engineering College",
     tracks,
     xp: 250,
     streak: 1,
@@ -294,6 +295,7 @@ type Store = Persisted &
     recalculateStudentScore: (email: string) => { ok: boolean; newScore: number; message: string };
     recalculateAllScores: () => { count: number; message: string };
     addProvisioned: (rows: ProvisionedStudent[]) => void;
+    clearAllProvisioned: () => { ok: boolean; count: number };
     addContent: (item: Omit<ContentItem, "id" | "updated">) => void;
     updateContent: (id: string, patch: Partial<ContentItem>) => void;
     removeContent: (id: string) => void;
@@ -1184,6 +1186,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const nextProfiles = { ...s.profiles };
         const nextOverrides = { ...(s.passwordOverrides ?? {}) };
         const batchDeltas: Record<string, number> = {};
+        const newEmails = new Set(rows.map((r) => r.email.trim().toLowerCase()));
+
+        // Ensure newly provisioned students are removed from deleted list if re-added
+        const nextDeleted = (s.deletedStudentEmails ?? []).filter(
+          (e) => !newEmails.has(e.toLowerCase().trim()),
+        );
 
         rows.forEach((r) => {
           const email = r.email.trim().toLowerCase();
@@ -1198,23 +1206,40 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           batchDeltas[bid] = (batchDeltas[bid] || 0) + 1;
         });
 
+        // Update existing batches or auto-create new batch if it doesn't exist
+        const existingBatchIds = new Set((s.batches ?? []).map((b) => b.id));
         const nextBatches = (s.batches ?? []).map((b) => {
           const added = batchDeltas[b.id];
           return added ? { ...b, enrolled: b.enrolled + added } : b;
         });
 
-        const newEmails = new Set(rows.map((r) => r.email.trim().toLowerCase()));
+        // If CSV referenced a batch that doesn't exist yet, auto-create it
+        Object.entries(batchDeltas).forEach(([bid, count]) => {
+          if (!existingBatchIds.has(bid)) {
+            const firstRowWithBatch = rows.find((r) => r.batch_id === bid);
+            nextBatches.push({
+              id: bid,
+              name: bid,
+              capacity: 300,
+              enrolled: count,
+              dept: firstRowWithBatch?.dept || "Engineering",
+              lastSync: null,
+            });
+          }
+        });
+
         const filteredOld = (s.provisioned ?? []).filter(
           (p) => !newEmails.has(p.email.trim().toLowerCase()),
         );
 
         return {
           ...s,
+          deletedStudentEmails: nextDeleted,
           customStudents: nextCustom,
           profiles: nextProfiles,
           passwordOverrides: nextOverrides,
           batches: nextBatches,
-          provisioned: [...rows, ...filteredOld].slice(0, 500),
+          provisioned: [...rows, ...filteredOld].slice(0, 1000),
         };
       });
 
@@ -1226,6 +1251,40 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     },
     [pushCronLog],
   );
+
+  const clearAllProvisioned = useCallback(() => {
+    let removedCount = 0;
+    setState((s) => {
+      removedCount = (s.provisioned ?? []).length;
+      const provisionedEmails = new Set((s.provisioned ?? []).map((p) => p.email.trim().toLowerCase()));
+
+      const nextCustom = { ...s.customStudents };
+      provisionedEmails.forEach((em) => {
+        delete nextCustom[em];
+      });
+
+      const nextProfiles = { ...s.profiles };
+      provisionedEmails.forEach((em) => {
+        delete nextProfiles[em];
+      });
+
+      return {
+        ...s,
+        provisioned: [],
+        customStudents: nextCustom,
+        profiles: nextProfiles,
+      };
+    });
+
+    pushCronLog({
+      stage: "provisioning",
+      message: `Cleared all ${removedCount} provisioned student records`,
+      status: "ok",
+    });
+
+    toast.success(`Cleared ${removedCount} provisioned records`);
+    return { ok: true, count: removedCount };
+  }, [pushCronLog]);
 
   const addContent = useCallback(
     (item: Omit<ContentItem, "id" | "updated">) => {
@@ -1426,13 +1485,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       recalculateStudentScore,
       recalculateAllScores,
       addProvisioned,
+      clearAllProvisioned,
       addContent,
       updateContent,
       removeContent,
       pushCronLog,
       resetProgress,
     };
-  }, [state, profile, student, supabaseSession, ready, cronLogs, completeSkill, completePlacementDay, completeTechDay, submitAssessment, completeMock, issueCertificate, setCompletionRule, signIn, signInSupabase, signUpSupabase, signOut, resetStudentPassword, setRole, toggleTheme, setActiveTracks, completeLab, completeDailyStep, setReadiness, updateBatch, createBatch, deleteBatch, deleteStudent, addStudent, syncBatch, addHiringDrive, updateHiringDrive, deleteHiringDrive, recalculateStudentScore, recalculateAllScores, addProvisioned, addContent, updateContent, removeContent, pushCronLog, resetProgress]);
+  }, [state, profile, student, supabaseSession, ready, cronLogs, completeSkill, completePlacementDay, completeTechDay, submitAssessment, completeMock, issueCertificate, setCompletionRule, signIn, signInSupabase, signUpSupabase, signOut, resetStudentPassword, setRole, toggleTheme, setActiveTracks, completeLab, completeDailyStep, setReadiness, updateBatch, createBatch, deleteBatch, deleteStudent, addStudent, syncBatch, addHiringDrive, updateHiringDrive, deleteHiringDrive, recalculateStudentScore, recalculateAllScores, addProvisioned, clearAllProvisioned, addContent, updateContent, removeContent, pushCronLog, resetProgress]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
