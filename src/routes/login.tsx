@@ -93,7 +93,18 @@ function LoginPage() {
     const res = await store.signInSupabase(email, password);
     setLoading(false);
     if (!res.ok) {
-      setError(res.error || "Supabase sign in failed. Ensure your account is provisioned.");
+      let errMsg = res.error || "Supabase sign in failed. Ensure your account is provisioned.";
+      const isDemo =
+        email.trim().toLowerCase() === ADMIN_ACCOUNT.email.toLowerCase() ||
+        STUDENT_ACCOUNTS.some((s) => s.email.toLowerCase() === email.trim().toLowerCase());
+      if (
+        isDemo &&
+        (res.error?.toLowerCase().includes("invalid login credentials") ||
+          res.error?.toLowerCase().includes("invalid_credentials"))
+      ) {
+        errMsg = `${res.error}. Tip: "${email}" is currently configured as a local Demo account. Switch to the "Demo Login" tab above to sign in instantly, or add this user in your Supabase Auth dashboard.`;
+      }
+      setError(errMsg);
       return;
     }
     toast.success(res.role === "admin" ? "Signed in as Platform Super Admin" : "Live Supabase session active");
@@ -364,7 +375,7 @@ function LoginPage() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11px] font-semibold text-copy-subtle">Anon Public Key (VITE_SUPABASE_ANON_KEY)</label>
+                    <label className="mb-1 block text-[11px] font-semibold text-copy-subtle">Publishable Key (VITE_SUPABASE_PUBLISHABLE_KEY)</label>
                     <input
                       type="password"
                       value={sbConfig.anonKey}

@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Chip, Console, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore, type ProvisionedStudent } from "@/lib/app-store";
-import { Download, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, RefreshCw, KeyRound, Sparkles } from "lucide-react";
+import { Download, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, RefreshCw, KeyRound, Sparkles, Trash2 } from "lucide-react";
 import { TRACKS } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
+import { AdminResetPasswordModal, type ResetPasswordStudent } from "@/components/admin-reset-password-modal";
 
 export const Route = createFileRoute("/admin/provisioning")({
   head: () => ({
@@ -40,6 +41,14 @@ function ProvisioningPage() {
     "[policy] Batch capacity constraint: 100 to 300 students max per batch cohort.",
   ]);
   const [isDragging, setIsDragging] = useState(false);
+  const [resetTargetStudent, setResetTargetStudent] = useState<ResetPasswordStudent | null>(null);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [deleteTargetStudent, setDeleteTargetStudent] = useState<{
+    name: string;
+    email: string;
+    rollNo: string;
+    batchId: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,7 +140,13 @@ function ProvisioningPage() {
     toast.success(`${rows.length} learners provisioned successfully!`);
   };
 
-  const provisionedList = store.provisioned || [];
+  const deletedSet = useMemo(
+    () => new Set((store.deletedStudentEmails || []).map((e) => e.toLowerCase().trim())),
+    [store.deletedStudentEmails]
+  );
+  const provisionedList = useMemo(() => {
+    return (store.provisioned || []).filter((p) => !deletedSet.has(p.email.toLowerCase().trim()));
+  }, [store.provisioned, deletedSet]);
   const batchesList = store.batches || [];
 
   const exportProvisioned = () => {
@@ -160,7 +175,21 @@ function ProvisioningPage() {
       <PageHeader
         title="Stage 0: Bulk CSV Provisioning & Onboarding"
         subtitle="Onboard college rosters, validate 100–300 batch sizing, pre-assign 1–3 technical courses, and generate instant student logins."
-        action={<Chip tone="purple">{provisionedList.length} accounts created</Chip>}
+        action={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setResetTargetStudent(null);
+                setIsResetModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-line-soft bg-surface-elevated px-3 py-1.5 text-xs font-semibold text-foreground hover:border-brand-purple/60 transition-colors"
+            >
+              <KeyRound className="size-3.5 text-brand-purple" />
+              <span>Reset Learner Password</span>
+            </button>
+            <Chip tone="purple">{provisionedList.length} accounts created</Chip>
+          </div>
+        }
       />
 
       <div className="grid gap-4 sm:grid-cols-4">
@@ -321,10 +350,44 @@ function ProvisioningPage() {
                         ))}
                       </div>
                     </td>
-                    <td className="py-2.5 text-right font-mono text-brand-cyan">
-                      <span className="inline-flex items-center gap-1 rounded bg-brand-cyan/10 px-2 py-0.5 text-[10px] font-bold text-brand-cyan">
-                        <KeyRound className="size-2.5" /> Issued
-                      </span>
+                    <td className="py-2.5 text-right font-mono">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => {
+                            setResetTargetStudent({
+                              name: p.student_name,
+                              email: p.email,
+                              rollNo: p.roll_no,
+                              batchId: p.batch_id,
+                              dept: p.dept,
+                            });
+                            setIsResetModalOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-dark px-2 py-1 text-[11px] font-semibold text-copy-subtle hover:text-brand-purple hover:border-brand-purple/60 transition-colors"
+                          title="Reset Student Password"
+                        >
+                          <KeyRound className="size-3" />
+                          <span>Reset</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDeleteTargetStudent({
+                              name: p.student_name,
+                              email: p.email,
+                              rollNo: p.roll_no,
+                              batchId: p.batch_id,
+                            });
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-dark px-2 py-1 text-[11px] font-semibold text-copy-subtle hover:text-brand-rose hover:border-brand-rose/60 hover:bg-brand-rose/10 transition-colors"
+                          title="Delete Student from System"
+                        >
+                          <Trash2 className="size-3" />
+                          <span>Delete</span>
+                        </button>
+                        <span className="inline-flex items-center gap-1 rounded bg-brand-cyan/10 px-2 py-1 text-[10px] font-bold text-brand-cyan">
+                          <KeyRound className="size-2.5" /> Issued
+                        </span>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -332,6 +395,79 @@ function ProvisioningPage() {
             </table>
           </div>
         </Panel>
+      )}
+
+      {/* Admin Reset Password Modal */}
+      <AdminResetPasswordModal
+        isOpen={isResetModalOpen}
+        student={resetTargetStudent}
+        onClose={() => {
+          setIsResetModalOpen(false);
+          setResetTargetStudent(null);
+        }}
+      />
+
+      {/* Delete Confirmation Modal */}
+      {deleteTargetStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 border-b border-line-soft pb-3">
+              <div className="grid size-10 place-items-center rounded-xl bg-brand-rose/15 text-brand-rose border border-brand-rose/30">
+                <AlertTriangle className="size-5" />
+              </div>
+              <div>
+                <h3 className="font-display text-base font-bold text-foreground">Remove Provisioned Learner?</h3>
+                <p className="text-xs text-copy-subtle">This action permanently deletes the student account</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-copy-subtle font-medium">Student Name:</span>
+                <span className="font-bold text-foreground">{deleteTargetStudent.name}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-copy-subtle font-medium">Email Address:</span>
+                <span className="font-mono text-copy-subtle">{deleteTargetStudent.email}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-copy-subtle font-medium">Roll Number:</span>
+                <span className="font-mono font-semibold text-foreground">{deleteTargetStudent.rollNo}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-copy-subtle font-medium">Cohort Batch:</span>
+                <span className="font-mono font-bold text-brand-purple">{deleteTargetStudent.batchId}</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-copy-subtle leading-relaxed">
+              Removing this student will permanently revoke credentials, update cohort batch headcount, and record the removal in the audit trail.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
+              <button
+                type="button"
+                onClick={() => setDeleteTargetStudent(null)}
+                className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground hover:bg-surface-elevated transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const res = store.deleteStudent(deleteTargetStudent.email);
+                  if (res.ok) {
+                    setDeleteTargetStudent(null);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors"
+              >
+                <Trash2 className="size-3.5" />
+                <span>Confirm Delete</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

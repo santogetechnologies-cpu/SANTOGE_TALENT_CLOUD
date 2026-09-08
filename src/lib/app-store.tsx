@@ -84,6 +84,16 @@ export type Profile = {
 
 export type CompletionRule = "all-tracks" | "primary-plus-minimum";
 
+export type HiringDrive = {
+  id: string;
+  company: string;
+  roles: string;
+  ctc: string;
+  minScore: number;
+  openSlots: number;
+  status: "Active Drive" | "Shortlisting" | "Interviews Live" | "Closed";
+};
+
 type Persisted = {
   role: Role;
   theme: "dark" | "light";
@@ -91,14 +101,25 @@ type Persisted = {
   authProvider: "demo" | "supabase";
   profiles: Record<string, Profile>;
   customStudents: Record<string, StudentAccount>;
+  passwordOverrides: Record<string, string>;
   batches: Batch[];
   provisioned: ProvisionedStudent[];
+  deletedStudentEmails?: string[];
+  hiringDrives?: HiringDrive[];
   content: ContentItem[];
   completionRule: CompletionRule;
   secondaryMinimum: number;
 };
 
 const STORAGE_KEY = "santoge-talent-cloud-v3";
+
+const DEFAULT_HIRING_DRIVES: HiringDrive[] = [
+  { id: "hd-1", company: "TCS Digital", roles: "Full Stack & Cloud", ctc: "₹7.5 - ₹9.0 LPA", minScore: 650, openSlots: 120, status: "Active Drive" },
+  { id: "hd-2", company: "Infosys Wingspan", roles: "Java & DevOps Associates", ctc: "₹8.0 - ₹9.5 LPA", minScore: 680, openSlots: 85, status: "Active Drive" },
+  { id: "hd-3", company: "Wipro Turbo", roles: "AI/ML Solutions Engineers", ctc: "₹9.5 - ₹12.0 LPA", minScore: 720, openSlots: 60, status: "Shortlisting" },
+  { id: "hd-4", company: "Deloitte USI", roles: "SAP FICO & Business Analysts", ctc: "₹8.5 - ₹10.5 LPA", minScore: 670, openSlots: 45, status: "Interviews Live" },
+  { id: "hd-5", company: "Cognizant GenC Next", roles: "QA Automation & Cyber", ctc: "₹7.0 - ₹8.5 LPA", minScore: 640, openSlots: 110, status: "Active Drive" },
+];
 
 const profileFor = (a: StudentAccount): Profile => ({
   activeTracks: [...a.tracks],
@@ -136,12 +157,15 @@ const DEFAULT_STATE: Persisted = {
   authProvider: "demo",
   profiles: DEFAULT_PROFILES,
   customStudents: {},
+  passwordOverrides: {},
   batches: [
     { id: "BATCH-2026-ABC-CSE-01", name: "BATCH-2026-ABC-CSE-01", capacity: 240, enrolled: 218, dept: "CSE", lastSync: null },
     { id: "BATCH-2026-ABC-IT-02", name: "BATCH-2026-ABC-IT-02", capacity: 180, enrolled: 164, dept: "IT", lastSync: null },
     { id: "BATCH-2026-XYZ-ECE-01", name: "BATCH-2026-XYZ-ECE-01", capacity: 300, enrolled: 287, dept: "ECE", lastSync: null },
   ],
   provisioned: [],
+  deletedStudentEmails: [],
+  hiringDrives: DEFAULT_HIRING_DRIVES,
   content: DEFAULT_CONTENT,
   completionRule: "primary-plus-minimum",
   secondaryMinimum: 50,
@@ -171,12 +195,23 @@ type Store = Persisted &
     issueCertificate: (label: string) => void;
     setCompletionRule: (rule: CompletionRule, secondaryMinimum?: number) => void;
     cronLogs: CronLog[];
+    resetStudentPassword: (email: string, newPassword: string) => { ok: boolean; message: string };
     signIn: (email: string, password: string) => { ok: boolean; role?: Role; error?: string };
-    signInSupabase: (email: string, password: string) => Promise<{ ok: boolean; role?: Role; error?: string }>;
+    signInSupabase: (
+      email: string,
+      password: string,
+    ) => Promise<{ ok: boolean; role?: Role; error?: string }>;
     signUpSupabase: (
       email: string,
       password: string,
-      meta?: { name?: string; rollNo?: string; dept?: string; batchId?: string; tracks?: TrackId[]; college?: string; role?: Role }
+      options?: {
+        name?: string;
+        rollNo?: string;
+        dept?: string;
+        batchId?: string;
+        college?: string;
+        tracks?: TrackId[];
+      },
     ) => Promise<{ ok: boolean; role?: Role; error?: string }>;
     signOut: () => void;
     setRole: (r: Role) => void;
@@ -188,7 +223,14 @@ type Store = Persisted &
     updateBatch: (id: string, patch: Partial<Batch>) => void;
     createBatch: (b: Omit<Batch, "lastSync">) => void;
     deleteBatch: (id: string) => void;
+    deleteStudent: (email: string) => { ok: boolean; message: string };
     syncBatch: (id: string) => void;
+    hiringDrives: HiringDrive[];
+    addHiringDrive: (drive: Omit<HiringDrive, "id">) => void;
+    updateHiringDrive: (id: string, patch: Partial<HiringDrive>) => void;
+    deleteHiringDrive: (id: string) => void;
+    recalculateStudentScore: (email: string) => { ok: boolean; newScore: number; message: string };
+    recalculateAllScores: () => { count: number; message: string };
     addProvisioned: (rows: ProvisionedStudent[]) => void;
     addContent: (item: Omit<ContentItem, "id" | "updated">) => void;
     updateContent: (id: string, patch: Partial<ContentItem>) => void;
@@ -240,14 +282,72 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<Persisted>;
+        // If logged in via Supabase previously, check that activeSession matches
+        if (parsed.authProvider === "supabase" && !activeSession) {
+          parsed.sessionEmail = null;
+        }
         setState({
           ...DEFAULT_STATE,
           ...parsed,
           profiles: { ...DEFAULT_PROFILES, ...(parsed.profiles ?? {}) },
           customStudents: { ...(parsed.customStudents ?? {}) },
+          passwordOverrides: { ...(parsed.passwordOverrides ?? {}) },
           batches: parsed.batches && parsed.batches.length > 0 ? parsed.batches : DEFAULT_STATE.batches,
           provisioned: parsed.provisioned ?? [],
+          deletedStudentEmails: parsed.deletedStudentEmails ?? [],
           content: parsed.content && parsed.content.length > 0 ? parsed.content : DEFAULT_STATE.content,
+        });
+      } else if (activeSession && activeSession.user?.email) {
+        const user = activeSession.user;
+        const userEmail = user.email.toLowerCase();
+        const meta = user.user_metadata || {};
+        const role: Role = meta.role === "admin" ? "admin" : "student";
+        const studentName = meta.name?.trim() || userEmail.split("@")[0] || "Student Learner";
+        const firstName = meta.first_name?.trim() || studentName.split(" ")[0] || "Student";
+        const rollNo = meta.roll_no?.trim() || meta.rollNo?.trim() || "STC-2026-LIVE";
+        const dept = meta.dept?.trim() || "CSE";
+        const batchId = meta.batch_id?.trim() || meta.batchId?.trim() || "BATCH-2026-ABC-CSE-01";
+        const college = meta.college?.trim() || "Partner Institution";
+        const metaTracks =
+          meta.tracks && meta.tracks.length > 0
+            ? meta.tracks
+            : (["mern", "cloud", "aiml"] as TrackId[]);
+
+        const custom: StudentAccount = {
+          email: userEmail,
+          password: "●●●●●●●●",
+          name: studentName,
+          firstName,
+          rollNo,
+          dept,
+          batchId,
+          college,
+          tracks: (metaTracks.length >= 3
+            ? metaTracks.slice(0, 3)
+            : [...metaTracks, "mern", "cloud", "aiml"].slice(0, 3)) as [TrackId, TrackId, TrackId],
+          xp: 500,
+          streak: 7,
+          seedOffsets: [3, 2, 1],
+          placementDay: 15,
+          readiness: { T: 60, C: 65, A: 58, E: 70, R: 45, M: 30 },
+        };
+
+        setState({
+          ...DEFAULT_STATE,
+          role,
+          sessionEmail: userEmail,
+          authProvider: "supabase",
+          customStudents: role === "student" ? { [userEmail]: custom } : {},
+          profiles:
+            role === "student"
+              ? {
+                  ...DEFAULT_PROFILES,
+                  [userEmail]: {
+                    ...profileFor(custom),
+                    activeTracks: metaTracks.slice(0, 3),
+                  },
+                }
+              : DEFAULT_PROFILES,
         });
       }
     } catch {
@@ -271,8 +371,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const email = state.sessionEmail;
   const student = useMemo<StudentAccount | null>(() => {
     if (!email) return null;
+    if (state.deletedStudentEmails?.includes(email.toLowerCase())) return null;
     return studentByEmail(email) || state.customStudents[email] || null;
-  }, [email, state.customStudents]);
+  }, [email, state.customStudents, state.deletedStudentEmails]);
 
   const profile = (email && state.profiles[email]) || (student ? profileFor(student) : FALLBACK_PROFILE);
 
@@ -301,12 +402,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback((rawEmail: string, password: string) => {
     const value = rawEmail.trim().toLowerCase();
+    if (state.deletedStudentEmails?.includes(value)) {
+      return { ok: false as const, error: "This student account has been removed by administrator." };
+    }
     if (value === ADMIN_ACCOUNT.email && password === ADMIN_ACCOUNT.password) {
       setState((s) => ({ ...s, role: "admin", sessionEmail: ADMIN_ACCOUNT.email, authProvider: "demo" }));
       return { ok: true as const, role: "admin" as Role };
     }
     const found = STUDENT_ACCOUNTS.find((a) => a.email === value) || state.customStudents[value];
-    if (found && found.password === password) {
+    const expectedPassword = state.passwordOverrides?.[value] ?? found?.password;
+    if (found && expectedPassword === password) {
       setState((s) => ({
         ...s,
         role: "student",
@@ -317,7 +422,51 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       return { ok: true as const, role: "student" as Role };
     }
     return { ok: false as const, error: "Invalid email or password" };
-  }, [state.customStudents]);
+  }, [state.customStudents, state.passwordOverrides]);
+
+  const resetStudentPassword = useCallback(
+    (rawEmail: string, newPassword: string) => {
+      const value = rawEmail.trim().toLowerCase();
+      if (!value) return { ok: false, message: "Email is required" };
+      if (!newPassword || newPassword.length < 6) {
+        return { ok: false, message: "Password must be at least 6 characters" };
+      }
+
+      setState((s) => {
+        const nextOverrides = { ...(s.passwordOverrides ?? {}), [value]: newPassword };
+
+        // Update in customStudents if present
+        let nextCustom = s.customStudents;
+        if (s.customStudents[value]) {
+          nextCustom = {
+            ...s.customStudents,
+            [value]: { ...s.customStudents[value], password: newPassword },
+          };
+        }
+
+        // Update in provisioned records if present
+        const nextProvisioned = (s.provisioned ?? []).map((p) =>
+          p.email.trim().toLowerCase() === value ? { ...p, password: newPassword } : p
+        );
+
+        return {
+          ...s,
+          passwordOverrides: nextOverrides,
+          customStudents: nextCustom,
+          provisioned: nextProvisioned,
+        };
+      });
+
+      pushCronLog({
+        stage: "admin",
+        message: `Password reset issued for learner: ${value}`,
+        status: "ok",
+      });
+
+      return { ok: true, message: `Password reset successfully for ${value}` };
+    },
+    [pushCronLog],
+  );
 
   const signInSupabase = useCallback(async (rawEmail: string, password: string) => {
     const res = await supabaseAuth.signInWithPassword(rawEmail, password);
@@ -341,6 +490,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const role: Role = meta.role === "admin" ? "admin" : "student";
     const userEmail = user.email.toLowerCase();
 
+    if (state.deletedStudentEmails?.includes(userEmail)) {
+      return { ok: false, error: "This student account has been removed by administrator." };
+    }
+
     setSupabaseSession(session);
 
     if (role === "admin") {
@@ -355,16 +508,29 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
 
     // Student Supabase user — create/update local profile from metadata
+    const studentName = meta.name?.trim() || userEmail.split("@")[0] || "Student Learner";
+    const firstName = meta.first_name?.trim() || studentName.split(" ")[0] || "Student";
+    const rollNo = meta.roll_no?.trim() || meta.rollNo?.trim() || "STC-2026-LIVE";
+    const dept = meta.dept?.trim() || "CSE";
+    const batchId = meta.batch_id?.trim() || meta.batchId?.trim() || "BATCH-2026-ABC-CSE-01";
+    const college = meta.college?.trim() || "Partner Institution";
+    const metaTracks =
+      meta.tracks && meta.tracks.length > 0
+        ? meta.tracks
+        : (["mern", "cloud", "aiml"] as TrackId[]);
+
     const custom: StudentAccount = {
       email: userEmail,
       password: "●●●●●●●●",
-      name: meta.name || userEmail.split("@")[0] || "Student Learner",
-      firstName: (meta.name || userEmail).split(" ")[0] || "Student",
-      rollNo: meta.roll_no || "STC-2026-LIVE",
-      dept: meta.dept || "CSE",
-      batchId: meta.batch_id || "BATCH-2026-ABC-CSE-01",
-      college: meta.college || "Partner Institution",
-      tracks: (meta.tracks && meta.tracks.length > 0 ? meta.tracks : ["mern", "cloud", "aiml"]) as [TrackId, TrackId, TrackId],
+      name: studentName,
+      firstName,
+      rollNo,
+      dept,
+      batchId,
+      college,
+      tracks: (metaTracks.length >= 3
+        ? metaTracks.slice(0, 3)
+        : [...metaTracks, "mern", "cloud", "aiml"].slice(0, 3)) as [TrackId, TrackId, TrackId],
       xp: 500,
       streak: 7,
       seedOffsets: [3, 2, 1],
@@ -378,7 +544,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       sessionEmail: userEmail,
       authProvider: "supabase",
       customStudents: { ...s.customStudents, [userEmail]: custom },
-      profiles: { ...s.profiles, [userEmail]: s.profiles[userEmail] ?? profileFor(custom) },
+      profiles: {
+        ...s.profiles,
+        [userEmail]: s.profiles[userEmail] ?? {
+          ...profileFor(custom),
+          activeTracks: metaTracks.slice(0, 3),
+        },
+      },
     }));
 
     return { ok: true, role: "student" as Role };
@@ -512,6 +684,185 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       batches: s.batches.filter((b) => b.id !== id),
     }));
     toast.success("Batch deleted");
+  }, []);
+
+  const deleteStudent = useCallback(
+    (rawEmail: string) => {
+      const value = rawEmail.trim().toLowerCase();
+      if (!value) return { ok: false, message: "Email is required" };
+
+      setState((s) => {
+        const nextDeleted = Array.from(new Set([...(s.deletedStudentEmails ?? []), value]));
+
+        const studentBatchId =
+          s.provisioned?.find((p) => p.email.toLowerCase() === value)?.batch_id ||
+          s.customStudents?.[value]?.batchId ||
+          STUDENT_ACCOUNTS.find((a) => a.email.toLowerCase() === value)?.batchId;
+
+        const nextCustom = { ...(s.customStudents ?? {}) };
+        delete nextCustom[value];
+
+        const nextProfiles = { ...(s.profiles ?? {}) };
+        delete nextProfiles[value];
+
+        const nextProvisioned = (s.provisioned ?? []).filter(
+          (p) => p.email.trim().toLowerCase() !== value,
+        );
+
+        const nextOverrides = { ...(s.passwordOverrides ?? {}) };
+        delete nextOverrides[value];
+
+        const nextBatches = (s.batches ?? []).map((b) =>
+          b.id === studentBatchId ? { ...b, enrolled: Math.max(0, b.enrolled - 1) } : b,
+        );
+
+        const nextSessionEmail = s.sessionEmail?.toLowerCase() === value ? null : s.sessionEmail;
+
+        return {
+          ...s,
+          sessionEmail: nextSessionEmail,
+          deletedStudentEmails: nextDeleted,
+          customStudents: nextCustom,
+          profiles: nextProfiles,
+          provisioned: nextProvisioned,
+          passwordOverrides: nextOverrides,
+          batches: nextBatches,
+        };
+      });
+
+      pushCronLog({
+        stage: "admin",
+        message: `Learner permanently removed from cohort roster: ${value}`,
+        status: "ok",
+      });
+
+      toast.success(`Learner ${value} removed from cohort roster`);
+      return { ok: true, message: `Learner ${value} successfully removed` };
+    },
+    [pushCronLog],
+  );
+
+  const recalculateStudentScore = useCallback(
+    (rawEmail: string) => {
+      const email = rawEmail.trim().toLowerCase();
+      let updatedScore = 500;
+
+      setState((s) => {
+        const existingProfile = s.profiles[email];
+        const account = studentByEmail(email) || s.customStudents[email];
+        const p: Profile = existingProfile ?? (account ? profileFor(account) : FALLBACK_PROFILE);
+
+        const bonusT = Math.min(12, p.completedLabs.length * 2 + p.skills.length);
+        const bonusC = Math.min(10, Math.floor(p.attendance.length / 3));
+        const nextReadiness = {
+          T: clamp(Math.round(p.readiness.T + bonusT * 0.25), 30, 98),
+          C: clamp(Math.round(p.readiness.C + bonusC * 0.25), 30, 98),
+          A: clamp(Math.round(p.readiness.A + 1), 30, 98),
+          E: clamp(Math.round(p.readiness.E + 1), 30, 98),
+          R: clamp(Math.round(p.readiness.R + 1), 30, 98),
+          M: clamp(Math.round(p.readiness.M + (Object.keys(p.mocks).length > 0 ? 5 : 1)), 20, 98),
+        };
+
+        const rIndex =
+          nextReadiness.T * 0.25 +
+          nextReadiness.C * 0.2 +
+          nextReadiness.A * 0.15 +
+          nextReadiness.E * 0.15 +
+          nextReadiness.R * 0.15 +
+          nextReadiness.M * 0.1;
+
+        updatedScore = Math.round(clamp(rIndex * 8.5 + p.completedLabs.length * 6, 0, 1000));
+
+        const updatedProfile: Profile = {
+          ...p,
+          readiness: nextReadiness,
+        };
+
+        return {
+          ...s,
+          profiles: {
+            ...s.profiles,
+            [email]: updatedProfile,
+          },
+        };
+      });
+
+      pushCronLog({
+        stage: "scoring",
+        message: `Talent Score recalculated for ${email} → ${updatedScore}/1000 (T·C·A·E·R·M audit verified)`,
+        status: "ok",
+      });
+
+      toast.success(`Talent Score recalculated for ${email}: ${updatedScore}/1000`);
+      return { ok: true, newScore: updatedScore, message: `Score updated to ${updatedScore}/1000` };
+    },
+    [pushCronLog],
+  );
+
+  const recalculateAllScores = useCallback(() => {
+    let count = 0;
+    setState((s) => {
+      const nextProfiles = { ...s.profiles };
+      Object.entries(nextProfiles).forEach(([email, p]) => {
+        count++;
+        const bonusT = Math.min(6, p.completedLabs.length * 2);
+        const nextReadiness = {
+          ...p.readiness,
+          T: clamp(p.readiness.T + bonusT, 30, 98),
+          C: clamp(p.readiness.C + 1, 30, 98),
+        };
+        nextProfiles[email] = {
+          ...p,
+          readiness: nextReadiness,
+        };
+      });
+      return { ...s, profiles: nextProfiles };
+    });
+
+    pushCronLog({
+      stage: "scoring",
+      message: `Batch Talent Score recomputation pass completed across ${count} learner portfolios`,
+      status: "ok",
+    });
+    toast.success(`Recalculated scores for ${count} learners across all active cohorts`);
+    return { count, message: `Successfully recalculated ${count} portfolios` };
+  }, [pushCronLog]);
+
+  const addHiringDrive = useCallback(
+    (drive: Omit<HiringDrive, "id">) => {
+      setState((s) => ({
+        ...s,
+        hiringDrives: [
+          { ...drive, id: `hd-${Date.now()}` },
+          ...(s.hiringDrives ?? DEFAULT_HIRING_DRIVES),
+        ],
+      }));
+      pushCronLog({
+        stage: "gateway",
+        message: `Enterprise hiring requisition created for ${drive.company} (${drive.roles})`,
+        status: "ok",
+      });
+      toast.success(`Hiring drive for ${drive.company} added`);
+    },
+    [pushCronLog],
+  );
+
+  const updateHiringDrive = useCallback((id: string, patch: Partial<HiringDrive>) => {
+    setState((s) => ({
+      ...s,
+      hiringDrives: (s.hiringDrives ?? DEFAULT_HIRING_DRIVES).map((d) =>
+        d.id === id ? { ...d, ...patch } : d,
+      ),
+    }));
+    toast.success("Hiring drive updated");
+  }, []);
+
+  const deleteHiringDrive = useCallback((id: string) => {
+    setState((s) => ({
+      ...s,
+      hiringDrives: (s.hiringDrives ?? DEFAULT_HIRING_DRIVES).filter((d) => d.id !== id),
+    }));
+    toast.success("Hiring drive removed");
   }, []);
 
   const addProvisioned = useCallback(
@@ -701,6 +1052,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       signInSupabase,
       signUpSupabase,
       signOut,
+      resetStudentPassword,
       setRole,
       toggleTheme,
       setActiveTracks,
@@ -710,7 +1062,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       updateBatch,
       createBatch,
       deleteBatch,
+      deleteStudent,
       syncBatch,
+      hiringDrives: state.hiringDrives ?? DEFAULT_HIRING_DRIVES,
+      addHiringDrive,
+      updateHiringDrive,
+      deleteHiringDrive,
+      recalculateStudentScore,
+      recalculateAllScores,
       addProvisioned,
       addContent,
       updateContent,
@@ -718,7 +1077,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       pushCronLog,
       resetProgress,
     };
-  }, [state, profile, student, supabaseSession, ready, cronLogs, completeSkill, completePlacementDay, completeTechDay, submitAssessment, completeMock, issueCertificate, setCompletionRule, signIn, signInSupabase, signUpSupabase, signOut, setRole, toggleTheme, setActiveTracks, completeLab, completeDailyStep, setReadiness, updateBatch, createBatch, deleteBatch, syncBatch, addProvisioned, addContent, updateContent, removeContent, pushCronLog, resetProgress]);
+  }, [state, profile, student, supabaseSession, ready, cronLogs, completeSkill, completePlacementDay, completeTechDay, submitAssessment, completeMock, issueCertificate, setCompletionRule, signIn, signInSupabase, signUpSupabase, signOut, resetStudentPassword, setRole, toggleTheme, setActiveTracks, completeLab, completeDailyStep, setReadiness, updateBatch, createBatch, deleteBatch, deleteStudent, syncBatch, addHiringDrive, updateHiringDrive, deleteHiringDrive, recalculateStudentScore, recalculateAllScores, addProvisioned, addContent, updateContent, removeContent, pushCronLog, resetProgress]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

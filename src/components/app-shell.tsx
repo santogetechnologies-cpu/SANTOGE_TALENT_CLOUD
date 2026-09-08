@@ -152,8 +152,8 @@ export function AppShell({ portal }: { portal: Role }) {
     if (!store.ready || !store.isAuthed) return;
     // Admin trying to access student portal → redirect to admin
     if (portal === "student" && store.role === "admin") void navigate({ to: "/admin" });
-    // Student (or unauthenticated Supabase user) trying to access admin portal → redirect to student
-    if (portal === "admin" && store.role === "student") void navigate({ to: "/student" });
+    // Student (or non-admin user) trying to access admin portal → redirect to student
+    if (portal === "admin" && store.role !== "admin") void navigate({ to: "/student" });
   }, [store.ready, store.isAuthed, store.role, portal, navigate]);
 
   // Keyboard shortcut Ctrl+K / Cmd+K for search
@@ -201,6 +201,14 @@ export function AppShell({ portal }: { portal: Role }) {
     return (
       <div className="grid min-h-screen place-items-center bg-background text-sm text-copy-subtle">
         Loading workspace…
+      </div>
+    );
+  }
+
+  if (portal === "admin" && store.role !== "admin") {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background text-sm text-copy-subtle">
+        Redirecting to student portal…
       </div>
     );
   }

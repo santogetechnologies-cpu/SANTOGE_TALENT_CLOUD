@@ -22,14 +22,16 @@ import type { Role } from "./app-store";
 // ---------------------------------------------------------------------------
 
 export type SupabaseUserMetadata = {
-  name?: string;
-  first_name?: string;
-  roll_no?: string;
-  dept?: string;
-  batch_id?: string;
-  college?: string;
-  tracks?: TrackId[];
-  role?: Role;
+  name?: string | undefined;
+  first_name?: string | undefined;
+  roll_no?: string | undefined;
+  rollNo?: string | undefined;
+  dept?: string | undefined;
+  batch_id?: string | undefined;
+  batchId?: string | undefined;
+  college?: string | undefined;
+  tracks?: TrackId[] | undefined;
+  role?: Role | undefined;
 };
 
 export type SupabaseUser = {
@@ -37,14 +39,14 @@ export type SupabaseUser = {
   email: string;
   user_metadata: SupabaseUserMetadata;
   created_at: string;
-  last_sign_in_at?: string;
+  last_sign_in_at?: string | undefined;
 };
 
 export type SupabaseSession = {
   access_token: string;
   refresh_token: string;
   expires_in: number;
-  expires_at?: number;
+  expires_at?: number | undefined;
   token_type: string;
   user: SupabaseUser;
 };
@@ -104,9 +106,10 @@ let _supabaseClient: SupabaseClient | null = null;
 export function getSupabaseClient(): SupabaseClient {
   if (_supabaseClient) return _supabaseClient;
 
+  const config = getSupabaseConfig();
   _supabaseClient = createClient(
-    DEFAULT_SUPABASE_URL,
-    DEFAULT_SUPABASE_ANON_KEY || "placeholder-key",
+    config.url,
+    config.anonKey || "placeholder-key",
     {
       auth: {
         autoRefreshToken: false,   // No background token-refresh polling
@@ -201,7 +204,7 @@ export function saveStoredSession(session: SupabaseSession | null): void {
 
 export const supabaseAuth = {
   /**
-   * Authenticate a user against Supabase Auth REST API.
+   * Authenticate a user against Supabase Auth API using supabase.auth.signInWithPassword.
    * Called ONLY when user clicks "Sign In via Supabase" — never automatically.
    */
   async signInWithPassword(
@@ -214,36 +217,38 @@ export const supabaseAuth = {
     const config = getSupabaseConfig();
     const cleanUrl = config.url.replace(/\/+$/, "");
 
+    if (!cleanUrl || !config.anonKey || config.anonKey === "placeholder-key") {
+      return {
+        data: { session: null, user: null },
+        error: new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY."),
+      };
+    }
+
     try {
-      const res = await fetch(`${cleanUrl}/auth/v1/token?grant_type=password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: config.anonKey,
-          Authorization: `Bearer ${config.anonKey}`,
-        },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+      const client = getSupabaseClient();
+      const { data, error } = await client.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
       });
 
-      const json = (await res.json()) as AuthApiResponse;
-
-      if (!res.ok) {
-        const message =
-          json.error_description ??
-          json.msg ??
-          json.message ??
-          "Invalid login credentials";
+      if (error || !data.session || !data.user) {
+        const message = error?.message ?? "Invalid login credentials";
         return { data: { session: null, user: null }, error: new Error(message) };
       }
 
       const session: SupabaseSession = {
-        access_token: json.access_token ?? "",
-        refresh_token: json.refresh_token ?? "",
-        expires_in: json.expires_in ?? 3600,
-        expires_at:
-          json.expires_at ?? Math.floor(Date.now() / 1000) + (json.expires_in ?? 3600),
-        token_type: json.token_type ?? "bearer",
-        user: json.user as SupabaseUser,
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+        expires_in: data.session.expires_in,
+        expires_at: data.session.expires_at,
+        token_type: data.session.token_type,
+        user: {
+          id: data.user.id,
+          email: data.user.email ?? email.trim().toLowerCase(),
+          user_metadata: (data.user.user_metadata ?? {}) as SupabaseUserMetadata,
+          created_at: data.user.created_at,
+          last_sign_in_at: data.user.last_sign_in_at,
+        },
       };
 
       saveStoredSession(session);
@@ -265,10 +270,6 @@ export const supabaseAuth = {
    * Admin accounts MUST be created manually via the Supabase Dashboard.
    * This function ignores any caller-provided role="admin" — it is hardcoded
    * to "student" to prevent privilege escalation from the browser.
-   *
-   * Future production hardening:
-   * - Move role authorization to Supabase app_metadata (not user_metadata)
-   * - Enforce role via database RLS policies, not frontend metadata alone
    */
   async signUp(
     email: string,
@@ -281,21 +282,23 @@ export const supabaseAuth = {
     const config = getSupabaseConfig();
     const cleanUrl = config.url.replace(/\/+$/, "");
 
+    if (!cleanUrl || !config.anonKey || config.anonKey === "placeholder-key") {
+      return {
+        data: { session: null, user: null },
+        error: new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY."),
+      };
+    }
+
     // SECURITY: Public signup ALWAYS forces role="student".
     // No caller can escalate to "admin" through this endpoint.
     const safeRole: "student" = "student";
 
     try {
-      const res = await fetch(`${cleanUrl}/auth/v1/signup`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: config.anonKey,
-          Authorization: `Bearer ${config.anonKey}`,
-        },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          password,
+      const client = getSupabaseClient();
+      const { data, error } = await client.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+        options: {
           data: {
             name: metadata.name ?? "Student Learner",
             // safeRole is always "student" — metadata.role is intentionally ignored
@@ -306,24 +309,30 @@ export const supabaseAuth = {
             roll_no: metadata.roll_no ?? "STC2026",
             college: metadata.college ?? "Partner Engineering College",
           },
-        }),
+        },
       });
 
-      const json = (await res.json()) as AuthApiResponse;
-
-      if (!res.ok) {
-        const message =
-          json.error_description ?? json.msg ?? json.message ?? "Sign up failed";
-        return { data: { session: null, user: null }, error: new Error(message) };
+      if (error) {
+        return { data: { session: null, user: null }, error: new Error(error.message) };
       }
 
-      const user = (json.user ?? json) as SupabaseUser;
-      const session: SupabaseSession | null = json.access_token
+      const user = data.user
+        ? ({
+            id: data.user.id,
+            email: data.user.email ?? email.trim().toLowerCase(),
+            user_metadata: (data.user.user_metadata ?? {}) as SupabaseUserMetadata,
+            created_at: data.user.created_at,
+            last_sign_in_at: data.user.last_sign_in_at,
+          } as SupabaseUser)
+        : null;
+
+      const session: SupabaseSession | null = data.session && user
         ? {
-            access_token: json.access_token,
-            refresh_token: json.refresh_token ?? "",
-            expires_in: json.expires_in ?? 3600,
-            token_type: json.token_type ?? "bearer",
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+            expires_in: data.session.expires_in,
+            expires_at: data.session.expires_at,
+            token_type: data.session.token_type,
             user,
           }
         : null;
@@ -343,17 +352,10 @@ export const supabaseAuth = {
    */
   async signOut(): Promise<void> {
     const session = getStoredSession();
-    const config = getSupabaseConfig();
     if (session?.access_token) {
       try {
-        const cleanUrl = config.url.replace(/\/+$/, "");
-        await fetch(`${cleanUrl}/auth/v1/logout`, {
-          method: "POST",
-          headers: {
-            apikey: config.anonKey,
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
+        const client = getSupabaseClient();
+        await client.auth.signOut();
       } catch {
         // Ignore network failure on logout — local session is cleared regardless.
       }
@@ -379,7 +381,7 @@ export const supabaseAuth = {
     if (!cfg.anonKey || cfg.anonKey === "placeholder-key") {
       return {
         ok: false,
-        message: "No Anon Key configured. Set VITE_SUPABASE_PUBLISHABLE_KEY.",
+        message: "No Publishable Key configured. Set VITE_SUPABASE_PUBLISHABLE_KEY.",
       };
     }
 
@@ -391,7 +393,7 @@ export const supabaseAuth = {
         return { ok: true, message: "Connected to Supabase Auth API successfully" };
       }
       if (res.status === 401 || res.status === 403) {
-        return { ok: false, message: "Invalid Supabase Anon Key" };
+        return { ok: false, message: "Invalid Supabase Publishable Key" };
       }
       return { ok: true, message: `Supabase responded with status ${res.status}` };
     } catch (err) {
@@ -399,6 +401,36 @@ export const supabaseAuth = {
         ok: false,
         message:
           err instanceof Error ? err.message : "Could not reach Supabase endpoint",
+      };
+    }
+  },
+
+  /**
+   * Trigger a password recovery email for a user via Supabase Auth.
+   * MANUAL only — called when Platform Super Admin explicitly requests password reset email.
+   * NEVER called automatically or on a schedule.
+   */
+  async resetPasswordForEmail(
+    email: string,
+  ): Promise<{ ok: boolean; message: string }> {
+    const config = getSupabaseConfig();
+    const cleanUrl = config.url.replace(/\/+$/, "");
+
+    if (!cleanUrl || !config.anonKey || config.anonKey === "placeholder-key") {
+      return { ok: false, message: "Supabase endpoint or key is not configured" };
+    }
+
+    try {
+      const client = getSupabaseClient();
+      const { error } = await client.auth.resetPasswordForEmail(email.trim().toLowerCase());
+      if (error) {
+        return { ok: false, message: error.message };
+      }
+      return { ok: true, message: "Supabase password recovery email dispatched" };
+    } catch (err) {
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "Network error during Supabase recovery",
       };
     }
   },
