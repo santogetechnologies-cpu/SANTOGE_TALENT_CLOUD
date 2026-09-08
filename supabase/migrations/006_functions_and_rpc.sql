@@ -19,6 +19,7 @@ AS $$
 DECLARE
     v_updated_day INT;
     v_new_xp INT;
+    v_row_count INT := 0;
 BEGIN
     -- Only allowed for own student or admin
     IF NOT (public.is_admin() OR p_student_id = public.current_student_id()) THEN
@@ -30,19 +31,27 @@ BEGIN
     VALUES (p_student_id, p_day, now())
     ON CONFLICT (student_id, day) DO NOTHING;
 
-    -- Advance student placement_day and increment XP
-    UPDATE public.student_profiles
-    SET placement_day = GREATEST(placement_day, LEAST(p_day + 1, 90)),
-        xp = xp + 20,
-        readiness_c = LEAST(100, readiness_c + 1),
-        readiness_e = LEAST(100, readiness_e + 1),
-        readiness_a = LEAST(100, readiness_a + 1),
-        updated_at = now()
-    WHERE id = p_student_id
-    RETURNING placement_day, xp INTO v_updated_day, v_new_xp;
+    GET DIAGNOSTICS v_row_count = ROW_COUNT;
 
-    -- Recalculate talent score
-    PERFORM public.calculate_talent_score(p_student_id);
+    IF v_row_count > 0 THEN
+        -- Advance student placement_day and increment XP once
+        UPDATE public.student_profiles
+        SET placement_day = GREATEST(placement_day, LEAST(p_day + 1, 90)),
+            xp = xp + 20,
+            readiness_c = LEAST(100, readiness_c + 1),
+            readiness_e = LEAST(100, readiness_e + 1),
+            readiness_a = LEAST(100, readiness_a + 1),
+            updated_at = now()
+        WHERE id = p_student_id
+        RETURNING placement_day, xp INTO v_updated_day, v_new_xp;
+
+        -- Recalculate talent score
+        PERFORM public.calculate_talent_score(p_student_id);
+    ELSE
+        SELECT placement_day, xp INTO v_updated_day, v_new_xp
+        FROM public.student_profiles
+        WHERE id = p_student_id;
+    END IF;
 
     RETURN jsonb_build_object(
         'ok', true,
@@ -68,7 +77,7 @@ SET search_path = public
 AS $$
 DECLARE
     v_new_xp INT;
-    v_inserted BOOLEAN := false;
+    v_row_count INT := 0;
 BEGIN
     IF NOT (public.is_admin() OR p_student_id = public.current_student_id()) THEN
         RAISE EXCEPTION 'Unauthorized';
@@ -78,9 +87,9 @@ BEGIN
     VALUES (p_student_id, p_skill_id, p_track_id, now())
     ON CONFLICT (student_id, skill_id) DO NOTHING;
 
-    GET DIAGNOSTICS v_inserted = ROW_COUNT;
+    GET DIAGNOSTICS v_row_count = ROW_COUNT;
 
-    IF v_inserted THEN
+    IF v_row_count > 0 THEN
         UPDATE public.student_profiles
         SET xp = xp + 30,
             readiness_t = LEAST(100, readiness_t + 2),
@@ -117,7 +126,7 @@ SET search_path = public
 AS $$
 DECLARE
     v_new_xp INT;
-    v_inserted BOOLEAN := false;
+    v_row_count INT := 0;
 BEGIN
     IF NOT (public.is_admin() OR p_student_id = public.current_student_id()) THEN
         RAISE EXCEPTION 'Unauthorized';
@@ -127,9 +136,9 @@ BEGIN
     VALUES (p_student_id, p_lab_id, p_label, now())
     ON CONFLICT (student_id, lab_id) DO NOTHING;
 
-    GET DIAGNOSTICS v_inserted = ROW_COUNT;
+    GET DIAGNOSTICS v_row_count = ROW_COUNT;
 
-    IF v_inserted THEN
+    IF v_row_count > 0 THEN
         UPDATE public.student_profiles
         SET xp = xp + 50,
             readiness_t = LEAST(100, readiness_t + 3),
@@ -160,10 +169,22 @@ SET search_path = public
 AS $$
 DECLARE
     v_today DATE := CURRENT_DATE;
+    v_already_done BOOLEAN := false;
 BEGIN
     IF NOT (public.is_admin() OR p_student_id = public.current_student_id()) THEN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
+
+    SELECT
+        CASE
+            WHEN p_step = 'english' THEN english_completed
+            WHEN p_step = 'aptitude' THEN aptitude_completed
+            WHEN p_step = 'practice' THEN practice_completed
+            ELSE false
+        END
+    INTO v_already_done
+    FROM public.student_daily_progress
+    WHERE student_id = p_student_id AND date = v_today;
 
     INSERT INTO public.student_daily_progress (student_id, date, english_completed, aptitude_completed, practice_completed)
     VALUES (
@@ -179,10 +200,13 @@ BEGIN
         practice_completed = CASE WHEN p_step = 'practice' THEN true ELSE student_daily_progress.practice_completed END,
         updated_at = now();
 
-    UPDATE public.student_profiles
-    SET xp = xp + 15,
-        updated_at = now()
-    WHERE id = p_student_id;
+    -- Only increment XP once per step per day
+    IF NOT COALESCE(v_already_done, false) THEN
+        UPDATE public.student_profiles
+        SET xp = xp + 15,
+            updated_at = now()
+        WHERE id = p_student_id;
+    END IF;
 
     RETURN jsonb_build_object('ok', true, 'step', p_step, 'date', v_today);
 END;
@@ -201,10 +225,17 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+    v_exists BOOLEAN := false;
 BEGIN
     IF NOT (public.is_admin() OR p_student_id = public.current_student_id()) THEN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM public.student_assessments
+        WHERE student_id = p_student_id AND day = p_day
+    ) INTO v_exists;
 
     INSERT INTO public.student_assessments (student_id, day, score, submitted_at)
     VALUES (p_student_id, p_day, p_score, now())
@@ -212,11 +243,13 @@ BEGIN
         score = GREATEST(student_assessments.score, p_score),
         submitted_at = now();
 
-    UPDATE public.student_profiles
-    SET xp = xp + 40,
-        readiness_a = LEAST(100, readiness_a + 3),
-        updated_at = now()
-    WHERE id = p_student_id;
+    IF NOT v_exists THEN
+        UPDATE public.student_profiles
+        SET xp = xp + 40,
+            readiness_a = LEAST(100, readiness_a + 3),
+            updated_at = now()
+        WHERE id = p_student_id;
+    END IF;
 
     PERFORM public.calculate_talent_score(p_student_id);
 
@@ -238,10 +271,17 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+    v_exists BOOLEAN := false;
 BEGIN
     IF NOT (public.is_admin() OR p_student_id = public.current_student_id()) THEN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM public.student_mocks
+        WHERE student_id = p_student_id AND mock_id = p_mock_id
+    ) INTO v_exists;
 
     INSERT INTO public.student_mocks (student_id, mock_id, score, feedback_summary, completed_at)
     VALUES (p_student_id, p_mock_id, p_score, p_feedback, now())
@@ -250,11 +290,13 @@ BEGIN
         feedback_summary = p_feedback,
         completed_at = now();
 
-    UPDATE public.student_profiles
-    SET xp = xp + 50,
-        readiness_m = LEAST(100, readiness_m + 5),
-        updated_at = now()
-    WHERE id = p_student_id;
+    IF NOT v_exists THEN
+        UPDATE public.student_profiles
+        SET xp = xp + 50,
+            readiness_m = LEAST(100, readiness_m + 5),
+            updated_at = now()
+        WHERE id = p_student_id;
+    END IF;
 
     PERFORM public.calculate_talent_score(p_student_id);
 
@@ -274,6 +316,8 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+    v_row_count INT := 0;
 BEGIN
     IF NOT (public.is_admin() OR p_student_id = public.current_student_id()) THEN
         RAISE EXCEPTION 'Unauthorized';
@@ -283,13 +327,17 @@ BEGIN
     VALUES (p_student_id, p_label, now())
     ON CONFLICT (student_id, label) DO NOTHING;
 
-    UPDATE public.student_profiles
-    SET xp = xp + 100,
-        readiness_r = LEAST(100, readiness_r + 5),
-        updated_at = now()
-    WHERE id = p_student_id;
+    GET DIAGNOSTICS v_row_count = ROW_COUNT;
 
-    PERFORM public.calculate_talent_score(p_student_id);
+    IF v_row_count > 0 THEN
+        UPDATE public.student_profiles
+        SET xp = xp + 100,
+            readiness_r = LEAST(100, readiness_r + 5),
+            updated_at = now()
+        WHERE id = p_student_id;
+
+        PERFORM public.calculate_talent_score(p_student_id);
+    END IF;
 
     RETURN jsonb_build_object('ok', true, 'label', p_label);
 END;

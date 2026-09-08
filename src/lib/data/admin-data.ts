@@ -15,7 +15,7 @@ import type { DbBatch, DbStudentProfile, DbInstitution, DbPlatformSettings } fro
 
 export type LiveRosterItem = {
   id: string;
-  auth_user_id: string;
+  auth_user_id: string | null;
   name: string;
   email: string;
   rollNo: string;
@@ -210,13 +210,13 @@ export async function fetchLiveAdminAnalytics(
  * Fetch paginated live student roster from Supabase.
  */
 export async function fetchLiveStudentRoster(options?: {
-  page?: number;
-  pageSize?: number;
-  institutionId?: string;
-  searchQuery?: string;
-  trackId?: string;
-  tier?: string;
-  driveMinScore?: number;
+  page?: number | undefined;
+  pageSize?: number | undefined;
+  institutionId?: string | undefined;
+  searchQuery?: string | undefined;
+  trackId?: string | undefined;
+  tier?: string | undefined;
+  driveMinScore?: number | undefined;
 }): Promise<{ items: LiveRosterItem[]; totalCount: number }> {
   const supabase = getSupabaseClient();
   const page = options?.page ?? 0;
@@ -308,7 +308,8 @@ export async function fetchLiveStudentRoster(options?: {
     dept: s.dept || "CSE",
     college: s.college || "Partner Engineering College",
     batchId: s.batch_id || "BATCH-2026-LIVE-01",
-    status: s.status,
+    status: (s.status === "suspended" || s.status === "deleted" ? s.status : "active") as
+      "active" | "suspended" | "deleted",
     placementDay: s.placement_day,
     talentScore: s.talent_score,
     tracks: tracksByStudent[s.id] || ["mern", "cloud"],
@@ -416,15 +417,61 @@ export async function deleteLiveBatch(id: string): Promise<{ ok: boolean; error?
 // Student Management Mutations
 // ---------------------------------------------------------------------------
 
-export async function deleteLiveStudent(
-  studentId: string,
-): Promise<{ ok: boolean; error?: string }> {
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Resolves a batch name or UUID string into a valid public.batches(id) UUID.
+ * Idempotently creates the batch row if it doesn't exist yet.
+ */
+export async function resolveBatchId(
+  batchIdentifier: string | undefined | null,
+  dept: string = "CSE",
+): Promise<string | null> {
+  if (!batchIdentifier) return null;
+  const raw = batchIdentifier.trim();
   const supabase = getSupabaseClient();
 
-  const { error } = await supabase
+  if (UUID_REGEX.test(raw)) {
+    const { data } = await supabase.from("batches").select("id").eq("id", raw).maybeSingle();
+    if (data?.id) return data.id;
+  }
+
+  // Look up by name
+  const { data: byName } = await supabase
+    .from("batches")
+    .select("id")
+    .eq("name", raw)
+    .maybeSingle();
+  if (byName?.id) return byName.id;
+
+  // Create batch dynamically if not found
+  const { data: created } = await supabase
+    .from("batches")
+    .insert({
+      name: raw,
+      dept: dept || "CSE",
+      capacity: 300,
+      status: "active",
+      updated_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  return (created as { id: string })?.id ?? null;
+}
+
+export async function deleteLiveStudent(
+  studentIdentifier: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getSupabaseClient();
+  const raw = studentIdentifier.trim();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
+
+  const query = supabase
     .from("student_profiles")
-    .update({ status: "deleted", updated_at: new Date().toISOString() })
-    .eq("id", studentId);
+    .update({ status: "deleted", updated_at: new Date().toISOString() });
+
+  const { error } = isUuid ? await query.eq("id", raw) : await query.eq("email", raw.toLowerCase());
 
   if (error) return { ok: false, error: error.message };
   return { ok: true };
@@ -444,6 +491,9 @@ export async function addLiveStudent(student: {
   const email = student.email.trim().toLowerCase();
   const password = student.password || "Temp@1234";
 
+  // Resolve batch UUID
+  const resolvedBatchUuid = await resolveBatchId(student.batchId, student.dept);
+
   // 1. Sign up Supabase Auth user
   const { data: authData, error: authErr } = await supabase.auth.signUp({
     email,
@@ -454,7 +504,7 @@ export async function addLiveStudent(student: {
         role: "student",
         roll_no: student.rollNo,
         dept: student.dept,
-        batch_id: student.batchId,
+        batch_id: resolvedBatchUuid || student.batchId,
         college: student.college || "Partner Engineering College",
         tracks: student.tracks || ["mern", "cloud"],
       },
@@ -467,7 +517,7 @@ export async function addLiveStudent(student: {
 
   const authUserId = authData?.user?.id;
 
-  // 2. Insert/Upsert into student_profiles
+  // 2. Insert/Upsert into student_profiles (NEVER storing password in database)
   const { data: profileData, error: profileErr } = await supabase
     .from("student_profiles")
     .upsert(
@@ -477,7 +527,7 @@ export async function addLiveStudent(student: {
         email,
         roll_no: student.rollNo,
         dept: student.dept,
-        batch_id: student.batchId,
+        batch_id: resolvedBatchUuid,
         college: student.college || "Partner Engineering College",
         status: "active",
         xp: 250,

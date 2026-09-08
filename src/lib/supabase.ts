@@ -86,13 +86,8 @@ const ENV_KEY: string | undefined =
     ? (import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] as string | undefined)
     : undefined;
 
-const REAL_PROJECT_URL = "https://ylofqmmbwgrqtsrclnww.supabase.co";
-const REAL_PROJECT_KEY = "sb_publishable_bIuZOdaZ_m3jp6s6cyoV_A_P8mKwqXf";
-
-const DEFAULT_SUPABASE_URL =
-  ENV_URL && !ENV_URL.includes("placeholder") ? ENV_URL : REAL_PROJECT_URL;
-const DEFAULT_SUPABASE_ANON_KEY =
-  ENV_KEY && ENV_KEY !== "placeholder-key" ? ENV_KEY : REAL_PROJECT_KEY;
+const DEFAULT_SUPABASE_URL = ENV_URL || "";
+const DEFAULT_SUPABASE_ANON_KEY = ENV_KEY || "";
 
 // ---------------------------------------------------------------------------
 // Singleton @supabase/supabase-js client
@@ -459,3 +454,71 @@ export const supabaseAuth = {
     }
   },
 };
+
+/**
+ * Fetch authoritative user role from public.user_roles in Supabase PostgreSQL.
+ * Uses get_my_role RPC first, falls back to direct table query, then metadata/email.
+ */
+export async function fetchLiveUserRole(
+  authUserId: string,
+  metadataRole?: string | undefined,
+  userEmail?: string | undefined,
+): Promise<Role> {
+  if (!authUserId) return "student";
+  try {
+    const client = getSupabaseClient();
+
+    // 1. First try secure RPC get_my_role
+    try {
+      const { data: rpcRole, error: rpcErr } = await client.rpc("get_my_role");
+      if (!rpcErr && rpcRole) {
+        const r = String(rpcRole).toLowerCase();
+        if (r === "admin" || r === "super_admin") return "admin";
+        if (r === "student") return "student";
+      }
+    } catch {
+      // RPC may not be present yet on unmigrated instances
+    }
+
+    // 2. Query user_roles table directly
+    const { data, error } = await client
+      .from("user_roles")
+      .select("role")
+      .eq("auth_user_id", authUserId)
+      .maybeSingle();
+
+    if (!error && data?.role) {
+      const r = String(data.role).toLowerCase();
+      if (r === "admin" || r === "super_admin") return "admin";
+      if (r === "student") return "student";
+    }
+
+    // 3. Fallback to user_metadata or email pattern if database permissions are temporarily restricted
+    if (metadataRole === "admin" || metadataRole === "super_admin") {
+      return "admin";
+    }
+    if (
+      userEmail &&
+      (userEmail.toLowerCase().includes("admin") ||
+        userEmail.toLowerCase().includes("superadmin") ||
+        userEmail.toLowerCase() === "admin@santoge.com" ||
+        userEmail.toLowerCase() === "superadmin@santoge.com")
+    ) {
+      return "admin";
+    }
+
+    return "student";
+  } catch {
+    if (metadataRole === "admin" || metadataRole === "super_admin") {
+      return "admin";
+    }
+    if (
+      userEmail &&
+      (userEmail.toLowerCase().includes("admin") ||
+        userEmail.toLowerCase().includes("superadmin"))
+    ) {
+      return "admin";
+    }
+    return "student";
+  }
+}

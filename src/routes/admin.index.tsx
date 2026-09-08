@@ -1,8 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Chip, Gauge, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore, type HiringDrive } from "@/lib/app-store";
 import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
+import {
+  fetchLiveAdminAnalytics,
+  fetchLiveStudentRoster,
+  fetchLiveHiringDrives,
+  createLiveHiringDrive,
+  addLiveStudent,
+  deleteLiveStudent,
+} from "@/lib/data";
 import {
   Building2,
   Users,
@@ -87,8 +96,54 @@ function AdminAnalytics() {
   const readinessOf = (b: { enrolled: number; capacity: number }) =>
     Math.round((b.enrolled / Math.max(b.capacity, 1)) * 100);
 
-  // Real learners only: custom students + provisioned students (filtering out deleted)
+  const queryClient = useQueryClient();
+  const isLive = store.authProvider === "supabase";
+
+  // Live Supabase Queries
+  const { data: liveAnalytics } = useQuery({
+    queryKey: ["live", "admin-analytics", selectedInst],
+    queryFn: () => fetchLiveAdminAnalytics(selectedInst),
+    enabled: isLive,
+  });
+
+  const { data: liveDrives } = useQuery({
+    queryKey: ["live", "hiring-drives"],
+    queryFn: () => fetchLiveHiringDrives(),
+    enabled: isLive,
+  });
+
+  const activeDrives = useMemo(() => {
+    return isLive ? liveDrives || [] : store.hiringDrives;
+  }, [isLive, liveDrives, store.hiringDrives]);
+
+  const selectedDrive = useMemo(() => {
+    return activeDrives.find((d) => d.id === selectedDriveId) || null;
+  }, [activeDrives, selectedDriveId]);
+
+  const { data: liveRoster } = useQuery({
+    queryKey: [
+      "live",
+      "student-roster",
+      selectedInst,
+      searchQuery,
+      trackFilter,
+      tierFilter,
+      selectedDriveId,
+    ],
+    queryFn: () =>
+      fetchLiveStudentRoster({
+        institutionId: selectedInst,
+        searchQuery,
+        trackId: trackFilter !== "all" ? trackFilter : undefined,
+        tier: tierFilter !== "all" ? tierFilter : undefined,
+        driveMinScore: selectedDrive?.minScore,
+      }),
+    enabled: isLive,
+  });
+
+  // Real learners only for Demo Mode
   const allStudents = useMemo(() => {
+    if (isLive) return [];
     const deleted = new Set((store.deletedStudentEmails || []).map((e) => e.toLowerCase().trim()));
 
     const fromCustom = Object.values(store.customStudents || {})
@@ -105,6 +160,8 @@ function AdminAnalytics() {
           : 65;
         const score = Math.round(t * 8.5 + (p?.completedLabs.length ?? 0) * 6);
         return {
+          id: c.email,
+          auth_user_id: null,
           name: c.name,
           email: c.email,
           rollNo: c.rollNo,
@@ -115,6 +172,7 @@ function AdminAnalytics() {
           placementDay: p?.placementDay ?? c.placementDay,
           talentScore: score,
           gateCleared: (p?.attendance.length ?? 0) >= 30,
+          readiness: p?.readiness ?? { T: 65, C: 65, A: 60, E: 70, R: 50, M: 35 },
         };
       });
 
@@ -132,6 +190,8 @@ function AdminAnalytics() {
           : 55;
         const score = Math.round(t * 8.5 + (pr?.completedLabs.length ?? 0) * 6);
         return {
+          id: p.email,
+          auth_user_id: null,
           name: p.student_name,
           email: p.email,
           rollNo: p.roll_no,
@@ -144,6 +204,7 @@ function AdminAnalytics() {
           placementDay: pr?.placementDay ?? 1,
           talentScore: score,
           gateCleared: (pr?.attendance.length ?? 0) >= 30,
+          readiness: pr?.readiness ?? { T: 55, C: 55, A: 50, E: 60, R: 40, M: 25 },
         };
       });
 
@@ -157,10 +218,22 @@ function AdminAnalytics() {
       }
     }
     return result;
-  }, [store.profiles, store.provisioned, store.customStudents, store.deletedStudentEmails]);
+  }, [isLive, store.profiles, store.provisioned, store.customStudents, store.deletedStudentEmails]);
 
-  // Dynamic institutions list derived strictly from active learners & partner colleges
+  // Dynamic institutions list
   const institutions = useMemo(() => {
+    if (isLive && liveAnalytics?.institutions) {
+      const list = liveAnalytics.institutions;
+      const count = list.length;
+      return [
+        {
+          id: "all",
+          name: count > 0 ? `All Partner Institutions (${count})` : "All Partner Institutions",
+        },
+        ...list.map((i) => ({ id: i.id, name: i.name })),
+      ];
+    }
+
     const dynamicColleges = new Map<string, string>();
     allStudents.forEach((s) => {
       if (s.college && s.college.trim()) {
@@ -174,18 +247,18 @@ function AdminAnalytics() {
       }
     });
     const count = dynamicColleges.size;
-    const list = [
+    return [
       {
         id: "all",
         name: count > 0 ? `All Partner Institutions (${count})` : "All Partner Institutions",
       },
       ...Array.from(dynamicColleges.entries()).map(([id, name]) => ({ id, name })),
     ];
-    return list;
-  }, [allStudents]);
+  }, [isLive, liveAnalytics?.institutions, allStudents]);
 
-  // Learners filtered by institution
+  // Learners filtered by institution for demo
   const instStudents = useMemo(() => {
+    if (isLive) return [];
     if (selectedInst === "all") return allStudents;
     const inst = institutions.find((i) => i.id === selectedInst);
     if (!inst) return allStudents;
@@ -196,13 +269,14 @@ function AdminAnalytics() {
         target.includes(s.college.toLowerCase()) ||
         s.batchId.toLowerCase().includes(selectedInst.toLowerCase()),
     );
-  }, [allStudents, selectedInst, institutions]);
+  }, [isLive, allStudents, selectedInst, institutions]);
 
-  // Batches filtered by institution with real calculated enrollment
-  const activeBatches = useMemo(() => {
+  // Batches for demo
+  const demoActiveBatches = useMemo(() => {
     const batchesWithRealCount = store.batches.map((b) => ({
       ...b,
       enrolled: allStudents.filter((s) => s.batchId === b.id).length,
+      lastSync: b.lastSync ?? null,
     }));
 
     if (selectedInst === "all") return batchesWithRealCount;
@@ -213,145 +287,136 @@ function AdminAnalytics() {
     return matched.length > 0 ? matched : batchesWithRealCount;
   }, [store.batches, selectedInst, instStudents, allStudents]);
 
-  // Dynamic KPI Metrics derived from real backend data
-  const totalEnrolled = useMemo(() => {
-    return selectedInst === "all" ? allStudents.length : instStudents.length;
-  }, [selectedInst, allStudents.length, instStudents.length]);
+  // KPI Metrics
+  const totalEnrolled = isLive
+    ? (liveAnalytics?.totalEnrolled ?? 0)
+    : selectedInst === "all"
+      ? allStudents.length
+      : instStudents.length;
 
-  const totalBatches = activeBatches.length;
+  const totalBatches = isLive ? (liveAnalytics?.totalBatches ?? 0) : demoActiveBatches.length;
 
-  const avgReadiness = useMemo(() => {
-    const list = selectedInst === "all" ? allStudents : instStudents;
-    if (list.length === 0) return 0;
-    const sum = list.reduce((acc, s) => {
-      const p = store.profiles?.[s.email.toLowerCase().trim()];
-      if (p) {
-        const rIndex =
-          p.readiness.T * 0.25 +
-          p.readiness.C * 0.2 +
-          p.readiness.A * 0.15 +
-          p.readiness.E * 0.15 +
-          p.readiness.R * 0.15 +
-          p.readiness.M * 0.1;
-        return acc + rIndex;
-      }
-      return acc + s.talentScore / 10;
-    }, 0);
-    return Math.round(sum / list.length);
-  }, [selectedInst, allStudents, instStudents, store.profiles]);
+  const avgReadiness = isLive
+    ? (liveAnalytics?.avgReadiness ?? 0)
+    : (() => {
+        const list = selectedInst === "all" ? allStudents : instStudents;
+        if (list.length === 0) return 0;
+        const sum = list.reduce((acc, s) => acc + s.talentScore / 10, 0);
+        return Math.round(sum / list.length);
+      })();
 
   const marketplaceReadyStudents = useMemo(() => {
+    if (isLive) return [];
     const list = selectedInst === "all" ? allStudents : instStudents;
     return list.filter((s) => s.talentScore >= 700);
-  }, [selectedInst, allStudents, instStudents]);
+  }, [isLive, selectedInst, allStudents, instStudents]);
 
-  const marketplacePercent = useMemo(() => {
-    const total = selectedInst === "all" ? allStudents.length : instStudents.length;
-    return total > 0 ? Math.round((marketplaceReadyStudents.length / total) * 100) : 0;
-  }, [selectedInst, allStudents.length, instStudents.length, marketplaceReadyStudents.length]);
+  const marketplacePercent = isLive
+    ? (liveAnalytics?.marketplacePercent ?? 0)
+    : totalEnrolled > 0
+      ? Math.round((marketplaceReadyStudents.length / totalEnrolled) * 100)
+      : 0;
 
-  // Dynamic Placement Conversion Funnel calculated 100% from live student records
-  const cohortFunnel = useMemo(() => {
-    const list = selectedInst === "all" ? allStudents : instStudents;
-    const total = list.length;
-    if (total === 0) return [];
+  // Active Batches
+  const activeBatches = isLive
+    ? (liveAnalytics?.batches ?? []).map((b) => ({
+        id: b.id,
+        name: b.name,
+        dept: b.dept,
+        capacity: b.capacity,
+        enrolled: b.enrolled_count ?? 0,
+        status: b.status,
+        lastSync: b.last_sync_at ? new Date(b.last_sync_at).toLocaleTimeString() : null,
+      }))
+    : demoActiveBatches;
 
-    const stage1 = total;
-    const stage2 = list.filter((s) => {
-      const p = store.profiles?.[s.email.toLowerCase().trim()];
-      return (p?.attendance?.length ?? 0) > 0 || s.placementDay >= 2;
-    }).length;
-    const stage3 = list.filter((s) => {
-      const p = store.profiles?.[s.email.toLowerCase().trim()];
-      return (
-        (p?.completedLabs?.length ?? 0) > 0 || (p?.skills?.length ?? 0) >= 3 || s.talentScore >= 500
-      );
-    }).length;
-    const stage4 = list.filter((s) => s.gateCleared || s.placementDay >= 30).length;
-    const stage5 = list.filter((s) => {
-      const p = store.profiles?.[s.email.toLowerCase().trim()];
-      return Object.keys(p?.mocks ?? {}).length > 0 || s.talentScore >= 550;
-    }).length;
-    const stage6 = list.filter((s) => s.talentScore >= 700).length;
+  // Placement Conversion Funnel
+  const cohortFunnel = isLive
+    ? (liveAnalytics?.funnel ?? [])
+    : (() => {
+        const list = selectedInst === "all" ? allStudents : instStudents;
+        const total = list.length;
+        if (total === 0) return [];
+        const stage1 = total;
+        const stage2 = list.filter((s) => s.placementDay >= 2).length;
+        const stage3 = list.filter((s) => s.talentScore >= 500).length;
+        const stage4 = list.filter((s) => s.gateCleared || s.placementDay >= 30).length;
+        const stage5 = list.filter((s) => s.talentScore >= 550).length;
+        const stage6 = list.filter((s) => s.talentScore >= 700).length;
 
-    return [
-      {
-        label: "Total Provisioned Cohort",
-        count: stage1,
-        pct: 100,
-        color: "var(--brand-cyan)",
-      },
-      {
-        label: "Phase 1: Twin 30m Active",
-        count: stage2,
-        pct: Math.round((stage2 / total) * 100),
-        color: "var(--brand-purple)",
-      },
-      {
-        label: "Phase 1: Labs & Sandboxes Verified",
-        count: stage3,
-        pct: Math.round((stage3 / total) * 100),
-        color: "var(--brand-emerald)",
-      },
-      {
-        label: "Dual Gate: 100% Verified Cleared",
-        count: stage4,
-        pct: Math.round((stage4 / total) * 100),
-        color: "var(--brand-amber)",
-      },
-      {
-        label: "Phase 2: AI & Mentor Mock Panels",
-        count: stage5,
-        pct: Math.round((stage5 / total) * 100),
-        color: "var(--brand-rose)",
-      },
-      {
-        label: "Recruiter Offers & Marketplace Ready",
-        count: stage6,
-        pct: Math.round((stage6 / total) * 100),
-        color: "#10b981",
-      },
-    ];
-  }, [selectedInst, allStudents, instStudents, store.profiles]);
+        return [
+          {
+            label: "Total Provisioned Cohort",
+            count: stage1,
+            pct: 100,
+            color: "var(--brand-cyan)",
+          },
+          {
+            label: "Phase 1: Twin 30m Active",
+            count: stage2,
+            pct: Math.round((stage2 / total) * 100),
+            color: "var(--brand-purple)",
+          },
+          {
+            label: "Phase 1: Labs & Sandboxes Verified",
+            count: stage3,
+            pct: Math.round((stage3 / total) * 100),
+            color: "var(--brand-emerald)",
+          },
+          {
+            label: "Dual Gate: 100% Verified Cleared",
+            count: stage4,
+            pct: Math.round((stage4 / total) * 100),
+            color: "var(--brand-amber)",
+          },
+          {
+            label: "Phase 2: AI & Mentor Mock Panels",
+            count: stage5,
+            pct: Math.round((stage5 / total) * 100),
+            color: "var(--brand-rose)",
+          },
+          {
+            label: "Recruiter Offers & Marketplace Ready",
+            count: stage6,
+            pct: Math.round((stage6 / total) * 100),
+            color: "#10b981",
+          },
+        ];
+      })();
 
-  // Active hiring drive filter
-  const selectedDrive = useMemo(() => {
-    return store.hiringDrives.find((d) => d.id === selectedDriveId) || null;
-  }, [store.hiringDrives, selectedDriveId]);
+  // Filtered Students (Live vs Demo)
+  const filteredStudents = isLive
+    ? liveRoster?.items || []
+    : instStudents.filter((s) => {
+        const matchesSearch =
+          s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.rollNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.batchId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.dept.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.college.toLowerCase().includes(searchQuery.toLowerCase());
 
-  // Student list filtered by Search, Track, Tier, and Active Hiring Drive
-  const filteredStudents = useMemo(() => {
-    return instStudents.filter((s) => {
-      const matchesSearch =
-        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.rollNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.batchId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.dept.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.college.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesTrack = trackFilter === "all" || s.tracks.includes(trackFilter as TrackId);
 
-      const matchesTrack = trackFilter === "all" || s.tracks.includes(trackFilter as TrackId);
+        const matchesTier =
+          tierFilter === "all"
+            ? true
+            : tierFilter === "marketplace"
+              ? s.talentScore >= 700
+              : tierFilter === "ats"
+                ? s.talentScore >= 450 && s.talentScore < 700
+                : s.talentScore < 450;
 
-      const matchesTier =
-        tierFilter === "all"
-          ? true
-          : tierFilter === "marketplace"
-            ? s.talentScore >= 700
-            : tierFilter === "ats"
-              ? s.talentScore >= 450 && s.talentScore < 700
-              : s.talentScore < 450;
+        const matchesDrive = !selectedDrive ? true : s.talentScore >= selectedDrive.minScore;
 
-      const matchesDrive = !selectedDrive ? true : s.talentScore >= selectedDrive.minScore;
+        return matchesSearch && matchesTrack && matchesTier && matchesDrive;
+      });
 
-      return matchesSearch && matchesTrack && matchesTier && matchesDrive;
-    });
-  }, [instStudents, searchQuery, trackFilter, tierFilter, selectedDrive]);
+  const activeModalStudent = isLive
+    ? (liveRoster?.items || []).find((s) => s.email === selectedStudentEmail) || null
+    : allStudents.find((s) => s.email === selectedStudentEmail) || null;
 
-  const activeModalStudent = allStudents.find((s) => s.email === selectedStudentEmail);
-  const modalStudentProfile = activeModalStudent
-    ? store.profiles?.[activeModalStudent.email.toLowerCase().trim()]
-    : null;
-  const modalReadiness = modalStudentProfile?.readiness ?? {
+  const modalReadiness = activeModalStudent?.readiness ?? {
     T: 65,
     C: 65,
     A: 60,
@@ -360,20 +425,41 @@ function AdminAnalytics() {
     M: 35,
   };
 
-  const handleCreateHiringDrive = (e: React.FormEvent) => {
+  const handleCreateHiringDrive = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCompany.trim() || !newRoles.trim()) {
       toast.error("Please provide company name and job roles");
       return;
     }
-    store.addHiringDrive({
-      company: newCompany.trim(),
-      roles: newRoles.trim(),
-      ctc: newCtc.trim() || "₹8.0 - ₹10.0 LPA",
-      minScore: Number(newMinScore) || 650,
-      openSlots: Number(newSlots) || 50,
-      status: newStatus,
-    });
+
+    if (isLive) {
+      const res = await createLiveHiringDrive({
+        company: newCompany.trim(),
+        roles: newRoles.trim(),
+        ctc: newCtc.trim() || "₹8.0 - ₹10.0 LPA",
+        minScore: Number(newMinScore) || 650,
+        openSlots: Number(newSlots) || 50,
+        status: newStatus,
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["live", "hiring-drives"] });
+        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] });
+        toast.success(`Active hiring requisition published for ${newCompany}`);
+      } else {
+        toast.error(res.error || "Failed to create hiring drive in Supabase");
+      }
+    } else {
+      store.addHiringDrive({
+        company: newCompany.trim(),
+        roles: newRoles.trim(),
+        ctc: newCtc.trim() || "₹8.0 - ₹10.0 LPA",
+        minScore: Number(newMinScore) || 650,
+        openSlots: Number(newSlots) || 50,
+        status: newStatus,
+      });
+      toast.success(`Active hiring requisition published for ${newCompany}`);
+    }
+
     setNewCompany("");
     setNewRoles("");
     setIsNewDriveModalOpen(false);
@@ -397,7 +483,7 @@ function AdminAnalytics() {
     });
   };
 
-  const handleAddStudent = (e: React.FormEvent) => {
+  const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStudentName.trim()) {
       toast.error("Please enter the student's full name");
@@ -415,29 +501,57 @@ function AdminAnalytics() {
     const batchId = newStudentBatchId || store.batches[0]?.id || "BATCH-2026-ABC-CSE-01";
     const password = newStudentPassword.trim() || "Temp@1234";
 
-    const res = store.addStudent({
-      name: newStudentName.trim(),
-      email: newStudentEmail.trim().toLowerCase(),
-      password: password,
-      rollNo: newStudentRollNo.trim() || `STC${Date.now().toString().slice(-4)}`,
-      dept: newStudentDept.trim() || "CSE",
-      batchId: batchId,
-      college: newStudentCollege.trim() || "Partner Engineering College",
-      tracks: newStudentTracks,
-    });
+    if (isLive) {
+      const res = await addLiveStudent({
+        name: newStudentName.trim(),
+        email: newStudentEmail.trim().toLowerCase(),
+        password: password,
+        rollNo: newStudentRollNo.trim() || `STC${Date.now().toString().slice(-4)}`,
+        dept: newStudentDept.trim() || "CSE",
+        batchId: batchId,
+        college: newStudentCollege.trim() || "Partner Engineering College",
+        tracks: newStudentTracks,
+      });
 
-    if (res.ok) {
-      toast.success(
-        `Learner registered! They can now log in at /login with ${newStudentEmail.trim().toLowerCase()} / ${password}`,
-      );
-      setIsAddStudentModalOpen(false);
-      setNewStudentName("");
-      setNewStudentEmail("");
-      setNewStudentPassword("Temp@1234");
-      setNewStudentRollNo("");
-      setNewStudentDept("CSE");
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] });
+        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] });
+        queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
+        toast.success(`Learner registered in Supabase backend!`);
+        setIsAddStudentModalOpen(false);
+        setNewStudentName("");
+        setNewStudentEmail("");
+        setNewStudentPassword("Temp@1234");
+        setNewStudentRollNo("");
+        setNewStudentDept("CSE");
+      } else {
+        toast.error(res.message);
+      }
     } else {
-      toast.error(res.message);
+      const res = store.addStudent({
+        name: newStudentName.trim(),
+        email: newStudentEmail.trim().toLowerCase(),
+        password: password,
+        rollNo: newStudentRollNo.trim() || `STC${Date.now().toString().slice(-4)}`,
+        dept: newStudentDept.trim() || "CSE",
+        batchId: batchId,
+        college: newStudentCollege.trim() || "Partner Engineering College",
+        tracks: newStudentTracks,
+      });
+
+      if (res.ok) {
+        toast.success(
+          `Learner registered! They can now log in at /login with ${newStudentEmail.trim().toLowerCase()} / ${password}`,
+        );
+        setIsAddStudentModalOpen(false);
+        setNewStudentName("");
+        setNewStudentEmail("");
+        setNewStudentPassword("Temp@1234");
+        setNewStudentRollNo("");
+        setNewStudentDept("CSE");
+      } else {
+        toast.error(res.message);
+      }
     }
   };
 
@@ -1049,8 +1163,8 @@ function AdminAnalytics() {
                 </div>
 
                 <div className="flex items-center justify-between text-copy-subtle text-[11px] pt-1 border-t border-line-soft/60">
-                  <span>Attendance: {modalStudentProfile?.attendance.length ?? 1}/90 Days</span>
-                  <span>Completed Labs: {modalStudentProfile?.completedLabs.length ?? 0}</span>
+                  <span>Placement Day: Day {activeModalStudent.placementDay}/90</span>
+                  <span>Talent Score: {activeModalStudent.talentScore}/1000</span>
                   <span
                     className={
                       activeModalStudent.gateCleared
@@ -1180,14 +1294,32 @@ function AdminAnalytics() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const res = store.deleteStudent(deleteTargetStudent.email);
-                  if (res.ok) {
-                    if (selectedStudentEmail === deleteTargetStudent.email) {
-                      setSelectedStudentEmail(null);
+                onClick={async () => {
+                  if (isLive) {
+                    const target = (liveRoster?.items || []).find(
+                      (s) => s.email === deleteTargetStudent.email,
+                    );
+                    if (target?.id) {
+                      const res = await deleteLiveStudent(target.id);
+                      if (res.ok) {
+                        queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] });
+                        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] });
+                        toast.success(`Student profile archived from live database`);
+                      } else {
+                        toast.error(res.error || "Failed to delete student");
+                      }
                     }
-                    setDeleteTargetStudent(null);
+                  } else {
+                    const res = store.deleteStudent(deleteTargetStudent.email);
+                    if (res.ok) {
+                      toast.success(`Student removed from demo roster`);
+                    }
                   }
+
+                  if (selectedStudentEmail === deleteTargetStudent.email) {
+                    setSelectedStudentEmail(null);
+                  }
+                  setDeleteTargetStudent(null);
                 }}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors"
               >

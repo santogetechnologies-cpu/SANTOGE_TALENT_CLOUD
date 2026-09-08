@@ -16,6 +16,7 @@ import {
   saveStoredSession,
   supabaseAuth,
   getSupabaseClient,
+  fetchLiveUserRole,
   type SupabaseSession,
   type SupabaseUser,
 } from "./supabase";
@@ -482,8 +483,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           const user = activeSession.user;
           const userEmail = user.email.toLowerCase();
 
-          // Resolve live role
-          const role = (user.user_metadata?.role as Role) || "student";
+          // Resolve live role strictly from public.user_roles in PostgreSQL
+          const role = await fetchLiveUserRole(user.id, user.user_metadata?.role, user.email);
 
           if (role === "student") {
             const liveData = await fetchLiveStudentProfile(user.id);
@@ -538,6 +539,33 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                 authProvider: "supabase",
                 customStudents: { [userEmail]: studentAcc },
                 profiles: { [userEmail]: liveProf },
+              }));
+            } else {
+              const meta = user.user_metadata || {};
+              const fallbackName = meta.name || userEmail.split("@")[0] || "Student Learner";
+              const studentAcc: StudentAccount = {
+                email: userEmail,
+                password: "●●●●●●●●",
+                name: fallbackName,
+                firstName: fallbackName.split(" ")[0] || "Student",
+                rollNo: meta.roll_no || "2026-LIVE",
+                dept: meta.dept || "CSE",
+                batchId: meta.batch_id || "BATCH-2026-LIVE-01",
+                college: meta.college || "Partner Engineering College",
+                tracks: sanitizeTracks((meta.tracks as TrackId[]) || ["mern", "cloud"]),
+                xp: 250,
+                streak: 1,
+                seedOffsets: [1, 1, 1],
+                placementDay: 1,
+                readiness: { T: 60, C: 55, A: 55, E: 60, R: 40, M: 25 },
+              };
+              setState((prev) => ({
+                ...prev,
+                role: "student",
+                sessionEmail: userEmail,
+                authProvider: "supabase",
+                customStudents: { [userEmail]: studentAcc },
+                profiles: { [userEmail]: profileFor(studentAcc) },
               }));
             }
           } else {
@@ -680,8 +708,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const session = res.data.session;
     const user = session.user;
     const userEmail = user.email.toLowerCase();
-    const meta = user.user_metadata || {};
-    const role: Role = (meta.role as Role) === "admin" ? "admin" : "student";
+
+    // Resolve live role strictly from public.user_roles in PostgreSQL
+    const role: Role = await fetchLiveUserRole(user.id, user.user_metadata?.role, user.email);
 
     setSupabaseSession(session);
 
@@ -749,6 +778,34 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         customStudents: { [userEmail]: studentAcc },
         profiles: { [userEmail]: liveProf },
       }));
+    } else {
+      const meta = user.user_metadata || {};
+      const fallbackName = meta.name || userEmail.split("@")[0] || "Student Learner";
+      const studentAcc: StudentAccount = {
+        email: userEmail,
+        password: "●●●●●●●●",
+        name: fallbackName,
+        firstName: fallbackName.split(" ")[0] || "Student",
+        rollNo: meta.roll_no || "2026-LIVE",
+        dept: meta.dept || "CSE",
+        batchId: meta.batch_id || "BATCH-2026-LIVE-01",
+        college: meta.college || "Partner Engineering College",
+        tracks: sanitizeTracks((meta.tracks as TrackId[]) || ["mern", "cloud"]),
+        xp: 250,
+        streak: 1,
+        seedOffsets: [1, 1, 1],
+        placementDay: 1,
+        readiness: { T: 60, C: 55, A: 55, E: 60, R: 40, M: 25 },
+      };
+
+      setState((s) => ({
+        ...s,
+        role: "student",
+        sessionEmail: userEmail,
+        authProvider: "supabase",
+        customStudents: { [userEmail]: studentAcc },
+        profiles: { [userEmail]: profileFor(studentAcc) },
+      }));
     }
 
     return { ok: true, role: "student" as Role };
@@ -805,9 +862,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // -------------------------------------------------------------------------
 
   const completeSkill = useCallback(
-    (trackId: TrackId, skillId: string, name: string) => {
+    async (trackId: TrackId, skillId: string, name: string) => {
       if (state.authProvider === "supabase" && liveStudentId) {
-        void completeLiveSkill(liveStudentId, skillId, trackId);
+        const res = await completeLiveSkill(liveStudentId, skillId, trackId);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to validate skill in Supabase");
+          return;
+        }
       }
       patchProfile((p) => {
         if (p.skills.includes(skillId)) return p;
@@ -819,16 +880,23 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         };
       });
       toast.success(`Skill validated · ${name}`, {
-        description: "Technical competency updated in Supabase.",
+        description:
+          state.authProvider === "supabase"
+            ? "Technical competency updated in Supabase."
+            : "Demo skill validated.",
       });
     },
     [state.authProvider, liveStudentId, patchProfile],
   );
 
   const completePlacementDay = useCallback(
-    (day: number) => {
+    async (day: number) => {
       if (state.authProvider === "supabase" && liveStudentId) {
-        void completeLivePlacementDay(liveStudentId, day);
+        const res = await completeLivePlacementDay(liveStudentId, day);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to record attendance in Supabase");
+          return;
+        }
       }
       patchProfile((p) => {
         if (p.attendance.includes(day)) return p;
@@ -867,9 +935,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const completeLab = useCallback(
-    (labId: string, label: string) => {
+    async (labId: string, label: string) => {
       if (state.authProvider === "supabase" && liveStudentId) {
-        void completeLiveLab(liveStudentId, labId, label);
+        const res = await completeLiveLab(liveStudentId, labId, label);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to verify lab in Supabase");
+          return;
+        }
       }
       patchProfile((p) => {
         if (p.completedLabs.includes(labId)) return p;
@@ -886,9 +958,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const completeDailyStep = useCallback(
-    (step: keyof DailySteps) => {
+    async (step: keyof DailySteps) => {
       if (state.authProvider === "supabase" && liveStudentId) {
-        void completeLiveDailyStep(liveStudentId, step);
+        const res = await completeLiveDailyStep(liveStudentId, step);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to update daily progress in Supabase");
+          return;
+        }
       }
       patchProfile((p) => ({
         ...p,
@@ -901,9 +977,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const submitAssessment = useCallback(
-    (day: number, score: number) => {
+    async (day: number, score: number) => {
       if (state.authProvider === "supabase" && liveStudentId) {
-        void submitLiveAssessment(liveStudentId, day, score);
+        const res = await submitLiveAssessment(liveStudentId, day, score);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to submit assessment to Supabase");
+          return;
+        }
       }
       patchProfile((p) => ({
         ...p,
@@ -917,9 +997,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const completeMock = useCallback(
-    (id: string, score: number) => {
+    async (id: string, score: number) => {
       if (state.authProvider === "supabase" && liveStudentId) {
-        void completeLiveMock(liveStudentId, id, score);
+        const res = await completeLiveMock(liveStudentId, id, score);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to save mock interview score to Supabase");
+          return;
+        }
       }
       patchProfile((p) => ({
         ...p,
@@ -933,9 +1017,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const issueCertificate = useCallback(
-    (label: string) => {
+    async (label: string) => {
       if (state.authProvider === "supabase" && liveStudentId) {
-        void issueLiveCertificate(liveStudentId, label);
+        const res = await issueLiveCertificate(liveStudentId, label);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to issue certificate in Supabase");
+          return;
+        }
       }
       patchProfile((p) => {
         if (p.certifications.includes(label)) return p;
@@ -952,10 +1040,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const setActiveTracks = useCallback(
-    (t: TrackId[]) => {
+    async (t: TrackId[]) => {
       const sanitized = sanitizeTracks(t);
       if (state.authProvider === "supabase" && liveStudentId) {
-        void updateLiveStudentTracks(liveStudentId, sanitized);
+        await updateLiveStudentTracks(liveStudentId, sanitized);
       }
       patchProfile((p) => ({ ...p, activeTracks: sanitized }));
       toast.success("Technical tracks updated");

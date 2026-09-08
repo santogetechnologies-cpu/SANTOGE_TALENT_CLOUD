@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Chip, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore } from "@/lib/app-store";
 import { leaderboard, type LeaderRow } from "@/lib/curriculum";
+import { fetchLiveBatchLeaderboard } from "@/lib/data/placement-data";
 import { TRACKS } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 import { Crown, Info } from "lucide-react";
@@ -39,11 +41,60 @@ const METRICS: { key: Metric; label: string }[] = [
 
 function LeaderboardPage() {
   const store = useAppStore();
+  const isLive = store.authProvider === "supabase";
   const batchId = store.student?.batchId ?? "BATCH";
   const me = store.student?.name ?? "You";
   const [metric, setMetric] = useState<Metric>("aptitude");
 
-  const rows = useMemo(() => leaderboard(batchId, me), [batchId, me]);
+  const liveLeaderboardQuery = useQuery({
+    queryKey: ["liveBatchLeaderboard", batchId],
+    queryFn: () => fetchLiveBatchLeaderboard(batchId),
+    enabled: isLive && !!batchId,
+  });
+
+  const rows: LeaderRow[] = useMemo(() => {
+    if (isLive && liveLeaderboardQuery.data && liveLeaderboardQuery.data.length > 0) {
+      const liveList: LeaderRow[] = liveLeaderboardQuery.data.map((item) => {
+        const isCurrentStudent = item.name === me || item.student_id === store.liveStudentId;
+        const daysAttended = isCurrentStudent
+          ? store.attendance.length
+          : Math.max(1, Math.min(90, Math.round(item.talent_score / 12)));
+        return {
+          name: item.name,
+          attendance: daysAttended,
+          english: Math.min(100, Math.max(40, Math.round(item.talent_score * 0.1))),
+          aptitude: Math.min(100, Math.max(40, Math.round(item.talent_score * 0.1))),
+          communication: Math.min(100, Math.max(40, Math.round(item.talent_score * 0.095))),
+          improvement: Math.min(100, Math.max(30, Math.round(item.talent_score * 0.085))),
+        };
+      });
+
+      if (!liveList.some((r) => r.name === me)) {
+        liveList.push({
+          name: me,
+          attendance: store.attendance.length,
+          english: Math.min(100, Math.max(40, Math.round((store.talentScore || 500) * 0.1))),
+          aptitude: Math.min(100, Math.max(40, Math.round((store.talentScore || 500) * 0.1))),
+          communication: Math.min(
+            100,
+            Math.max(40, Math.round((store.talentScore || 500) * 0.095)),
+          ),
+          improvement: Math.min(100, Math.max(30, Math.round((store.talentScore || 500) * 0.085))),
+        });
+      }
+
+      return liveList;
+    }
+    return leaderboard(batchId, me);
+  }, [
+    isLive,
+    liveLeaderboardQuery.data,
+    batchId,
+    me,
+    store.attendance.length,
+    store.liveStudentId,
+    store.talentScore,
+  ]);
   const ranked = [...rows].sort((a, b) => b[metric] - a[metric]);
   const myRank = ranked.findIndex((r) => r.name === me) + 1;
 

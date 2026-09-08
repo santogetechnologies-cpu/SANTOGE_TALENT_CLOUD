@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Chip, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore } from "@/lib/app-store";
+import { fetchLiveBatches } from "@/lib/data/admin-data";
 import { TRACKS, type TrackId, trackById } from "@/lib/tracks";
 import { getTrackSyllabus } from "@/lib/syllabus-data";
 import {
@@ -52,6 +54,17 @@ type CMSTab = "placement-accelerator" | "technical-tracks";
 
 function ContentManagementPage() {
   const store = useAppStore();
+  const isLive = store.authProvider === "supabase";
+
+  const liveBatchesQuery = useQuery({
+    queryKey: ["liveBatches"],
+    queryFn: fetchLiveBatches,
+    enabled: isLive,
+  });
+
+  const batchesCount =
+    isLive && liveBatchesQuery.data ? liveBatchesQuery.data.length : store.batches.length;
+
   const [cmsTab, setCmsTab] = useState<CMSTab>("placement-accelerator");
 
   // Placement Accelerator CMS states
@@ -164,7 +177,7 @@ function ContentManagementPage() {
         />
         <Stat
           label="Active Cohorts Managed"
-          value={`${store.batches.length} Batches`}
+          value={`${batchesCount} Batches`}
           accent="var(--brand-purple)"
           hint="100–300 learners per batch"
         />

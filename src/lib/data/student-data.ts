@@ -168,76 +168,43 @@ export async function fetchLiveStudentProgress(studentId: string): Promise<{
 }
 
 // ---------------------------------------------------------------------------
-// Atomic Live Mutations
+// Atomic Live Mutations (Direct Authoritative Supabase RPC)
 // ---------------------------------------------------------------------------
 
 export async function completeLivePlacementDay(
   studentId: string,
   day: number,
-): Promise<{ ok: boolean; placement_day?: number; xp?: number }> {
+): Promise<{ ok: boolean; placement_day?: number; xp?: number; error?: string }> {
   const supabase = getSupabaseClient();
 
-  // Try RPC first for atomic update
   const { data, error } = await supabase.rpc("complete_student_placement_day", {
     p_student_id: studentId,
     p_day: day,
   });
 
-  if (!error && data) {
-    return data as { ok: boolean; placement_day?: number; xp?: number };
+  if (error) {
+    return { ok: false, error: error.message };
   }
 
-  // Fallback direct table operations if RPC not yet deployed
-  await supabase
-    .from("placement_attendance")
-    .upsert(
-      { student_id: studentId, day, completed_at: new Date().toISOString() },
-      { onConflict: "student_id,day" },
-    );
-
-  const { data: updated } = await supabase
-    .from("student_profiles")
-    .update({
-      placement_day: Math.min(day + 1, 90),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", studentId)
-    .select("placement_day,xp");
-  const updatedData = updated as { placement_day?: number; xp?: number } | null;
-  return {
-    ok: true,
-    ...(updatedData?.placement_day
-      ? { placement_day: updatedData.placement_day }
-      : { placement_day: day + 1 }),
-    ...(typeof updatedData?.xp === "number" ? { xp: updatedData.xp } : {}),
-  };
+  return (data as { ok: boolean; placement_day?: number; xp?: number }) || { ok: true };
 }
 
 export async function completeLiveSkill(
   studentId: string,
   skillId: string,
   trackId: string,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
-  const { error } = await supabase.rpc("complete_student_skill", {
+  const { data, error } = await supabase.rpc("complete_student_skill", {
     p_student_id: studentId,
     p_skill_id: skillId,
     p_track_id: trackId,
   });
 
-  if (!error) return { ok: true };
-
-  // Fallback direct upsert
-  await supabase.from("student_skill_completions").upsert(
-    {
-      student_id: studentId,
-      skill_id: skillId,
-      track_id: trackId,
-      completed_at: new Date().toISOString(),
-    },
-    { onConflict: "student_id,skill_id" },
-  );
+  if (error) {
+    return { ok: false, error: error.message };
+  }
 
   return { ok: true };
 }
@@ -246,7 +213,7 @@ export async function completeLiveLab(
   studentId: string,
   labId: string,
   label: string,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
   const { error } = await supabase.rpc("complete_student_lab", {
@@ -255,17 +222,9 @@ export async function completeLiveLab(
     p_label: label,
   });
 
-  if (!error) return { ok: true };
-
-  await supabase.from("student_lab_completions").upsert(
-    {
-      student_id: studentId,
-      lab_id: labId,
-      label,
-      completed_at: new Date().toISOString(),
-    },
-    { onConflict: "student_id,lab_id" },
-  );
+  if (error) {
+    return { ok: false, error: error.message };
+  }
 
   return { ok: true };
 }
@@ -273,7 +232,7 @@ export async function completeLiveLab(
 export async function completeLiveDailyStep(
   studentId: string,
   step: "english" | "aptitude" | "practice",
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
   const { error } = await supabase.rpc("complete_student_daily_step", {
@@ -281,24 +240,9 @@ export async function completeLiveDailyStep(
     p_step: step,
   });
 
-  if (!error) return { ok: true };
-
-  const today = new Date().toISOString().split("T")[0];
-  const patch: Record<string, boolean> = {
-    english_completed: step === "english",
-    aptitude_completed: step === "aptitude",
-    practice_completed: step === "practice",
-  };
-
-  await supabase.from("student_daily_progress").upsert(
-    {
-      student_id: studentId,
-      date: today,
-      ...patch,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "student_id,date" },
-  );
+  if (error) {
+    return { ok: false, error: error.message };
+  }
 
   return { ok: true };
 }
@@ -307,7 +251,7 @@ export async function submitLiveAssessment(
   studentId: string,
   day: number,
   score: number,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
   const { error } = await supabase.rpc("submit_student_assessment", {
@@ -316,17 +260,9 @@ export async function submitLiveAssessment(
     p_score: score,
   });
 
-  if (!error) return { ok: true };
-
-  await supabase.from("student_assessments").upsert(
-    {
-      student_id: studentId,
-      day,
-      score,
-      submitted_at: new Date().toISOString(),
-    },
-    { onConflict: "student_id,day" },
-  );
+  if (error) {
+    return { ok: false, error: error.message };
+  }
 
   return { ok: true };
 }
@@ -336,7 +272,7 @@ export async function completeLiveMock(
   mockId: string,
   score: number,
   feedback: string = "",
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
   const { error } = await supabase.rpc("complete_student_mock", {
@@ -346,18 +282,9 @@ export async function completeLiveMock(
     p_feedback: feedback,
   });
 
-  if (!error) return { ok: true };
-
-  await supabase.from("student_mocks").upsert(
-    {
-      student_id: studentId,
-      mock_id: mockId,
-      score,
-      feedback_summary: feedback,
-      completed_at: new Date().toISOString(),
-    },
-    { onConflict: "student_id,mock_id" },
-  );
+  if (error) {
+    return { ok: false, error: error.message };
+  }
 
   return { ok: true };
 }
@@ -365,7 +292,7 @@ export async function completeLiveMock(
 export async function issueLiveCertificate(
   studentId: string,
   label: string,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
   const { error } = await supabase.rpc("issue_student_certificate", {
@@ -373,16 +300,9 @@ export async function issueLiveCertificate(
     p_label: label,
   });
 
-  if (!error) return { ok: true };
-
-  await supabase.from("student_certifications").upsert(
-    {
-      student_id: studentId,
-      label,
-      issued_at: new Date().toISOString(),
-    },
-    { onConflict: "student_id,label" },
-  );
+  if (error) {
+    return { ok: false, error: error.message };
+  }
 
   return { ok: true };
 }

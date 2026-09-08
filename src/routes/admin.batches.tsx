@@ -1,8 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Chip, Console, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore, type Batch } from "@/lib/app-store";
+import {
+  fetchLiveBatches,
+  createLiveBatch,
+  updateLiveBatch,
+  deleteLiveBatch,
+  fetchLiveStudentRoster,
+  deleteLiveStudent,
+} from "@/lib/data";
 import {
   RefreshCw,
   Plus,
@@ -46,12 +55,28 @@ export const Route = createFileRoute("/admin/batches")({
 
 function BatchesPage() {
   const store = useAppStore();
+  const queryClient = useQueryClient();
+  const isLive = store.authProvider === "supabase";
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newBatchName, setNewBatchName] = useState("BATCH-2026-PSG-CSE-02");
   const [newBatchDept, setNewBatchDept] = useState("CSE");
   const [newBatchCapacity, setNewBatchCapacity] = useState(250);
+
+  // Live Queries
+  const { data: liveBatches } = useQuery({
+    queryKey: ["live", "batches"],
+    queryFn: () => fetchLiveBatches(),
+    enabled: isLive,
+  });
+
+  const { data: liveRoster } = useQuery({
+    queryKey: ["live", "student-roster", "all"],
+    queryFn: () => fetchLiveStudentRoster({ institutionId: "all" }),
+    enabled: isLive,
+  });
 
   // Telegram broadcast simulator states
   const [broadcastTargetBatch, setBroadcastTargetBatch] = useState<string>("BATCH-2026-ABC-CSE-01");
@@ -75,8 +100,9 @@ function BatchesPage() {
     batchId: string;
   } | null>(null);
 
-  // Real learners only: custom students + provisioned students
+  // Real learners only: custom students + provisioned students (Demo Mode)
   const allLearners = useMemo(() => {
+    if (isLive) return [];
     const deleted = new Set((store.deletedStudentEmails || []).map((e) => e.toLowerCase().trim()));
 
     const fromCustom = Object.values(store.customStudents || {})
@@ -117,34 +143,57 @@ function BatchesPage() {
       }
     }
     return result;
-  }, [store.customStudents, store.provisioned, store.deletedStudentEmails]);
+  }, [isLive, store.customStudents, store.provisioned, store.deletedStudentEmails]);
 
   const batchesWithCounts = useMemo(() => {
+    if (isLive && liveBatches) {
+      return liveBatches.map((b) => ({
+        id: b.id,
+        name: b.name,
+        dept: b.dept,
+        capacity: b.capacity,
+        enrolled: b.enrolled_count ?? 0,
+        lastSync: b.last_sync_at ? new Date(b.last_sync_at).toLocaleTimeString("en-GB") : "Never",
+      }));
+    }
     return store.batches.map((b) => ({
       ...b,
       enrolled: allLearners.filter((l) => l.batchId === b.id).length,
     }));
-  }, [store.batches, allLearners]);
+  }, [isLive, liveBatches, store.batches, allLearners]);
 
   const totalCapacity = batchesWithCounts.reduce((s, b) => s + b.capacity, 0);
-  const totalEnrolled = allLearners.length;
+  const totalEnrolled = isLive
+    ? liveRoster?.totalCount || liveRoster?.items.length || 0
+    : allLearners.length;
 
-  const handleStartEdit = (b: Batch) => {
+  const handleStartEdit = (b: { id: string; name: string }) => {
     setEditingId(b.id);
     setEditName(b.name);
   };
 
-  const handleSaveEdit = (id: string) => {
+  const handleSaveEdit = async (id: string) => {
     if (!editName.trim()) {
       toast.error("Batch name cannot be empty");
       return;
     }
-    store.updateBatch(id, { name: editName.trim() });
+    if (isLive) {
+      const res = await updateLiveBatch(id, { name: editName.trim() });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
+        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] });
+        toast.success("Batch renamed in Supabase backend");
+      } else {
+        toast.error(res.error || "Failed to update batch");
+      }
+    } else {
+      store.updateBatch(id, { name: editName.trim() });
+      toast.success("Batch renamed successfully");
+    }
     setEditingId(null);
-    toast.success("Batch renamed successfully");
   };
 
-  const handleCreateBatch = (e: React.FormEvent) => {
+  const handleCreateBatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBatchName.trim()) {
       toast.error("Please enter a valid batch name");
@@ -155,21 +204,40 @@ function BatchesPage() {
       return;
     }
 
-    const newId = newBatchName.trim().toUpperCase().replace(/\s+/g, "-");
-    store.createBatch({
-      id: newId,
-      name: newBatchName.trim(),
-      dept: newBatchDept,
-      capacity: newBatchCapacity,
-      enrolled: 0,
-    });
-    setCreateModalOpen(false);
+    if (isLive) {
+      const res = await createLiveBatch({
+        name: newBatchName.trim(),
+        dept: newBatchDept,
+        capacity: newBatchCapacity,
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
+        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] });
+        toast.success(`Batch ${newBatchName} created in Supabase backend!`);
+        setCreateModalOpen(false);
+      } else {
+        toast.error(res.error || "Failed to create batch");
+      }
+    } else {
+      const newId = newBatchName.trim().toUpperCase().replace(/\s+/g, "-");
+      store.createBatch({
+        id: newId,
+        name: newBatchName.trim(),
+        dept: newBatchDept,
+        capacity: newBatchCapacity,
+        enrolled: 0,
+      });
+      toast.success("Batch created in demo state");
+      setCreateModalOpen(false);
+    }
   };
 
   const handleDispatchTelegram = () => {
     if (!broadcastMessage.trim()) return;
     setIsBroadcasting(true);
-    const learnerCount = allLearners.filter((l) => l.batchId === broadcastTargetBatch).length;
+    const learnerCount = isLive
+      ? (liveRoster?.items || []).filter((l) => l.batchId === broadcastTargetBatch).length
+      : allLearners.filter((l) => l.batchId === broadcastTargetBatch).length;
 
     setBroadcastLogs((prev) => [
       `[tx] Dispatching webhook to Telegram channel: t.me/stc-${broadcastTargetBatch.toLowerCase()}`,
@@ -188,10 +256,26 @@ function BatchesPage() {
     }, 1200);
   };
 
-  // Filter learners in selected roster (strictly real custom + CSV provisioned, filtering deleted)
+  // Filter learners in selected roster
   const rosterLearners = useMemo(() => {
+    if (isLive) {
+      const items = liveRoster?.items || [];
+      return items
+        .filter((s) => s.batchId === rosterBatchId || rosterBatchId === "all")
+        .map((s) => ({
+          name: s.name,
+          email: s.email,
+          rollNo: s.rollNo,
+          dept: s.dept,
+          batchId: s.batchId,
+          college: s.college || "Partner Engineering College",
+          tracks: s.tracks as string[],
+          streak: 1,
+          placementDay: s.placementDay,
+        }));
+    }
     return allLearners.filter((s) => s.batchId === rosterBatchId || rosterBatchId === "all");
-  }, [rosterBatchId, allLearners]);
+  }, [isLive, liveRoster, rosterBatchId, allLearners]);
 
   return (
     <div className="space-y-6">
