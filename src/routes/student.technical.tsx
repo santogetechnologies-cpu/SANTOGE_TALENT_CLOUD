@@ -57,24 +57,21 @@ import { useLiveStudentProfile, useLiveStudentProgress, updateLiveStudentTracks 
 function TechnicalPage() {
   const store = useAppStore();
   const queryClient = useQueryClient();
-  const isLive = store.authProvider === "supabase";
 
   const { data: liveProfileData } = useLiveStudentProfile(
     store.supabaseSession?.user?.id,
-    isLive && !!store.supabaseSession?.user?.id,
+    !!store.supabaseSession?.user?.id,
   );
   const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
   const { data: liveProgressData } = useLiveStudentProgress(
     liveStudentId || undefined,
-    isLive && !!liveStudentId,
+    !!liveStudentId,
   );
 
-  const tracks: TrackId[] = isLive ? liveProfileData?.tracks || [] : store.activeTracks;
-
-  const skills = isLive ? liveProgressData?.skills || [] : store.skills;
+  const tracks: TrackId[] = liveProfileData?.tracks || store.activeTracks;
+  const skills = liveProgressData?.skills || store.skills;
 
   const calculateTrackPct = (trackId: TrackId) => {
-    if (!isLive) return store.trackPercent(trackId);
     const mods = modulesFor(trackId);
     const total = mods.reduce((s, m) => s + m.skills.length, 0);
     if (total === 0) return 0;
@@ -123,7 +120,7 @@ function TechnicalPage() {
         return;
       }
       const nextTracks = tracks.filter((t) => t !== id);
-      if (isLive && liveStudentId) {
+      if (liveStudentId) {
         const res = await updateLiveStudentTracks(liveStudentId, nextTracks);
         if (!res.ok) {
           toast.error(res.error || "Failed to update tracks");
@@ -132,9 +129,8 @@ function TechnicalPage() {
         queryClient.invalidateQueries({
           queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
         });
-      } else {
-        store.setActiveTracks(nextTracks);
       }
+      store.setActiveTracks(nextTracks);
       toast.success(`Removed ${trackById(id).name} from active tracks.`);
     } else {
       if (tracks.length >= 3) {
@@ -144,7 +140,7 @@ function TechnicalPage() {
         return;
       }
       const nextTracks = [...tracks, id];
-      if (isLive && liveStudentId) {
+      if (liveStudentId) {
         const res = await updateLiveStudentTracks(liveStudentId, nextTracks);
         if (!res.ok) {
           toast.error(res.error || "Failed to update tracks");
@@ -153,9 +149,8 @@ function TechnicalPage() {
         queryClient.invalidateQueries({
           queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
         });
-      } else {
-        store.setActiveTracks(nextTracks);
       }
+      store.setActiveTracks(nextTracks);
       toast.success(`Enrolled in ${trackById(id).name}!`);
     }
   };

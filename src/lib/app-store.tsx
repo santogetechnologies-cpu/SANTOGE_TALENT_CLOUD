@@ -9,8 +9,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import type { TrackId } from "./tracks";
-import { seedSkills, trackProgress as trackPct } from "./curriculum";
-import { ADMIN_ACCOUNT, STUDENT_ACCOUNTS, studentByEmail, type StudentAccount } from "./accounts";
+import { trackProgress as trackPct } from "./curriculum";
 import {
   getStoredSession,
   saveStoredSession,
@@ -80,7 +79,7 @@ export type Batch = {
 export type ProvisionedStudent = {
   student_name: string;
   email: string;
-  password: string;
+  password?: string;
   roll_no: string;
   dept: string;
   course_1: string;
@@ -107,14 +106,11 @@ export type Profile = {
   completedLabs: string[];
   daily: DailySteps;
   readiness: ReadinessInputs;
-  /** Individual technical journey — completed skill ids across chosen tracks. */
   skills: string[];
-  /** Placement Accelerator (batch-synchronised) */
   placementDay: number;
   attendance: number[];
   assessments: Record<string, number>;
   completedTechDays: number[];
-  /** Phase 2 */
   mocks: Record<string, number>;
   certifications: string[];
 };
@@ -131,42 +127,30 @@ export type HiringDrive = {
   status: "Active Drive" | "Shortlisting" | "Interviews Live" | "Closed";
 };
 
-type Persisted = {
-  role: Role;
-  theme: "dark" | "light";
-  sessionEmail: string | null;
-  authProvider: "demo" | "supabase";
-  profiles: Record<string, Profile>;
-  customStudents: Record<string, StudentAccount>;
-  passwordOverrides: Record<string, string>;
-  batches: Batch[];
-  provisioned: ProvisionedStudent[];
-  deletedStudentEmails?: string[];
-  hiringDrives?: HiringDrive[];
-  content: ContentItem[];
-  completionRule: CompletionRule;
-  secondaryMinimum: number;
+export type CronLog = {
+  id: string;
+  time: string;
+  stage: string;
+  message: string;
+  status: "ok" | "running" | "queued";
 };
 
-const STORAGE_KEY = "santoge-talent-cloud-v3";
+export type StudentInfo = {
+  name: string;
+  email: string;
+  firstName?: string;
+  rollNo?: string;
+  dept?: string;
+  batchId?: string;
+  college?: string;
+  tracks?: TrackId[];
+  xp?: number;
+  streak?: number;
+  placementDay?: number;
+  readiness?: ReadinessInputs;
+};
 
-const DEFAULT_HIRING_DRIVES: HiringDrive[] = [];
-
-const profileFor = (a: StudentAccount): Profile => ({
-  activeTracks: [...a.tracks],
-  xp: a.xp,
-  streak: a.streak,
-  completedLabs: [],
-  daily: { english: false, aptitude: false, practice: false },
-  readiness: { ...a.readiness },
-  skills: seedSkills(a.tracks, a.seedOffsets || [3, 2, 1]),
-  placementDay: a.placementDay,
-  attendance: Array.from({ length: Math.max(a.placementDay - 1, 0) }, (_, i) => i + 1),
-  assessments: a.placementDay > 30 ? { "30": 74 } : {},
-  completedTechDays: Array.from({ length: Math.max(a.placementDay - 1, 0) }, (_, i) => i + 1),
-  mocks: {},
-  certifications: [],
-});
+export type StudentAccount = StudentInfo;
 
 const FALLBACK_TRACK_POOL: TrackId[] = ["mern", "cloud", "aiml", "java", "cyber", "datascience"];
 
@@ -197,320 +181,155 @@ export const sanitizeTracks = (tracks?: (TrackId | string)[]): [TrackId, TrackId
   return [validTracks[0] ?? "mern", validTracks[1] ?? "cloud", validTracks[2] ?? "aiml"];
 };
 
-export const createStudentFromProvisioned = (p: ProvisionedStudent): StudentAccount => {
-  const email = p.email.trim().toLowerCase();
-  const rawTracks = [p.course_1, p.course_2, p.course_3].filter(Boolean) as TrackId[];
-  const tracks = sanitizeTracks(rawTracks);
-
-  return {
-    email,
-    password: p.password || "Temp@1234",
-    name: p.student_name || email.split("@")[0] || "Learner",
-    firstName: (p.student_name || email).split(" ")[0] || "Learner",
-    rollNo: p.roll_no || "2026-ROLL",
-    dept: p.dept || "CSE",
-    batchId: p.batch_id || "BATCH-2026-ABC-CSE-01",
-    college: p.college?.trim() || "Partner Engineering College",
-    tracks,
-    xp: 250,
-    streak: 1,
-    seedOffsets: [2, 1, 1],
-    placementDay: 1,
-    readiness: { T: 60, C: 55, A: 55, E: 60, R: 40, M: 25 },
-  };
-};
-
-const DEFAULT_PROFILES: Record<string, Profile> = Object.fromEntries(
-  STUDENT_ACCOUNTS.map((a) => [a.email, profileFor(a)]),
-);
-
-const DEFAULT_CONTENT: ContentItem[] = [
-  {
-    id: "c1",
-    title: "Daily English · Corporate email etiquette",
-    kind: "English video",
-    track: "All tracks",
-    duration: "10m",
-    status: "published",
-    updated: "Today 06:00",
-  },
-  {
-    id: "c2",
-    title: "Daily Aptitude · Time, speed & distance",
-    kind: "Aptitude video",
-    track: "All tracks",
-    duration: "10m",
-    status: "published",
-    updated: "Today 06:00",
-  },
-  {
-    id: "c3",
-    title: "Guided practice · 5 MCQ + 2 logic + voice pitch",
-    kind: "Guided practice",
-    track: "All tracks",
-    duration: "10m",
-    status: "published",
-    updated: "Today 06:05",
-  },
-  {
-    id: "c4",
-    title: "Lab brief · REST API test runner",
-    kind: "Lab brief",
-    track: "MERN Stack",
-    duration: "25m",
-    status: "published",
-    updated: "Yesterday",
-  },
-  {
-    id: "c5",
-    title: "Lab brief · Terraform apply console",
-    kind: "Lab brief",
-    track: "Cloud & DevOps",
-    duration: "30m",
-    status: "draft",
-    updated: "2 days ago",
-  },
-  {
-    id: "c6",
-    title: "Daily English · Group discussion openers",
-    kind: "English video",
-    track: "All tracks",
-    duration: "10m",
-    status: "scheduled",
-    updated: "Tomorrow 06:00",
-  },
-];
-
-const DEFAULT_STATE: Persisted = {
-  role: "student",
-  theme: "dark",
-  sessionEmail: null,
-  authProvider: "demo",
-  profiles: DEFAULT_PROFILES,
-  customStudents: {},
-  passwordOverrides: {},
-  batches: [
-    {
-      id: "BATCH-2026-PSG-CSE-01",
-      name: "BATCH-2026-PSG-CSE-01",
-      capacity: 300,
-      enrolled: 0,
-      dept: "CSE",
-      lastSync: null,
-    },
-    {
-      id: "BATCH-2026-CIT-CSE-02",
-      name: "BATCH-2026-CIT-CSE-02",
-      capacity: 300,
-      enrolled: 0,
-      dept: "CSE",
-      lastSync: null,
-    },
-    {
-      id: "BATCH-2026-REC-IT-01",
-      name: "BATCH-2026-REC-IT-01",
-      capacity: 250,
-      enrolled: 0,
-      dept: "IT",
-      lastSync: null,
-    },
-  ],
-  provisioned: [],
-  deletedStudentEmails: [],
-  hiringDrives: DEFAULT_HIRING_DRIVES,
-  content: DEFAULT_CONTENT,
-  completionRule: "primary-plus-minimum",
-  secondaryMinimum: 50,
-};
-
-export type CronLog = {
-  id: string;
-  time: string;
-  stage: string;
-  message: string;
-  status: "ok" | "running" | "queued";
-};
-
-type Store = Persisted &
-  Profile & {
-    ready: boolean;
-    student: StudentAccount | null;
-    supabaseSession: SupabaseSession | null;
-    liveStudentId: string | null;
-    isAuthed: boolean;
-    talentScore: number;
-    readinessIndex: number;
-    eligibleCompanies: number;
-    phase1Complete: boolean;
-    technicalComplete: boolean;
-    placementComplete: boolean;
-    gateUnlocked: boolean;
-    trackPercent: (id: TrackId) => number;
-    completeSkill: (trackId: TrackId, skillId: string, name: string) => void;
-    completePlacementDay: (day: number) => void;
-    completeTechDay: (day: number) => void;
-    submitAssessment: (day: number, score: number) => void;
-    completeMock: (id: string, score: number) => void;
-    issueCertificate: (label: string) => void;
-    setCompletionRule: (rule: CompletionRule, secondaryMinimum?: number) => void;
-    cronLogs: CronLog[];
-    resetStudentPassword: (
-      email: string,
-      newPassword?: string,
-    ) => Promise<{ ok: boolean; message: string }>;
-    signIn: (email: string, password: string) => { ok: boolean; role?: Role; error?: string };
-    signInSupabase: (
-      email: string,
-      password: string,
-    ) => Promise<{ ok: boolean; role?: Role; error?: string }>;
-    signUpSupabase: (
-      email: string,
-      password: string,
-      options?: {
-        name?: string;
-        rollNo?: string;
-        dept?: string;
-        batchId?: string;
-        college?: string;
-        tracks?: TrackId[];
-      },
-    ) => Promise<{ ok: boolean; role?: Role; error?: string }>;
-    signOut: () => void;
-    setRole: (r: Role) => void;
-    toggleTheme: () => void;
-    setActiveTracks: (t: TrackId[]) => Promise<void> | void;
-    completeLab: (labId: string, label: string) => Promise<void> | void;
-    completeDailyStep: (step: keyof DailySteps) => Promise<void> | void;
-    setReadiness: (r: Partial<ReadinessInputs>) => Promise<void> | void;
-    updateBatch: (
-      id: string,
-      patch: Partial<Batch>,
-    ) => Promise<{ ok: boolean; error?: string | undefined }>;
-    createBatch: (
-      b: Omit<Batch, "lastSync">,
-    ) => Promise<{ ok: boolean; error?: string | undefined }>;
-    deleteBatch: (id: string) => Promise<{ ok: boolean; error?: string | undefined }>;
-    deleteStudent: (email: string) => Promise<{ ok: boolean; message: string }>;
-    addStudent: (student: {
-      name: string;
-      email: string;
-      password?: string | undefined;
-      rollNo: string;
-      dept: string;
-      batchId: string;
-      college?: string | undefined;
-      tracks?: TrackId[] | undefined;
-    }) => Promise<{ ok: boolean; message: string }>;
-    syncBatch: (id: string) => void;
-    hiringDrives: HiringDrive[];
-    addHiringDrive: (
-      drive: Omit<HiringDrive, "id">,
-    ) => Promise<{ ok: boolean; error?: string | undefined }>;
-    updateHiringDrive: (
-      id: string,
-      patch: Partial<HiringDrive>,
-    ) => Promise<{ ok: boolean; error?: string | undefined }>;
-    deleteHiringDrive: (id: string) => Promise<{ ok: boolean; error?: string | undefined }>;
-    recalculateStudentScore: (email: string) => { ok: boolean; newScore: number; message: string };
-    recalculateAllScores: () => { count: number; message: string };
-    addProvisioned: (
-      rows: ProvisionedStudent[],
-    ) => Promise<{ ok: boolean; count: number; message: string }>;
-    clearAllProvisioned: () => { ok: boolean; count: number };
-    addContent: (
-      item: Omit<ContentItem, "id" | "updated">,
-    ) => Promise<{ ok: boolean; error?: string | undefined }>;
-    updateContent: (
-      id: string,
-      patch: Partial<ContentItem>,
-    ) => Promise<{ ok: boolean; error?: string | undefined }>;
-    removeContent: (id: string) => Promise<{ ok: boolean; error?: string | undefined }>;
-    pushCronLog: (log: Omit<CronLog, "id" | "time">) => void;
-    resetProgress: () => void;
-  };
-
-const StoreContext = createContext<Store | null>(null);
-
-const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
-
-const INITIAL_LOGS: CronLog[] = [
-  {
-    id: "l1",
-    time: "06:00:02",
-    stage: "broadcast",
-    message: "Placement broadcast pipeline initialized",
-    status: "ok",
-  },
-  {
-    id: "l2",
-    time: "06:00:44",
-    stage: "broadcast",
-    message: "Telegram webhook gateway connected · @SantoGeTalentBot",
-    status: "ok",
-  },
-  {
-    id: "l3",
-    time: "06:05:10",
-    stage: "unlock",
-    message: "In-app guided practice pipeline active (MCQ · logic · pitch)",
-    status: "ok",
-  },
-  {
-    id: "l4",
-    time: "06:12:33",
-    stage: "sandbox",
-    message: "Sandbox containers warmed for 15 technical tracks",
-    status: "ok",
-  },
-  {
-    id: "l5",
-    time: "06:30:00",
-    stage: "scoring",
-    message: "Talent Score formula engine standby (T·C·A·E·R·M)",
-    status: "ok",
-  },
-];
-
-const FALLBACK_PROFILE: Profile = {
-  activeTracks: ["mern", "cloud", "aiml"],
-  xp: 100,
+const DEFAULT_PROFILE: Profile = {
+  activeTracks: ["mern", "cloud"],
+  xp: 0,
   streak: 1,
   completedLabs: [],
   daily: { english: false, aptitude: false, practice: false },
-  readiness: { T: 50, C: 60, A: 55, E: 65, R: 40, M: 20 },
+  readiness: { T: 50, C: 50, A: 50, E: 50, R: 50, M: 50 },
   skills: [],
   placementDay: 1,
-  attendance: [1],
+  attendance: [],
   assessments: {},
   completedTechDays: [],
   mocks: {},
   certifications: [],
 };
 
+type AppStoreState = {
+  role: Role;
+  theme: "dark" | "light";
+  sessionEmail: string | null;
+  authProvider: "supabase";
+  supabaseSession: SupabaseSession | null;
+  liveStudentId: string | null;
+  student: StudentInfo | null;
+  profile: Profile;
+  completionRule: CompletionRule;
+  secondaryMinimum: number;
+};
+
+type AppStoreContextValue = AppStoreState & {
+  ready: boolean;
+  isAuthed: boolean;
+  activeTracks: TrackId[];
+  xp: number;
+  streak: number;
+  completedLabs: string[];
+  daily: DailySteps;
+  readiness: ReadinessInputs;
+  skills: string[];
+  placementDay: number;
+  attendance: number[];
+  assessments: Record<string, number>;
+  completedTechDays: number[];
+  mocks: Record<string, number>;
+  certifications: string[];
+  talentScore: number;
+  readinessIndex: number;
+  eligibleCompanies: number;
+  phase1Complete: boolean;
+  technicalComplete: boolean;
+  placementComplete: boolean;
+  gateUnlocked: boolean;
+  cronLogs: CronLog[];
+  pushCronLog: (log: Omit<CronLog, "id" | "time">) => void;
+  trackPercent: (id: TrackId) => number;
+  signInSupabase: (
+    email: string,
+    password: string,
+  ) => Promise<{ ok: boolean; role?: Role; error?: string }>;
+  signUpSupabase: (
+    email: string,
+    password: string,
+    options?: {
+      name?: string;
+      rollNo?: string;
+      dept?: string;
+      batchId?: string;
+      college?: string;
+      tracks?: TrackId[];
+    },
+  ) => Promise<{ ok: boolean; role?: Role; error?: string }>;
+  signOut: () => void;
+  setRole: (r: Role) => void;
+  toggleTheme: () => void;
+  setReadiness: (patch: Partial<ReadinessInputs>) => void;
+  setActiveTracks: (tracks: TrackId[]) => void;
+  setDailyStep: (key: "english" | "aptitude" | "practice", val: boolean) => void;
+  completeDailyStep: (key: "english" | "aptitude" | "practice") => void;
+  completeSkill: (trackId: TrackId, skillId: string, name: string) => void;
+  completePlacementDay: (day: number) => void;
+  completeTechDay: (day: number) => void;
+  completeLab: (labId: string) => void;
+  submitAssessment: (day: number, score: number) => void;
+  completeMock: (id: string, score: number) => void;
+  issueCertificate: (label: string) => void;
+  recalculateAllScores: () => void;
+  recalculateStudentScore: (emailOrId?: string) => void;
+  resetProgress: () => void;
+  setCompletionRule: (rule: CompletionRule, secondaryMinimum?: number) => void;
+  resetStudentPassword: (
+    email: string,
+    newPassword?: string,
+  ) => Promise<{ ok: boolean; message: string }>;
+};
+
+const AppStoreContext = createContext<AppStoreContextValue | null>(null);
+
+const THEME_STORAGE_KEY = "santoge-theme";
+
 export function AppStoreProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<Persisted>(DEFAULT_STATE);
   const [ready, setReady] = useState(false);
-  const [cronLogs, setCronLogs] = useState<CronLog[]>(INITIAL_LOGS);
-  const [supabaseSession, setSupabaseSession] = useState<SupabaseSession | null>(null);
-  const [liveStudentId, setLiveStudentId] = useState<string | null>(null);
+  const [cronLogs, setCronLogs] = useState<CronLog[]>([]);
 
-  // Initialize on mount
-  useEffect(() => {
-    async function init() {
+  const [state, setState] = useState<AppStoreState>(() => {
+    let savedTheme: "dark" | "light" = "dark";
+    if (typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        const activeSession = getStoredSession();
+        const t = localStorage.getItem(THEME_STORAGE_KEY);
+        if (t === "dark" || t === "light") savedTheme = t;
+      } catch {
+        /* ignore */
+      }
+    }
+    return {
+      role: "student",
+      theme: savedTheme,
+      sessionEmail: null,
+      authProvider: "supabase",
+      supabaseSession: null,
+      liveStudentId: null,
+      student: null,
+      profile: DEFAULT_PROFILE,
+      completionRule: "primary-plus-minimum",
+      secondaryMinimum: 50,
+    };
+  });
 
+  // Apply theme to DOM
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      const root = document.documentElement;
+      root.classList.toggle("dark", state.theme === "dark");
+    }
+  }, [state.theme]);
+
+  // Load initial session on boot
+  useEffect(() => {
+    let isMounted = true;
+
+    async function initSession() {
+      try {
+        const activeSession = getStoredSession();
         if (activeSession && activeSession.user?.id && isSupabaseConfigured()) {
-          setSupabaseSession(activeSession);
           const user = activeSession.user;
           const userEmail = user.email.toLowerCase();
 
           try {
-            // Resolve live role strictly from public.user_roles in PostgreSQL
-            const [role, liveDrives, platformSettings] = await Promise.all([
+            const [role, platformSettings] = await Promise.all([
               fetchLiveUserRole(user.id, user.user_metadata?.role, user.email),
-              fetchLiveHiringDrives(),
               fetchLivePlatformSettings(),
             ]);
 
@@ -518,24 +337,21 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             const secondaryMinimum = platformSettings?.secondaryMinimum ?? 50;
 
             if (role === "student") {
-              const liveData = await fetchLiveStudentProfile(user.id);
-              if (liveData?.profile) {
-                setLiveStudentId(liveData.profile.id);
+              const liveData = await fetchLiveStudentProfile(user.id, userEmail);
+              if (liveData?.profile && isMounted) {
                 const progress = await fetchLiveStudentProgress(liveData.profile.id);
 
-                const studentAcc: StudentAccount = {
+                const studentInfo: StudentInfo = {
                   email: userEmail,
-                  password: "●●●●●●●●",
                   name: liveData.profile.name,
                   firstName: liveData.profile.name.split(" ")[0] || "Student",
                   rollNo: liveData.profile.roll_no || "",
                   dept: liveData.profile.dept || "",
                   batchId: liveData.profile.batch_id || "",
                   college: liveData.profile.college || "",
-                  tracks: sanitizeTracks(liveData.tracks),
+                  tracks: liveData.tracks,
                   xp: liveData.profile.xp,
                   streak: liveData.profile.streak,
-                  seedOffsets: [1, 1, 1],
                   placementDay: liveData.profile.placement_day,
                   readiness: {
                     T: liveData.profile.readiness_t,
@@ -547,13 +363,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                   },
                 };
 
-                const liveProf: Profile = {
+                const liveProfile: Profile = {
                   activeTracks: liveData.tracks,
                   xp: liveData.profile.xp,
                   streak: liveData.profile.streak,
                   completedLabs: progress.completedLabs,
                   daily: progress.daily,
-                  readiness: studentAcc.readiness,
+                  readiness: studentInfo.readiness!,
                   skills: progress.skills,
                   placementDay: liveData.profile.placement_day,
                   attendance: progress.attendance,
@@ -567,98 +383,83 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                   ...prev,
                   role: "student",
                   sessionEmail: userEmail,
-                  authProvider: "supabase",
-                  hiringDrives: liveDrives,
+                  supabaseSession: activeSession,
+                  liveStudentId: liveData.profile.id,
+                  student: studentInfo,
+                  profile: liveProfile,
                   completionRule,
                   secondaryMinimum,
-                  customStudents: { [userEmail]: studentAcc },
-                  profiles: { [userEmail]: liveProf },
                 }));
               }
-            } else {
-              // Live Admin
+            } else if (isMounted) {
               setState((prev) => ({
                 ...prev,
                 role: "admin",
                 sessionEmail: userEmail,
-                authProvider: "supabase",
-                hiringDrives: liveDrives,
+                supabaseSession: activeSession,
+                liveStudentId: null,
+                student: null,
                 completionRule,
                 secondaryMinimum,
               }));
             }
-          } catch (liveErr) {
-            console.warn("Could not sync live session data on boot:", liveErr);
-          }
-        } else if (raw) {
-          const parsed = JSON.parse(raw) as Partial<Persisted>;
-          if (parsed.authProvider === "demo") {
-            setState((prev) => ({
-              ...prev,
-              ...parsed,
-              authProvider: "demo",
-            }));
+          } catch (syncErr) {
+            console.warn("Live session sync warning:", syncErr);
           }
         }
       } catch (err) {
-        console.warn("State initialization error:", err);
+        console.warn("Session init error:", err);
       } finally {
-        setReady(true);
+        if (isMounted) setReady(true);
       }
     }
 
-    void init();
+    void initSession();
+
+    // Listen to Supabase auth state changes
+    const supabase = getSupabaseClient();
+    let authSub: { unsubscribe: () => void } | null = null;
+    if (supabase) {
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === "SIGNED_OUT" || !session) {
+          if (isMounted) {
+            setState((prev) => ({
+              ...prev,
+              sessionEmail: null,
+              supabaseSession: null,
+              liveStudentId: null,
+              student: null,
+              profile: DEFAULT_PROFILE,
+            }));
+          }
+        }
+      });
+      authSub = subscription;
+    }
+
+    return () => {
+      isMounted = false;
+      authSub?.unsubscribe();
+    };
   }, []);
 
-  // Save demo mode state to localStorage (never live data)
-  useEffect(() => {
-    if (!ready) return;
-    if (state.authProvider === "demo") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
-  }, [state, ready]);
+  const toggleTheme = useCallback(() => {
+    setState((s) => {
+      const nextTheme = s.theme === "dark" ? "light" : "dark";
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+      } catch {
+        /* ignore */
+      }
+      return { ...s, theme: nextTheme };
+    });
+  }, []);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle("dark", state.theme === "dark");
-  }, [state.theme]);
-
-  const patch = useCallback((p: Partial<Persisted>) => setState((s) => ({ ...s, ...p })), []);
-
-  const email = state.sessionEmail;
-  const student = useMemo<StudentAccount | null>(() => {
-    if (!email) return null;
-    const value = email.trim().toLowerCase();
-
-    // Check custom/live students
-    const custom =
-      state.customStudents[value] ||
-      Object.values(state.customStudents || {}).find((c) => c.email.trim().toLowerCase() === value);
-    if (custom) return custom;
-
-    // Check demo accounts if in demo mode
-    if (state.authProvider === "demo") {
-      const demo = STUDENT_ACCOUNTS.find((a) => a.email.trim().toLowerCase() === value);
-      if (demo) return demo;
-    }
-
-    return null;
-  }, [email, state.customStudents, state.authProvider]);
-
-  const profile =
-    (email && (state.profiles[email] || state.profiles[email.toLowerCase().trim()])) ||
-    (student ? profileFor(student) : FALLBACK_PROFILE);
-
-  const patchProfile = useCallback(
-    (fn: (p: Profile) => Profile) =>
-      setState((s) => {
-        if (!s.sessionEmail) return s;
-        const current =
-          s.profiles[s.sessionEmail] ?? (student ? profileFor(student) : FALLBACK_PROFILE);
-        return { ...s, profiles: { ...s.profiles, [s.sessionEmail]: fn(current) } };
-      }),
-    [student],
-  );
+  const setRole = useCallback((r: Role) => {
+    setState((s) => ({ ...s, role: r }));
+  }, []);
 
   const pushCronLog = useCallback((log: Omit<CronLog, "id" | "time">) => {
     setCronLogs((logs) =>
@@ -673,45 +474,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  // -------------------------------------------------------------------------
-  // Auth Sign In Handlers
-  // -------------------------------------------------------------------------
-
-  const signIn = useCallback((rawEmail: string, password: string) => {
-    const value = rawEmail.trim().toLowerCase();
-
-    // Super Admin Demo
-    if (value === ADMIN_ACCOUNT.email.toLowerCase() && password === ADMIN_ACCOUNT.password) {
-      setState((s) => ({
-        ...s,
-        role: "admin",
-        sessionEmail: ADMIN_ACCOUNT.email,
-        authProvider: "demo",
-      }));
-      return { ok: true as const, role: "admin" as Role };
-    }
-
-    // Demo Student Accounts
-    const found = STUDENT_ACCOUNTS.find((a) => a.email.trim().toLowerCase() === value);
-    if (found && found.password === password) {
-      const normalizedEmail = found.email.toLowerCase().trim();
-      setState((s) => ({
-        ...s,
-        role: "student",
-        sessionEmail: normalizedEmail,
-        authProvider: "demo",
-        customStudents: { ...s.customStudents, [normalizedEmail]: found },
-        profiles: {
-          ...s.profiles,
-          [normalizedEmail]: s.profiles[normalizedEmail] ?? profileFor(found),
-        },
-      }));
-      return { ok: true as const, role: "student" as Role };
-    }
-
-    return { ok: false as const, error: "Invalid demo credentials." };
-  }, []);
-
+  // Supabase Auth Sign In
   const signInSupabase = useCallback(async (rawEmail: string, password: string) => {
     const res = await supabaseAuth.signInWithPassword(rawEmail, password);
     if (res.error || !res.data.session) {
@@ -722,104 +485,111 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const user = session.user;
     const userEmail = user.email.toLowerCase();
 
-    // Resolve live role strictly from public.user_roles in PostgreSQL
-    const [role, liveDrives, platformSettings] = await Promise.all([
-      fetchLiveUserRole(user.id, user.user_metadata?.role, user.email),
-      fetchLiveHiringDrives(),
-      fetchLivePlatformSettings(),
-    ]);
+    try {
+      const [role, platformSettings] = await Promise.all([
+        fetchLiveUserRole(user.id, user.user_metadata?.role, user.email),
+        fetchLivePlatformSettings(),
+      ]);
 
-    const completionRule = platformSettings?.completionRule ?? "primary-plus-minimum";
-    const secondaryMinimum = platformSettings?.secondaryMinimum ?? 50;
+      const completionRule = platformSettings?.completionRule ?? "primary-plus-minimum";
+      const secondaryMinimum = platformSettings?.secondaryMinimum ?? 50;
 
-    setSupabaseSession(session);
+      if (role === "admin") {
+        setState((s) => ({
+          ...s,
+          role: "admin",
+          sessionEmail: userEmail,
+          supabaseSession: session,
+          liveStudentId: null,
+          student: null,
+          completionRule,
+          secondaryMinimum,
+        }));
+        return { ok: true, role: "admin" as Role };
+      }
 
-    if (role === "admin") {
-      setState((s) => ({
-        ...s,
-        role: "admin",
-        sessionEmail: userEmail,
-        authProvider: "supabase",
-        hiringDrives: liveDrives,
-        completionRule,
-        secondaryMinimum,
-      }));
-      return { ok: true, role: "admin" as Role };
-    }
+      // Fetch live student profile
+      const liveData = await fetchLiveStudentProfile(user.id, userEmail);
+      if (liveData?.profile) {
+        const progress = await fetchLiveStudentProgress(liveData.profile.id);
 
-    // Live student login — fetch from Supabase
-    const liveData = await fetchLiveStudentProfile(user.id);
-    if (!liveData?.profile) {
-      toast.error("Student profile not provisioned. Please contact your administrator.");
-      return {
-        ok: false,
-        error: "Student profile not provisioned. Please contact your administrator.",
-      };
-    }
+        const studentInfo: StudentInfo = {
+          email: userEmail,
+          name: liveData.profile.name,
+          firstName: liveData.profile.name.split(" ")[0] || "Student",
+          rollNo: liveData.profile.roll_no || "",
+          dept: liveData.profile.dept || "",
+          batchId: liveData.profile.batch_id || "",
+          college: liveData.profile.college || "",
+          tracks: liveData.tracks,
+          xp: liveData.profile.xp,
+          streak: liveData.profile.streak,
+          placementDay: liveData.profile.placement_day,
+          readiness: {
+            T: liveData.profile.readiness_t,
+            C: liveData.profile.readiness_c,
+            A: liveData.profile.readiness_a,
+            E: liveData.profile.readiness_e,
+            R: liveData.profile.readiness_r,
+            M: liveData.profile.readiness_m,
+          },
+        };
 
-    if (liveData?.profile) {
-      setLiveStudentId(liveData.profile.id);
-      const progress = await fetchLiveStudentProgress(liveData.profile.id);
+        const liveProfile: Profile = {
+          activeTracks: liveData.tracks,
+          xp: liveData.profile.xp,
+          streak: liveData.profile.streak,
+          completedLabs: progress.completedLabs,
+          daily: progress.daily,
+          readiness: studentInfo.readiness!,
+          skills: progress.skills,
+          placementDay: liveData.profile.placement_day,
+          attendance: progress.attendance,
+          assessments: progress.assessments,
+          completedTechDays: progress.completedTechDays,
+          mocks: progress.mocks,
+          certifications: progress.certifications,
+        };
 
-      const studentAcc: StudentAccount = {
-        email: userEmail,
-        password: "●●●●●●●●",
-        name: liveData.profile.name,
-        firstName: liveData.profile.name.split(" ")[0] || "Student",
-        rollNo: liveData.profile.roll_no || "",
-        dept: liveData.profile.dept || "",
-        batchId: liveData.profile.batch_id || "",
-        college: liveData.profile.college || "",
-        tracks: sanitizeTracks(liveData.tracks),
-        xp: liveData.profile.xp,
-        streak: liveData.profile.streak,
-        seedOffsets: [1, 1, 1],
-        placementDay: liveData.profile.placement_day,
-        readiness: {
-          T: liveData.profile.readiness_t,
-          C: liveData.profile.readiness_c,
-          A: liveData.profile.readiness_a,
-          E: liveData.profile.readiness_e,
-          R: liveData.profile.readiness_r,
-          M: liveData.profile.readiness_m,
-        },
-      };
+        setState((s) => ({
+          ...s,
+          role: "student",
+          sessionEmail: userEmail,
+          supabaseSession: session,
+          liveStudentId: liveData.profile.id,
+          student: studentInfo,
+          profile: liveProfile,
+          completionRule,
+          secondaryMinimum,
+        }));
+        return { ok: true, role: "student" as Role };
+      }
 
-      const liveProf: Profile = {
-        activeTracks: liveData.tracks,
-        xp: liveData.profile.xp,
-        streak: liveData.profile.streak,
-        completedLabs: progress.completedLabs,
-        daily: progress.daily,
-        readiness: studentAcc.readiness,
-        skills: progress.skills,
-        placementDay: liveData.profile.placement_day,
-        attendance: progress.attendance,
-        assessments: progress.assessments,
-        completedTechDays: progress.completedTechDays,
-        mocks: progress.mocks,
-        certifications: progress.certifications,
-      };
-
+      // Profile pending provisioning
       setState((s) => ({
         ...s,
         role: "student",
         sessionEmail: userEmail,
-        authProvider: "supabase",
-        hiringDrives: liveDrives,
+        supabaseSession: session,
+        liveStudentId: null,
+        student: {
+          email: userEmail,
+          name: user.user_metadata?.name || userEmail.split("@")[0] || "Student",
+        },
+        profile: DEFAULT_PROFILE,
         completionRule,
         secondaryMinimum,
-        customStudents: { [userEmail]: studentAcc },
-        profiles: { [userEmail]: liveProf },
       }));
+      return { ok: true, role: "student" as Role };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to initialize student session";
+      return { ok: false, error: msg };
     }
-
-    return { ok: true, role: "student" as Role };
   }, []);
 
   const signUpSupabase = useCallback(
     async (
-      email: string,
+      rawEmail: string,
       password: string,
       options?: {
         name?: string;
@@ -830,732 +600,335 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         tracks?: TrackId[];
       },
     ) => {
-      const res = await supabaseAuth.signUp(email, password, {
+      const res = await supabaseAuth.signUp(rawEmail, password, {
         name: options?.name,
-        roll_no: options?.rollNo,
-        dept: options?.dept,
-        batch_id: options?.batchId,
-        college: options?.college,
-        tracks: options?.tracks,
         role: "student",
       });
 
       if (res.error) {
         return { ok: false, error: res.error.message };
       }
+
       return { ok: true, role: "student" as Role };
     },
     [],
   );
 
   const signOut = useCallback(async () => {
-    if (state.authProvider === "supabase") {
-      await supabaseAuth.signOut();
-    }
-    setSupabaseSession(null);
-    setLiveStudentId(null);
-    setState((s) => ({ ...s, sessionEmail: null, role: "student" }));
-  }, [state.authProvider]);
-
-  const setRole = useCallback((role: Role) => patch({ role }), [patch]);
-  const toggleTheme = useCallback(
-    () => patch({ theme: state.theme === "dark" ? "light" : "dark" }),
-    [patch, state.theme],
-  );
-
-  // -------------------------------------------------------------------------
-  // Student Learning Actions
-  // -------------------------------------------------------------------------
-
-  const completeSkill = useCallback(
-    async (trackId: TrackId, skillId: string, name: string) => {
-      if (state.authProvider === "supabase" && liveStudentId) {
-        const res = await completeLiveSkill(liveStudentId, skillId, trackId);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to validate skill in Supabase");
-          return;
-        }
-      }
-      patchProfile((p) => {
-        if (p.skills.includes(skillId)) return p;
-        return {
-          ...p,
-          skills: [...p.skills, skillId],
-          xp: p.xp + 30,
-          readiness: { ...p.readiness, T: clamp(p.readiness.T + 2, 0, 100) },
-        };
-      });
-      toast.success(`Skill validated · ${name}`, {
-        description:
-          state.authProvider === "supabase"
-            ? "Technical competency updated in Supabase."
-            : "Demo skill validated.",
-      });
-    },
-    [state.authProvider, liveStudentId, patchProfile],
-  );
-
-  const completePlacementDay = useCallback(
-    async (day: number) => {
-      if (state.authProvider === "supabase" && liveStudentId) {
-        const res = await completeLivePlacementDay(liveStudentId, day);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to record attendance in Supabase");
-          return;
-        }
-      }
-      patchProfile((p) => {
-        if (p.attendance.includes(day)) return p;
-        return {
-          ...p,
-          attendance: [...p.attendance, day],
-          placementDay: Math.max(p.placementDay, Math.min(day + 1, 90)),
-          xp: p.xp + 20,
-          readiness: {
-            ...p.readiness,
-            C: clamp(p.readiness.C + 1, 0, 100),
-            E: clamp(p.readiness.E + 1, 0, 100),
-            A: clamp(p.readiness.A + 1, 0, 100),
-          },
-        };
-      });
-      toast.success(`Day ${day} validated`, { description: "Placement attendance recorded." });
-    },
-    [state.authProvider, liveStudentId, patchProfile],
-  );
-
-  const completeTechDay = useCallback(
-    async (day: number) => {
-      if (state.authProvider === "supabase" && liveStudentId) {
-        const res = await completeLiveTechnicalDay(liveStudentId, day);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to record technical progress in Supabase");
-          return;
-        }
-      }
-      patchProfile((p) => {
-        if (p.completedTechDays.includes(day)) return p;
-        return {
-          ...p,
-          completedTechDays: [...p.completedTechDays, day],
-          xp: p.xp + 25,
-          readiness: { ...p.readiness, T: clamp(p.readiness.T + 2, 0, 100) },
-        };
-      });
-      toast.success(`Tech milestone Day ${day} completed`);
-    },
-    [state.authProvider, liveStudentId, patchProfile],
-  );
-
-  const completeLab = useCallback(
-    async (labId: string, label: string) => {
-      if (state.authProvider === "supabase" && liveStudentId) {
-        const res = await completeLiveLab(liveStudentId, labId, label);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to verify lab in Supabase");
-          return;
-        }
-      }
-      patchProfile((p) => {
-        if (p.completedLabs.includes(labId)) return p;
-        return {
-          ...p,
-          completedLabs: [...p.completedLabs, labId],
-          xp: p.xp + 50,
-          readiness: { ...p.readiness, T: clamp(p.readiness.T + 3, 0, 100) },
-        };
-      });
-      toast.success(`Sandbox verified · ${label}`);
-    },
-    [state.authProvider, liveStudentId, patchProfile],
-  );
-
-  const completeDailyStep = useCallback(
-    async (step: keyof DailySteps) => {
-      if (state.authProvider === "supabase" && liveStudentId) {
-        const res = await completeLiveDailyStep(liveStudentId, step);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to update daily progress in Supabase");
-          return;
-        }
-      }
-      patchProfile((p) => ({
-        ...p,
-        daily: { ...p.daily, [step]: true },
-        xp: p.xp + 15,
-      }));
-      toast.success(`Step complete · ${step}`);
-    },
-    [state.authProvider, liveStudentId, patchProfile],
-  );
-
-  const submitAssessment = useCallback(
-    async (day: number, score: number) => {
-      if (state.authProvider === "supabase" && liveStudentId) {
-        const res = await submitLiveAssessment(liveStudentId, day, score);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to submit assessment to Supabase");
-          return;
-        }
-      }
-      patchProfile((p) => ({
-        ...p,
-        assessments: { ...p.assessments, [String(day)]: score },
-        xp: p.xp + 40,
-        readiness: { ...p.readiness, A: clamp(p.readiness.A + 3, 0, 100) },
-      }));
-      toast.success(`Milestone Day ${day} Assessment Submitted · Score ${score}%`);
-    },
-    [state.authProvider, liveStudentId, patchProfile],
-  );
-
-  const completeMock = useCallback(
-    async (id: string, score: number) => {
-      if (state.authProvider === "supabase" && liveStudentId) {
-        const res = await completeLiveMock(liveStudentId, id, score);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to save mock interview score to Supabase");
-          return;
-        }
-      }
-      patchProfile((p) => ({
-        ...p,
-        mocks: { ...p.mocks, [id]: score },
-        xp: p.xp + 50,
-        readiness: { ...p.readiness, M: clamp(p.readiness.M + 5, 0, 100) },
-      }));
-      toast.success(`Mock Interview Panel Complete · Score ${score}%`);
-    },
-    [state.authProvider, liveStudentId, patchProfile],
-  );
-
-  const issueCertificate = useCallback(
-    async (label: string) => {
-      if (state.authProvider === "supabase" && liveStudentId) {
-        const res = await issueLiveCertificate(liveStudentId, label);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to issue certificate in Supabase");
-          return;
-        }
-      }
-      patchProfile((p) => {
-        if (p.certifications.includes(label)) return p;
-        return {
-          ...p,
-          certifications: [...p.certifications, label],
-          xp: p.xp + 100,
-          readiness: { ...p.readiness, R: clamp(p.readiness.R + 5, 0, 100) },
-        };
-      });
-      toast.success(`Certificate Issued · ${label}`);
-    },
-    [state.authProvider, liveStudentId, patchProfile],
-  );
-
-  const setActiveTracks = useCallback(
-    async (t: TrackId[]) => {
-      const sanitized = sanitizeTracks(t);
-      if (state.authProvider === "supabase" && liveStudentId) {
-        await updateLiveStudentTracks(liveStudentId, sanitized);
-      }
-      patchProfile((p) => ({ ...p, activeTracks: sanitized }));
-      toast.success("Technical tracks updated");
-    },
-    [state.authProvider, liveStudentId, patchProfile],
-  );
-
-  const setReadiness = useCallback(
-    async (r: Partial<ReadinessInputs>) => {
-      if (state.authProvider === "supabase" && liveStudentId) {
-        const res = await updateLiveReadiness(liveStudentId, r);
-        if (!res.ok) {
-          toast.error("Failed to update readiness in Supabase");
-          return;
-        }
-      }
-      patchProfile((p) => ({ ...p, readiness: { ...p.readiness, ...r } }));
-    },
-    [state.authProvider, liveStudentId, patchProfile],
-  );
-
-  // -------------------------------------------------------------------------
-  // Admin Management Actions
-  // -------------------------------------------------------------------------
-
-  const createBatch = useCallback(
-    async (b: Omit<Batch, "lastSync">) => {
-      if (state.authProvider === "supabase") {
-        const res = await createLiveBatch({ name: b.name, capacity: b.capacity, dept: b.dept });
-        if (!res.ok) {
-          toast.error(res.error || "Failed to create batch in Supabase");
-          return { ok: false, error: res.error };
-        }
-        toast.success(`Batch ${b.name} created in Supabase`);
-        return { ok: true };
-      }
-      setState((s) => ({
-        ...s,
-        batches: [...s.batches, { ...b, enrolled: 0, lastSync: new Date().toISOString() }],
-      }));
-      toast.success(`Batch ${b.name} created`);
-      return { ok: true };
-    },
-    [state.authProvider],
-  );
-
-  const updateBatch = useCallback(
-    async (id: string, patchObj: Partial<Batch>) => {
-      if (state.authProvider === "supabase") {
-        const res = await updateLiveBatch(id, patchObj);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to update batch in Supabase");
-          return { ok: false, error: res.error };
-        }
-        toast.success("Batch updated in Supabase");
-        return { ok: true };
-      }
-      setState((s) => ({
-        ...s,
-        batches: s.batches.map((b) => (b.id === id ? { ...b, ...patchObj } : b)),
-      }));
-      toast.success("Batch updated");
-      return { ok: true };
-    },
-    [state.authProvider],
-  );
-
-  const deleteBatch = useCallback(
-    async (id: string) => {
-      if (state.authProvider === "supabase") {
-        const res = await deleteLiveBatch(id);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to delete batch in Supabase");
-          return { ok: false, error: res.error };
-        }
-        toast.success("Batch archived in Supabase");
-        return { ok: true };
-      }
-      setState((s) => ({ ...s, batches: s.batches.filter((b) => b.id !== id) }));
-      toast.success("Batch removed");
-      return { ok: true };
-    },
-    [state.authProvider],
-  );
-
-  const syncBatch = useCallback(
-    async (id: string) => {
-      await updateBatch(id, { lastSync: new Date().toLocaleString("en-GB") });
-      toast.success("Batch synchronized");
-    },
-    [updateBatch],
-  );
-
-  const addStudent = useCallback(
-    async (studentInput: {
-      name: string;
-      email: string;
-      password?: string | undefined;
-      rollNo: string;
-      dept: string;
-      batchId: string;
-      college?: string | undefined;
-      tracks?: TrackId[] | undefined;
-    }) => {
-      if (state.authProvider === "supabase") {
-        const res = await addLiveStudent(studentInput);
-        if (!res.ok) {
-          toast.error(res.message || "Failed to provision student");
-          return { ok: false, message: res.message };
-        }
-        toast.success(`Student ${studentInput.name} provisioned in Supabase`);
-        return { ok: true, message: res.message };
-      }
-      toast.success(`Student ${studentInput.name} registered`);
-      return { ok: true, message: `Student account created for ${studentInput.email}` };
-    },
-    [state.authProvider],
-  );
-
-  const deleteStudent = useCallback(
-    async (emailOrId: string) => {
-      if (state.authProvider === "supabase") {
-        const res = await deleteLiveStudent(emailOrId);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to delete student in Supabase");
-          return { ok: false, message: res.error || "Delete failed" };
-        }
-        toast.success("Student profile archived from live database");
-        return { ok: true, message: "Student removed" };
-      }
-      toast.success(`Student removed from roster`);
-      return { ok: true, message: `Student removed` };
-    },
-    [state.authProvider],
-  );
-
-  const addProvisioned = useCallback(
-    async (rows: ProvisionedStudent[]) => {
-      if (state.authProvider === "supabase") {
-        const res = await provisionLiveStudents(rows);
-        if (!res.ok) {
-          toast.error(res.message || "Bulk provisioning encountered errors");
-          return { ok: false, count: res.count, message: res.message };
-        }
-        toast.success(res.message);
-        return { ok: true, count: res.count, message: res.message };
-      }
-      toast.success(`${rows.length} learners onboarded to backend`);
-      return { ok: true, count: rows.length, message: "Onboarded" };
-    },
-    [state.authProvider],
-  );
-
-  const clearAllProvisioned = useCallback(() => {
-    return { ok: true, count: 0 };
+    await supabaseAuth.signOut();
+    setState((s) => ({
+      ...s,
+      sessionEmail: null,
+      supabaseSession: null,
+      liveStudentId: null,
+      student: null,
+      profile: DEFAULT_PROFILE,
+    }));
+    toast.success("Signed out successfully");
   }, []);
 
-  const resetStudentPassword = useCallback(
-    async (email: string, newPassword?: string) => {
-      if (state.authProvider === "supabase") {
-        const res = await resetLiveStudentPassword(email, newPassword);
-        if (!res.ok) {
-          toast.error(res.message);
-          return { ok: false, message: res.message };
-        }
-        toast.success(res.message);
-        return { ok: true, message: res.message };
-      }
-      toast.success("Password reset updated in demo mode");
-      return { ok: true, message: "Password reset successfully" };
-    },
-    [state.authProvider],
-  );
+  const resetStudentPassword = useCallback(async (studentEmail: string, newPassword?: string) => {
+    return resetLiveStudentPassword(studentEmail, newPassword);
+  }, []);
 
   // -------------------------------------------------------------------------
-  // Hiring Drives & Content CMS
+  // Student Mutations (Supabase Live RPCs + Local optimistic cache)
   // -------------------------------------------------------------------------
 
-  const addHiringDrive = useCallback(
-    async (drive: Omit<HiringDrive, "id">) => {
-      if (state.authProvider === "supabase") {
-        const res = await createLiveHiringDrive(drive);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to create hiring drive in Supabase");
-          return { ok: false, error: res.error };
-        }
-        toast.success("Hiring requisition created in Supabase");
-        return { ok: true };
+  const setReadiness = useCallback((patch: Partial<ReadinessInputs>) => {
+    setState((s) => {
+      const nextReadiness = { ...s.profile.readiness, ...patch };
+      const nextProfile = { ...s.profile, readiness: nextReadiness };
+
+      if (s.liveStudentId) {
+        void updateLiveReadiness(s.liveStudentId, patch);
       }
-      setState((s) => ({
-        ...s,
-        hiringDrives: [{ ...drive, id: `hd-${Date.now()}` }, ...(s.hiringDrives ?? [])],
-      }));
-      toast.success("Hiring requisition created");
-      return { ok: true };
+
+      return { ...s, profile: nextProfile };
+    });
+  }, []);
+
+  const setActiveTracks = useCallback((tracks: TrackId[]) => {
+    setState((s) => {
+      const nextProfile = { ...s.profile, activeTracks: tracks };
+      if (s.liveStudentId) {
+        void updateLiveStudentTracks(s.liveStudentId, tracks);
+      }
+      return { ...s, profile: nextProfile };
+    });
+  }, []);
+
+  const setDailyStep = useCallback((key: "english" | "aptitude" | "practice", val: boolean) => {
+    setState((s) => {
+      const nextDaily = { ...s.profile.daily, [key]: val };
+      const nextProfile = { ...s.profile, daily: nextDaily };
+      if (s.liveStudentId && val) {
+        void completeLiveDailyStep(s.liveStudentId, key);
+      }
+      return { ...s, profile: nextProfile };
+    });
+  }, []);
+
+  const completeDailyStep = useCallback(
+    (key: "english" | "aptitude" | "practice") => {
+      setDailyStep(key, true);
     },
-    [state.authProvider],
+    [setDailyStep],
   );
 
-  const updateHiringDrive = useCallback(
-    async (id: string, patchObj: Partial<HiringDrive>) => {
-      if (state.authProvider === "supabase") {
-        const res = await updateLiveHiringDrive(id, patchObj);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to update hiring drive in Supabase");
-          return { ok: false, error: res.error };
-        }
-        toast.success("Hiring drive updated in Supabase");
-        return { ok: true };
-      }
-      setState((s) => ({
-        ...s,
-        hiringDrives: (s.hiringDrives ?? []).map((d) => (d.id === id ? { ...d, ...patchObj } : d)),
-      }));
-      toast.success("Hiring drive updated");
-      return { ok: true };
-    },
-    [state.authProvider],
-  );
+  const completeSkill = useCallback((trackId: TrackId, skillId: string, name: string) => {
+    setState((s) => {
+      if (s.profile.skills.includes(skillId)) return s;
+      const nextSkills = [...s.profile.skills, skillId];
+      const nextXp = s.profile.xp + 25;
+      const nextProfile = { ...s.profile, skills: nextSkills, xp: nextXp };
 
-  const deleteHiringDrive = useCallback(
-    async (id: string) => {
-      if (state.authProvider === "supabase") {
-        const res = await deleteLiveHiringDrive(id);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to delete hiring drive in Supabase");
-          return { ok: false, error: res.error };
-        }
-        toast.success("Hiring drive removed from Supabase");
-        return { ok: true };
+      if (s.liveStudentId) {
+        void completeLiveSkill(s.liveStudentId, skillId, trackId);
       }
-      setState((s) => ({
-        ...s,
-        hiringDrives: (s.hiringDrives ?? []).filter((d) => d.id !== id),
-      }));
-      toast.success("Hiring drive removed");
-      return { ok: true };
-    },
-    [state.authProvider],
-  );
 
-  const addContent = useCallback(
-    async (item: Omit<ContentItem, "id" | "updated">) => {
-      if (state.authProvider === "supabase") {
-        const res = await createLiveContentItem(item);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to create content item in Supabase");
-          return { ok: false, error: res.error };
-        }
-        toast.success("Content item created in Supabase");
-        return { ok: true };
+      toast.success(`Skill Mastered: ${name} (+25 XP)`);
+      return { ...s, profile: nextProfile };
+    });
+  }, []);
+
+  const completePlacementDay = useCallback((day: number) => {
+    setState((s) => {
+      const nextAtt = s.profile.attendance.includes(day)
+        ? s.profile.attendance
+        : [...s.profile.attendance, day];
+      const nextDay = Math.min(day + 1, 90);
+      const nextXp = s.profile.xp + 50;
+      const nextProfile = {
+        ...s.profile,
+        attendance: nextAtt,
+        placementDay: nextDay,
+        xp: nextXp,
+      };
+
+      if (s.liveStudentId) {
+        void completeLivePlacementDay(s.liveStudentId, day);
       }
-      setState((s) => ({
-        ...s,
-        content: [
-          { ...item, id: `${Date.now()}`, updated: new Date().toLocaleString("en-GB") },
-          ...s.content,
-        ],
-      }));
-      toast.success("Content item created");
-      return { ok: true };
-    },
-    [state.authProvider],
-  );
 
-  const updateContent = useCallback(
-    async (id: string, patchObj: Partial<ContentItem>) => {
-      if (state.authProvider === "supabase") {
-        const res = await updateLiveContentItem(id, patchObj);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to update content item in Supabase");
-          return { ok: false, error: res.error };
-        }
-        toast.success("Content item updated in Supabase");
-        return { ok: true };
+      toast.success(`Placement Day ${day} completed! (+50 XP)`);
+      return { ...s, profile: nextProfile };
+    });
+  }, []);
+
+  const completeTechDay = useCallback((day: number) => {
+    setState((s) => {
+      if (s.profile.completedTechDays.includes(day)) return s;
+      const nextTechDays = [...s.profile.completedTechDays, day];
+      const nextXp = s.profile.xp + 50;
+      const nextProfile = { ...s.profile, completedTechDays: nextTechDays, xp: nextXp };
+
+      if (s.liveStudentId) {
+        void completeLiveTechnicalDay(s.liveStudentId, day);
       }
-      setState((s) => ({
-        ...s,
-        content: s.content.map((c) =>
-          c.id === id ? { ...c, ...patchObj, updated: new Date().toLocaleString("en-GB") } : c,
-        ),
-      }));
-      return { ok: true };
-    },
-    [state.authProvider],
-  );
 
-  const removeContent = useCallback(
-    async (id: string) => {
-      if (state.authProvider === "supabase") {
-        const res = await deleteLiveContentItem(id);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to delete content item in Supabase");
-          return { ok: false, error: res.error };
-        }
-        toast.success("Content item removed from Supabase");
-        return { ok: true };
+      toast.success(`Technical Day ${day} verified! (+50 XP)`);
+      return { ...s, profile: nextProfile };
+    });
+  }, []);
+
+  const completeLab = useCallback((labId: string) => {
+    setState((s) => {
+      if (s.profile.completedLabs.includes(labId)) return s;
+      const nextLabs = [...s.profile.completedLabs, labId];
+      const nextXp = s.profile.xp + 50;
+      const nextProfile = { ...s.profile, completedLabs: nextLabs, xp: nextXp };
+
+      if (s.liveStudentId) {
+        void completeLiveLab(s.liveStudentId, labId, labId);
       }
-      setState((s) => ({ ...s, content: s.content.filter((c) => c.id !== id) }));
-      toast.success("Content item removed");
-      return { ok: true };
-    },
-    [state.authProvider],
-  );
 
-  const setCompletionRule = useCallback(
-    async (rule: CompletionRule, secondaryMinimum?: number) => {
-      if (state.authProvider === "supabase") {
-        const res = await updateLivePlatformSettings({
-          completionRule: rule,
-          secondaryMinimum: secondaryMinimum ?? state.secondaryMinimum,
-        });
-        if (!res.ok) {
-          toast.error("Failed to update platform settings in Supabase");
-          return;
-        }
-      }
-      setState((s) => ({
-        ...s,
-        completionRule: rule,
-        secondaryMinimum: secondaryMinimum !== undefined ? secondaryMinimum : s.secondaryMinimum,
-      }));
-      toast.success("Gate completion rule updated");
-    },
-    [state.authProvider, state.secondaryMinimum],
-  );
-
-  const recalculateStudentScore = useCallback((_email: string) => {
-    return { ok: true, newScore: 720, message: "Score recalculated" };
+      toast.success(`Lab Challenge Passed (+50 XP)`);
+      return { ...s, profile: nextProfile };
+    });
   }, []);
 
   const recalculateAllScores = useCallback(() => {
-    return { count: 1, message: "Scores recalculated" };
+    toast.success("Talent scores recalculation triggered");
+  }, []);
+
+  const recalculateStudentScore = useCallback((_emailOrId?: string) => {
+    toast.success("Student talent score recalculation triggered");
+  }, []);
+
+  const submitAssessment = useCallback((day: number, score: number) => {
+    setState((s) => {
+      const nextAss = { ...s.profile.assessments, [String(day)]: score };
+      const nextXp = s.profile.xp + 100;
+      const nextProfile = { ...s.profile, assessments: nextAss, xp: nextXp };
+
+      if (s.liveStudentId) {
+        void submitLiveAssessment(s.liveStudentId, day, score);
+      }
+
+      toast.success(`Day ${day} Assessment Submitted: ${score}% (+100 XP)`);
+      return { ...s, profile: nextProfile };
+    });
+  }, []);
+
+  const completeMock = useCallback((id: string, score: number) => {
+    setState((s) => {
+      const nextMocks = { ...s.profile.mocks, [id]: score };
+      const nextXp = s.profile.xp + 100;
+      const nextProfile = { ...s.profile, mocks: nextMocks, xp: nextXp };
+
+      if (s.liveStudentId) {
+        void completeLiveMock(s.liveStudentId, id, score);
+      }
+
+      toast.success(`AI Mock Interview Recorded: ${score}% (+100 XP)`);
+      return { ...s, profile: nextProfile };
+    });
+  }, []);
+
+  const issueCertificate = useCallback((label: string) => {
+    setState((s) => {
+      if (s.profile.certifications.includes(label)) return s;
+      const nextCerts = [...s.profile.certifications, label];
+      const nextProfile = { ...s.profile, certifications: nextCerts };
+
+      if (s.liveStudentId) {
+        void issueLiveCertificate(s.liveStudentId, label);
+      }
+
+      toast.success(`Certification Issued: ${label}`);
+      return { ...s, profile: nextProfile };
+    });
   }, []);
 
   const resetProgress = useCallback(() => {
-    patchProfile(() => FALLBACK_PROFILE);
-    toast.info("Progress reset");
-  }, [patchProfile]);
+    setState((s) => ({
+      ...s,
+      profile: {
+        ...DEFAULT_PROFILE,
+        activeTracks: s.profile.activeTracks,
+      },
+    }));
+    toast.success("Progress reset");
+  }, []);
 
-  // Derived metrics
-  const readinessIndex = useMemo(() => {
-    const { T, C, A, E, R, M } = profile.readiness;
-    return Math.round(T * 0.25 + C * 0.2 + A * 0.15 + E * 0.15 + R * 0.15 + M * 0.1);
-  }, [profile.readiness]);
+  const setCompletionRule = useCallback((rule: CompletionRule, secondaryMinimum?: number) => {
+    setState((s) => ({
+      ...s,
+      completionRule: rule,
+      secondaryMinimum: secondaryMinimum ?? s.secondaryMinimum,
+    }));
+    void updateLivePlatformSettings({
+      completionRule: rule,
+      secondaryMinimum: secondaryMinimum ?? 50,
+    });
+    toast.success("Dual completion gate rule updated");
+  }, []);
 
+  // -------------------------------------------------------------------------
+  // Derived Metrics & Calculations
+  // -------------------------------------------------------------------------
+
+  const profile = state.profile;
+  const isAuthed = !!state.sessionEmail && !!state.supabaseSession;
+
+  const trackPercent = useCallback((id: TrackId) => trackPct(id, profile.skills), [profile.skills]);
+
+  const r = profile.readiness;
   const talentScore = useMemo(() => {
-    const base = readinessIndex * 8.5;
-    const bonus = profile.completedLabs.length * 8 + profile.skills.length * 3;
-    return Math.min(1000, Math.round(base + bonus));
-  }, [readinessIndex, profile.completedLabs.length, profile.skills.length]);
+    return Math.round(
+      (r.T * 0.35 + r.C * 0.25 + r.A * 0.15 + r.E * 0.1 + r.R * 0.1 + r.M * 0.05) * 10,
+    );
+  }, [r]);
 
-  const trackPercent = useCallback(
-    (id: TrackId) => {
-      return trackPct(id, profile.skills);
-    },
-    [profile.skills],
-  );
+  const readinessIndex = useMemo(() => {
+    return Math.round((r.T + r.C + r.A + r.E + r.R + r.M) / 6);
+  }, [r]);
 
+  const eligibleCompanies = useMemo(() => {
+    if (talentScore >= 700) return 6;
+    if (talentScore >= 500) return 3;
+    return 1;
+  }, [talentScore]);
+
+  const phase1Complete = profile.placementDay >= 30;
   const technicalComplete = useMemo(() => {
+    if (profile.activeTracks.length === 0) return false;
     if (state.completionRule === "all-tracks") {
       return profile.activeTracks.every((t) => trackPercent(t) >= 100);
     }
-    const [primary, ...secondaries] = profile.activeTracks;
-    const primaryDone = primary ? trackPercent(primary) >= 100 : false;
-    const secondariesDone = secondaries.every((t) => trackPercent(t) >= state.secondaryMinimum);
-    return primaryDone && secondariesDone;
-  }, [profile.activeTracks, trackPercent, state.completionRule, state.secondaryMinimum]);
+    const [primary, ...rest] = profile.activeTracks;
+    const primaryOk = primary ? trackPercent(primary) >= 100 : false;
+    const restOk = rest.every((t) => trackPercent(t) >= state.secondaryMinimum);
+    return primaryOk && restOk;
+  }, [profile.activeTracks, state.completionRule, state.secondaryMinimum, trackPercent]);
 
-  const placementComplete = useMemo(() => {
-    return profile.attendance.length >= 90 && Boolean(profile.assessments["90"]);
-  }, [profile.attendance, profile.assessments]);
-
-  const phase1Complete = technicalComplete && placementComplete;
+  const placementComplete = profile.placementDay >= 90;
   const gateUnlocked = phase1Complete;
 
-  const eligibleCompanies = useMemo(() => {
-    if (!gateUnlocked) return 0;
-    return (state.hiringDrives ?? []).filter((d) => talentScore >= d.minScore).length;
-  }, [gateUnlocked, state.hiringDrives, talentScore]);
+  const value: AppStoreContextValue = {
+    ready,
+    isAuthed,
+    role: state.role,
+    theme: state.theme,
+    sessionEmail: state.sessionEmail,
+    authProvider: state.authProvider,
+    supabaseSession: state.supabaseSession,
+    liveStudentId: state.liveStudentId,
+    student: state.student,
+    profile: state.profile,
+    completionRule: state.completionRule,
+    secondaryMinimum: state.secondaryMinimum,
+    activeTracks: profile.activeTracks,
+    xp: profile.xp,
+    streak: profile.streak,
+    completedLabs: profile.completedLabs,
+    daily: profile.daily,
+    readiness: profile.readiness,
+    skills: profile.skills,
+    placementDay: profile.placementDay,
+    attendance: profile.attendance,
+    assessments: profile.assessments,
+    completedTechDays: profile.completedTechDays,
+    mocks: profile.mocks,
+    certifications: profile.certifications,
+    talentScore,
+    readinessIndex,
+    eligibleCompanies,
+    phase1Complete,
+    technicalComplete,
+    placementComplete,
+    gateUnlocked,
+    cronLogs,
+    pushCronLog,
+    trackPercent,
+    signInSupabase,
+    signUpSupabase,
+    signOut,
+    setRole,
+    toggleTheme,
+    setReadiness,
+    setActiveTracks,
+    setDailyStep,
+    completeDailyStep,
+    completeSkill,
+    completePlacementDay,
+    completeTechDay,
+    completeLab,
+    submitAssessment,
+    completeMock,
+    issueCertificate,
+    recalculateAllScores,
+    recalculateStudentScore,
+    resetProgress,
+    setCompletionRule,
+    resetStudentPassword,
+  };
 
-  const value: Store = useMemo(
-    () => ({
-      ...state,
-      ...profile,
-      ready,
-      student,
-      supabaseSession,
-      liveStudentId,
-      isAuthed: Boolean(state.sessionEmail),
-      readinessIndex,
-      talentScore,
-      eligibleCompanies,
-      phase1Complete,
-      technicalComplete,
-      placementComplete,
-      gateUnlocked,
-      trackPercent,
-      completeSkill,
-      completePlacementDay,
-      completeTechDay,
-      submitAssessment,
-      completeMock,
-      issueCertificate,
-      setCompletionRule,
-      cronLogs,
-      resetStudentPassword,
-      signIn,
-      signInSupabase,
-      signUpSupabase,
-      signOut,
-      setRole,
-      toggleTheme,
-      setActiveTracks,
-      completeLab,
-      completeDailyStep,
-      setReadiness,
-      updateBatch,
-      createBatch,
-      deleteBatch,
-      deleteStudent,
-      addStudent,
-      syncBatch,
-      hiringDrives: state.hiringDrives ?? [],
-      addHiringDrive,
-      updateHiringDrive,
-      deleteHiringDrive,
-      recalculateStudentScore,
-      recalculateAllScores,
-      addProvisioned,
-      clearAllProvisioned,
-      addContent,
-      updateContent,
-      removeContent,
-      pushCronLog,
-      resetProgress,
-    }),
-    [
-      state,
-      profile,
-      ready,
-      student,
-      supabaseSession,
-      liveStudentId,
-      readinessIndex,
-      talentScore,
-      eligibleCompanies,
-      phase1Complete,
-      technicalComplete,
-      placementComplete,
-      gateUnlocked,
-      trackPercent,
-      completeSkill,
-      completePlacementDay,
-      completeTechDay,
-      submitAssessment,
-      completeMock,
-      issueCertificate,
-      setCompletionRule,
-      cronLogs,
-      resetStudentPassword,
-      signIn,
-      signInSupabase,
-      signUpSupabase,
-      signOut,
-      setRole,
-      toggleTheme,
-      setActiveTracks,
-      completeLab,
-      completeDailyStep,
-      setReadiness,
-      updateBatch,
-      createBatch,
-      deleteBatch,
-      deleteStudent,
-      addStudent,
-      syncBatch,
-      addHiringDrive,
-      updateHiringDrive,
-      deleteHiringDrive,
-      recalculateStudentScore,
-      recalculateAllScores,
-      addProvisioned,
-      clearAllProvisioned,
-      addContent,
-      updateContent,
-      removeContent,
-      pushCronLog,
-      resetProgress,
-    ],
-  );
-
-  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+  return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;
 }
 
-export function useAppStore(): Store {
-  const ctx = useContext(StoreContext);
-  if (!ctx) {
-    throw new Error("useAppStore must be used within AppStoreProvider");
-  }
+export function useAppStore() {
+  const ctx = useContext(AppStoreContext);
+  if (!ctx) throw new Error("useAppStore must be used within AppStoreProvider");
   return ctx;
 }

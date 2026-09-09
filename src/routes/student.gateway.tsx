@@ -127,45 +127,39 @@ import { trackProgress } from "@/lib/curriculum";
 function GatewayPage() {
   const store = useAppStore();
   const queryClient = useQueryClient();
-  const isLive = store.authProvider === "supabase";
 
   const { data: liveProfileData } = useLiveStudentProfile(
     store.supabaseSession?.user?.id,
-    isLive && !!store.supabaseSession?.user?.id,
+    !!store.supabaseSession?.user?.id,
   );
   const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
   const { data: liveProgressData } = useLiveStudentProgress(
     liveStudentId || undefined,
-    isLive && !!liveStudentId,
+    !!liveStudentId,
   );
-  const { data: livePlatformSettings } = useLivePlatformSettings(isLive);
-  const { data: liveHiringDrives } = useLiveHiringDrives(isLive);
+  const { data: livePlatformSettings } = useLivePlatformSettings(true);
+  const { data: liveHiringDrives } = useLiveHiringDrives(true);
   const activeTracks: TrackId[] = useMemo(
-    () => (isLive ? liveProfileData?.tracks || [] : store.activeTracks),
-    [isLive, liveProfileData?.tracks, store.activeTracks],
+    () => liveProfileData?.tracks || store.activeTracks,
+    [liveProfileData?.tracks, store.activeTracks],
   );
 
-  const talentScore = isLive ? (liveProfileData?.profile?.talent_score ?? 0) : store.talentScore;
-  const attendance = isLive ? liveProgressData?.attendance || [] : store.attendance;
-  const assessments = isLive ? liveProgressData?.assessments || {} : store.assessments;
-  const certifications = isLive ? liveProgressData?.certifications || [] : store.certifications;
-  const skills = isLive ? liveProgressData?.skills || [] : store.skills;
+  const talentScore = liveProfileData?.profile?.talent_score ?? store.talentScore;
+  const attendance = liveProgressData?.attendance || store.attendance;
+  const assessments = liveProgressData?.assessments || store.assessments;
+  const certifications = liveProgressData?.certifications || store.certifications;
+  const skills = liveProgressData?.skills || store.skills;
 
-  const completionRule = isLive
-    ? (livePlatformSettings?.completionRule ?? "primary-plus-minimum")
-    : store.completionRule;
-  const secondaryMinimum = isLive
-    ? (livePlatformSettings?.secondaryMinimum ?? 50)
-    : store.secondaryMinimum;
+  const completionRule = livePlatformSettings?.completionRule ?? store.completionRule;
+  const secondaryMinimum = livePlatformSettings?.secondaryMinimum ?? store.secondaryMinimum;
 
   const getTrackPct = (trackId: TrackId) => {
-    if (!isLive) return store.trackPercent(trackId);
     return trackProgress(trackId, skills);
   };
 
   const recruitersList = useMemo(() => {
-    if (isLive) {
-      return (liveHiringDrives || []).map((d) => ({
+    if (liveHiringDrives && liveHiringDrives.length > 0) {
+      return liveHiringDrives.map((d) => ({
         company: d.company,
         track: (activeTracks[0] || "mern") as TrackId,
         minScore: d.minScore,
@@ -174,7 +168,7 @@ function GatewayPage() {
       }));
     }
     return RECRUITERS;
-  }, [isLive, liveHiringDrives, activeTracks]);
+  }, [liveHiringDrives, activeTracks]);
 
   const [resume, setResume] = useState(SAMPLE_RESUME);
   const [log, setLog] = useState<string[]>([]);
@@ -198,19 +192,18 @@ function GatewayPage() {
         ? "[ats] PASS — Profile forwarded to Employer Marketplace"
         : "[ats] REVIEW — Below 70% threshold",
     ]);
-    if (isLive && liveStudentId) {
+    if (liveStudentId) {
       await updateLiveReadiness(liveStudentId, { R: atsScore });
       queryClient.invalidateQueries({
         queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
       });
-    } else {
-      store.setReadiness({ R: atsScore });
     }
+    store.setReadiness({ R: atsScore });
     toast.success(`ATS Score updated to ${atsScore}%`);
   };
 
   const handleMock = async () => {
-    if (isLive && liveStudentId) {
+    if (liveStudentId) {
       await completeLiveMock(liveStudentId, "ai-interview-01", mockScore);
       queryClient.invalidateQueries({
         queryKey: ["live", "student-progress", liveStudentId],
@@ -218,15 +211,14 @@ function GatewayPage() {
       queryClient.invalidateQueries({
         queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
       });
-    } else {
-      store.completeMock("ai-interview-01", mockScore);
     }
+    store.completeMock("ai-interview-01", mockScore);
     toast.success(`Mock interview scored (${mockScore}%) · Pillar M updated!`);
   };
 
   const handleIssueCert = async (trackName: string) => {
     const label = `SantoGe Certified · ${trackName}`;
-    if (isLive && liveStudentId) {
+    if (liveStudentId) {
       await issueLiveCertificate(liveStudentId, label);
       queryClient.invalidateQueries({
         queryKey: ["live", "student-progress", liveStudentId],
@@ -234,9 +226,8 @@ function GatewayPage() {
       queryClient.invalidateQueries({
         queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
       });
-    } else {
-      store.issueCertificate(label);
     }
+    store.issueCertificate(label);
     toast.success(`Certificate issued: ${label}`);
   };
 

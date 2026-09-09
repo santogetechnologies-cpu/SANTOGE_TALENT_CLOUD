@@ -30,21 +30,19 @@ import { useLiveStudentProfile, useLiveStudentProgress } from "@/lib/data";
 
 function LabsPage() {
   const store = useAppStore();
-  const isLive = store.authProvider === "supabase";
 
   const { data: liveProfileData } = useLiveStudentProfile(
     store.supabaseSession?.user?.id,
-    isLive && !!store.supabaseSession?.user?.id,
+    !!store.supabaseSession?.user?.id,
   );
   const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
   const { data: liveProgressData } = useLiveStudentProgress(
     liveStudentId || undefined,
-    isLive && !!liveStudentId,
+    !!liveStudentId,
   );
 
-  const activeTracks: TrackId[] = isLive ? liveProfileData?.tracks || [] : store.activeTracks;
-
-  const completedLabs = isLive ? liveProgressData?.completedLabs || [] : store.completedLabs;
+  const activeTracks: TrackId[] = liveProfileData?.tracks || store.activeTracks;
+  const completedLabs = liveProgressData?.completedLabs || store.completedLabs;
 
   const [selected, setSelected] = useState<TrackId>(activeTracks[0] ?? "mern");
   const [query, setQuery] = useState("");

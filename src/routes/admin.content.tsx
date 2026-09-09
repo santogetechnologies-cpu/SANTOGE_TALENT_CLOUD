@@ -55,16 +55,13 @@ type CMSTab = "placement-accelerator" | "technical-tracks";
 function ContentManagementPage() {
   const store = useAppStore();
   const queryClient = useQueryClient();
-  const isLive = store.authProvider === "supabase";
 
   const liveBatchesQuery = useQuery({
     queryKey: ["live", "batches"],
     queryFn: fetchLiveBatches,
-    enabled: isLive,
   });
 
-  const batchesCount =
-    isLive && liveBatchesQuery.data ? liveBatchesQuery.data.length : store.batches.length;
+  const batchesCount = liveBatchesQuery.data?.length || 0;
 
   const [cmsTab, setCmsTab] = useState<CMSTab>("placement-accelerator");
 
@@ -132,67 +129,55 @@ function ContentManagementPage() {
   };
 
   const handleSavePlacementContent = async () => {
-    if (isLive) {
-      const res = await upsertLiveContentItem(
-        {
-          track: "Placement Accelerator",
-          kind: "English video",
-          titlePrefix: `Day ${selectedPlacementDay}:`,
-        },
-        {
-          title: `Day ${selectedPlacementDay}: ${englishTitle}`,
-          kind: "English video",
-          track: "Placement Accelerator",
-          duration: "10m",
-          status: "published",
-        },
-      );
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ["live", "content"] });
-        toast.success(`Day ${selectedPlacementDay} Placement Lesson synced to Supabase!`, {
-          description:
-            "Curriculum metadata synced to content_items; teaching script staged for broadcast.",
-        });
-      } else {
-        toast.error(res.error || "Failed to persist curriculum changes to database");
-      }
-    } else {
-      toast.success(`Day ${selectedPlacementDay} Placement Lesson staged!`, {
-        description: "Changes staged in local state for daily 06:00 simulator.",
+    const res = await upsertLiveContentItem(
+      {
+        track: "Placement Accelerator",
+        kind: "English video",
+        titlePrefix: `Day ${selectedPlacementDay}:`,
+      },
+      {
+        title: `Day ${selectedPlacementDay}: ${englishTitle}`,
+        kind: "English video",
+        track: "Placement Accelerator",
+        duration: "10m",
+        status: "published",
+      },
+    );
+    if (res.ok) {
+      queryClient.invalidateQueries({ queryKey: ["live", "content"] });
+      toast.success(`Day ${selectedPlacementDay} Placement Lesson synced to Supabase!`, {
+        description:
+          "Curriculum metadata synced to content_items; teaching script staged for broadcast.",
       });
+    } else {
+      toast.error(res.error || "Failed to persist curriculum changes to database");
     }
   };
 
   const handleSaveTechnicalContent = async () => {
-    if (isLive) {
-      const trackName = trackById(selectedTrackId).name;
-      const res = await upsertLiveContentItem(
-        {
-          track: trackName,
-          kind: "Lab brief",
-          titlePrefix: `${trackName} Week ${selectedWeekNum}:`,
-        },
-        {
-          title: `${trackName} Week ${selectedWeekNum}: ${weekTitle}`,
-          kind: "Lab brief",
-          track: trackName,
-          duration: "5 days",
-          status: "published",
-        },
-      );
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ["live", "content"] });
-        toast.success(`${trackName} Week ${selectedWeekNum} synced to Supabase!`, {
-          description:
-            "Curriculum metadata synced to content_items; mini-project ticket staged for sandbox.",
-        });
-      } else {
-        toast.error(res.error || "Failed to persist technical track changes to database");
-      }
-    } else {
-      toast.success(`${trackById(selectedTrackId).name} Week ${selectedWeekNum} staged!`, {
-        description: "Curriculum changes updated in local state for sandbox tasks.",
+    const trackName = trackById(selectedTrackId).name;
+    const res = await upsertLiveContentItem(
+      {
+        track: trackName,
+        kind: "Lab brief",
+        titlePrefix: `${trackName} Week ${selectedWeekNum}:`,
+      },
+      {
+        title: `${trackName} Week ${selectedWeekNum}: ${weekTitle}`,
+        kind: "Lab brief",
+        track: trackName,
+        duration: "5 days",
+        status: "published",
+      },
+    );
+    if (res.ok) {
+      queryClient.invalidateQueries({ queryKey: ["live", "content"] });
+      toast.success(`${trackName} Week ${selectedWeekNum} synced to Supabase!`, {
+        description:
+          "Curriculum metadata synced to content_items; mini-project ticket staged for sandbox.",
       });
+    } else {
+      toast.error(res.error || "Failed to persist technical track changes to database");
     }
   };
 

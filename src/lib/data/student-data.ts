@@ -9,8 +9,6 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
-import type { StudentAccount } from "@/lib/accounts";
-import type { Profile, ReadinessInputs } from "@/lib/app-store";
 import type { TrackId } from "@/lib/tracks";
 import type {
   DbStudentProfile,
@@ -23,6 +21,7 @@ import type {
   DbAssessment,
   DbMockInterview,
   DbCertification,
+  ReadinessInputs,
 } from "./types";
 
 export type LiveStudentData = {
@@ -43,10 +42,11 @@ export type LiveStudentData = {
  */
 export async function fetchLiveStudentProfile(
   authUserId: string,
+  email?: string,
 ): Promise<{ profile: DbStudentProfile; tracks: TrackId[] } | null> {
   const supabase = getSupabaseClient();
 
-  const { data: profileData, error: profileErr } = await supabase
+  const { data: initialProfileData, error: profileErr } = await supabase
     .from("student_profiles")
     .select(
       "id,auth_user_id,institution_id,batch_id,name,email,roll_no,dept,college,status,xp,streak,placement_day,talent_score,readiness_t,readiness_c,readiness_a,readiness_e,readiness_r,readiness_m,created_at,updated_at",
@@ -54,6 +54,30 @@ export async function fetchLiveStudentProfile(
     .eq("auth_user_id", authUserId)
     .eq("status", "active")
     .maybeSingle();
+
+  let profileData = initialProfileData;
+
+  if (!profileData && email) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const { data: byEmailData } = await supabase
+      .from("student_profiles")
+      .select(
+        "id,auth_user_id,institution_id,batch_id,name,email,roll_no,dept,college,status,xp,streak,placement_day,talent_score,readiness_t,readiness_c,readiness_a,readiness_e,readiness_r,readiness_m,created_at,updated_at",
+      )
+      .eq("email", normalizedEmail)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (byEmailData) {
+      profileData = byEmailData;
+      if (byEmailData.auth_user_id !== authUserId) {
+        await supabase
+          .from("student_profiles")
+          .update({ auth_user_id: authUserId, updated_at: new Date().toISOString() })
+          .eq("id", byEmailData.id);
+      }
+    }
+  }
 
   if (profileErr) {
     throw new Error(profileErr.message);
@@ -206,7 +230,11 @@ export async function completeLivePlacementDay(
     return { ok: false, error: res.error || "Failed to complete placement day" };
   }
 
-  return res || { ok: true };
+  return {
+    ok: true,
+    ...(res?.placement_day !== undefined ? { placement_day: res.placement_day } : {}),
+    ...(res?.xp !== undefined ? { xp: res.xp } : {}),
+  };
 }
 
 export async function completeLiveSkill(
@@ -437,16 +465,4 @@ export async function updateLiveReadiness(
   }
 
   return { ok: true };
-}
-
-// ---------------------------------------------------------------------------
-// Demo Mode Helpers (Pure local state facade)
-// ---------------------------------------------------------------------------
-
-export function getStudentProfile(
-  email: string,
-  localProfiles: Record<string, Profile>,
-  _localAccounts: StudentAccount[],
-): Profile | null {
-  return localProfiles[email.toLowerCase().trim()] || null;
 }

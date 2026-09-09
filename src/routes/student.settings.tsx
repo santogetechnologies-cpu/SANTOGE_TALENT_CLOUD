@@ -80,61 +80,52 @@ import {
 function SettingsPage() {
   const store = useAppStore();
   const queryClient = useQueryClient();
-  const isLive = store.authProvider === "supabase";
 
   const { data: liveProfileData } = useLiveStudentProfile(
     store.supabaseSession?.user?.id,
-    isLive && !!store.supabaseSession?.user?.id,
+    !!store.supabaseSession?.user?.id,
   );
   const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
   const { data: liveProgressData } = useLiveStudentProgress(
     liveStudentId || undefined,
-    isLive && !!liveStudentId,
+    !!liveStudentId,
   );
-  const { data: livePlatformSettings } = useLivePlatformSettings(isLive);
+  const { data: livePlatformSettings } = useLivePlatformSettings(true);
 
-  const activeTracks: (typeof TRACKS)[number]["id"][] = isLive
-    ? liveProfileData?.tracks || []
-    : store.activeTracks;
+  const activeTracks: (typeof TRACKS)[number]["id"][] =
+    liveProfileData?.tracks || store.activeTracks;
 
-  const talentScore = isLive ? (liveProfileData?.profile?.talent_score ?? 0) : store.talentScore;
-  const completedLabs = isLive ? liveProgressData?.completedLabs || [] : store.completedLabs;
-  const studentName = isLive
-    ? liveProfileData?.profile?.name ||
-      store.supabaseSession?.user?.email?.split("@")[0] ||
-      "Student"
-    : (store.student?.name ?? `${store.student?.firstName ?? "Student"}`);
-  const studentEmail = isLive
-    ? liveProfileData?.profile?.email || store.supabaseSession?.user?.email || ""
-    : store.student?.email || "student@santoge.edu";
-  const studentCollege = isLive
-    ? liveProfileData?.profile?.college || "Not Assigned"
-    : store.student?.college || "SantoGe Institute of Technology";
-  const studentRollNo = isLive
-    ? liveProfileData?.profile?.roll_no || "Not Assigned"
-    : store.student?.rollNo || "2026-CSE-042";
-  const studentDept = isLive
-    ? liveProfileData?.profile?.dept || "Not Assigned"
-    : store.student?.dept || "Computer Science";
-  const studentBatchId = isLive
-    ? liveProfileData?.profile?.batch_id || "Not Assigned"
-    : store.student?.batchId || "BATCH-2026-ABC-CSE-01";
-  const placementDay = isLive
-    ? (liveProfileData?.profile?.placement_day ?? 1)
-    : store.placementDay || 1;
-  const readiness = isLive
-    ? {
-        T: liveProfileData?.profile?.readiness_t ?? 0,
-        C: liveProfileData?.profile?.readiness_c ?? 0,
-        A: liveProfileData?.profile?.readiness_a ?? 0,
-        E: liveProfileData?.profile?.readiness_e ?? 0,
-        R: liveProfileData?.profile?.readiness_r ?? 0,
-        M: liveProfileData?.profile?.readiness_m ?? 0,
-      }
-    : store.readiness;
-  const secondaryMinimum = isLive
-    ? (livePlatformSettings?.secondaryMinimum ?? 50)
-    : store.secondaryMinimum;
+  const talentScore = liveProfileData?.profile?.talent_score ?? store.talentScore;
+  const completedLabs = liveProgressData?.completedLabs || store.completedLabs;
+  const studentName =
+    liveProfileData?.profile?.name ||
+    store.student?.name ||
+    store.supabaseSession?.user?.email?.split("@")[0] ||
+    "Student";
+  const studentEmail =
+    liveProfileData?.profile?.email ||
+    store.supabaseSession?.user?.email ||
+    store.student?.email ||
+    "";
+  const studentCollege =
+    liveProfileData?.profile?.college ||
+    store.student?.college ||
+    "SantoGe Institute of Technology";
+  const studentRollNo =
+    liveProfileData?.profile?.roll_no || store.student?.rollNo || "2026-CSE-042";
+  const studentDept = liveProfileData?.profile?.dept || store.student?.dept || "Computer Science";
+  const studentBatchId =
+    liveProfileData?.profile?.batch_id || store.student?.batchId || "BATCH-2026-ABC-CSE-01";
+  const placementDay = liveProfileData?.profile?.placement_day ?? store.placementDay ?? 1;
+  const readiness = {
+    T: liveProfileData?.profile?.readiness_t ?? store.readiness.T,
+    C: liveProfileData?.profile?.readiness_c ?? store.readiness.C,
+    A: liveProfileData?.profile?.readiness_a ?? store.readiness.A,
+    E: liveProfileData?.profile?.readiness_e ?? store.readiness.E,
+    R: liveProfileData?.profile?.readiness_r ?? store.readiness.R,
+    M: liveProfileData?.profile?.readiness_m ?? store.readiness.M,
+  };
+  const secondaryMinimum = livePlatformSettings?.secondaryMinimum ?? store.secondaryMinimum;
 
   const [domainFilter, setDomainFilter] = useState<string>("all");
   const [telegramNotifs, setTelegramNotifs] = useState(true);
@@ -151,7 +142,7 @@ function SettingsPage() {
       toast.error("Maximum 3 concurrent technical courses allowed per student.");
       return;
     }
-    if (isLive && liveStudentId) {
+    if (liveStudentId) {
       const res = await updateLiveStudentTracks(liveStudentId, next);
       if (!res.ok) {
         toast.error(res.error || "Failed to update tracks");
@@ -160,9 +151,8 @@ function SettingsPage() {
       queryClient.invalidateQueries({
         queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
       });
-    } else {
-      store.setActiveTracks(next);
     }
+    store.setActiveTracks(next);
     toast.success(has ? "Course track unenrolled" : "Course track enrolled successfully!");
   };
 
@@ -366,14 +356,13 @@ function SettingsPage() {
                   value={readiness[p.key]}
                   onChange={async (e) => {
                     const val = Number(e.target.value);
-                    if (isLive && liveStudentId) {
+                    if (liveStudentId) {
                       await updateLiveReadiness(liveStudentId, { [p.key]: val });
                       queryClient.invalidateQueries({
                         queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
                       });
-                    } else {
-                      store.setReadiness({ [p.key]: val });
                     }
+                    store.setReadiness({ [p.key]: val });
                   }}
                   className="w-full accent-[var(--brand-cyan)]"
                 />
@@ -426,11 +415,8 @@ function SettingsPage() {
             </div>
           </Panel>
 
-          {/* Workspace Appearance & Reset */}
-          <Panel
-            title="Workspace & Theme"
-            subtitle="Appearance customization and demo progress management"
-          >
+          {/* Workspace Appearance */}
+          <Panel title="Workspace & Theme" subtitle="Appearance customization">
             <div className="space-y-3">
               <button
                 onClick={store.toggleTheme}
@@ -448,24 +434,6 @@ function SettingsPage() {
                   Currently: {store.theme.toUpperCase()}
                 </span>
               </button>
-
-              {!isLive && (
-                <button
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Are you sure you want to reset all demo progress and lab scores?",
-                      )
-                    ) {
-                      store.resetProgress();
-                      toast.success("Demo progress reset successfully");
-                    }
-                  }}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand-rose/30 bg-brand-rose/5 px-4 py-3 text-xs font-bold text-brand-rose hover:bg-brand-rose/10"
-                >
-                  <RotateCcw className="size-4" /> Reset Demo Progress & Labs
-                </button>
-              )}
             </div>
           </Panel>
         </div>

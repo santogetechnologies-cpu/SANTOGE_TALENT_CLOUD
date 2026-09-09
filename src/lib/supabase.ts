@@ -85,8 +85,11 @@ const ENV_KEY: string | undefined =
     ? (import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] as string | undefined)
     : undefined;
 
-const DEFAULT_SUPABASE_URL = (ENV_URL || "").trim();
-const DEFAULT_SUPABASE_ANON_KEY = (ENV_KEY || "").trim();
+const DEFAULT_FALLBACK_URL = "https://ylofqmmbwgrqtsrclnww.supabase.co";
+const DEFAULT_FALLBACK_KEY = "sb_publishable_bIuZOdaZ_m3jp6s6cyoV_A_P8mKwqXf";
+
+const DEFAULT_SUPABASE_URL = (ENV_URL || DEFAULT_FALLBACK_URL).trim();
+const DEFAULT_SUPABASE_ANON_KEY = (ENV_KEY || DEFAULT_FALLBACK_KEY).trim();
 const FALLBACK_DUMMY_URL = "https://placeholder-project.supabase.co";
 const FALLBACK_DUMMY_KEY = "placeholder-anon-key";
 

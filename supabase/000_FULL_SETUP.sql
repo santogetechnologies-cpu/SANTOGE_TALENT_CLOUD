@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS public.user_roles (
 
 CREATE TABLE IF NOT EXISTS public.student_profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    auth_user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+    auth_user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE SET NULL,
     institution_id UUID REFERENCES public.institutions(id) ON DELETE SET NULL,
     batch_id UUID REFERENCES public.batches(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
