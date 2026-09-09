@@ -17,6 +17,7 @@ import {
   supabaseAuth,
   getSupabaseClient,
   fetchLiveUserRole,
+  isSupabaseConfigured,
   type SupabaseSession,
   type SupabaseUser,
 } from "./supabase";
@@ -500,90 +501,94 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const raw = localStorage.getItem(STORAGE_KEY);
         const activeSession = getStoredSession();
 
-        if (activeSession && activeSession.user?.id) {
+        if (activeSession && activeSession.user?.id && isSupabaseConfigured()) {
           setSupabaseSession(activeSession);
           const user = activeSession.user;
           const userEmail = user.email.toLowerCase();
 
-          // Resolve live role strictly from public.user_roles in PostgreSQL
-          const [role, liveDrives, platformSettings] = await Promise.all([
-            fetchLiveUserRole(user.id, user.user_metadata?.role, user.email),
-            fetchLiveHiringDrives(),
-            fetchLivePlatformSettings(),
-          ]);
+          try {
+            // Resolve live role strictly from public.user_roles in PostgreSQL
+            const [role, liveDrives, platformSettings] = await Promise.all([
+              fetchLiveUserRole(user.id, user.user_metadata?.role, user.email),
+              fetchLiveHiringDrives(),
+              fetchLivePlatformSettings(),
+            ]);
 
-          const completionRule = platformSettings?.completionRule ?? "primary-plus-minimum";
-          const secondaryMinimum = platformSettings?.secondaryMinimum ?? 50;
+            const completionRule = platformSettings?.completionRule ?? "primary-plus-minimum";
+            const secondaryMinimum = platformSettings?.secondaryMinimum ?? 50;
 
-          if (role === "student") {
-            const liveData = await fetchLiveStudentProfile(user.id);
-            if (liveData?.profile) {
-              setLiveStudentId(liveData.profile.id);
-              const progress = await fetchLiveStudentProgress(liveData.profile.id);
+            if (role === "student") {
+              const liveData = await fetchLiveStudentProfile(user.id);
+              if (liveData?.profile) {
+                setLiveStudentId(liveData.profile.id);
+                const progress = await fetchLiveStudentProgress(liveData.profile.id);
 
-              const studentAcc: StudentAccount = {
-                email: userEmail,
-                password: "●●●●●●●●",
-                name: liveData.profile.name,
-                firstName: liveData.profile.name.split(" ")[0] || "Student",
-                rollNo: liveData.profile.roll_no || "",
-                dept: liveData.profile.dept || "",
-                batchId: liveData.profile.batch_id || "",
-                college: liveData.profile.college || "",
-                tracks: sanitizeTracks(liveData.tracks),
-                xp: liveData.profile.xp,
-                streak: liveData.profile.streak,
-                seedOffsets: [1, 1, 1],
-                placementDay: liveData.profile.placement_day,
-                readiness: {
-                  T: liveData.profile.readiness_t,
-                  C: liveData.profile.readiness_c,
-                  A: liveData.profile.readiness_a,
-                  E: liveData.profile.readiness_e,
-                  R: liveData.profile.readiness_r,
-                  M: liveData.profile.readiness_m,
-                },
-              };
+                const studentAcc: StudentAccount = {
+                  email: userEmail,
+                  password: "●●●●●●●●",
+                  name: liveData.profile.name,
+                  firstName: liveData.profile.name.split(" ")[0] || "Student",
+                  rollNo: liveData.profile.roll_no || "",
+                  dept: liveData.profile.dept || "",
+                  batchId: liveData.profile.batch_id || "",
+                  college: liveData.profile.college || "",
+                  tracks: sanitizeTracks(liveData.tracks),
+                  xp: liveData.profile.xp,
+                  streak: liveData.profile.streak,
+                  seedOffsets: [1, 1, 1],
+                  placementDay: liveData.profile.placement_day,
+                  readiness: {
+                    T: liveData.profile.readiness_t,
+                    C: liveData.profile.readiness_c,
+                    A: liveData.profile.readiness_a,
+                    E: liveData.profile.readiness_e,
+                    R: liveData.profile.readiness_r,
+                    M: liveData.profile.readiness_m,
+                  },
+                };
 
-              const liveProf: Profile = {
-                activeTracks: liveData.tracks,
-                xp: liveData.profile.xp,
-                streak: liveData.profile.streak,
-                completedLabs: progress.completedLabs,
-                daily: progress.daily,
-                readiness: studentAcc.readiness,
-                skills: progress.skills,
-                placementDay: liveData.profile.placement_day,
-                attendance: progress.attendance,
-                assessments: progress.assessments,
-                completedTechDays: progress.completedTechDays,
-                mocks: progress.mocks,
-                certifications: progress.certifications,
-              };
+                const liveProf: Profile = {
+                  activeTracks: liveData.tracks,
+                  xp: liveData.profile.xp,
+                  streak: liveData.profile.streak,
+                  completedLabs: progress.completedLabs,
+                  daily: progress.daily,
+                  readiness: studentAcc.readiness,
+                  skills: progress.skills,
+                  placementDay: liveData.profile.placement_day,
+                  attendance: progress.attendance,
+                  assessments: progress.assessments,
+                  completedTechDays: progress.completedTechDays,
+                  mocks: progress.mocks,
+                  certifications: progress.certifications,
+                };
 
+                setState((prev) => ({
+                  ...prev,
+                  role: "student",
+                  sessionEmail: userEmail,
+                  authProvider: "supabase",
+                  hiringDrives: liveDrives,
+                  completionRule,
+                  secondaryMinimum,
+                  customStudents: { [userEmail]: studentAcc },
+                  profiles: { [userEmail]: liveProf },
+                }));
+              }
+            } else {
+              // Live Admin
               setState((prev) => ({
                 ...prev,
-                role: "student",
+                role: "admin",
                 sessionEmail: userEmail,
                 authProvider: "supabase",
                 hiringDrives: liveDrives,
                 completionRule,
                 secondaryMinimum,
-                customStudents: { [userEmail]: studentAcc },
-                profiles: { [userEmail]: liveProf },
               }));
             }
-          } else {
-            // Live Admin
-            setState((prev) => ({
-              ...prev,
-              role: "admin",
-              sessionEmail: userEmail,
-              authProvider: "supabase",
-              hiringDrives: liveDrives,
-              completionRule,
-              secondaryMinimum,
-            }));
+          } catch (liveErr) {
+            console.warn("Could not sync live session data on boot:", liveErr);
           }
         } else if (raw) {
           const parsed = JSON.parse(raw) as Partial<Persisted>;
