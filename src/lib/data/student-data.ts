@@ -42,10 +42,11 @@ export type LiveStudentData = {
  */
 export async function fetchLiveStudentProfile(
   authUserId: string,
+  email?: string,
 ): Promise<{ profile: DbStudentProfile; tracks: TrackId[] } | null> {
   const supabase = getSupabaseClient();
 
-  const { data: profileData, error: profileErr } = await supabase
+  const { data: initialProfileData, error: profileErr } = await supabase
     .from("student_profiles")
     .select(
       "id,auth_user_id,institution_id,batch_id,name,email,roll_no,dept,college,status,xp,streak,placement_day,talent_score,readiness_t,readiness_c,readiness_a,readiness_e,readiness_r,readiness_m,created_at,updated_at",
@@ -53,6 +54,30 @@ export async function fetchLiveStudentProfile(
     .eq("auth_user_id", authUserId)
     .eq("status", "active")
     .maybeSingle();
+
+  let profileData = initialProfileData;
+
+  if (!profileData && email) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const { data: byEmailData } = await supabase
+      .from("student_profiles")
+      .select(
+        "id,auth_user_id,institution_id,batch_id,name,email,roll_no,dept,college,status,xp,streak,placement_day,talent_score,readiness_t,readiness_c,readiness_a,readiness_e,readiness_r,readiness_m,created_at,updated_at",
+      )
+      .eq("email", normalizedEmail)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (byEmailData) {
+      profileData = byEmailData;
+      if (byEmailData.auth_user_id !== authUserId) {
+        await supabase
+          .from("student_profiles")
+          .update({ auth_user_id: authUserId, updated_at: new Date().toISOString() })
+          .eq("id", byEmailData.id);
+      }
+    }
+  }
 
   if (profileErr) {
     throw new Error(profileErr.message);

@@ -10,7 +10,7 @@
 
    - Application Name: **SantoGe Talent Cloud**
 
-   - Tagline: *Intelligent Technical Skill Engine (ITSE) • Workflow & Placement Architecture*
+   - Tagline: _Intelligent Technical Skill Engine (ITSE) • Workflow & Placement Architecture_
 
    - Color Palette: Deep Slate Dark Base (`#0a0d14`, `#101624`), Glassmorphism Cards (`rgba(22, 31, 50, 0.82)`), Accents (Neon Cyan `#00d4ff`, Vibrant Purple `#8b5cf6`, Emerald Green `#10b981`, Amber Gold `#f59e0b`, Rose Red `#f43f5e`). Full Light Theme toggle support.
 
@@ -184,11 +184,11 @@ Include a sticky top navigation header (Brand logo, title, global search bar, th
 
   2. **The Daily Twin 30-Minute Execution Workflow:** Dual-column comparison between Technical Self-Study Engine (30m) and Placement Accelerator (30m).
 
-  3. **Platform Admin & Student Swimlane Flowchart:** Two clear swimlanes for *Platform Super Admin* (Bulk CSV, 100-300 Sizing, Batch Naming, Telegram Sync) and *Student (Ajay)* (Credentials login, 30m Placement, 30m Tech Sandbox, Dual 100% Career Gateway).
+  3. **Platform Admin & Student Swimlane Flowchart:** Two clear swimlanes for _Platform Super Admin_ (Bulk CSV, 100-300 Sizing, Batch Naming, Telegram Sync) and _Student (Ajay)_ (Credentials login, 30m Placement, 30m Tech Sandbox, Dual 100% Career Gateway).
 
   4. **Daily Automation Engine & Scoring Flowchart:** Cron pipeline triggering morning Telegram video broadcast → In-app 10m practice unlock → Student 30m sandbox execution → Talent score recalculation and leaderboard refresh.
 
-  5. **Data Flow Diagram (DFD Level 1):** External entity *Student (Ajay)* on the left, *Platform Super Admin* on the right, central processes 1.0 (CSV Provisioning), 2.0 (Daily Execution), 3.0 (Post-90d Gateway), and Data Stores D1 (Student DB), D2 (Sandboxes DB), D3 (Placement & Talent Scoring DB), D4 (Placement Guarantee & Metrics).
+  5. **Data Flow Diagram (DFD Level 1):** External entity _Student (Ajay)_ on the left, _Platform Super Admin_ on the right, central processes 1.0 (CSV Provisioning), 2.0 (Daily Execution), 3.0 (Post-90d Gateway), and Data Stores D1 (Student DB), D2 (Sandboxes DB), D3 (Placement & Talent Scoring DB), D4 (Placement Guarantee & Metrics).
 
 #### TAB 6: Bulk CSV Upload & Platform Governance (`#tab-governance`)
 
@@ -260,7 +260,7 @@ Include a sticky top navigation header (Brand logo, title, global search bar, th
 
 Ensure the entire application is contained in a single self-contained, beautifully styled, and bug-free file.
 
-```
+````
 
 ***
 
@@ -280,4 +280,4 @@ Run locally:
 ```sh
 npm install
 npm run dev
-```
+````

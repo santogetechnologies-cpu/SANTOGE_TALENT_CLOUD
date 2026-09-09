@@ -150,7 +150,7 @@ export function AppShell({ portal }: { portal: Role }) {
   const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
 
   const activeTracks: TrackId[] =
-    portal === "student" ? (liveProfileData?.tracks || store.activeTracks) : store.activeTracks;
+    portal === "student" ? liveProfileData?.tracks || store.activeTracks : store.activeTracks;
 
   const streak =
     portal === "student" ? (liveProfileData?.profile?.streak ?? store.streak) : store.streak;
@@ -256,7 +256,10 @@ export function AppShell({ portal }: { portal: Role }) {
 
   const label =
     portal === "student"
-      ? (liveProfileData?.profile?.name ?? store.student?.name ?? store.sessionEmail?.split("@")[0] ?? "Student Learner")
+      ? (liveProfileData?.profile?.name ??
+        store.student?.name ??
+        store.sessionEmail?.split("@")[0] ??
+        "Student Learner")
       : "Platform Super Admin";
 
   const filteredSearchResults = searchQuery.trim()
@@ -318,8 +321,12 @@ export function AppShell({ portal }: { portal: Role }) {
             </div>
             {portal === "student" && (
               <div className="mt-1.5 flex items-center justify-between text-[10px] text-copy-subtle">
-                <span>{liveProfileData?.profile?.roll_no || store.student?.rollNo || "2026-CSE"}</span>
-                <span className="font-mono text-foreground">{liveProfileData?.profile?.batch_id || store.student?.batchId || "Cohort"}</span>
+                <span>
+                  {liveProfileData?.profile?.roll_no || store.student?.rollNo || "2026-CSE"}
+                </span>
+                <span className="font-mono text-foreground">
+                  {liveProfileData?.profile?.batch_id || store.student?.batchId || "Cohort"}
+                </span>
               </div>
             )}
             <div className="mt-2.5 flex items-center gap-1.5">

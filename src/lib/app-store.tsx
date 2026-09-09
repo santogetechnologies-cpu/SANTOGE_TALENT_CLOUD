@@ -337,7 +337,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             const secondaryMinimum = platformSettings?.secondaryMinimum ?? 50;
 
             if (role === "student") {
-              const liveData = await fetchLiveStudentProfile(user.id);
+              const liveData = await fetchLiveStudentProfile(user.id, userEmail);
               if (liveData?.profile && isMounted) {
                 const progress = await fetchLiveStudentProgress(liveData.profile.id);
 
@@ -509,7 +509,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }
 
       // Fetch live student profile
-      const liveData = await fetchLiveStudentProfile(user.id);
+      const liveData = await fetchLiveStudentProfile(user.id, userEmail);
       if (liveData?.profile) {
         const progress = await fetchLiveStudentProgress(liveData.profile.id);
 
@@ -581,8 +581,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         secondaryMinimum,
       }));
       return { ok: true, role: "student" as Role };
-    } catch (err: any) {
-      return { ok: false, error: err.message || "Failed to initialize student session" };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to initialize student session";
+      return { ok: false, error: msg };
     }
   }, []);
 
@@ -634,21 +635,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // Student Mutations (Supabase Live RPCs + Local optimistic cache)
   // -------------------------------------------------------------------------
 
-  const setReadiness = useCallback(
-    (patch: Partial<ReadinessInputs>) => {
-      setState((s) => {
-        const nextReadiness = { ...s.profile.readiness, ...patch };
-        const nextProfile = { ...s.profile, readiness: nextReadiness };
+  const setReadiness = useCallback((patch: Partial<ReadinessInputs>) => {
+    setState((s) => {
+      const nextReadiness = { ...s.profile.readiness, ...patch };
+      const nextProfile = { ...s.profile, readiness: nextReadiness };
 
-        if (s.liveStudentId) {
-          void updateLiveReadiness(s.liveStudentId, patch);
-        }
+      if (s.liveStudentId) {
+        void updateLiveReadiness(s.liveStudentId, patch);
+      }
 
-        return { ...s, profile: nextProfile };
-      });
-    },
-    [],
-  );
+      return { ...s, profile: nextProfile };
+    });
+  }, []);
 
   const setActiveTracks = useCallback((tracks: TrackId[]) => {
     setState((s) => {
@@ -660,19 +658,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const setDailyStep = useCallback(
-    (key: "english" | "aptitude" | "practice", val: boolean) => {
-      setState((s) => {
-        const nextDaily = { ...s.profile.daily, [key]: val };
-        const nextProfile = { ...s.profile, daily: nextDaily };
-        if (s.liveStudentId && val) {
-          void completeLiveDailyStep(s.liveStudentId, key);
-        }
-        return { ...s, profile: nextProfile };
-      });
-    },
-    [],
-  );
+  const setDailyStep = useCallback((key: "english" | "aptitude" | "practice", val: boolean) => {
+    setState((s) => {
+      const nextDaily = { ...s.profile.daily, [key]: val };
+      const nextProfile = { ...s.profile, daily: nextDaily };
+      if (s.liveStudentId && val) {
+        void completeLiveDailyStep(s.liveStudentId, key);
+      }
+      return { ...s, profile: nextProfile };
+    });
+  }, []);
 
   const completeDailyStep = useCallback(
     (key: "english" | "aptitude" | "practice") => {
@@ -836,10 +831,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const profile = state.profile;
   const isAuthed = !!state.sessionEmail && !!state.supabaseSession;
 
-  const trackPercent = useCallback(
-    (id: TrackId) => trackPct(id, profile.skills),
-    [profile.skills],
-  );
+  const trackPercent = useCallback((id: TrackId) => trackPct(id, profile.skills), [profile.skills]);
 
   const r = profile.readiness;
   const talentScore = useMemo(() => {

@@ -43,7 +43,11 @@ function LeaderboardPage() {
   );
 
   const batchId = liveProfileData?.profile?.batch_id || store.student?.batchId || "";
-  const me = liveProfileData?.profile?.name || store.student?.name || store.sessionEmail?.split("@")[0] || "You";
+  const me =
+    liveProfileData?.profile?.name ||
+    store.student?.name ||
+    store.sessionEmail?.split("@")[0] ||
+    "You";
 
   const activeTracks: TrackId[] = liveProfileData?.tracks || store.activeTracks;
   const attendanceCount = liveProgressData?.attendance?.length ?? store.attendance.length;
@@ -79,11 +83,7 @@ function LeaderboardPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Stat
-          label="Your rank"
-          value={myRank > 0 ? `#${myRank}` : "—"}
-          hint="Talent Score Rank"
-        />
+        <Stat label="Your rank" value={myRank > 0 ? `#${myRank}` : "—"} hint="Talent Score Rank" />
         <Stat
           label="Cohort size"
           value={rows.length}

@@ -115,4 +115,3 @@ export function placementDay(day: number): PlacementDay {
 }
 
 export const PLACEMENT_DAYS = Array.from({ length: 90 }, (_, i) => placementDay(i + 1));
-

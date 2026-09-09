@@ -151,7 +151,10 @@ function AdminAnalytics() {
     return [
       {
         id: "all",
-        name: list.length > 0 ? `All Partner Institutions (${list.length})` : "All Partner Institutions",
+        name:
+          list.length > 0
+            ? `All Partner Institutions (${list.length})`
+            : "All Partner Institutions",
       },
       ...list.map((i) => ({ id: i.id, name: i.name })),
     ];
@@ -176,9 +179,19 @@ function AdminAnalytics() {
 
   // Placement Conversion Funnel
   const cohortFunnel = liveAnalytics?.funnel ?? [
-    { label: "Total Provisioned Cohort", count: totalEnrolled, pct: 100, color: "var(--brand-cyan)" },
+    {
+      label: "Total Provisioned Cohort",
+      count: totalEnrolled,
+      pct: 100,
+      color: "var(--brand-cyan)",
+    },
     { label: "Phase 1: Twin 30m Active", count: 0, pct: 0, color: "var(--brand-purple)" },
-    { label: "Phase 1: Labs & Sandboxes Verified", count: 0, pct: 0, color: "var(--brand-emerald)" },
+    {
+      label: "Phase 1: Labs & Sandboxes Verified",
+      count: 0,
+      pct: 0,
+      color: "var(--brand-emerald)",
+    },
     { label: "Dual Gate: 100% Verified Cleared", count: 0, pct: 0, color: "var(--brand-amber)" },
     { label: "Phase 2: AI & Mentor Mock Panels", count: 0, pct: 0, color: "var(--brand-rose)" },
     { label: "Recruiter Offers & Marketplace Ready", count: 0, pct: 0, color: "#10b981" },
@@ -515,7 +528,9 @@ function AdminAnalytics() {
               </div>
             ) : (
               activeDrives.map((d) => {
-                const eligible = (liveRoster?.items || []).filter((s) => s.talentScore >= d.minScore).length;
+                const eligible = (liveRoster?.items || []).filter(
+                  (s) => s.talentScore >= d.minScore,
+                ).length;
                 const isSelected = selectedDriveId === d.id;
                 return (
                   <div

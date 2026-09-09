@@ -103,17 +103,20 @@ function SettingsPage() {
     store.supabaseSession?.user?.email?.split("@")[0] ||
     "Student";
   const studentEmail =
-    liveProfileData?.profile?.email || store.supabaseSession?.user?.email || store.student?.email || "";
+    liveProfileData?.profile?.email ||
+    store.supabaseSession?.user?.email ||
+    store.student?.email ||
+    "";
   const studentCollege =
-    liveProfileData?.profile?.college || store.student?.college || "SantoGe Institute of Technology";
+    liveProfileData?.profile?.college ||
+    store.student?.college ||
+    "SantoGe Institute of Technology";
   const studentRollNo =
     liveProfileData?.profile?.roll_no || store.student?.rollNo || "2026-CSE-042";
-  const studentDept =
-    liveProfileData?.profile?.dept || store.student?.dept || "Computer Science";
+  const studentDept = liveProfileData?.profile?.dept || store.student?.dept || "Computer Science";
   const studentBatchId =
     liveProfileData?.profile?.batch_id || store.student?.batchId || "BATCH-2026-ABC-CSE-01";
-  const placementDay =
-    liveProfileData?.profile?.placement_day ?? store.placementDay ?? 1;
+  const placementDay = liveProfileData?.profile?.placement_day ?? store.placementDay ?? 1;
   const readiness = {
     T: liveProfileData?.profile?.readiness_t ?? store.readiness.T,
     C: liveProfileData?.profile?.readiness_c ?? store.readiness.C,
@@ -122,8 +125,7 @@ function SettingsPage() {
     R: liveProfileData?.profile?.readiness_r ?? store.readiness.R,
     M: liveProfileData?.profile?.readiness_m ?? store.readiness.M,
   };
-  const secondaryMinimum =
-    livePlatformSettings?.secondaryMinimum ?? store.secondaryMinimum;
+  const secondaryMinimum = livePlatformSettings?.secondaryMinimum ?? store.secondaryMinimum;
 
   const [domainFilter, setDomainFilter] = useState<string>("all");
   const [telegramNotifs, setTelegramNotifs] = useState(true);
@@ -414,10 +416,7 @@ function SettingsPage() {
           </Panel>
 
           {/* Workspace Appearance */}
-          <Panel
-            title="Workspace & Theme"
-            subtitle="Appearance customization"
-          >
+          <Panel title="Workspace & Theme" subtitle="Appearance customization">
             <div className="space-y-3">
               <button
                 onClick={store.toggleTheme}

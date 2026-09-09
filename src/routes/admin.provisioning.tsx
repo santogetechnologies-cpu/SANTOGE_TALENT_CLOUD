@@ -1263,14 +1263,13 @@ function ProvisioningPage() {
                 <h3 className="font-display text-base font-bold text-foreground">
                   Clear All Provisioned Accounts?
                 </h3>
-                <p className="text-xs text-copy-subtle">
-                  Safety Notice for Production Database
-                </p>
+                <p className="text-xs text-copy-subtle">Safety Notice for Production Database</p>
               </div>
             </div>
 
             <p className="text-xs text-copy-subtle leading-relaxed">
-              In production, individual students can be deleted using the Delete button in the table, or entire cohorts can be managed via the Batches panel.
+              In production, individual students can be deleted using the Delete button in the
+              table, or entire cohorts can be managed via the Batches panel.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">

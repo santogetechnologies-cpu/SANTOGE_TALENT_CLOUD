@@ -99,7 +99,8 @@ function BatchPage() {
     liveBatchQuery.data?.batch?.name ||
     (batchId ? (batchId.length > 12 ? `Batch ${batchId.slice(0, 8)}` : batchId) : "Not Assigned");
   const batchCapacity = liveBatchQuery.data?.batch?.capacity ?? 300;
-  const batchDept = liveBatchQuery.data?.batch?.dept || liveProfileData?.profile?.dept || "Engineering";
+  const batchDept =
+    liveBatchQuery.data?.batch?.dept || liveProfileData?.profile?.dept || "Engineering";
   const batchEnrolled = liveBatchQuery.data?.enrolled ?? 0;
   const lastSync = liveBatchQuery.data?.batch?.last_sync_at
     ? new Date(liveBatchQuery.data.batch.last_sync_at).toLocaleString("en-GB")

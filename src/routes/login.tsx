@@ -184,9 +184,7 @@ function LoginPage() {
                   disabled={connStatus === "testing"}
                   className="flex items-center gap-1.5 rounded-lg bg-surface-elevated border border-line-soft px-3 py-1.5 text-xs font-bold text-foreground hover:border-brand-cyan/50"
                 >
-                  <RefreshCw
-                    className={cn("size-3", connStatus === "testing" && "animate-spin")}
-                  />{" "}
+                  <RefreshCw className={cn("size-3", connStatus === "testing" && "animate-spin")} />{" "}
                   Test Connection
                 </button>
                 {connMessage && (
@@ -220,9 +218,7 @@ function LoginPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-copy-subtle">
-                Password
-              </label>
+              <label className="mb-1 block text-xs font-semibold text-copy-subtle">Password</label>
               <input
                 type="password"
                 required
@@ -257,11 +253,10 @@ function LoginPage() {
           <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-line-soft bg-surface-soft/80 p-3 text-[11px] text-copy-subtle">
             <Info className="size-4 shrink-0 text-brand-cyan mt-0.5" />
             <div>
-              <span className="font-semibold text-foreground">
-                Institutional Provisioning:
-              </span>{" "}
+              <span className="font-semibold text-foreground">Institutional Provisioning:</span>{" "}
               Student accounts are created via CSV roster uploads by college administrators.
-              Self-signup is disabled to preserve cohort batch integrity and 1–3 technical course track mappings.
+              Self-signup is disabled to preserve cohort batch integrity and 1–3 technical course
+              track mappings.
             </div>
           </div>
         </div>
