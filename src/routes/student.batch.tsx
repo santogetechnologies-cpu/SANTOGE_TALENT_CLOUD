@@ -60,7 +60,7 @@ function BatchPage() {
 
   // In Live mode, fetch real batch details and enrolled count from Supabase
   const liveBatchQuery = useQuery({
-    queryKey: ["live", "student-batch", batchId],
+    queryKey: ["live", "batches", batchId],
     queryFn: async () => {
       if (!batchId) return { batch: null, enrolled: 0 };
       const supabase = getSupabaseClient();

@@ -39,7 +39,7 @@ const METRICS: { key: Metric; label: string }[] = [
   { key: "improvement", label: "Improvement rank" },
 ];
 
-import { useLiveStudentProfile, useLiveStudentProgress } from "@/lib/data";
+import { useLiveStudentProfile, useLiveStudentProgress, useLiveLeaderboard } from "@/lib/data";
 import { trackProgress } from "@/lib/curriculum";
 import type { TrackId } from "@/lib/tracks";
 
@@ -79,11 +79,7 @@ function LeaderboardPage() {
 
   const [metric, setMetric] = useState<Metric>("aptitude");
 
-  const liveLeaderboardQuery = useQuery({
-    queryKey: ["live", "student-leaderboard", batchId],
-    queryFn: () => fetchLiveBatchLeaderboard(batchId),
-    enabled: isLive && !!batchId,
-  });
+  const liveLeaderboardQuery = useLiveLeaderboard(batchId, 50, isLive && !!batchId);
 
   const rows = useMemo(() => {
     if (isLive && liveLeaderboardQuery.data) {

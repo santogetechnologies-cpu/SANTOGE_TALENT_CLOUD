@@ -1315,6 +1315,7 @@ function AdminAnalytics() {
                       if (res.ok) {
                         queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] });
                         queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] });
+                        queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
                         toast.success(`Student profile archived from live database`);
                       } else {
                         toast.error(res.error || "Failed to delete student");
