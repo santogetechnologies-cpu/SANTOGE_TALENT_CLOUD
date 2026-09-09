@@ -38,58 +38,6 @@ type Opening = {
   stage: Stage | null;
 };
 
-const SEED: Opening[] = [
-  {
-    id: "o1",
-    company: "Zoho",
-    role: "Member Technical Staff",
-    ctc: "₹7.2 LPA",
-    minScore: 520,
-    stage: "Technical",
-  },
-  {
-    id: "o2",
-    company: "Freshworks",
-    role: "Associate SDE",
-    ctc: "₹9.0 LPA",
-    minScore: 640,
-    stage: "Screening",
-  },
-  {
-    id: "o3",
-    company: "TCS Digital",
-    role: "Systems Engineer",
-    ctc: "₹7.0 LPA",
-    minScore: 480,
-    stage: "Applied",
-  },
-  {
-    id: "o4",
-    company: "Cognizant GenC Next",
-    role: "Programmer Analyst",
-    ctc: "₹6.5 LPA",
-    minScore: 450,
-    stage: null,
-  },
-  {
-    id: "o5",
-    company: "Hexaware",
-    role: "Cloud Associate",
-    ctc: "₹5.5 LPA",
-    minScore: 400,
-    stage: null,
-  },
-  { id: "o6", company: "Razorpay", role: "SDE-1", ctc: "₹16 LPA", minScore: 780, stage: null },
-  {
-    id: "o7",
-    company: "Chargebee",
-    role: "QA Engineer",
-    ctc: "₹8.0 LPA",
-    minScore: 600,
-    stage: "HR Round",
-  },
-];
-
 import { useLiveStudentProfile, useLiveHiringDrives } from "@/lib/data";
 
 function PlacementPage() {
@@ -103,7 +51,7 @@ function PlacementPage() {
   );
   const talentScore = liveProfileData?.profile?.talent_score ?? store.talentScore;
 
-  const { data: liveDrives } = useLiveHiringDrives(true);
+  const { data: liveDrives, isLoading: isDrivesLoading } = useLiveHiringDrives(true);
 
   const rows: Opening[] = useMemo(() => {
     if (liveDrives && liveDrives.length > 0) {
@@ -116,10 +64,7 @@ function PlacementPage() {
         stage: liveStages[d.id] ?? null,
       }));
     }
-    return SEED.map((s) => ({
-      ...s,
-      stage: liveStages[s.id] ?? s.stage,
-    }));
+    return [];
   }, [liveDrives, liveStages]);
 
   const filtered = useMemo(
@@ -179,65 +124,79 @@ function PlacementPage() {
         }
       >
         <div className="space-y-2.5">
-          {filtered.map((r) => {
-            const unlocked = talentScore >= r.minScore;
-            const progress = r.stage ? ((STAGES.indexOf(r.stage) + 1) / STAGES.length) * 100 : 0;
-            return (
-              <div key={r.id} className="rounded-xl border border-line-soft bg-surface-soft p-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="grid size-9 place-items-center rounded-xl bg-surface-dark">
-                    <Building2 className="size-4 text-brand-cyan" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">{r.company}</p>
-                    <p className="text-xs text-copy-subtle">
-                      {r.role} · {r.ctc}
-                    </p>
-                  </div>
-                  <div className="ml-auto flex items-center gap-2">
-                    <Chip tone={unlocked ? "emerald" : "rose"}>Min {r.minScore}</Chip>
-                    {r.stage ? (
-                      <>
-                        <Chip tone="cyan">{r.stage}</Chip>
-                        {r.stage !== "Offer" && (
-                          <button
-                            onClick={() => advance(r.id)}
-                            className="rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-3 py-1.5 text-[11px] font-bold text-surface-dark"
-                          >
-                            Advance
-                          </button>
-                        )}
-                        <button
-                          onClick={() => withdraw(r.id)}
-                          aria-label="Withdraw"
-                          className="text-copy-subtle hover:text-brand-rose"
-                        >
-                          <X className="size-4" />
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        disabled={!unlocked}
-                        onClick={() => advance(r.id)}
-                        className="rounded-xl border border-line-soft px-3 py-1.5 text-[11px] font-bold text-foreground disabled:opacity-40"
-                      >
-                        {unlocked ? "Apply" : "Locked"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {r.stage && (
-                  <div className="mt-3">
-                    <Meter value={progress} accent="var(--brand-purple)" />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {filtered.length === 0 && (
+          {isDrivesLoading ? (
+            <div className="rounded-xl border border-line-soft bg-surface-soft p-8 text-center text-xs text-copy-subtle">
+              Loading active hiring drives from Supabase…
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-xl border border-line-soft bg-surface-soft p-8 text-center text-xs text-copy-subtle">
+              <Building2 className="mx-auto mb-2 size-8 text-copy-subtle/50" />
+              <p className="font-semibold text-foreground">No active hiring drives available.</p>
+              <p className="mt-1 text-[11px] text-copy-subtle">
+                Placement drives will appear here once registered and published by platform
+                administrators.
+              </p>
+            </div>
+          ) : filtered.length === 0 ? (
             <p className="py-6 text-center text-xs text-copy-subtle">
               No openings match "{query}".
             </p>
+          ) : (
+            filtered.map((r) => {
+              const unlocked = talentScore >= r.minScore;
+              const progress = r.stage ? ((STAGES.indexOf(r.stage) + 1) / STAGES.length) * 100 : 0;
+              return (
+                <div key={r.id} className="rounded-xl border border-line-soft bg-surface-soft p-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="grid size-9 place-items-center rounded-xl bg-surface-dark">
+                      <Building2 className="size-4 text-brand-cyan" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{r.company}</p>
+                      <p className="text-xs text-copy-subtle">
+                        {r.role} · {r.ctc}
+                      </p>
+                    </div>
+                    <div className="ml-auto flex items-center gap-2">
+                      <Chip tone={unlocked ? "emerald" : "rose"}>Min {r.minScore}</Chip>
+                      {r.stage ? (
+                        <>
+                          <Chip tone="cyan">{r.stage}</Chip>
+                          {r.stage !== "Offer" && (
+                            <button
+                              onClick={() => advance(r.id)}
+                              className="rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-3 py-1.5 text-[11px] font-bold text-surface-dark"
+                            >
+                              Advance
+                            </button>
+                          )}
+                          <button
+                            onClick={() => withdraw(r.id)}
+                            aria-label="Withdraw"
+                            className="text-copy-subtle hover:text-brand-rose"
+                          >
+                            <X className="size-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          disabled={!unlocked}
+                          onClick={() => advance(r.id)}
+                          className="rounded-xl border border-line-soft px-3 py-1.5 text-[11px] font-bold text-foreground disabled:opacity-40"
+                        >
+                          {unlocked ? "Apply" : "Locked"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {r.stage && (
+                    <div className="mt-3">
+                      <Meter value={progress} accent="var(--brand-purple)" />
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </Panel>

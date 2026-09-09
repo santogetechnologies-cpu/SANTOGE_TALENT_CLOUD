@@ -51,14 +51,6 @@ const KEYWORDS = [
   "AWS",
 ];
 
-const SAMPLE_RESUME = `Ajay Kumar — Full Stack & Cloud Developer
-Summary: Passionate software engineer with hands-on experience building scalable web applications and microservices.
-Skills: React, Node.js, REST API, TypeScript, SQL, Docker, AWS, Git, Agile, Automated Testing.
-Projects:
-1. E-Commerce Platform: Built REST API services with Node.js and Express; integrated MongoDB and Redis caching.
-2. Cloud Infrastructure: Automated AWS EC2 and VPC provisioning using Terraform and Docker containers.
-3. Interactive Analytics Dashboard: Developed React SPA with state management and real-time WebSocket charts.`;
-
 interface RecruiterItem {
   company: string;
   track: TrackId;
@@ -66,51 +58,6 @@ interface RecruiterItem {
   role: string;
   package: string;
 }
-
-const RECRUITERS: RecruiterItem[] = [
-  {
-    company: "TCS Digital",
-    track: "mern",
-    minScore: 650,
-    role: "Full Stack Engineer",
-    package: "₹8.5 LPA",
-  },
-  {
-    company: "Infosys Wingspan",
-    track: "cloud",
-    minScore: 680,
-    role: "Cloud & DevOps Associate",
-    package: "₹9.2 LPA",
-  },
-  {
-    company: "Wipro Turbo",
-    track: "aiml",
-    minScore: 700,
-    role: "AI/ML Solutions Dev",
-    package: "₹10.0 LPA",
-  },
-  {
-    company: "Cognizant GenC Next",
-    track: "java",
-    minScore: 650,
-    role: "Java Backend Engineer",
-    package: "₹8.0 LPA",
-  },
-  {
-    company: "Accenture Advanced",
-    track: "cyber",
-    minScore: 720,
-    role: "Cybersecurity Analyst",
-    package: "₹11.0 LPA",
-  },
-  {
-    company: "Deloitte USI",
-    track: "sap",
-    minScore: 690,
-    role: "SAP ABAP Consultant",
-    package: "₹9.5 LPA",
-  },
-];
 
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -157,7 +104,7 @@ function GatewayPage() {
     return trackProgress(trackId, skills);
   };
 
-  const recruitersList = useMemo(() => {
+  const recruitersList: RecruiterItem[] = useMemo(() => {
     if (liveHiringDrives && liveHiringDrives.length > 0) {
       return liveHiringDrives.map((d) => ({
         company: d.company,
@@ -167,10 +114,10 @@ function GatewayPage() {
         package: d.ctc,
       }));
     }
-    return RECRUITERS;
+    return [];
   }, [liveHiringDrives, activeTracks]);
 
-  const [resume, setResume] = useState(SAMPLE_RESUME);
+  const [resume, setResume] = useState("");
   const [log, setLog] = useState<string[]>([]);
   const [mockScore, setMockScore] = useState(82);
 
@@ -181,6 +128,10 @@ function GatewayPage() {
   const atsScore = Math.round((found.length / KEYWORDS.length) * 100);
 
   const scan = async () => {
+    if (!resume.trim()) {
+      toast.error("Please paste or type your resume content before scanning.");
+      return;
+    }
     const missing = KEYWORDS.filter((k) => !found.includes(k));
     setLog([
       `[ats] Parsed ${resume.split(/\s+/).length} tokens across experience blocks`,
@@ -487,50 +438,63 @@ function GatewayPage() {
         subtitle="Companies actively filtering STC candidates based on technical track, Talent Score, and verified projects"
         action={<Chip tone="emerald">{recruitersList.length} Requisitions Active</Chip>}
       >
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {recruitersList.map((r) => {
-            const isEligible = talentScore >= r.minScore && activeTracks.includes(r.track);
-            const track = TRACKS.find((t) => t.id === r.track);
-            return (
-              <div
-                key={r.company}
-                className={cn(
-                  "rounded-xl border p-3.5 transition-all",
-                  isEligible
-                    ? "border-brand-emerald/50 bg-brand-emerald/5 shadow-md shadow-brand-emerald/5"
-                    : "border-line-soft bg-surface-soft opacity-80",
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                    <Building2 className="size-3.5 text-brand-cyan" /> {r.company}
-                  </span>
-                  <span className="font-mono text-xs font-bold text-brand-emerald">
-                    {r.package}
-                  </span>
+        {recruitersList.length === 0 ? (
+          <div className="rounded-xl border border-line-soft bg-surface-soft/40 p-8 text-center">
+            <Building2 className="mx-auto size-8 text-copy-muted/50 mb-2" />
+            <p className="text-sm font-semibold text-foreground">
+              No active recruiting requisitions available
+            </p>
+            <p className="mt-1 text-xs text-copy-subtle">
+              Company drives and requisition criteria will appear here once published by the
+              recruitment team.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {recruitersList.map((r) => {
+              const isEligible = talentScore >= r.minScore && activeTracks.includes(r.track);
+              const track = TRACKS.find((t) => t.id === r.track);
+              return (
+                <div
+                  key={r.company}
+                  className={cn(
+                    "rounded-xl border p-3.5 transition-all",
+                    isEligible
+                      ? "border-brand-emerald/50 bg-brand-emerald/5 shadow-md shadow-brand-emerald/5"
+                      : "border-line-soft bg-surface-soft opacity-80",
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                      <Building2 className="size-3.5 text-brand-cyan" /> {r.company}
+                    </span>
+                    <span className="font-mono text-xs font-bold text-brand-emerald">
+                      {r.package}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs font-semibold text-copy-subtle">{r.role}</p>
+                  <div className="mt-2.5 flex items-center justify-between text-[11px]">
+                    <span className="rounded bg-surface-elevated px-1.5 py-0.5 font-mono text-[10px] text-copy-subtle">
+                      {track?.short || r.track}
+                    </span>
+                    <span className="font-mono text-copy-subtle">Req: {r.minScore}+</span>
+                  </div>
+                  <div className="mt-3 border-t border-line-soft/60 pt-2 flex items-center justify-between text-[11px]">
+                    <span
+                      className={cn(
+                        "font-semibold",
+                        isEligible ? "text-brand-emerald" : "text-brand-amber",
+                      )}
+                    >
+                      {isEligible ? "✓ Matched & Forwarded" : "Requires higher score"}
+                    </span>
+                    {isEligible && <Sparkles className="size-3 text-brand-emerald" />}
+                  </div>
                 </div>
-                <p className="mt-1 text-xs font-semibold text-copy-subtle">{r.role}</p>
-                <div className="mt-2.5 flex items-center justify-between text-[11px]">
-                  <span className="rounded bg-surface-elevated px-1.5 py-0.5 font-mono text-[10px] text-copy-subtle">
-                    {track?.short || r.track}
-                  </span>
-                  <span className="font-mono text-copy-subtle">Req: {r.minScore}+</span>
-                </div>
-                <div className="mt-3 border-t border-line-soft/60 pt-2 flex items-center justify-between text-[11px]">
-                  <span
-                    className={cn(
-                      "font-semibold",
-                      isEligible ? "text-brand-emerald" : "text-brand-amber",
-                    )}
-                  >
-                    {isEligible ? "✓ Matched & Forwarded" : "Requires higher score"}
-                  </span>
-                  {isEligible && <Sparkles className="size-3 text-brand-emerald" />}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </Panel>
     </div>
   );

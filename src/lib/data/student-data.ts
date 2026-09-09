@@ -1,7 +1,7 @@
 /**
  * SantoGe Talent Cloud — Student Data Service
  *
- * Authoritative integration for Live Supabase mode and fallback for Demo mode.
+ * Authoritative integration for Live Supabase mode.
  * Rules:
  * - Specific column selection only (NO select('*')).
  * - Zero realtime subscriptions, zero continuous polling.
@@ -412,27 +412,42 @@ export async function updateLiveStudentTracks(
   tracks: TrackId[],
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
+  const validTracks = tracks.slice(0, 3);
 
-  // Delete existing tracks
-  const { error: delErr } = await supabase
-    .from("student_tracks")
-    .delete()
-    .eq("student_id", studentId);
-  if (delErr) {
-    return { ok: false, error: delErr.message };
+  // 1. Remove any previously assigned tracks not in the updated list
+  if (validTracks.length > 0) {
+    const { error: delErr } = await supabase
+      .from("student_tracks")
+      .delete()
+      .eq("student_id", studentId)
+      .not("track_id", "in", `(${validTracks.join(",")})`);
+    if (delErr) {
+      console.warn("Could not prune deselected tracks:", delErr.message);
+    }
+  } else {
+    const { error: delErr } = await supabase
+      .from("student_tracks")
+      .delete()
+      .eq("student_id", studentId);
+    if (delErr) {
+      return { ok: false, error: delErr.message };
+    }
   }
 
-  // Insert new 1-3 tracks
-  const rows = tracks.slice(0, 3).map((track_id, idx) => ({
-    student_id: studentId,
-    track_id,
-    position: idx + 1,
-  }));
+  // 2. Upsert the current tracks (atomic & idempotent, eliminating 409 conflicts)
+  if (validTracks.length > 0) {
+    const rows = validTracks.map((track_id, idx) => ({
+      student_id: studentId,
+      track_id,
+      position: idx + 1,
+    }));
 
-  if (rows.length > 0) {
-    const { error: insErr } = await supabase.from("student_tracks").insert(rows);
-    if (insErr) {
-      return { ok: false, error: insErr.message };
+    const { error: upsertErr } = await supabase
+      .from("student_tracks")
+      .upsert(rows, { onConflict: "student_id,track_id" });
+
+    if (upsertErr) {
+      return { ok: false, error: upsertErr.message };
     }
   }
 

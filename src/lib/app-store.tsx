@@ -10,9 +10,8 @@ import {
 import { toast } from "sonner";
 import type { TrackId } from "./tracks";
 import { trackProgress as trackPct } from "./curriculum";
+import type { Session } from "@supabase/supabase-js";
 import {
-  getStoredSession,
-  saveStoredSession,
   supabaseAuth,
   getSupabaseClient,
   fetchLiveUserRole,
@@ -103,6 +102,7 @@ export type Profile = {
   activeTracks: TrackId[];
   xp: number;
   streak: number;
+  talentScore: number;
   completedLabs: string[];
   daily: DailySteps;
   readiness: ReadinessInputs;
@@ -147,14 +147,13 @@ export type StudentInfo = {
   xp?: number;
   streak?: number;
   placementDay?: number;
+  talentScore?: number;
   readiness?: ReadinessInputs;
 };
 
 export type StudentAccount = StudentInfo;
 
-const FALLBACK_TRACK_POOL: TrackId[] = ["mern", "cloud", "aiml", "java", "cyber", "datascience"];
-
-export const sanitizeTracks = (tracks?: (TrackId | string)[]): [TrackId, TrackId, TrackId] => {
+export const sanitizeTracks = (tracks?: (TrackId | string)[]): TrackId[] => {
   const seen = new Set<TrackId>();
   const validTracks: TrackId[] = [];
 
@@ -170,24 +169,17 @@ export const sanitizeTracks = (tracks?: (TrackId | string)[]): [TrackId, TrackId
     }
   }
 
-  for (const fallback of FALLBACK_TRACK_POOL) {
-    if (validTracks.length >= 3) break;
-    if (!seen.has(fallback)) {
-      seen.add(fallback);
-      validTracks.push(fallback);
-    }
-  }
-
-  return [validTracks[0] ?? "mern", validTracks[1] ?? "cloud", validTracks[2] ?? "aiml"];
+  return validTracks.slice(0, 3);
 };
 
 const DEFAULT_PROFILE: Profile = {
-  activeTracks: ["mern", "cloud"],
+  activeTracks: [],
   xp: 0,
-  streak: 1,
+  streak: 0,
+  talentScore: 0,
   completedLabs: [],
   daily: { english: false, aptitude: false, practice: false },
-  readiness: { T: 50, C: 50, A: 50, E: 50, R: 50, M: 50 },
+  readiness: { T: 0, C: 0, A: 0, E: 0, R: 0, M: 0 },
   skills: [],
   placementDay: 1,
   attendance: [],
@@ -256,7 +248,7 @@ type AppStoreContextValue = AppStoreState & {
   setRole: (r: Role) => void;
   toggleTheme: () => void;
   setReadiness: (patch: Partial<ReadinessInputs>) => void;
-  setActiveTracks: (tracks: TrackId[]) => void;
+  setActiveTracks: (tracks: TrackId[], syncToDb?: boolean) => void;
   setDailyStep: (key: "english" | "aptitude" | "practice", val: boolean) => void;
   completeDailyStep: (key: "english" | "aptitude" | "practice") => void;
   completeSkill: (trackId: TrackId, skillId: string, name: string) => void;
@@ -316,132 +308,140 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   }, [state.theme]);
 
-  // Load initial session on boot
+  // Supabase Auth session listener & boot initialization
   useEffect(() => {
     let isMounted = true;
 
-    async function initSession() {
-      try {
-        const activeSession = getStoredSession();
-        if (activeSession && activeSession.user?.id && isSupabaseConfigured()) {
-          const user = activeSession.user;
-          const userEmail = user.email.toLowerCase();
+    if (!isSupabaseConfigured()) {
+      setReady(true);
+      return;
+    }
 
-          try {
-            const [role, platformSettings] = await Promise.all([
-              fetchLiveUserRole(user.id, user.user_metadata?.role, user.email),
-              fetchLivePlatformSettings(),
-            ]);
+    const supabase = getSupabaseClient();
 
-            const completionRule = platformSettings?.completionRule ?? "primary-plus-minimum";
-            const secondaryMinimum = platformSettings?.secondaryMinimum ?? 50;
-
-            if (role === "student") {
-              const liveData = await fetchLiveStudentProfile(user.id, userEmail);
-              if (liveData?.profile && isMounted) {
-                const progress = await fetchLiveStudentProgress(liveData.profile.id);
-
-                const studentInfo: StudentInfo = {
-                  email: userEmail,
-                  name: liveData.profile.name,
-                  firstName: liveData.profile.name.split(" ")[0] || "Student",
-                  rollNo: liveData.profile.roll_no || "",
-                  dept: liveData.profile.dept || "",
-                  batchId: liveData.profile.batch_id || "",
-                  college: liveData.profile.college || "",
-                  tracks: liveData.tracks,
-                  xp: liveData.profile.xp,
-                  streak: liveData.profile.streak,
-                  placementDay: liveData.profile.placement_day,
-                  readiness: {
-                    T: liveData.profile.readiness_t,
-                    C: liveData.profile.readiness_c,
-                    A: liveData.profile.readiness_a,
-                    E: liveData.profile.readiness_e,
-                    R: liveData.profile.readiness_r,
-                    M: liveData.profile.readiness_m,
-                  },
-                };
-
-                const liveProfile: Profile = {
-                  activeTracks: liveData.tracks,
-                  xp: liveData.profile.xp,
-                  streak: liveData.profile.streak,
-                  completedLabs: progress.completedLabs,
-                  daily: progress.daily,
-                  readiness: studentInfo.readiness!,
-                  skills: progress.skills,
-                  placementDay: liveData.profile.placement_day,
-                  attendance: progress.attendance,
-                  assessments: progress.assessments,
-                  completedTechDays: progress.completedTechDays,
-                  mocks: progress.mocks,
-                  certifications: progress.certifications,
-                };
-
-                setState((prev) => ({
-                  ...prev,
-                  role: "student",
-                  sessionEmail: userEmail,
-                  supabaseSession: activeSession,
-                  liveStudentId: liveData.profile.id,
-                  student: studentInfo,
-                  profile: liveProfile,
-                  completionRule,
-                  secondaryMinimum,
-                }));
-              }
-            } else if (isMounted) {
-              setState((prev) => ({
-                ...prev,
-                role: "admin",
-                sessionEmail: userEmail,
-                supabaseSession: activeSession,
-                liveStudentId: null,
-                student: null,
-                completionRule,
-                secondaryMinimum,
-              }));
-            }
-          } catch (syncErr) {
-            console.warn("Live session sync warning:", syncErr);
-          }
+    async function syncSession(session: Session | SupabaseSession | null) {
+      if (!session?.user?.id) {
+        if (isMounted) {
+          setState((prev) => ({
+            ...prev,
+            sessionEmail: null,
+            supabaseSession: null,
+            liveStudentId: null,
+            student: null,
+            profile: DEFAULT_PROFILE,
+          }));
+          setReady(true);
         }
-      } catch (err) {
-        console.warn("Session init error:", err);
+        return;
+      }
+
+      const user = session.user;
+      const userEmail = (user.email || "").toLowerCase();
+
+      try {
+        const [role, platformSettings] = await Promise.all([
+          fetchLiveUserRole(user.id, user.user_metadata?.role, user.email),
+          fetchLivePlatformSettings(),
+        ]);
+
+        const completionRule = platformSettings?.completionRule ?? "primary-plus-minimum";
+        const secondaryMinimum = platformSettings?.secondaryMinimum ?? 50;
+
+        if (role === "student") {
+          const liveData = await fetchLiveStudentProfile(user.id, userEmail);
+          if (liveData?.profile && isMounted) {
+            const progress = await fetchLiveStudentProgress(liveData.profile.id);
+
+            const studentInfo: StudentInfo = {
+              email: userEmail,
+              name: liveData.profile.name,
+              firstName: liveData.profile.name.split(" ")[0] || "Student",
+              rollNo: liveData.profile.roll_no || "",
+              dept: liveData.profile.dept || "",
+              batchId: liveData.profile.batch_id || "",
+              college: liveData.profile.college || "",
+              tracks: liveData.tracks,
+              xp: liveData.profile.xp,
+              streak: liveData.profile.streak,
+              placementDay: liveData.profile.placement_day,
+              talentScore: liveData.profile.talent_score,
+              readiness: {
+                T: liveData.profile.readiness_t,
+                C: liveData.profile.readiness_c,
+                A: liveData.profile.readiness_a,
+                E: liveData.profile.readiness_e,
+                R: liveData.profile.readiness_r,
+                M: liveData.profile.readiness_m,
+              },
+            };
+
+            const liveProfile: Profile = {
+              activeTracks: liveData.tracks,
+              xp: liveData.profile.xp,
+              streak: liveData.profile.streak,
+              talentScore: liveData.profile.talent_score,
+              completedLabs: progress.completedLabs,
+              daily: progress.daily,
+              readiness: studentInfo.readiness!,
+              skills: progress.skills,
+              placementDay: liveData.profile.placement_day,
+              attendance: progress.attendance,
+              assessments: progress.assessments,
+              completedTechDays: progress.completedTechDays,
+              mocks: progress.mocks,
+              certifications: progress.certifications,
+            };
+
+            setState((prev) => ({
+              ...prev,
+              role: "student",
+              sessionEmail: userEmail,
+              supabaseSession: session as unknown as SupabaseSession,
+              liveStudentId: liveData.profile.id,
+              student: studentInfo,
+              profile: liveProfile,
+              completionRule,
+              secondaryMinimum,
+            }));
+          }
+        } else if (isMounted) {
+          setState((prev) => ({
+            ...prev,
+            role: "admin",
+            sessionEmail: userEmail,
+            supabaseSession: session as unknown as SupabaseSession,
+            liveStudentId: null,
+            student: null,
+            completionRule,
+            secondaryMinimum,
+          }));
+        }
+      } catch (syncErr) {
+        console.warn("Live session sync warning:", syncErr);
       } finally {
         if (isMounted) setReady(true);
       }
     }
 
-    void initSession();
+    // 1. Authoritative initial session retrieval from Supabase Auth
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      void syncSession(session);
+    });
 
-    // Listen to Supabase auth state changes
-    const supabase = getSupabaseClient();
-    let authSub: { unsubscribe: () => void } | null = null;
-    if (supabase) {
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === "SIGNED_OUT" || !session) {
-          if (isMounted) {
-            setState((prev) => ({
-              ...prev,
-              sessionEmail: null,
-              supabaseSession: null,
-              liveStudentId: null,
-              student: null,
-              profile: DEFAULT_PROFILE,
-            }));
-          }
-        }
-      });
-      authSub = subscription;
-    }
+    // 2. Subscribe to Supabase Auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || !session) {
+        void syncSession(null);
+      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        void syncSession(session);
+      }
+    });
 
     return () => {
       isMounted = false;
-      authSub?.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -525,6 +525,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           xp: liveData.profile.xp,
           streak: liveData.profile.streak,
           placementDay: liveData.profile.placement_day,
+          talentScore: liveData.profile.talent_score,
           readiness: {
             T: liveData.profile.readiness_t,
             C: liveData.profile.readiness_c,
@@ -539,6 +540,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           activeTracks: liveData.tracks,
           xp: liveData.profile.xp,
           streak: liveData.profile.streak,
+          talentScore: liveData.profile.talent_score,
           completedLabs: progress.completedLabs,
           daily: progress.daily,
           readiness: studentInfo.readiness!,
@@ -648,10 +650,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const setActiveTracks = useCallback((tracks: TrackId[]) => {
+  const setActiveTracks = useCallback((tracks: TrackId[], syncToDb = false) => {
     setState((s) => {
       const nextProfile = { ...s.profile, activeTracks: tracks };
-      if (s.liveStudentId) {
+      if (syncToDb && s.liveStudentId) {
         void updateLiveStudentTracks(s.liveStudentId, tracks);
       }
       return { ...s, profile: nextProfile };
@@ -835,10 +837,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const r = profile.readiness;
   const talentScore = useMemo(() => {
-    return Math.round(
-      (r.T * 0.35 + r.C * 0.25 + r.A * 0.15 + r.E * 0.1 + r.R * 0.1 + r.M * 0.05) * 10,
-    );
-  }, [r]);
+    return state.student?.talentScore ?? state.profile.talentScore ?? 0;
+  }, [state.student?.talentScore, state.profile.talentScore]);
 
   const readinessIndex = useMemo(() => {
     return Math.round((r.T + r.C + r.A + r.E + r.R + r.M) / 6);

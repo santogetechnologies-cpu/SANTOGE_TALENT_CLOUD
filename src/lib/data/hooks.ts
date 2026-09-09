@@ -12,6 +12,7 @@ import {
   fetchLiveStudentRoster,
   fetchLiveBatches,
   fetchLivePlatformSettings,
+  fetchLiveTrackDistribution,
 } from "./admin-data";
 import {
   fetchLiveHiringDrives,
@@ -141,5 +142,14 @@ export function useLivePlatformSettings(enabled = true) {
     queryFn: fetchLivePlatformSettings,
     enabled,
     staleTime: 1000 * 60 * 10,
+  });
+}
+
+export function useLiveTrackDistribution(enabled = true) {
+  return useQuery({
+    queryKey: ["live", "track-distribution"],
+    queryFn: fetchLiveTrackDistribution,
+    enabled,
+    staleTime: 1000 * 60 * 5,
   });
 }

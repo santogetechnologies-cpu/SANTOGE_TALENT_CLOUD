@@ -166,8 +166,7 @@ export function AdminResetPasswordModal({
                 <span>Password Successfully Updated</span>
               </div>
               <p className="text-copy-subtle">
-                The student can immediately log in with these new credentials via the Demo or Live
-                portal.
+                The student can immediately log in with these new credentials via the portal.
               </p>
             </div>
 

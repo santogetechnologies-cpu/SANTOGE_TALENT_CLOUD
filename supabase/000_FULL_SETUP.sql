@@ -855,10 +855,134 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
 
--- Seed Super Admin Role explicitly for designated bootstrap user
-INSERT INTO public.user_roles (auth_user_id, role)
-VALUES ('e6c4e39c-b521-4c37-96a1-be3720e57cb8', 'super_admin')
-ON CONFLICT (auth_user_id) DO UPDATE SET role = 'super_admin';
+-- Dynamic Super Admin Bootstrap Function (Zero hardcoded UUIDs)
+CREATE OR REPLACE FUNCTION public.bootstrap_super_admin(p_email TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    SELECT id INTO v_user_id FROM auth.users WHERE email = LOWER(TRIM(p_email));
+    IF v_user_id IS NOT NULL THEN
+        INSERT INTO public.user_roles (auth_user_id, role)
+        VALUES (v_user_id, 'super_admin')
+        ON CONFLICT (auth_user_id) DO UPDATE SET role = 'super_admin';
+    END IF;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.bootstrap_super_admin(TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.bootstrap_super_admin(TEXT) TO service_role;
+
+-- Authoritative Batch Leaderboard RPC (Privacy-Preserving & Deterministic Ranking)
+CREATE OR REPLACE FUNCTION public.get_batch_leaderboard(
+    p_batch_id UUID,
+    p_limit INT DEFAULT 50
+)
+RETURNS TABLE (
+    student_id UUID,
+    name TEXT,
+    talent_score INT,
+    rank BIGINT,
+    batch_id UUID
+)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+    SELECT 
+        sp.id AS student_id,
+        sp.name,
+        COALESCE(sp.talent_score, 0)::INT AS talent_score,
+        DENSE_RANK() OVER (ORDER BY COALESCE(sp.talent_score, 0) DESC) AS rank,
+        sp.batch_id
+    FROM public.student_profiles sp
+    WHERE sp.batch_id = p_batch_id
+      AND sp.status = 'active'
+    ORDER BY rank ASC, sp.name ASC
+    LIMIT GREATEST(1, LEAST(p_limit, 200));
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_batch_leaderboard(UUID, INT) TO authenticated, service_role;
+
+-- Live Track Distribution RPC (Aggregated from student_tracks)
+CREATE OR REPLACE FUNCTION public.get_track_distribution()
+RETURNS TABLE (
+    track_id TEXT,
+    track_name TEXT,
+    student_count BIGINT,
+    percentage NUMERIC
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+DECLARE
+    v_total BIGINT;
+BEGIN
+    SELECT COUNT(*) INTO v_total FROM public.student_tracks;
+    RETURN QUERY
+    SELECT 
+        st.track_id::TEXT,
+        COALESCE(ct.name, st.track_id::TEXT) AS track_name,
+        COUNT(st.student_id) AS student_count,
+        CASE WHEN v_total > 0 THEN ROUND((COUNT(st.student_id)::NUMERIC / v_total::NUMERIC) * 100, 1) ELSE 0 END AS percentage
+    FROM public.student_tracks st
+    LEFT JOIN public.curriculum_tracks ct ON ct.id = st.track_id
+    GROUP BY st.track_id, ct.name
+    ORDER BY student_count DESC;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_track_distribution() TO authenticated, service_role;
+
+-- Revoke anonymous execution across all custom routines
+REVOKE EXECUTE ON FUNCTION public.get_batch_leaderboard(UUID, INT) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.get_track_distribution() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.bootstrap_super_admin(TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.bootstrap_super_admin(TEXT) TO service_role;
+
+-- Harden Table Privileges: Revoke direct client write operations on RPC-governed and sensitive tables
+REVOKE INSERT, UPDATE, DELETE ON public.user_roles FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.talent_scores FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.student_certifications FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.student_assessments FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.student_mocks FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.student_skill_completions FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.student_lab_completions FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.student_daily_progress FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.placement_attendance FROM authenticated;
+
+-- Ensure SELECT is permitted under RLS for authenticated clients
+GRANT SELECT ON public.user_roles TO authenticated;
+GRANT SELECT ON public.talent_scores TO authenticated;
+GRANT SELECT ON public.student_certifications TO authenticated;
+GRANT SELECT ON public.student_assessments TO authenticated;
+GRANT SELECT ON public.student_mocks TO authenticated;
+GRANT SELECT ON public.student_skill_completions TO authenticated;
+GRANT SELECT ON public.student_lab_completions TO authenticated;
+GRANT SELECT ON public.student_daily_progress TO authenticated;
+GRANT SELECT ON public.placement_attendance TO authenticated;
+
+-- Revoke all write privileges across public schema from anon
+REVOKE INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public FROM anon;
+
+-- Default Privilege Strategy (Least Privilege for Future Objects)
+ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON ROUTINES FROM anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO service_role;
+
+-- Administrative Privileges for Service Role
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
 
 -- Auto-sync remaining users as students if not already present
 INSERT INTO public.user_roles (auth_user_id, role)

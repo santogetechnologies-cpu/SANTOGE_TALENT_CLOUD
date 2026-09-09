@@ -1,7 +1,7 @@
 /**
  * SantoGe Talent Cloud — Placement Data Service
  *
- * Authoritative integration for Live Supabase mode (Hiring Drives, Leaderboard, Placements) and Demo mode.
+ * Authoritative integration for Live Supabase mode (Hiring Drives, Leaderboard, Placements).
  * Rules:
  * - Specific column selection only (NO select('*')).
  * - Zero realtime subscriptions, zero continuous polling.
@@ -96,14 +96,45 @@ export async function fetchLiveBatchLeaderboard(
   batchId: string,
   limit: number = 50,
 ): Promise<LeaderboardEntry[]> {
+  if (!batchId || batchId === "BATCH") return [];
   const supabase = getSupabaseClient();
 
+  // 1. Authoritative SECURITY DEFINER RPC with DENSE_RANK and privacy protection
+  try {
+    const { data: rpcData, error: rpcErr } = await supabase.rpc("get_batch_leaderboard", {
+      p_batch_id: batchId,
+      p_limit: limit,
+    });
+
+    if (!rpcErr && rpcData && Array.isArray(rpcData)) {
+      return (
+        rpcData as Array<{
+          student_id: string;
+          name: string;
+          talent_score: number;
+          rank: number;
+          batch_id: string;
+        }>
+      ).map((s) => ({
+        student_id: s.student_id,
+        name: s.name,
+        talent_score: Number(s.talent_score),
+        rank: Number(s.rank),
+        batch_id: s.batch_id,
+      }));
+    }
+  } catch {
+    // Fall through to query
+  }
+
+  // 2. Direct query fallback
   const { data } = await supabase
     .from("student_profiles")
     .select("id,name,talent_score,batch_id")
     .eq("batch_id", batchId)
     .eq("status", "active")
     .order("talent_score", { ascending: false })
+    .order("created_at", { ascending: true })
     .limit(limit);
 
   if (!data) return [];
@@ -112,7 +143,7 @@ export async function fetchLiveBatchLeaderboard(
     (s, idx) => ({
       student_id: s.id,
       name: s.name,
-      talent_score: s.talent_score,
+      talent_score: Number(s.talent_score),
       rank: idx + 1,
       batch_id: s.batch_id,
     }),
