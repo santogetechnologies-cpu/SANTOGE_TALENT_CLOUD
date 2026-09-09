@@ -26,13 +26,10 @@ import {
   Trophy,
   Search,
   Check,
-  ChevronDown,
-  Sparkles,
   Command,
   BookOpen,
 } from "lucide-react";
 import { useAppStore, type Role } from "@/lib/app-store";
-import { STUDENT_ACCOUNTS, ADMIN_ACCOUNT } from "@/lib/accounts";
 import { TRACKS, type TrackId } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
@@ -185,7 +182,6 @@ export function AppShell({ portal }: { portal: Role }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [courseModalOpen, setCourseModalOpen] = useState(false);
-  const [personaDropdownOpen, setPersonaDropdownOpen] = useState(false);
 
   const nav = portal === "student" ? STUDENT_NAV : ADMIN_NAV;
 
@@ -216,17 +212,6 @@ export function AppShell({ portal }: { portal: Role }) {
   const signOut = () => {
     store.signOut();
     void navigate({ to: "/login" });
-  };
-
-  const switchPersona = (email: string, pass: string, role: Role) => {
-    setPersonaDropdownOpen(false);
-    const res = store.signIn(email, pass);
-    if (res.ok) {
-      toast.success(
-        `Switched account to ${email.includes("admin") ? "Platform Super Admin" : email.split("@")[0]}`,
-      );
-      void navigate({ to: role === "admin" ? "/admin" : "/student" });
-    }
   };
 
   const toggleCourseTrack = async (id: TrackId) => {
@@ -458,90 +443,6 @@ export function AppShell({ portal }: { portal: Role }) {
               >
                 {store.theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
               </button>
-
-              {/* Quick Persona Switcher Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setPersonaDropdownOpen(!personaDropdownOpen)}
-                  className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-3 py-2 text-xs font-bold text-surface-dark transition-opacity hover:opacity-90 shadow-md"
-                >
-                  <Sparkles className="size-3.5" />
-                  <span className="hidden sm:inline">Quick Persona</span>
-                  <ChevronDown
-                    className={cn(
-                      "size-3 transition-transform",
-                      personaDropdownOpen && "rotate-180",
-                    )}
-                  />
-                </button>
-
-                {personaDropdownOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setPersonaDropdownOpen(false)}
-                    />
-                    <div className="absolute right-0 mt-2 z-50 w-72 rounded-2xl border border-line-soft bg-surface-elevated p-2 shadow-2xl backdrop-blur-xl">
-                      <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-copy-subtle">
-                        {portal === "admin"
-                          ? "Active Admin Session"
-                          : "Switch Demo Profile (1-Click)"}
-                      </p>
-
-                      <div className="mt-1 space-y-1">
-                        {portal !== "admin" &&
-                          STUDENT_ACCOUNTS.map((s) => (
-                            <button
-                              key={s.email}
-                              onClick={() => switchPersona(s.email, s.password, "student")}
-                              className={cn(
-                                "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-colors hover:bg-surface-soft",
-                                store.sessionEmail === s.email &&
-                                  "bg-surface-soft font-bold text-brand-cyan",
-                              )}
-                            >
-                              <div className="min-w-0">
-                                <p className="font-semibold text-foreground">{s.name}</p>
-                                <p className="text-[10px] text-copy-subtle">
-                                  {s.dept} · {s.batchId}
-                                </p>
-                              </div>
-                              {store.sessionEmail === s.email && (
-                                <Check className="size-4 text-brand-cyan shrink-0" />
-                              )}
-                            </button>
-                          ))}
-
-                        {portal !== "admin" && (
-                          <div className="border-t border-line-soft/60 my-1 pt-1" />
-                        )}
-
-                        <button
-                          onClick={() =>
-                            switchPersona(ADMIN_ACCOUNT.email, ADMIN_ACCOUNT.password, "admin")
-                          }
-                          className={cn(
-                            "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-colors hover:bg-surface-soft",
-                            store.role === "admin" && "bg-surface-soft font-bold text-brand-purple",
-                          )}
-                        >
-                          <div className="min-w-0">
-                            <p className="font-semibold text-brand-purple flex items-center gap-1.5">
-                              <Shield className="size-3.5" /> Platform Super Admin
-                            </p>
-                            <p className="text-[10px] text-copy-subtle">
-                              Executive Platform Control
-                            </p>
-                          </div>
-                          {store.role === "admin" && (
-                            <Check className="size-4 text-brand-purple shrink-0" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
             </div>
           </header>
 
