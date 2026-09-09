@@ -13,7 +13,6 @@ import {
   ShieldCheck,
   GraduationCap,
 } from "lucide-react";
-import { useAppStore } from "@/lib/app-store";
 import { supabaseAuth, getSupabaseConfig } from "@/lib/supabase";
 import { resetLiveStudentPassword } from "@/lib/data/admin-data";
 
@@ -46,8 +45,6 @@ export function AdminResetPasswordModal({
   isOpen,
   onClose,
 }: AdminResetPasswordModalProps) {
-  const store = useAppStore();
-
   const [emailInput, setEmailInput] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(true);
@@ -61,29 +58,6 @@ export function AdminResetPasswordModal({
   } | null>(null);
 
   const hasSupabase = Boolean(getSupabaseConfig().url && getSupabaseConfig().anonKey);
-
-  // Available students for quick picker if no student was pre-selected (strictly real learners)
-  const allKnownLearners = [
-    ...Object.values(store.customStudents || {}).map((s) => ({
-      name: s.name,
-      email: s.email,
-      rollNo: s.rollNo,
-      batchId: s.batchId,
-      dept: s.dept,
-    })),
-    ...(store.provisioned || []).map((p) => ({
-      name: p.student_name,
-      email: p.email,
-      rollNo: p.roll_no,
-      batchId: p.batch_id,
-      dept: p.dept,
-    })),
-  ].filter(
-    (s) =>
-      !(store.deletedStudentEmails || [])
-        .map((e) => e.toLowerCase().trim())
-        .includes(s.email.toLowerCase().trim()),
-  );
 
   useEffect(() => {
     if (isOpen) {
@@ -102,8 +76,7 @@ export function AdminResetPasswordModal({
   if (!isOpen) return null;
 
   const targetEmail = student?.email || emailInput.trim().toLowerCase();
-  const matchedStudent =
-    student || allKnownLearners.find((l) => l.email.toLowerCase() === targetEmail);
+  const matchedStudent = student;
 
   const handleGenerate = () => {
     setNewPassword(generateStrongPassword());
@@ -136,34 +109,23 @@ export function AdminResetPasswordModal({
     setIsSubmitting(true);
 
     try {
-      if (store.authProvider === "supabase") {
-        const res = await resetLiveStudentPassword(targetEmail, newPassword);
-        if (!res.ok) {
-          toast.error(res.message || "Failed to reset student password in Supabase");
-          setIsSubmitting(false);
-          return;
-        }
-
-        setSuccessInfo({
-          email: targetEmail,
-          password: newPassword,
-          supabaseMsg: res.message,
-        });
-        toast.success(`Password updated for ${matchedStudent?.name || targetEmail}`);
-      } else {
-        const res = await store.resetStudentPassword(targetEmail, newPassword);
-        if (!res.ok) {
-          toast.error(res.message);
-          setIsSubmitting(false);
-          return;
-        }
-
-        setSuccessInfo({
-          email: targetEmail,
-          password: newPassword,
-        });
-        toast.success(`Password reset successful for ${matchedStudent?.name || targetEmail}`);
+      if (sendSupabaseEmail) {
+        await supabaseAuth.resetPasswordForEmail(targetEmail);
       }
+
+      const res = await resetLiveStudentPassword(targetEmail, newPassword);
+      if (!res.ok) {
+        toast.error(res.message || "Failed to reset student password in Supabase");
+        setIsSubmitting(false);
+        return;
+      }
+
+      setSuccessInfo({
+        email: targetEmail,
+        password: newPassword,
+        supabaseMsg: res.message,
+      });
+      toast.success(`Password updated for ${matchedStudent?.name || targetEmail}`);
     } catch {
       toast.error("Failed to reset student password");
     } finally {

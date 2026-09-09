@@ -89,36 +89,33 @@ import {
 function TodayLearningPage() {
   const store = useAppStore();
   const queryClient = useQueryClient();
-  const isLive = store.authProvider === "supabase";
 
   const { data: liveProfileData } = useLiveStudentProfile(
     store.supabaseSession?.user?.id,
-    isLive && !!store.supabaseSession?.user?.id,
+    !!store.supabaseSession?.user?.id,
   );
   const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
   const { data: liveProgressData } = useLiveStudentProgress(
     liveStudentId || undefined,
-    isLive && !!liveStudentId,
+    !!liveStudentId,
   );
 
-  const cohortDay = isLive
-    ? (liveProfileData?.profile?.placement_day ?? 1)
-    : store.placementDay || 1;
+  const cohortDay = liveProfileData?.profile?.placement_day ?? store.placementDay ?? 1;
 
   const activeTracks: TrackId[] = useMemo(
-    () => (isLive ? liveProfileData?.tracks || [] : store.activeTracks),
-    [isLive, liveProfileData?.tracks, store.activeTracks],
+    () => liveProfileData?.tracks || store.activeTracks,
+    [liveProfileData?.tracks, store.activeTracks],
   );
 
-  const streak = isLive ? (liveProfileData?.profile?.streak ?? 0) : store.streak;
-  const talentScore = isLive ? (liveProfileData?.profile?.talent_score ?? 0) : store.talentScore;
+  const streak = liveProfileData?.profile?.streak ?? store.streak;
+  const talentScore = liveProfileData?.profile?.talent_score ?? store.talentScore;
   const attendance = useMemo(
-    () => (isLive ? liveProgressData?.attendance || [] : store.attendance),
-    [isLive, liveProgressData?.attendance, store.attendance],
+    () => liveProgressData?.attendance || store.attendance,
+    [liveProgressData?.attendance, store.attendance],
   );
   const completedTechDays = useMemo(
-    () => (isLive ? liveProgressData?.completedTechDays || [] : store.completedTechDays || []),
-    [isLive, liveProgressData?.completedTechDays, store.completedTechDays],
+    () => liveProgressData?.completedTechDays || store.completedTechDays || [],
+    [liveProgressData?.completedTechDays, store.completedTechDays],
   );
 
   const [selectedDayNum, setSelectedDayNum] = useState<number>(cohortDay);
@@ -200,7 +197,7 @@ function TodayLearningPage() {
     setTimeout(async () => {
       setPitchLoading(false);
       setPitchRecorded(true);
-      if (isLive && liveStudentId) {
+      if (liveStudentId) {
         await completeLiveDailyStep(liveStudentId, "practice");
         await completeLivePlacementDay(liveStudentId, selectedDayNum);
         queryClient.invalidateQueries({
@@ -209,10 +206,9 @@ function TodayLearningPage() {
         queryClient.invalidateQueries({
           queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
         });
-      } else {
-        store.completeDailyStep("practice");
-        store.completePlacementDay(selectedDayNum);
       }
+      store.setDailyStep("practice", true);
+      store.completePlacementDay(selectedDayNum);
       toast.success(`Day ${selectedDayNum} Placement Accelerator verified (+25 XP)!`, {
         description: "Voice pitch STAR score recorded · Attendance updated to finished.",
       });
@@ -220,7 +216,7 @@ function TodayLearningPage() {
   };
 
   const handleCompleteTechnicalLab = async () => {
-    if (isLive && liveStudentId) {
+    if (liveStudentId) {
       await completeLiveTechnicalDay(liveStudentId, selectedDayNum);
       queryClient.invalidateQueries({
         queryKey: ["live", "student-progress", liveStudentId],
@@ -228,9 +224,8 @@ function TodayLearningPage() {
       queryClient.invalidateQueries({
         queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
       });
-    } else {
-      store.completeTechDay(selectedDayNum);
     }
+    store.completeTechDay(selectedDayNum);
     toast.success(`Day ${selectedDayNum} ${primaryTrack.name} Lab verified (+50 XP)!`, {
       description: "Technical exercise passed automated tests · To-Do updated to finished.",
     });

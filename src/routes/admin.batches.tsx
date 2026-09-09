@@ -3,7 +3,6 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Chip, Console, Meter, PageHeader, Panel, Stat } from "@/components/kit";
-import { useAppStore, type Batch } from "@/lib/app-store";
 import {
   fetchLiveBatches,
   createLiveBatch,
@@ -11,7 +10,7 @@ import {
   deleteLiveBatch,
   fetchLiveStudentRoster,
   deleteLiveStudent,
-} from "@/lib/data";
+} from "@/lib/data/admin-data";
 import {
   RefreshCw,
   Plus,
@@ -54,9 +53,7 @@ export const Route = createFileRoute("/admin/batches")({
 });
 
 function BatchesPage() {
-  const store = useAppStore();
   const queryClient = useQueryClient();
-  const isLive = store.authProvider === "supabase";
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -69,13 +66,11 @@ function BatchesPage() {
   const { data: liveBatches } = useQuery({
     queryKey: ["live", "batches"],
     queryFn: () => fetchLiveBatches(),
-    enabled: isLive,
   });
 
   const { data: liveRoster } = useQuery({
     queryKey: ["live", "student-roster", "all"],
     queryFn: () => fetchLiveStudentRoster({ institutionId: "all" }),
-    enabled: isLive,
   });
 
   // Telegram broadcast simulator states
@@ -100,53 +95,8 @@ function BatchesPage() {
     batchId: string;
   } | null>(null);
 
-  // Real learners only: custom students + provisioned students (Demo Mode)
-  const allLearners = useMemo(() => {
-    if (isLive) return [];
-    const deleted = new Set((store.deletedStudentEmails || []).map((e) => e.toLowerCase().trim()));
-
-    const fromCustom = Object.values(store.customStudents || {})
-      .filter((s) => !deleted.has(s.email.toLowerCase().trim()))
-      .map((s) => ({
-        name: s.name,
-        email: s.email,
-        rollNo: s.rollNo,
-        dept: s.dept,
-        batchId: s.batchId,
-        college: s.college || "Partner Engineering College",
-        tracks: s.tracks as string[],
-        streak: s.streak,
-        placementDay: s.placementDay,
-      }));
-
-    const fromProvisioned = (store.provisioned || [])
-      .filter((p) => !deleted.has(p.email.toLowerCase().trim()))
-      .map((p) => ({
-        name: p.student_name,
-        email: p.email,
-        rollNo: p.roll_no,
-        dept: p.dept,
-        batchId: p.batch_id,
-        college: p.college || "Partner Engineering College",
-        tracks: [p.course_1, p.course_2, p.course_3].filter(Boolean) as string[],
-        streak: 1,
-        placementDay: 1,
-      }));
-
-    const seen = new Set<string>();
-    const result = [];
-    for (const item of [...fromCustom, ...fromProvisioned]) {
-      const em = item.email.toLowerCase().trim();
-      if (!seen.has(em)) {
-        seen.add(em);
-        result.push(item);
-      }
-    }
-    return result;
-  }, [isLive, store.customStudents, store.provisioned, store.deletedStudentEmails]);
-
   const batchesWithCounts = useMemo(() => {
-    if (isLive && liveBatches) {
+    if (liveBatches) {
       return liveBatches.map((b) => ({
         id: b.id,
         name: b.name,
@@ -156,16 +106,11 @@ function BatchesPage() {
         lastSync: b.last_sync_at ? new Date(b.last_sync_at).toLocaleTimeString("en-GB") : "Never",
       }));
     }
-    return store.batches.map((b) => ({
-      ...b,
-      enrolled: allLearners.filter((l) => l.batchId === b.id).length,
-    }));
-  }, [isLive, liveBatches, store.batches, allLearners]);
+    return [];
+  }, [liveBatches]);
 
   const totalCapacity = batchesWithCounts.reduce((s, b) => s + b.capacity, 0);
-  const totalEnrolled = isLive
-    ? liveRoster?.totalCount || liveRoster?.items.length || 0
-    : allLearners.length;
+  const totalEnrolled = liveRoster?.totalCount || liveRoster?.items.length || 0;
 
   const handleStartEdit = (b: { id: string; name: string }) => {
     setEditingId(b.id);
@@ -177,20 +122,39 @@ function BatchesPage() {
       toast.error("Batch name cannot be empty");
       return;
     }
-    if (isLive) {
-      const res = await updateLiveBatch(id, { name: editName.trim() });
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
-        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] });
-        toast.success("Batch renamed in Supabase backend");
-      } else {
-        toast.error(res.error || "Failed to update batch");
-      }
+    const res = await updateLiveBatch(id, { name: editName.trim() });
+    if (res.ok) {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
+      ]);
+      toast.success("Batch renamed in Supabase backend");
     } else {
-      store.updateBatch(id, { name: editName.trim() });
-      toast.success("Batch renamed successfully");
+      toast.error(res.error || "Failed to update batch");
     }
     setEditingId(null);
+  };
+
+  const handleUpdateCapacity = async (id: string, capacity: number) => {
+    const res = await updateLiveBatch(id, { capacity });
+    if (res.ok) {
+      queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
+    }
+  };
+
+  const handleUpdateDept = async (id: string, dept: string) => {
+    const res = await updateLiveBatch(id, { dept });
+    if (res.ok) {
+      queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
+    }
+  };
+
+  const handleSyncBatch = async (id: string) => {
+    const res = await updateLiveBatch(id, { last_sync_at: new Date().toISOString() });
+    if (res.ok) {
+      queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
+      toast.success("Batch synchronized with Telegram webhook");
+    }
   };
 
   const handleCreateBatch = async (e: React.FormEvent) => {
@@ -204,40 +168,29 @@ function BatchesPage() {
       return;
     }
 
-    if (isLive) {
-      const res = await createLiveBatch({
-        name: newBatchName.trim(),
-        dept: newBatchDept,
-        capacity: newBatchCapacity,
-      });
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
-        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] });
-        toast.success(`Batch ${newBatchName} created in Supabase backend!`);
-        setCreateModalOpen(false);
-      } else {
-        toast.error(res.error || "Failed to create batch");
-      }
-    } else {
-      const newId = newBatchName.trim().toUpperCase().replace(/\s+/g, "-");
-      store.createBatch({
-        id: newId,
-        name: newBatchName.trim(),
-        dept: newBatchDept,
-        capacity: newBatchCapacity,
-        enrolled: 0,
-      });
-      toast.success("Batch created in demo state");
+    const res = await createLiveBatch({
+      name: newBatchName.trim(),
+      dept: newBatchDept,
+      capacity: newBatchCapacity,
+    });
+    if (res.ok) {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
+      ]);
+      toast.success(`Batch ${newBatchName} created in Supabase backend!`);
       setCreateModalOpen(false);
+    } else {
+      toast.error(res.error || "Failed to create batch");
     }
   };
 
   const handleDispatchTelegram = async () => {
     if (!broadcastMessage.trim()) return;
     setIsBroadcasting(true);
-    const learnerCount = isLive
-      ? (liveRoster?.items || []).filter((l) => l.batchId === broadcastTargetBatch).length
-      : allLearners.filter((l) => l.batchId === broadcastTargetBatch).length;
+    const learnerCount = (liveRoster?.items || []).filter(
+      (l) => l.batchId === broadcastTargetBatch,
+    ).length;
 
     setBroadcastLogs((prev) => [
       `[tx] Dispatching webhook simulation to Telegram channel: t.me/stc-${broadcastTargetBatch.toLowerCase()}`,
@@ -245,16 +198,12 @@ function BatchesPage() {
       ...prev,
     ]);
 
-    if (isLive) {
-      const batchItem = (liveBatches || []).find(
-        (b) => b.name === broadcastTargetBatch || b.id === broadcastTargetBatch,
-      );
-      if (batchItem) {
-        await updateLiveBatch(batchItem.id, { last_sync_at: new Date().toISOString() });
-        queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
-      }
-    } else {
-      store.syncBatch(broadcastTargetBatch);
+    const batchItem = (liveBatches || []).find(
+      (b) => b.name === broadcastTargetBatch || b.id === broadcastTargetBatch,
+    );
+    if (batchItem) {
+      await updateLiveBatch(batchItem.id, { last_sync_at: new Date().toISOString() });
+      queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
     }
 
     setTimeout(() => {
@@ -269,24 +218,21 @@ function BatchesPage() {
 
   // Filter learners in selected roster
   const rosterLearners = useMemo(() => {
-    if (isLive) {
-      const items = liveRoster?.items || [];
-      return items
-        .filter((s) => s.batchId === rosterBatchId || rosterBatchId === "all")
-        .map((s) => ({
-          name: s.name,
-          email: s.email,
-          rollNo: s.rollNo,
-          dept: s.dept,
-          batchId: s.batchId,
-          college: s.college || "Partner Engineering College",
-          tracks: s.tracks as string[],
-          streak: 1,
-          placementDay: s.placementDay,
-        }));
-    }
-    return allLearners.filter((s) => s.batchId === rosterBatchId || rosterBatchId === "all");
-  }, [isLive, liveRoster, rosterBatchId, allLearners]);
+    const items = liveRoster?.items || [];
+    return items
+      .filter((s) => s.batchId === rosterBatchId || rosterBatchId === "all")
+      .map((s) => ({
+        name: s.name,
+        email: s.email,
+        rollNo: s.rollNo,
+        dept: s.dept,
+        batchId: s.batchId,
+        college: s.college || "Partner Engineering College",
+        tracks: s.tracks as string[],
+        streak: 1,
+        placementDay: s.placementDay,
+      }));
+  }, [liveRoster, rosterBatchId]);
 
   return (
     <div className="space-y-6">
@@ -379,9 +325,7 @@ function BatchesPage() {
                     <Users className="size-3" /> Roster
                   </button>
                   <button
-                    onClick={() => {
-                      store.syncBatch(b.id);
-                    }}
+                    onClick={() => handleSyncBatch(b.id)}
                     className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-[11px] font-bold text-brand-cyan hover:border-brand-cyan/60"
                   >
                     <RefreshCw className="size-3" /> Sync
@@ -417,7 +361,7 @@ function BatchesPage() {
                     max={300}
                     step={10}
                     value={b.capacity}
-                    onChange={(e) => store.updateBatch(b.id, { capacity: Number(e.target.value) })}
+                    onChange={(e) => handleUpdateCapacity(b.id, Number(e.target.value))}
                     className="mt-2 w-full accent-[var(--brand-purple)]"
                   />
                   <div className="flex justify-between text-[10px] text-copy-subtle mt-0.5 font-mono">
@@ -430,24 +374,16 @@ function BatchesPage() {
                 <div className="grid grid-cols-2 gap-3 pt-2 border-t border-line-soft/60 text-xs">
                   <div>
                     <span className="block font-semibold text-copy-subtle">Enrolled Learners</span>
-                    <input
-                      type="number"
-                      value={b.enrolled}
-                      max={b.capacity}
-                      onChange={(e) =>
-                        store.updateBatch(b.id, {
-                          enrolled: Math.min(Number(e.target.value), b.capacity),
-                        })
-                      }
-                      className="mt-1 w-full rounded-lg border border-line-soft bg-surface-dark px-2.5 py-1.5 font-mono text-xs text-foreground outline-none focus:border-brand-cyan/60"
-                    />
+                    <div className="mt-1 w-full rounded-lg border border-line-soft bg-surface-dark px-2.5 py-1.5 font-mono text-xs text-foreground">
+                      {b.enrolled}
+                    </div>
                   </div>
                   <div>
                     <span className="block font-semibold text-copy-subtle">Department Tag</span>
                     <input
                       type="text"
                       value={b.dept}
-                      onChange={(e) => store.updateBatch(b.id, { dept: e.target.value })}
+                      onChange={(e) => handleUpdateDept(b.id, e.target.value)}
                       className="mt-1 w-full rounded-lg border border-line-soft bg-surface-dark px-2.5 py-1.5 font-mono text-xs text-foreground outline-none focus:border-brand-cyan/60"
                     />
                   </div>
@@ -780,9 +716,17 @@ function BatchesPage() {
               <button
                 type="button"
                 onClick={async () => {
-                  const res = await store.deleteStudent(deleteTargetStudent.email);
+                  const res = await deleteLiveStudent(deleteTargetStudent.email);
                   if (res.ok) {
+                    toast.success(`Removed student ${deleteTargetStudent.name}`);
+                    await Promise.all([
+                      queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
+                      queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+                      queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
+                    ]);
                     setDeleteTargetStudent(null);
+                  } else {
+                    toast.error(res.error || "Failed to delete student from Supabase");
                   }
                 }}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors"

@@ -18,26 +18,25 @@ function LabFrame({
 }) {
   const store = useAppStore();
   const queryClient = useQueryClient();
-  const isLive = store.authProvider === "supabase";
 
   const { data: liveProfileData } = useLiveStudentProfile(
     store.supabaseSession?.user?.id,
-    isLive && !!store.supabaseSession?.user?.id,
+    !!store.supabaseSession?.user?.id,
   );
   const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
   const { data: liveProgressData } = useLiveStudentProgress(
     liveStudentId || undefined,
-    isLive && !!liveStudentId,
+    !!liveStudentId,
   );
 
   const [lines, setLines] = useState<string[]>([]);
   const track = TRACKS.find((t) => t.id === id)!;
-  const completedLabs = isLive ? liveProgressData?.completedLabs || [] : store.completedLabs;
+  const completedLabs = liveProgressData?.completedLabs || store.completedLabs;
   const done = completedLabs.includes(id);
 
   const run = async (out: string[]) => {
     setLines(out);
-    if (isLive && liveStudentId) {
+    if (liveStudentId) {
       await completeLiveLab(liveStudentId, id, track.labTitle);
       queryClient.invalidateQueries({
         queryKey: ["live", "student-progress", liveStudentId],
@@ -45,9 +44,8 @@ function LabFrame({
       queryClient.invalidateQueries({
         queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
       });
-    } else {
-      store.completeLab(id, track.labTitle);
     }
+    store.completeLab(id);
   };
 
   return (

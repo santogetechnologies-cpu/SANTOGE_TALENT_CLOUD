@@ -9,8 +9,6 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
-import type { StudentAccount } from "@/lib/accounts";
-import type { Profile, ReadinessInputs } from "@/lib/app-store";
 import type { TrackId } from "@/lib/tracks";
 import type {
   DbStudentProfile,
@@ -23,6 +21,7 @@ import type {
   DbAssessment,
   DbMockInterview,
   DbCertification,
+  ReadinessInputs,
 } from "./types";
 
 export type LiveStudentData = {
@@ -206,7 +205,11 @@ export async function completeLivePlacementDay(
     return { ok: false, error: res.error || "Failed to complete placement day" };
   }
 
-  return res || { ok: true };
+  return {
+    ok: true,
+    ...(res?.placement_day !== undefined ? { placement_day: res.placement_day } : {}),
+    ...(res?.xp !== undefined ? { xp: res.xp } : {}),
+  };
 }
 
 export async function completeLiveSkill(
@@ -437,16 +440,4 @@ export async function updateLiveReadiness(
   }
 
   return { ok: true };
-}
-
-// ---------------------------------------------------------------------------
-// Demo Mode Helpers (Pure local state facade)
-// ---------------------------------------------------------------------------
-
-export function getStudentProfile(
-  email: string,
-  localProfiles: Record<string, Profile>,
-  _localAccounts: StudentAccount[],
-): Profile | null {
-  return localProfiles[email.toLowerCase().trim()] || null;
 }

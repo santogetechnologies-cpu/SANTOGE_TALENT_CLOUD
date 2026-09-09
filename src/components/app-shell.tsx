@@ -142,34 +142,33 @@ import { useLiveStudentProfile, updateLiveStudentTracks } from "@/lib/data";
 export function AppShell({ portal }: { portal: Role }) {
   const store = useAppStore();
   const queryClient = useQueryClient();
-  const isLive = store.authProvider === "supabase";
 
   const { data: liveProfileData } = useLiveStudentProfile(
     store.supabaseSession?.user?.id,
-    isLive && portal === "student" && !!store.supabaseSession?.user?.id,
+    portal === "student" && !!store.supabaseSession?.user?.id,
   );
   const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
 
   const activeTracks: TrackId[] =
-    isLive && portal === "student" ? liveProfileData?.tracks || [] : store.activeTracks;
+    portal === "student" ? (liveProfileData?.tracks || store.activeTracks) : store.activeTracks;
 
   const streak =
-    isLive && portal === "student" ? (liveProfileData?.profile?.streak ?? 0) : store.streak;
+    portal === "student" ? (liveProfileData?.profile?.streak ?? store.streak) : store.streak;
 
-  const xp = isLive && portal === "student" ? (liveProfileData?.profile?.xp ?? 0) : store.xp;
+  const xp = portal === "student" ? (liveProfileData?.profile?.xp ?? store.xp) : store.xp;
 
   const talentScore =
-    isLive && portal === "student"
-      ? (liveProfileData?.profile?.talent_score ?? 0)
+    portal === "student"
+      ? (liveProfileData?.profile?.talent_score ?? store.talentScore)
       : store.talentScore;
 
   const gateUnlocked =
-    isLive && portal === "student"
+    portal === "student"
       ? (liveProfileData?.profile?.placement_day ?? 1) >= 30
       : store.gateUnlocked;
 
   const eligibleCompanies =
-    isLive && portal === "student"
+    portal === "student"
       ? talentScore >= 700
         ? 6
         : talentScore >= 500
@@ -225,7 +224,7 @@ export function AppShell({ portal }: { portal: Role }) {
       toast.error("Maximum 3 technical course tracks allowed simultaneously.");
       return;
     }
-    if (isLive && liveStudentId) {
+    if (liveStudentId) {
       const res = await updateLiveStudentTracks(liveStudentId, next);
       if (!res.ok) {
         toast.error(res.error || "Failed to update tracks");
@@ -234,9 +233,8 @@ export function AppShell({ portal }: { portal: Role }) {
       queryClient.invalidateQueries({
         queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
       });
-    } else {
-      store.setActiveTracks(next);
     }
+    store.setActiveTracks(next);
     toast.success(has ? "Track removed from your active courses" : "Enrolled in track!");
   };
 
@@ -257,7 +255,9 @@ export function AppShell({ portal }: { portal: Role }) {
   }
 
   const label =
-    portal === "student" ? (store.student?.name ?? "Student Learner") : "Platform Super Admin";
+    portal === "student"
+      ? (liveProfileData?.profile?.name ?? store.student?.name ?? store.sessionEmail?.split("@")[0] ?? "Student Learner")
+      : "Platform Super Admin";
 
   const filteredSearchResults = searchQuery.trim()
     ? SEARCH_ITEMS.filter(
@@ -316,10 +316,10 @@ export function AppShell({ portal }: { portal: Role }) {
                 {portal === "student" ? "Student" : "Admin"}
               </span>
             </div>
-            {portal === "student" && store.student && (
+            {portal === "student" && (
               <div className="mt-1.5 flex items-center justify-between text-[10px] text-copy-subtle">
-                <span>{store.student.rollNo}</span>
-                <span className="font-mono text-foreground">{store.student.batchId}</span>
+                <span>{liveProfileData?.profile?.roll_no || store.student?.rollNo || "2026-CSE"}</span>
+                <span className="font-mono text-foreground">{liveProfileData?.profile?.batch_id || store.student?.batchId || "Cohort"}</span>
               </div>
             )}
             <div className="mt-2.5 flex items-center gap-1.5">

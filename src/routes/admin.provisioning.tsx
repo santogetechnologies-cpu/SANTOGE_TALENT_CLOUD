@@ -3,13 +3,13 @@ import { useState, useRef, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Chip, Console, PageHeader, Panel, Stat } from "@/components/kit";
-import { useAppStore, type ProvisionedStudent } from "@/lib/app-store";
 import {
   fetchLiveStudentRoster,
   fetchLiveBatches,
   provisionLiveStudents,
   addLiveStudent,
   deleteLiveStudent,
+  type ProvisionedStudent,
 } from "@/lib/data/admin-data";
 import {
   Download,
@@ -149,21 +149,17 @@ const normalizeHeader = (raw: string): string => {
 };
 
 function ProvisioningPage() {
-  const store = useAppStore();
   const queryClient = useQueryClient();
-  const isLive = store.authProvider === "supabase";
 
   // Authoritative Live queries
   const liveRosterQuery = useQuery({
     queryKey: ["live", "student-roster"],
     queryFn: () => fetchLiveStudentRoster({ pageSize: 500 }),
-    enabled: isLive,
   });
 
   const liveBatchesQuery = useQuery({
     queryKey: ["live", "batches"],
     queryFn: fetchLiveBatches,
-    enabled: isLive,
   });
 
   const [csv, setCsv] = useState(TEMPLATE);
@@ -322,15 +318,14 @@ function ProvisioningPage() {
       }
       seenEmails.add(email);
 
-      const rollNo =
-        rowMap["roll_no"] || (isLive ? "" : `STC${Date.now().toString().slice(-4)}${i + 1}`);
-      const dept = rowMap["dept"] || (isLive ? "" : "CSE");
-      const batchId = rowMap["batch_id"] || (isLive ? "" : "BATCH-2026-ABC-CSE-01");
+      const rollNo = rowMap["roll_no"] || "";
+      const dept = rowMap["dept"] || "";
+      const batchId = rowMap["batch_id"] || "";
       const college = rowMap["college"] || "";
       const password = rowMap["password"] || "Temp@1234";
 
       // Track course assignments (1 to 3 tracks)
-      const c1 = normalizeCourse(rowMap["course_1"]) || (isLive ? "" : "mern");
+      const c1 = normalizeCourse(rowMap["course_1"]) || "mern";
       let c2 = normalizeCourse(rowMap["course_2"]) || "";
       let c3 = normalizeCourse(rowMap["course_3"]) || "";
 
@@ -338,13 +333,11 @@ function ProvisioningPage() {
       if (c2 && c2 === c1) c2 = "";
       if (c3 && (c3 === c1 || c3 === c2)) c3 = "";
 
-      if (isLive) {
-        if (!studentName || !rollNo || !dept || !batchId) {
-          out.push(
-            `[error] Row ${i + 2}: Missing required field (name, roll_no, dept, or batch_id) for "${email}"`,
-          );
-          return;
-        }
+      if (!studentName || !rollNo || !dept || !batchId) {
+        out.push(
+          `[error] Row ${i + 2}: Missing required field (name, roll_no, dept, or batch_id) for "${email}"`,
+        );
+        return;
       }
 
       // Track batch sizes
@@ -387,82 +380,65 @@ function ProvisioningPage() {
       return;
     }
 
-    if (isLive) {
-      const res = await provisionLiveStudents(rows);
-      if (res.count > 0) {
-        out.push(
-          `[complete] Successfully provisioned ${res.count} student accounts to Supabase backend.`,
-        );
-      }
-      if (res.failedCount > 0) {
-        out.push(`[warning] ${res.failedCount} records failed during provisioning:`);
-        (res.results || []).forEach((r) => {
-          if (!r.ok) {
-            out.push(`  ❌ ${r.email}: ${r.error || "Unknown error"}`);
-          }
-        });
-      }
-      if (res.ok) {
-        out.push(`[auth] Portal credentials active. Students can authenticate at /login.`);
-        setLog(out);
-        toast.success(`${res.count} learners onboarded to Live Supabase backend!`);
-      } else if (res.count > 0) {
-        out.push(`[auth] ${res.count} portal credentials active. ${res.failedCount} failed.`);
-        setLog(out);
-        toast.warning(
-          `Partial success: ${res.count} learners onboarded, ${res.failedCount} failed. Check console.`,
-        );
-      } else {
-        out.push(`[error] All records failed to provision: ${res.message || "Unknown error"}`);
-        setLog(out);
-        toast.error(res.message || "Failed to provision students to Supabase backend");
-      }
-
-      if (res.count > 0) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
-          queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
-          queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
-        ]);
-      }
-    } else {
-      // Persist to store (backend demo)
-      store.addProvisioned(rows);
-      out.push(`[complete] Successfully provisioned ${rows.length} student accounts.`);
+    const res = await provisionLiveStudents(rows);
+    if (res.count > 0) {
+      out.push(
+        `[complete] Successfully provisioned ${res.count} student accounts to Supabase backend.`,
+      );
+    }
+    if (res.failedCount > 0) {
+      out.push(`[warning] ${res.failedCount} records failed during provisioning:`);
+      (res.results || []).forEach((r) => {
+        if (!r.ok) {
+          out.push(`  ❌ ${r.email}: ${r.error || "Unknown error"}`);
+        }
+      });
+    }
+    if (res.ok) {
       out.push(`[auth] Portal credentials active. Students can authenticate at /login.`);
       setLog(out);
-      toast.success(`${rows.length} learners onboarded with active portal logins!`);
+      toast.success(`${res.count} learners onboarded to Live Supabase backend!`);
+    } else if (res.count > 0) {
+      out.push(`[auth] ${res.count} portal credentials active. ${res.failedCount} failed.`);
+      setLog(out);
+      toast.warning(
+        `Partial success: ${res.count} learners onboarded, ${res.failedCount} failed. Check console.`,
+      );
+    } else {
+      out.push(`[error] All records failed to provision: ${res.message || "Unknown error"}`);
+      setLog(out);
+      toast.error(res.message || "Failed to provision students to Supabase backend");
+    }
+
+    if (res.count > 0) {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
+        queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
+      ]);
     }
 
     setIsProcessing(false);
   };
 
-  const deletedSet = useMemo(
-    () => new Set((store.deletedStudentEmails || []).map((e) => e.toLowerCase().trim())),
-    [store.deletedStudentEmails],
-  );
-
-  const provisionedList: ProvisionedStudent[] = useMemo(() => {
-    if (isLive) {
-      const items = liveRosterQuery.data?.items || [];
-      return items.map((s) => ({
-        student_name: s.name,
-        email: s.email,
-        password: "••••••••",
-        roll_no: s.rollNo,
-        dept: s.dept,
-        course_1: s.tracks[0] || "",
-        course_2: s.tracks[1] || "",
-        course_3: s.tracks[2] || "",
-        batch_id: s.batchId,
-        college: s.college,
-      }));
-    }
-    return (store.provisioned || []).filter((p) => !deletedSet.has(p.email.toLowerCase().trim()));
-  }, [isLive, liveRosterQuery.data, store.provisioned, deletedSet]);
+  const provisionedList = useMemo(() => {
+    const items = liveRosterQuery.data?.items || [];
+    return items.map((s) => ({
+      student_name: s.name,
+      email: s.email,
+      password: "••••••••",
+      roll_no: s.rollNo,
+      dept: s.dept,
+      course_1: s.tracks[0] || "",
+      course_2: s.tracks[1] || "",
+      course_3: s.tracks[2] || "",
+      batch_id: s.batchId || "",
+      college: s.college || "",
+    }));
+  }, [liveRosterQuery.data]);
 
   const batchesList = useMemo(() => {
-    if (isLive && liveBatchesQuery.data) {
+    if (liveBatchesQuery.data) {
       return liveBatchesQuery.data.map((b) => ({
         id: b.id,
         name: b.name,
@@ -472,8 +448,8 @@ function ProvisioningPage() {
         status: b.status,
       }));
     }
-    return store.batches || [];
-  }, [isLive, liveBatchesQuery.data, store.batches]);
+    return [];
+  }, [liveBatchesQuery.data]);
 
   // Filtered provisioned list based on Search & Selectors
   const filteredProvisioned = useMemo(() => {
@@ -567,87 +543,59 @@ function ProvisioningPage() {
       return;
     }
 
-    if (isLive) {
-      if (!singleBatchId.trim()) {
-        toast.error("Please select a batch");
-        return;
-      }
-      if (!singleRollNo.trim()) {
-        toast.error("Please enter a Roll / Student ID");
-        return;
-      }
-      if (!singleDept.trim()) {
-        toast.error("Please select or enter a department");
-        return;
-      }
-      if (!singleCollege.trim()) {
-        toast.error("Please enter the college / institution name");
-        return;
-      }
-      if (singleTracks.length === 0) {
-        toast.error("Please select at least 1 technical track (max 3)");
-        return;
-      }
+    if (!singleBatchId.trim()) {
+      toast.error("Please select a batch");
+      return;
+    }
+    if (!singleRollNo.trim()) {
+      toast.error("Please enter a Roll / Student ID");
+      return;
+    }
+    if (!singleDept.trim()) {
+      toast.error("Please select or enter a department");
+      return;
+    }
+    if (!singleCollege.trim()) {
+      toast.error("Please enter the college / institution name");
+      return;
+    }
+    if (singleTracks.length === 0) {
+      toast.error("Please select at least 1 technical track (max 3)");
+      return;
+    }
 
-      const batchId = singleBatchId.trim();
-      const password = singlePassword.trim() || "Temp@1234";
+    const batchId = singleBatchId.trim();
+    const password = singlePassword.trim() || "Temp@1234";
 
-      const res = await addLiveStudent({
-        name: singleName.trim(),
-        email: singleEmail.trim().toLowerCase(),
-        password,
-        rollNo: singleRollNo.trim(),
-        dept: singleDept.trim(),
-        batchId,
-        college: singleCollege.trim(),
-        tracks: singleTracks,
-      });
+    const res = await addLiveStudent({
+      name: singleName.trim(),
+      email: singleEmail.trim().toLowerCase(),
+      password,
+      rollNo: singleRollNo.trim(),
+      dept: singleDept.trim(),
+      batchId,
+      college: singleCollege.trim(),
+      tracks: singleTracks,
+    });
 
-      if (res.ok) {
-        toast.success(`Student ${singleName.trim()} registered to Supabase backend!`);
-        setLog((prev) => [
-          `[provisioned] Single student registered: ${singleName.trim()} (${singleEmail.trim().toLowerCase()}) → ${batchId}`,
-          ...prev,
-        ]);
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
-          queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
-          queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
-        ]);
-        setIsSingleAddModalOpen(false);
-        setSingleName("");
-        setSingleEmail("");
-        setSinglePassword("Temp@1234");
-        setSingleRollNo("");
-      } else {
-        toast.error(res.message);
-      }
+    if (res.ok) {
+      toast.success(`Student ${singleName.trim()} registered to Supabase backend!`);
+      setLog((prev) => [
+        `[provisioned] Single student registered: ${singleName.trim()} (${singleEmail.trim().toLowerCase()}) → ${batchId}`,
+        ...prev,
+      ]);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
+        queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
+      ]);
+      setIsSingleAddModalOpen(false);
+      setSingleName("");
+      setSingleEmail("");
+      setSinglePassword("Temp@1234");
+      setSingleRollNo("");
     } else {
-      const res = await store.addStudent({
-        name: singleName.trim(),
-        email: singleEmail.trim().toLowerCase(),
-        password,
-        rollNo: singleRollNo.trim() || `STC${Date.now().toString().slice(-4)}`,
-        dept: singleDept.trim() || "CSE",
-        batchId,
-        college: singleCollege.trim() || "Partner Engineering College",
-        tracks: singleTracks,
-      });
-
-      if (res.ok) {
-        toast.success(`Student ${singleName.trim()} registered with active login!`);
-        setLog((prev) => [
-          `[provisioned] Single student registered: ${singleName.trim()} (${singleEmail.trim().toLowerCase()}) → ${batchId}`,
-          ...prev,
-        ]);
-        setIsSingleAddModalOpen(false);
-        setSingleName("");
-        setSingleEmail("");
-        setSinglePassword("Temp@1234");
-        setSingleRollNo("");
-      } else {
-        toast.error(res.message);
-      }
+      toast.error(res.message);
     }
   };
 
@@ -1279,25 +1227,18 @@ function ProvisioningPage() {
               <button
                 type="button"
                 onClick={async () => {
-                  if (isLive) {
-                    const identifier = deleteTargetStudent.id || deleteTargetStudent.email;
-                    const res = await deleteLiveStudent(identifier);
-                    if (res.ok) {
-                      toast.success(`Removed student ${deleteTargetStudent.name}`);
-                      await Promise.all([
-                        queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
-                        queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
-                        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
-                      ]);
-                      setDeleteTargetStudent(null);
-                    } else {
-                      toast.error(res.error || "Failed to delete student from Supabase");
-                    }
+                  const identifier = deleteTargetStudent.id || deleteTargetStudent.email;
+                  const res = await deleteLiveStudent(identifier);
+                  if (res.ok) {
+                    toast.success(`Removed student ${deleteTargetStudent.name}`);
+                    await Promise.all([
+                      queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
+                      queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+                      queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
+                    ]);
+                    setDeleteTargetStudent(null);
                   } else {
-                    const res = await store.deleteStudent(deleteTargetStudent.email);
-                    if (res.ok) {
-                      setDeleteTargetStudent(null);
-                    }
+                    toast.error(res.error || "Failed to delete student from Supabase");
                   }
                 }}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors"
@@ -1323,14 +1264,13 @@ function ProvisioningPage() {
                   Clear All Provisioned Accounts?
                 </h3>
                 <p className="text-xs text-copy-subtle">
-                  Removes all {provisionedList.length} CSV provisioned learners from the system
+                  Safety Notice for Production Database
                 </p>
               </div>
             </div>
 
             <p className="text-xs text-copy-subtle leading-relaxed">
-              This action resets the bulk provisioning directory. Static demo accounts and manually
-              created institutional batches remain untouched.
+              In production, individual students can be deleted using the Delete button in the table, or entire cohorts can be managed via the Batches panel.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
@@ -1339,23 +1279,7 @@ function ProvisioningPage() {
                 onClick={() => setIsClearAllModalOpen(false)}
                 className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground transition-colors"
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (isLive) {
-                    toast.info("Bulk deletion not supported on live database for data safety");
-                    setIsClearAllModalOpen(false);
-                  } else {
-                    store.clearAllProvisioned();
-                    setIsClearAllModalOpen(false);
-                  }
-                }}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors"
-              >
-                <Trash2 className="size-3.5" />
-                <span>Yes, Clear All</span>
+                Close
               </button>
             </div>
           </div>

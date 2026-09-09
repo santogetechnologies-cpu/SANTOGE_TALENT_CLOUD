@@ -202,3 +202,25 @@ export type DbPlatformSettings = {
   created_at: string;
   updated_at: string;
 };
+
+export type ReadinessInputs = {
+  T: number;
+  C: number;
+  A: number;
+  E: number;
+  R: number;
+  M: number;
+};
+
+export type ProvisionedStudent = {
+  student_name: string;
+  email: string;
+  password?: string;
+  roll_no: string;
+  dept: string;
+  course_1?: string;
+  course_2?: string;
+  course_3?: string;
+  batch_id?: string;
+  college?: string;
+};

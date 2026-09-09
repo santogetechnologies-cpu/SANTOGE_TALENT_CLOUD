@@ -64,26 +64,21 @@ import {
 function AcceleratorPage() {
   const store = useAppStore();
   const queryClient = useQueryClient();
-  const isLive = store.authProvider === "supabase";
 
   const { data: liveProfileData } = useLiveStudentProfile(
     store.supabaseSession?.user?.id,
-    isLive && !!store.supabaseSession?.user?.id,
+    !!store.supabaseSession?.user?.id,
   );
   const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
   const { data: liveProgressData } = useLiveStudentProgress(
     liveStudentId || undefined,
-    isLive && !!liveStudentId,
+    !!liveStudentId,
   );
 
-  const cohortDay = isLive
-    ? (liveProfileData?.profile?.placement_day ?? 1)
-    : store.placementDay || 1;
-  const streak = isLive ? (liveProfileData?.profile?.streak ?? 0) : store.streak;
-  const xp = isLive ? (liveProfileData?.profile?.xp ?? 0) : store.xp;
-  const daily = isLive
-    ? liveProgressData?.daily || { english: false, aptitude: false, practice: false }
-    : store.daily;
+  const cohortDay = liveProfileData?.profile?.placement_day ?? store.placementDay ?? 1;
+  const streak = liveProfileData?.profile?.streak ?? store.streak;
+  const xp = liveProfileData?.profile?.xp ?? store.xp;
+  const daily = liveProgressData?.daily || store.daily;
 
   const [selectedDayNum, setSelectedDayNum] = useState<number>(cohortDay);
   const [activeTab, setActiveTab] = useState<
@@ -127,7 +122,7 @@ function AcceleratorPage() {
         "[voice] Competency evidence logged to Talent Score engine (+25 XP)",
         ...l,
       ]);
-      if (isLive && liveStudentId) {
+      if (liveStudentId) {
         await completeLiveDailyStep(liveStudentId, "practice");
         await completeLivePlacementDay(liveStudentId, selectedDayNum);
         queryClient.invalidateQueries({
@@ -136,10 +131,9 @@ function AcceleratorPage() {
         queryClient.invalidateQueries({
           queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
         });
-      } else {
-        store.completeDailyStep("practice");
-        store.completePlacementDay(selectedDayNum);
       }
+      store.setDailyStep("practice", true);
+      store.completePlacementDay(selectedDayNum);
       toast.success("Voice pitch analysed successfully!", {
         description: "+25 XP awarded · Communication pillar updated",
       });

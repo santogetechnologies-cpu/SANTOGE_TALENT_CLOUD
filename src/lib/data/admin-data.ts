@@ -9,9 +9,16 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
-import type { Batch, ProvisionedStudent } from "@/lib/app-store";
 import type { TrackId } from "@/lib/tracks";
-import type { DbBatch, DbStudentProfile, DbInstitution, DbPlatformSettings } from "./types";
+import type {
+  DbBatch,
+  DbStudentProfile,
+  DbInstitution,
+  DbPlatformSettings,
+  ProvisionedStudent,
+} from "./types";
+
+export type { ProvisionedStudent };
 
 export type LiveRosterItem = {
   id: string;

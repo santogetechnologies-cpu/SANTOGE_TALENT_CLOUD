@@ -90,30 +90,24 @@ const SEED: Opening[] = [
   },
 ];
 
-import { useLiveStudentProfile } from "@/lib/data";
+import { useLiveStudentProfile, useLiveHiringDrives } from "@/lib/data";
 
 function PlacementPage() {
   const store = useAppStore();
-  const isLive = store.authProvider === "supabase";
-  const [demoRows, setDemoRows] = useState(SEED);
   const [liveStages, setLiveStages] = useState<Record<string, Stage | null>>({});
   const [query, setQuery] = useState("");
 
   const { data: liveProfileData } = useLiveStudentProfile(
     store.supabaseSession?.user?.id,
-    isLive && !!store.supabaseSession?.user?.id,
+    !!store.supabaseSession?.user?.id,
   );
-  const talentScore = isLive ? (liveProfileData?.profile?.talent_score ?? 0) : store.talentScore;
+  const talentScore = liveProfileData?.profile?.talent_score ?? store.talentScore;
 
-  const { data: liveDrives } = useQuery({
-    queryKey: ["live", "hiring-drives"],
-    queryFn: () => fetchLiveHiringDrives(),
-    enabled: isLive,
-  });
+  const { data: liveDrives } = useLiveHiringDrives(true);
 
   const rows: Opening[] = useMemo(() => {
-    if (isLive) {
-      return (liveDrives || []).map((d) => ({
+    if (liveDrives && liveDrives.length > 0) {
+      return liveDrives.map((d) => ({
         id: d.id,
         company: d.company,
         role: d.roles,
@@ -122,8 +116,11 @@ function PlacementPage() {
         stage: liveStages[d.id] ?? null,
       }));
     }
-    return demoRows;
-  }, [isLive, liveDrives, liveStages, demoRows]);
+    return SEED.map((s) => ({
+      ...s,
+      stage: liveStages[s.id] ?? s.stage,
+    }));
+  }, [liveDrives, liveStages]);
 
   const filtered = useMemo(
     () => rows.filter((r) => (r.company + r.role).toLowerCase().includes(query.toLowerCase())),
@@ -132,33 +129,16 @@ function PlacementPage() {
   const applied = rows.filter((r) => r.stage);
 
   const advance = (id: string) => {
-    if (isLive) {
-      const current = liveStages[id] ?? null;
-      const idx = current ? STAGES.indexOf(current) : -1;
-      const next: Stage = STAGES[Math.min(idx + 1, STAGES.length - 1)] ?? "Offer";
-      setLiveStages((prev) => ({ ...prev, [id]: next }));
-      toast.success(`Application updated → ${next}`);
-    } else {
-      setDemoRows((rs) =>
-        rs.map((r) => {
-          if (r.id !== id) return r;
-          const idx = r.stage ? STAGES.indexOf(r.stage) : -1;
-          const next: Stage = STAGES[Math.min(idx + 1, STAGES.length - 1)] ?? "Offer";
-          toast.success(`${r.company} → ${next}`);
-          return { ...r, stage: next };
-        }),
-      );
-    }
+    const current = liveStages[id] ?? null;
+    const idx = current ? STAGES.indexOf(current) : -1;
+    const next: Stage = STAGES[Math.min(idx + 1, STAGES.length - 1)] ?? "Offer";
+    setLiveStages((prev) => ({ ...prev, [id]: next }));
+    toast.success(`Application updated → ${next}`);
   };
 
   const withdraw = (id: string) => {
-    if (isLive) {
-      setLiveStages((prev) => ({ ...prev, [id]: null }));
-      toast("Application withdrawn");
-    } else {
-      setDemoRows((rs) => rs.map((r) => (r.id === id ? { ...r, stage: null } : r)));
-      toast("Application withdrawn");
-    }
+    setLiveStages((prev) => ({ ...prev, [id]: null }));
+    toast("Application withdrawn");
   };
 
   return (

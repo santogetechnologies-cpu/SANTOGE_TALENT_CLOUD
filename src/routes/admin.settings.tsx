@@ -44,17 +44,16 @@ const WEIGHTS = [
 
 function AdminSettingsPage() {
   const store = useAppStore();
-  const isLive = store.authProvider === "supabase";
-  const { data: liveSettings } = useLivePlatformSettings(isLive);
+  const { data: liveSettings } = useLivePlatformSettings(true);
 
   const [threshold, setThreshold] = useState(450);
   const [broadcast, setBroadcast] = useState("06:00");
   const [maxTracks, setMaxTracks] = useState(3);
-  const [completionRule, setCompletionRuleState] = useState<CompletionRule>(store.completionRule);
-  const [secondaryMin, setSecondaryMin] = useState(store.secondaryMinimum);
+  const [completionRule, setCompletionRuleState] = useState<CompletionRule>("primary-plus-minimum");
+  const [secondaryMin, setSecondaryMin] = useState(60);
 
   useEffect(() => {
-    if (isLive && liveSettings) {
+    if (liveSettings) {
       if (liveSettings.completionRule) {
         setCompletionRuleState(liveSettings.completionRule);
       }
@@ -62,7 +61,7 @@ function AdminSettingsPage() {
         setSecondaryMin(liveSettings.secondaryMinimum);
       }
     }
-  }, [isLive, liveSettings]);
+  }, [liveSettings]);
 
   const queryClient = useQueryClient();
   const [sbConfig, setSbConfig] = useState<SupabaseAuthConfig>({ url: "", anonKey: "" });
@@ -74,20 +73,15 @@ function AdminSettingsPage() {
   }, []);
 
   const saveGateRules = async () => {
-    if (isLive) {
-      const res = await updateLivePlatformSettings({
-        completionRule,
-        secondaryMinimum: secondaryMin,
-      });
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ["live", "platform-settings"] });
-        toast.success("Dual Gate configuration saved to Supabase!");
-      } else {
-        toast.error(res.error || "Failed to update platform settings in Supabase");
-      }
+    const res = await updateLivePlatformSettings({
+      completionRule,
+      secondaryMinimum: secondaryMin,
+    });
+    if (res.ok) {
+      queryClient.invalidateQueries({ queryKey: ["live", "platform-settings"] });
+      toast.success("Dual Gate configuration saved to Supabase!");
     } else {
-      store.setCompletionRule(completionRule, secondaryMin);
-      toast.success("Dual Gate configuration saved!");
+      toast.error(res.error || "Failed to update platform settings in Supabase");
     }
   };
 
@@ -278,8 +272,8 @@ function AdminSettingsPage() {
         </Panel>
       </div>
 
-      {/* Appearance & Reset */}
-      <Panel title="Appearance & Reset Controls" subtitle="Workspace environment controls">
+      {/* Appearance */}
+      <Panel title="Platform Appearance & Controls" subtitle="Workspace environment controls">
         <div className="grid gap-3 sm:grid-cols-2">
           <button
             onClick={store.toggleTheme}
@@ -292,15 +286,10 @@ function AdminSettingsPage() {
             )}
             Switch to {store.theme === "dark" ? "light" : "dark"} theme
           </button>
-          <button
-            onClick={() => {
-              store.resetProgress();
-              toast.success("Demo dataset reset to initial state");
-            }}
-            className="flex items-center gap-2 rounded-xl border border-line-soft px-4 py-3 text-xs font-semibold text-brand-rose hover:bg-brand-rose/10"
-          >
-            <RotateCcw className="size-4" /> Reset all demo profiles &amp; progress
-          </button>
+          <div className="flex items-center gap-2 rounded-xl border border-line-soft bg-surface-soft px-4 py-3 text-xs text-copy-subtle">
+            <Shield className="size-4 text-brand-emerald" />
+            <span>PostgreSQL RLS &amp; Supabase Auth Enforced</span>
+          </div>
         </div>
       </Panel>
     </div>

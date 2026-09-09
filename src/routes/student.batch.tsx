@@ -42,28 +42,26 @@ import {
 function BatchPage() {
   const store = useAppStore();
   const queryClient = useQueryClient();
-  const isLive = store.authProvider === "supabase";
 
   const { data: liveProfileData } = useLiveStudentProfile(
     store.supabaseSession?.user?.id,
-    isLive && !!store.supabaseSession?.user?.id,
+    !!store.supabaseSession?.user?.id,
   );
   const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
   const { data: liveProgressData } = useLiveStudentProgress(
     liveStudentId || undefined,
-    isLive && !!liveStudentId,
+    !!liveStudentId,
   );
 
-  const batchId = isLive
-    ? liveProfileData?.profile?.batch_id || ""
-    : (store.student?.batchId ?? "BATCH");
+  const batchId = liveProfileData?.profile?.batch_id || store.student?.batchId || "";
 
-  // In Live mode, fetch real batch details and enrolled count from Supabase
+  // Fetch real batch details and enrolled count from Supabase
   const liveBatchQuery = useQuery({
     queryKey: ["live", "batches", batchId],
     queryFn: async () => {
       if (!batchId) return { batch: null, enrolled: 0 };
       const supabase = getSupabaseClient();
+      if (!supabase) return { batch: null, enrolled: 0 };
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
         batchId,
       );
@@ -94,34 +92,22 @@ function BatchPage() {
         enrolled: cRes?.count || 0,
       };
     },
-    enabled: isLive && !!batchId,
+    enabled: !!batchId,
   });
 
-  const demoBatch = store.batches.find((b) => b.id === batchId);
-  const batchName = isLive
-    ? liveBatchQuery.data?.batch?.name ||
-      (batchId ? (batchId.length > 12 ? `Batch ${batchId.slice(0, 8)}` : batchId) : "Not Assigned")
-    : demoBatch?.name || batchId;
-  const batchCapacity = isLive
-    ? (liveBatchQuery.data?.batch?.capacity ?? null)
-    : (demoBatch?.capacity ?? 300);
-  const batchDept = isLive
-    ? liveBatchQuery.data?.batch?.dept || liveProfileData?.profile?.dept || "Not Assigned"
-    : demoBatch?.dept || "Engineering";
-  const batchEnrolled = isLive
-    ? (liveBatchQuery.data?.enrolled ?? 0)
-    : (demoBatch?.enrolled ?? 218);
-  const lastSync = isLive
-    ? liveBatchQuery.data?.batch?.last_sync_at
-      ? new Date(liveBatchQuery.data.batch.last_sync_at).toLocaleString("en-GB")
-      : "Not Synced"
-    : (demoBatch?.lastSync ?? "handled by the daily 06:00 broadcast");
+  const batchName =
+    liveBatchQuery.data?.batch?.name ||
+    (batchId ? (batchId.length > 12 ? `Batch ${batchId.slice(0, 8)}` : batchId) : "Not Assigned");
+  const batchCapacity = liveBatchQuery.data?.batch?.capacity ?? 300;
+  const batchDept = liveBatchQuery.data?.batch?.dept || liveProfileData?.profile?.dept || "Engineering";
+  const batchEnrolled = liveBatchQuery.data?.enrolled ?? 0;
+  const lastSync = liveBatchQuery.data?.batch?.last_sync_at
+    ? new Date(liveBatchQuery.data.batch.last_sync_at).toLocaleString("en-GB")
+    : "Daily 06:00 broadcast";
 
-  const placementDayNum = isLive
-    ? (liveProfileData?.profile?.placement_day ?? 1)
-    : store.placementDay || 1;
-  const attendance = isLive ? (liveProgressData?.attendance ?? []) : store.attendance;
-  const assessments = isLive ? (liveProgressData?.assessments ?? {}) : store.assessments;
+  const placementDayNum = liveProfileData?.profile?.placement_day ?? store.placementDay ?? 1;
+  const attendance = liveProgressData?.attendance ?? store.attendance;
+  const assessments = liveProgressData?.assessments ?? store.assessments;
 
   const [selected, setSelected] = useState(placementDayNum);
   const day = placementDay(selected);
@@ -251,7 +237,7 @@ function BatchPage() {
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               onClick={async () => {
-                if (isLive && liveStudentId) {
+                if (liveStudentId) {
                   await completeLivePlacementDay(liveStudentId, day.day);
                   queryClient.invalidateQueries({
                     queryKey: ["live", "student-progress", liveStudentId],
@@ -259,9 +245,8 @@ function BatchPage() {
                   queryClient.invalidateQueries({
                     queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
                   });
-                } else {
-                  store.completePlacementDay(day.day);
                 }
+                store.completePlacementDay(day.day);
               }}
               disabled={attendedToday}
               className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-3 py-2 text-[11px] font-bold text-surface-dark disabled:opacity-50"
@@ -279,7 +264,7 @@ function BatchPage() {
               <button
                 onClick={async () => {
                   const score = 60 + ((day.day * 7) % 35);
-                  if (isLive && liveStudentId) {
+                  if (liveStudentId) {
                     await submitLiveAssessment(liveStudentId, day.day, score);
                     queryClient.invalidateQueries({
                       queryKey: ["live", "student-progress", liveStudentId],
@@ -287,9 +272,8 @@ function BatchPage() {
                     queryClient.invalidateQueries({
                       queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
                     });
-                  } else {
-                    store.submitAssessment(day.day, score);
                   }
+                  store.submitAssessment(day.day, score);
                 }}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-line-soft px-3 py-2 text-[11px] font-bold text-foreground hover:border-brand-cyan/60"
               >
