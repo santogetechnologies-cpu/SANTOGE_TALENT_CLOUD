@@ -85,15 +85,17 @@ const ENV_KEY: string | undefined =
     ? (import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] as string | undefined)
     : undefined;
 
-const DEFAULT_SUPABASE_URL = ENV_URL || "";
-const DEFAULT_SUPABASE_ANON_KEY = ENV_KEY || "";
+const DEFAULT_SUPABASE_URL = (ENV_URL || "").trim();
+const DEFAULT_SUPABASE_ANON_KEY = (ENV_KEY || "").trim();
+const FALLBACK_DUMMY_URL = "https://placeholder-project.supabase.co";
+const FALLBACK_DUMMY_KEY = "placeholder-anon-key";
 
 // ---------------------------------------------------------------------------
 // Singleton @supabase/supabase-js client
 //
 // Rules:
 // - Created ONCE per app lifecycle.
-// - auth.autoRefreshToken = false → no background token refresh polling.
+// - auth.autoRefreshToken = true  → standard token lifecycle.
 // - auth.persistSession = true  → session stored in localStorage (standard).
 // - auth.detectSessionInUrl = false → no URL hash parsing on every route.
 // - realtime disabled          → zero egress from Realtime subscriptions.
@@ -101,11 +103,30 @@ const DEFAULT_SUPABASE_ANON_KEY = ENV_KEY || "";
 
 let _supabaseClient: SupabaseClient | null = null;
 
+export function isSupabaseConfigured(): boolean {
+  const config = getSupabaseConfig();
+  const cleanUrl = (config.url || "").replace(/\/+$/, "").trim();
+  const cleanKey = (config.anonKey || "").trim();
+  return Boolean(
+    cleanUrl &&
+    cleanUrl.startsWith("http") &&
+    !cleanUrl.includes("placeholder") &&
+    cleanKey &&
+    cleanKey !== "placeholder-key" &&
+    cleanKey !== "placeholder-anon-key",
+  );
+}
+
 export function getSupabaseClient(): SupabaseClient {
   if (_supabaseClient) return _supabaseClient;
 
   const config = getSupabaseConfig();
-  _supabaseClient = createClient(config.url, config.anonKey || "placeholder-key", {
+  const safeUrl =
+    config.url && config.url.trim().startsWith("http") ? config.url.trim() : FALLBACK_DUMMY_URL;
+  const safeKey =
+    config.anonKey && config.anonKey.trim() ? config.anonKey.trim() : FALLBACK_DUMMY_KEY;
+
+  _supabaseClient = createClient(safeUrl, safeKey, {
     auth: {
       autoRefreshToken: true, // Standard auth token refresh
       persistSession: true, // Session stored in localStorage
