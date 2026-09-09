@@ -43,8 +43,14 @@ export const Route = createFileRoute("/admin/architecture")({
         content:
           "Definitive Enterprise Architecture & Systems Blueprint: Master Process Flow, Daily Twin 30m Pipeline, Super Admin & Student Swimlanes, Automation Engine, DFD L1/L2, Dual Gate Engine, and Infrastructure Topology.",
       },
-      { property: "og:title", content: "Master Architecture & Systems Blueprint — SantoGe Talent Cloud" },
-      { property: "og:description", content: "Comprehensive Super Admin Architecture & Flowcharts Hub." },
+      {
+        property: "og:title",
+        content: "Master Architecture & Systems Blueprint — SantoGe Talent Cloud",
+      },
+      {
+        property: "og:description",
+        content: "Comprehensive Super Admin Architecture & Flowcharts Hub.",
+      },
     ],
   }),
   component: ArchitecturePage,
@@ -93,7 +99,7 @@ function ArchitecturePage() {
               "inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all",
               tab === t.id
                 ? "border-brand-cyan/60 bg-surface-soft text-foreground shadow-sm ring-1 ring-brand-cyan/30"
-                : "border-line-soft text-copy-subtle hover:text-foreground hover:bg-surface-elevated/60"
+                : "border-line-soft text-copy-subtle hover:text-foreground hover:bg-surface-elevated/60",
             )}
           >
             <t.icon className="size-3.5" /> {t.label}
@@ -107,10 +113,14 @@ function ArchitecturePage() {
           <ShieldCheck className="size-4" /> The Core Architectural Invariant
         </div>
         <p className="mt-1.5 text-base font-bold text-foreground">
-          "A Batch is exclusively a Placement Accelerator cohort (English, Aptitude, Telegram, 90-Day Calendar). Technical Learning is completely decoupled, individual, self-paced, and evidence-based."
+          "A Batch is exclusively a Placement Accelerator cohort (English, Aptitude, Telegram,
+          90-Day Calendar). Technical Learning is completely decoupled, individual, self-paced, and
+          evidence-based."
         </p>
         <p className="mt-1.5 text-xs text-copy-subtle leading-relaxed">
-          Students in the same college batch share a synchronized 90-day placement journey with daily 06:00 Telegram broadcasts, but each student independently pursues 1 to 3 assigned technical tracks from 15 available specializations in in-browser interactive sandboxes.
+          Students in the same college batch share a synchronized 90-day placement journey with
+          daily 06:00 Telegram broadcasts, but each student independently pursues 1 to 3 assigned
+          technical tracks from 15 available specializations in in-browser interactive sandboxes.
         </p>
       </div>
 
@@ -128,7 +138,8 @@ function ArchitecturePage() {
                 phase: "Institutional Onboarding",
                 title: "College MoU & Batch Sizing",
                 desc: "Institutional partner signs MoU and submits verified student master list. Admin provisions cohort with 100–300 batch sizing constraint.",
-                metrics: "100–300 learners per batch · 1 Telegram channel per batch · Zero technical grouping",
+                metrics:
+                  "100–300 learners per batch · 1 Telegram channel per batch · Zero technical grouping",
                 tone: "cyan",
               },
               {
@@ -136,7 +147,8 @@ function ArchitecturePage() {
                 phase: "Provisioning & Identity",
                 title: "Bulk CSV Roster Ingestion & Validation",
                 desc: "Platform Admin uploads CSV roster (student_name, email, password, roll_no, dept, course_1, course_2, course_3, batch_id). Schema and uniqueness checks pass instantly.",
-                metrics: "100% automated validation · Instant password hashing · Zero pre-test screening hurdles",
+                metrics:
+                  "100% automated validation · Instant password hashing · Zero pre-test screening hurdles",
                 tone: "purple",
               },
               {
@@ -144,7 +156,8 @@ function ArchitecturePage() {
                 phase: "Instant Enrolment",
                 title: "Zero Pre-Test Direct Track Activation",
                 desc: "Students receive credentials with 1 to 3 pre-assigned technical specializations. Instant access without initial rejection tests.",
-                metrics: "1 Primary Specialization (100% weight) + up to 2 Secondary Tracks (50%+ weight)",
+                metrics:
+                  "1 Primary Specialization (100% weight) + up to 2 Secondary Tracks (50%+ weight)",
                 tone: "emerald",
               },
               {
@@ -152,7 +165,8 @@ function ArchitecturePage() {
                 phase: "Days 1 to 90",
                 title: "Daily Twin 30-Minute Routine Execution",
                 desc: "Morning Placement Accelerator (10m English + 10m Aptitude + 10m In-App Practice via Telegram) + Technical ITSE Engine (20m Concept + 10m In-Browser Sandbox Lab).",
-                metrics: "18 Weeks × 5 Working Days = 90 Days · 18 Friday Workplace Mini Projects · Day 90 Industry Capstone",
+                metrics:
+                  "18 Weeks × 5 Working Days = 90 Days · 18 Friday Workplace Mini Projects · Day 90 Industry Capstone",
                 tone: "amber",
               },
               {
@@ -168,7 +182,8 @@ function ArchitecturePage() {
                 phase: "Post-90 Days",
                 title: "Career Gateway, AI Mock Interviews & Certifications",
                 desc: "Unlocks ATS Keyword Resume Builder, AI 1:1 Voice/Video Mock Interviews with STAR rubric evaluation, and verifiable cryptographically stamped certificates.",
-                metrics: "0–1000 Unified Talent Score Engine · ATS Compatibility Scanner · Verified Portfolio Matrix",
+                metrics:
+                  "0–1000 Unified Talent Score Engine · ATS Compatibility Scanner · Verified Portfolio Matrix",
                 tone: "purple",
               },
               {
@@ -176,7 +191,8 @@ function ArchitecturePage() {
                 phase: "Talent Marketplace",
                 title: "Tier-Gated Campus Placement & Digital Offers",
                 desc: "Recruiters filter verified talent based on Talent Score tier (Elite 850+, Advanced 700+, Intermediate 550+), schedule direct interviews, and issue offer letters.",
-                metrics: "Automated match forwarding · Live salary benchmarking · Direct ATS candidate export",
+                metrics:
+                  "Automated match forwarding · Live salary benchmarking · Direct ATS candidate export",
                 tone: "emerald",
               },
             ].map((s, idx) => (
@@ -222,37 +238,56 @@ function ArchitecturePage() {
             <div className="space-y-4 text-xs">
               <div className="rounded-xl border border-brand-cyan/30 bg-surface-soft p-4 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-brand-cyan text-sm">Step 1: Architectural Concept Card (5 Mins)</span>
-                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">05 min</span>
+                  <span className="font-bold text-brand-cyan text-sm">
+                    Step 1: Architectural Concept Card (5 Mins)
+                  </span>
+                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">
+                    05 min
+                  </span>
                 </div>
                 <p className="text-copy-subtle leading-relaxed">
-                  Interactive visual schema breakdown, API contracts, domain syntax rules, and error patterns. Zero passive video watching.
+                  Interactive visual schema breakdown, API contracts, domain syntax rules, and error
+                  patterns. Zero passive video watching.
                 </p>
               </div>
 
               <div className="rounded-xl border border-brand-cyan/30 bg-surface-soft p-4 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-brand-cyan text-sm">Step 2: In-Browser Practical Sandbox (15 Mins)</span>
-                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">15 min</span>
+                  <span className="font-bold text-brand-cyan text-sm">
+                    Step 2: In-Browser Practical Sandbox (15 Mins)
+                  </span>
+                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">
+                    15 min
+                  </span>
                 </div>
                 <p className="text-copy-subtle leading-relaxed">
-                  Live code execution in WebAssembly/Dockerized virtual terminals across 15 tracks (React 19, Spring Boot, PyTorch, Nmap, Kubernetes, Cypress, SAP). Instant automated test validation (+50 XP).
+                  Live code execution in WebAssembly/Dockerized virtual terminals across 15 tracks
+                  (React 19, Spring Boot, PyTorch, Nmap, Kubernetes, Cypress, SAP). Instant
+                  automated test validation (+50 XP).
                 </p>
               </div>
 
               <div className="rounded-xl border border-brand-cyan/30 bg-surface-soft p-4 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-brand-cyan text-sm">Step 3: Practical Debug & Friday Mini-Project (10 Mins / 30 Mins Fri)</span>
-                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">10–30 min</span>
+                  <span className="font-bold text-brand-cyan text-sm">
+                    Step 3: Practical Debug & Friday Mini-Project (10 Mins / 30 Mins Fri)
+                  </span>
+                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">
+                    10–30 min
+                  </span>
                 </div>
                 <p className="text-copy-subtle leading-relaxed">
-                  Mon–Thu: Breakpoint troubleshooting and edge case fixes. Every Friday: Workplace Simulation Mini-Project that logs a verified artifact to the student's 18-project Placement Portfolio.
+                  Mon–Thu: Breakpoint troubleshooting and edge case fixes. Every Friday: Workplace
+                  Simulation Mini-Project that logs a verified artifact to the student's 18-project
+                  Placement Portfolio.
                 </p>
               </div>
 
               <div className="rounded-xl bg-surface-dark p-3.5 border border-line-soft text-[11px] font-mono text-copy-subtle">
                 <p className="text-brand-cyan font-bold">Deliverable Matrix:</p>
-                <p className="mt-1">18 Friday Projects + Day 90 End-to-End Enterprise Industry Capstone</p>
+                <p className="mt-1">
+                  18 Friday Projects + Day 90 End-to-End Enterprise Industry Capstone
+                </p>
               </div>
             </div>
           </Panel>
@@ -266,37 +301,56 @@ function ArchitecturePage() {
             <div className="space-y-4 text-xs">
               <div className="rounded-xl border border-brand-purple/30 bg-surface-soft p-4 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-brand-purple text-sm">Step 1: English &amp; Corporate Communication (10 Mins)</span>
-                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">10 min</span>
+                  <span className="font-bold text-brand-purple text-sm">
+                    Step 1: English &amp; Corporate Communication (10 Mins)
+                  </span>
+                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">
+                    10 min
+                  </span>
                 </div>
                 <p className="text-copy-subtle leading-relaxed">
-                  Broadcast via batch Telegram channel at 06:00 IST. Instructor lesson plan covering professional email structure, GD openers, vocal cadence, and eliminating filler words.
+                  Broadcast via batch Telegram channel at 06:00 IST. Instructor lesson plan covering
+                  professional email structure, GD openers, vocal cadence, and eliminating filler
+                  words.
                 </p>
               </div>
 
               <div className="rounded-xl border border-brand-purple/30 bg-surface-soft p-4 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-brand-purple text-sm">Step 2: Quantitative &amp; Logical Reasoning (10 Mins)</span>
-                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">10 min</span>
+                  <span className="font-bold text-brand-purple text-sm">
+                    Step 2: Quantitative &amp; Logical Reasoning (10 Mins)
+                  </span>
+                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">
+                    10 min
+                  </span>
                 </div>
                 <p className="text-copy-subtle leading-relaxed">
-                  Broadcast via Telegram at 06:00 IST. Speed math shortcuts, Vedic math multiplication, work-rate formulas, syllogisms, and rapid data interpretation techniques.
+                  Broadcast via Telegram at 06:00 IST. Speed math shortcuts, Vedic math
+                  multiplication, work-rate formulas, syllogisms, and rapid data interpretation
+                  techniques.
                 </p>
               </div>
 
               <div className="rounded-xl border border-brand-purple/30 bg-surface-soft p-4 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-brand-purple text-sm">Step 3: In-App Combined Practice &amp; AI Pitch (10 Mins)</span>
-                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">10 min</span>
+                  <span className="font-bold text-brand-purple text-sm">
+                    Step 3: In-App Combined Practice &amp; AI Pitch (10 Mins)
+                  </span>
+                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">
+                    10 min
+                  </span>
                 </div>
                 <p className="text-copy-subtle leading-relaxed">
-                  In-app interactive practice: 3 Placement MCQs + 1 Logical Reasoning Brainteaser + 60s AI Voice Pitch Recorder with real-time STAR rubric speech analysis (+25 XP).
+                  In-app interactive practice: 3 Placement MCQs + 1 Logical Reasoning Brainteaser +
+                  60s AI Voice Pitch Recorder with real-time STAR rubric speech analysis (+25 XP).
                 </p>
               </div>
 
               <div className="rounded-xl bg-surface-dark p-3.5 border border-line-soft text-[11px] font-mono text-copy-subtle">
                 <p className="text-brand-purple font-bold">Assessment Schedule:</p>
-                <p className="mt-1">Weekly Friday Mock Tests + Milestone Assessments on Day 30, Day 60 &amp; Day 90</p>
+                <p className="mt-1">
+                  Weekly Friday Mock Tests + Milestone Assessments on Day 30, Day 60 &amp; Day 90
+                </p>
               </div>
             </div>
           </Panel>
@@ -313,7 +367,8 @@ function ArchitecturePage() {
                     Chronological Day 1 to Day 90 To-Do Backlog &amp; Catch-Up Engine
                   </h4>
                   <p className="text-xs text-copy-subtle">
-                    Guaranteed zero-dropout remediation: Every missed day remains actionable from Day 1 to current cohort day.
+                    Guaranteed zero-dropout remediation: Every missed day remains actionable from
+                    Day 1 to current cohort day.
                   </p>
                 </div>
               </div>
@@ -326,7 +381,9 @@ function ArchitecturePage() {
                   <span className="font-mono">01.</span> Strict Chronological Order
                 </div>
                 <p className="text-copy-subtle text-[11px] leading-relaxed">
-                  Days are rendered from Day 1, Day 2 up to current cohort day (e.g. Day 89). Unfinished items appear chronologically so students never skip foundational prerequisites.
+                  Days are rendered from Day 1, Day 2 up to current cohort day (e.g. Day 89).
+                  Unfinished items appear chronologically so students never skip foundational
+                  prerequisites.
                 </p>
               </div>
 
@@ -335,7 +392,8 @@ function ArchitecturePage() {
                   <span className="font-mono">02.</span> Dual Sub-Task Requirement
                 </div>
                 <p className="text-copy-subtle text-[11px] leading-relaxed">
-                  Each day requires completing BOTH Placement 30m (English + Aptitude + AI Pitch) and Technical Skill 30m (Concept + Lab). Both must finish to clear that day.
+                  Each day requires completing BOTH Placement 30m (English + Aptitude + AI Pitch)
+                  and Technical Skill 30m (Concept + Lab). Both must finish to clear that day.
                 </p>
               </div>
 
@@ -344,7 +402,8 @@ function ArchitecturePage() {
                   <span className="font-mono">03.</span> Direct Interactive Deep-Link
                 </div>
                 <p className="text-copy-subtle text-[11px] leading-relaxed">
-                  Clicking "To-Do →" on any missed day smoothly switches and scrolls to the selected day's interactive drill workspace below without navigating away.
+                  Clicking "To-Do →" on any missed day smoothly switches and scrolls to the selected
+                  day's interactive drill workspace below without navigating away.
                 </p>
               </div>
 
@@ -353,7 +412,9 @@ function ArchitecturePage() {
                   <span className="font-mono">04.</span> Instant Verification &amp; Dual Gate
                 </div>
                 <p className="text-copy-subtle text-[11px] leading-relaxed">
-                  Completing labs and AI pitches marks the day as "Finished &amp; Verified ✓", increments XP (+50/+25), and clears prerequisites toward Day 90 Dual Gate unlocking.
+                  Completing labs and AI pitches marks the day as "Finished &amp; Verified ✓",
+                  increments XP (+50/+25), and clears prerequisites toward Day 90 Dual Gate
+                  unlocking.
                 </p>
               </div>
             </div>
@@ -377,15 +438,21 @@ function ArchitecturePage() {
               <div className="grid gap-3 sm:grid-cols-3 text-xs">
                 <div className="rounded-xl border border-line-soft bg-surface-elevated p-3 space-y-1">
                   <p className="font-bold text-foreground">Student Progressive Web App</p>
-                  <p className="text-copy-subtle text-[11px]">Twin 30m Daily Dashboard, In-Browser Sandboxes, AI Voice Pitch</p>
+                  <p className="text-copy-subtle text-[11px]">
+                    Twin 30m Daily Dashboard, In-Browser Sandboxes, AI Voice Pitch
+                  </p>
                 </div>
                 <div className="rounded-xl border border-line-soft bg-surface-elevated p-3 space-y-1">
                   <p className="font-bold text-foreground">Super Admin Command Center</p>
-                  <p className="text-copy-subtle text-[11px]">CSV Provisioning, Telegram Bot Hub, Content CMS, Dual Gate Engine</p>
+                  <p className="text-copy-subtle text-[11px]">
+                    CSV Provisioning, Telegram Bot Hub, Content CMS, Dual Gate Engine
+                  </p>
                 </div>
                 <div className="rounded-xl border border-line-soft bg-surface-elevated p-3 space-y-1">
                   <p className="font-bold text-foreground">Recruiter Talent Portal</p>
-                  <p className="text-copy-subtle text-[11px]">Tier-Gated Candidate Search (0–1000), STAR Scorecards, Offer Letters</p>
+                  <p className="text-copy-subtle text-[11px]">
+                    Tier-Gated Candidate Search (0–1000), STAR Scorecards, Offer Letters
+                  </p>
                 </div>
               </div>
             </div>
@@ -398,19 +465,27 @@ function ArchitecturePage() {
               <div className="grid gap-3 sm:grid-cols-4 text-xs">
                 <div className="rounded-xl border border-brand-purple/30 bg-surface-dark p-3 space-y-1">
                   <p className="font-bold text-brand-purple">Auth &amp; RBAC Service</p>
-                  <p className="text-copy-subtle text-[11px]">Supabase Live Auth / JWT Stateless RBAC (Admin / Student)</p>
+                  <p className="text-copy-subtle text-[11px]">
+                    Supabase Live Auth / JWT Stateless RBAC (Admin / Student)
+                  </p>
                 </div>
                 <div className="rounded-xl border border-brand-purple/30 bg-surface-dark p-3 space-y-1">
                   <p className="font-bold text-brand-purple">Telegram Broadcast Engine</p>
-                  <p className="text-copy-subtle text-[11px]">06:00 IST Cron Webhook Dispatcher to 54+ Batch Channels</p>
+                  <p className="text-copy-subtle text-[11px]">
+                    06:00 IST Cron Webhook Dispatcher to 54+ Batch Channels
+                  </p>
                 </div>
                 <div className="rounded-xl border border-brand-purple/30 bg-surface-dark p-3 space-y-1">
                   <p className="font-bold text-brand-purple">Talent Scoring Microservice</p>
-                  <p className="text-copy-subtle text-[11px]">Dynamic 6-Pillar 0–1000 Weighted Engine recalculated every 15m</p>
+                  <p className="text-copy-subtle text-[11px]">
+                    Dynamic 6-Pillar 0–1000 Weighted Engine recalculated every 15m
+                  </p>
                 </div>
                 <div className="rounded-xl border border-brand-purple/30 bg-surface-dark p-3 space-y-1">
                   <p className="font-bold text-brand-purple">AI Speech &amp; LLM Evaluator</p>
-                  <p className="text-copy-subtle text-[11px]">WebSpeech API + ITSE STAR Speech Rubric + ATS Keyword Scanner</p>
+                  <p className="text-copy-subtle text-[11px]">
+                    WebSpeech API + ITSE STAR Speech Rubric + ATS Keyword Scanner
+                  </p>
                 </div>
               </div>
             </div>
@@ -422,16 +497,26 @@ function ArchitecturePage() {
               </div>
               <div className="grid gap-3 sm:grid-cols-3 text-xs">
                 <div className="rounded-xl border border-brand-emerald/30 bg-surface-dark p-3 space-y-1">
-                  <p className="font-bold text-brand-emerald">Relational Database (PostgreSQL / Supabase)</p>
-                  <p className="text-copy-subtle text-[11px]">Students, Batches, Attendance, Assessments, Audit Logs, Offer Letters</p>
+                  <p className="font-bold text-brand-emerald">
+                    Relational Database (PostgreSQL / Supabase)
+                  </p>
+                  <p className="text-copy-subtle text-[11px]">
+                    Students, Batches, Attendance, Assessments, Audit Logs, Offer Letters
+                  </p>
                 </div>
                 <div className="rounded-xl border border-brand-emerald/30 bg-surface-dark p-3 space-y-1">
-                  <p className="font-bold text-brand-emerald">High-Speed Cache (Redis / Memory Store)</p>
-                  <p className="text-copy-subtle text-[11px]">Real-time Talent Score Leaderboard, Active Streaks, Rate Limiters</p>
+                  <p className="font-bold text-brand-emerald">
+                    High-Speed Cache (Redis / Memory Store)
+                  </p>
+                  <p className="text-copy-subtle text-[11px]">
+                    Real-time Talent Score Leaderboard, Active Streaks, Rate Limiters
+                  </p>
                 </div>
                 <div className="rounded-xl border border-brand-emerald/30 bg-surface-dark p-3 space-y-1">
                   <p className="font-bold text-brand-emerald">Object Storage (S3 / CDN)</p>
-                  <p className="text-copy-subtle text-[11px]">Recorded Voice Pitches, ATS PDF Resumes, Verifiable Certificates</p>
+                  <p className="text-copy-subtle text-[11px]">
+                    Recorded Voice Pitches, ATS PDF Resumes, Verifiable Certificates
+                  </p>
                 </div>
               </div>
             </div>
@@ -454,24 +539,43 @@ function ArchitecturePage() {
               </div>
               <ul className="space-y-3 text-xs text-copy-subtle">
                 <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
-                  <span className="font-bold text-foreground">1. Institutional Onboarding &amp; Batch Creation:</span>
-                  <p>Validates college partner requests, sets 100–300 capacity slider, and establishes cohort Telegram link.</p>
+                  <span className="font-bold text-foreground">
+                    1. Institutional Onboarding &amp; Batch Creation:
+                  </span>
+                  <p>
+                    Validates college partner requests, sets 100–300 capacity slider, and
+                    establishes cohort Telegram link.
+                  </p>
                 </li>
                 <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
                   <span className="font-bold text-foreground">2. Bulk CSV Provisioning:</span>
-                  <p>Uploads student CSV with 1–3 course assignments. Zero pre-test barriers. Exports credential packet.</p>
+                  <p>
+                    Uploads student CSV with 1–3 course assignments. Zero pre-test barriers. Exports
+                    credential packet.
+                  </p>
                 </li>
                 <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
-                  <span className="font-bold text-foreground">3. Content Management System (CMS):</span>
-                  <p>Authors and publishes daily English scripts, Aptitude formulas, MCQs, and 15 technical course syllabi.</p>
+                  <span className="font-bold text-foreground">
+                    3. Content Management System (CMS):
+                  </span>
+                  <p>
+                    Authors and publishes daily English scripts, Aptitude formulas, MCQs, and 15
+                    technical course syllabi.
+                  </p>
                 </li>
                 <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
                   <span className="font-bold text-foreground">4. Cron Pipeline Monitoring:</span>
-                  <p>Supervises 06:00 broadcast, container warmer, ATS parser, and evening streak mailer cron jobs.</p>
+                  <p>
+                    Supervises 06:00 broadcast, container warmer, ATS parser, and evening streak
+                    mailer cron jobs.
+                  </p>
                 </li>
                 <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
                   <span className="font-bold text-foreground">5. Dual Gate Governance:</span>
-                  <p>Configures secondary track minimum % ({store.secondaryMinimum}%), 6-pillar score weights, and unlocks Phase 2.</p>
+                  <p>
+                    Configures secondary track minimum % ({store.secondaryMinimum}%), 6-pillar score
+                    weights, and unlocks Phase 2.
+                  </p>
                 </li>
               </ul>
             </div>
@@ -484,23 +588,38 @@ function ArchitecturePage() {
               <ul className="space-y-3 text-xs text-copy-subtle">
                 <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
                   <span className="font-bold text-foreground">1. Minimal Daily Login:</span>
-                  <p>Signs in with college-issued credentials directly to "Today's Learning" dashboard without clutter.</p>
+                  <p>
+                    Signs in with college-issued credentials directly to "Today's Learning"
+                    dashboard without clutter.
+                  </p>
                 </li>
                 <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
                   <span className="font-bold text-foreground">2. 30m Placement Accelerator:</span>
-                  <p>Watches 06:00 English + Aptitude video broadcasts and completes 3 MCQs + Brainteaser + 60s Voice Pitch.</p>
+                  <p>
+                    Watches 06:00 English + Aptitude video broadcasts and completes 3 MCQs +
+                    Brainteaser + 60s Voice Pitch.
+                  </p>
                 </li>
                 <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
                   <span className="font-bold text-foreground">3. 30m Technical Practice:</span>
-                  <p>Solves hands-on sandbox labs on enrolled tracks; executes 18 Friday Workplace Mini-Projects.</p>
+                  <p>
+                    Solves hands-on sandbox labs on enrolled tracks; executes 18 Friday Workplace
+                    Mini-Projects.
+                  </p>
                 </li>
                 <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
                   <span className="font-bold text-foreground">4. Day 90 Industry Capstone:</span>
-                  <p>Completes 14-step real-world case defense simulation and satisfies the Dual Completion Gate.</p>
+                  <p>
+                    Completes 14-step real-world case defense simulation and satisfies the Dual
+                    Completion Gate.
+                  </p>
                 </li>
                 <li className="rounded-xl bg-surface-elevated p-3.5 border border-line-soft space-y-1">
                   <span className="font-bold text-foreground">5. Phase 2 Career Gateway:</span>
-                  <p>Generates ATS resume, takes AI Mock Interviews, verifies certifications, and accepts job offers.</p>
+                  <p>
+                    Generates ATS resume, takes AI Mock Interviews, verifies certifications, and
+                    accepts job offers.
+                  </p>
                 </li>
               </ul>
             </div>
@@ -536,21 +655,24 @@ function ArchitecturePage() {
                 cron: "15 6 * * *",
                 title: "Technical Sandbox Containers Warmer",
                 desc: "Pre-warms WebAssembly modules and in-browser runtimes for all 15 technical disciplines.",
-                impact: "Sub-second lab load times for MERN, Java, AI/ML, Cloud, and Medical Coding sandboxes.",
+                impact:
+                  "Sub-second lab load times for MERN, Java, AI/ML, Cloud, and Medical Coding sandboxes.",
               },
               {
                 time: "Every 15m",
                 cron: "*/15 * * * *",
                 title: "Unified Talent Score Recalculation Engine",
                 desc: "Recalculates 0–1000 Talent Score (Technical 25% + Coding 20% + Aptitude 15% + English 15% + Real-world 15% + Mock 10%).",
-                impact: "Updates cohort leaderboards, tier badges, and recruiter match percentages.",
+                impact:
+                  "Updates cohort leaderboards, tier badges, and recruiter match percentages.",
               },
               {
                 time: "Every 4h",
                 cron: "0 */4 * * *",
                 title: "ATS Portfolio Parser & Synchronizer",
                 desc: "Extracts completed sandbox project milestones into students' automated ATS resume drafts.",
-                impact: "Ensures resume bullet points always reflect verified portfolio accomplishments.",
+                impact:
+                  "Ensures resume bullet points always reflect verified portfolio accomplishments.",
               },
               {
                 time: "20:00 IST",
@@ -576,7 +698,9 @@ function ArchitecturePage() {
                 <div className="min-w-0 flex-1 space-y-0.5">
                   <p className="text-xs font-bold text-foreground">{cron.title}</p>
                   <p className="text-xs text-copy-subtle leading-relaxed">{cron.desc}</p>
-                  <p className="text-[11px] font-mono text-brand-cyan">⚡ System Impact: {cron.impact}</p>
+                  <p className="text-[11px] font-mono text-brand-cyan">
+                    ⚡ System Impact: {cron.impact}
+                  </p>
                 </div>
               </div>
             ))}
@@ -598,13 +722,18 @@ function ArchitecturePage() {
               </p>
               <ul className="space-y-2 text-copy-subtle">
                 <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
-                  <span className="font-bold text-foreground">Student Learner:</span> Submits daily practice answers, sandbox code, voice pitch audio, and capstone submissions.
+                  <span className="font-bold text-foreground">Student Learner:</span> Submits daily
+                  practice answers, sandbox code, voice pitch audio, and capstone submissions.
                 </li>
                 <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
-                  <span className="font-bold text-foreground">Platform Super Admin:</span> Bulk CSV roster, batch sizing, Telegram credentials, CMS content updates, and gate thresholds.
+                  <span className="font-bold text-foreground">Platform Super Admin:</span> Bulk CSV
+                  roster, batch sizing, Telegram credentials, CMS content updates, and gate
+                  thresholds.
                 </li>
                 <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
-                  <span className="font-bold text-foreground">Enterprise Recruiter:</span> Posts job requisitions, filters talent by Talent Score tier, schedules 1:1 mocks, and sends offers.
+                  <span className="font-bold text-foreground">Enterprise Recruiter:</span> Posts job
+                  requisitions, filters talent by Talent Score tier, schedules 1:1 mocks, and sends
+                  offers.
                 </li>
               </ul>
             </div>
@@ -615,16 +744,20 @@ function ArchitecturePage() {
               </p>
               <ul className="space-y-2 text-copy-subtle">
                 <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
-                  <span className="font-bold text-foreground">1.0 Roster Ingestion:</span> Validates CSV, assigns 1–3 courses, hashes passwords, generates logins.
+                  <span className="font-bold text-foreground">1.0 Roster Ingestion:</span> Validates
+                  CSV, assigns 1–3 courses, hashes passwords, generates logins.
                 </li>
                 <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
-                  <span className="font-bold text-foreground">2.0 Twin Routine Dispatcher:</span> Schedules 06:00 broadcast and serves in-browser sandbox exercises.
+                  <span className="font-bold text-foreground">2.0 Twin Routine Dispatcher:</span>{" "}
+                  Schedules 06:00 broadcast and serves in-browser sandbox exercises.
                 </li>
                 <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
-                  <span className="font-bold text-foreground">3.0 Dual Gate Evaluator:</span> Checks 90-day attendance + technical competency on assigned tracks.
+                  <span className="font-bold text-foreground">3.0 Dual Gate Evaluator:</span> Checks
+                  90-day attendance + technical competency on assigned tracks.
                 </li>
                 <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
-                  <span className="font-bold text-foreground">4.0 Talent Scoring &amp; Match:</span> Computes 0–1000 score and routes eligible profiles to recruiters.
+                  <span className="font-bold text-foreground">4.0 Talent Scoring &amp; Match:</span>{" "}
+                  Computes 0–1000 score and routes eligible profiles to recruiters.
                 </li>
               </ul>
             </div>
@@ -635,19 +768,32 @@ function ArchitecturePage() {
               </p>
               <ul className="space-y-2 text-copy-subtle font-mono text-[11px]">
                 <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
-                  <span className="font-bold text-brand-emerald">D1: Student &amp; Batch Store:</span> Profiles, enrollments, credentials, Telegram webhooks.
+                  <span className="font-bold text-brand-emerald">
+                    D1: Student &amp; Batch Store:
+                  </span>{" "}
+                  Profiles, enrollments, credentials, Telegram webhooks.
                 </li>
                 <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
-                  <span className="font-bold text-brand-emerald">D2: Technical Sandbox Store:</span> Track modules, 18 Friday deliverables, test outputs.
+                  <span className="font-bold text-brand-emerald">D2: Technical Sandbox Store:</span>{" "}
+                  Track modules, 18 Friday deliverables, test outputs.
                 </li>
                 <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
-                  <span className="font-bold text-brand-emerald">D3: Placement Accelerator Store:</span> 90-day attendance, MCQs, voice pitch recordings.
+                  <span className="font-bold text-brand-emerald">
+                    D3: Placement Accelerator Store:
+                  </span>{" "}
+                  90-day attendance, MCQs, voice pitch recordings.
                 </li>
                 <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
-                  <span className="font-bold text-brand-emerald">D4: Talent Score &amp; Tier Store:</span> 0–1000 dynamic ratings, percentile rankings.
+                  <span className="font-bold text-brand-emerald">
+                    D4: Talent Score &amp; Tier Store:
+                  </span>{" "}
+                  0–1000 dynamic ratings, percentile rankings.
                 </li>
                 <li className="rounded-lg bg-surface-elevated p-2 border border-line-soft">
-                  <span className="font-bold text-brand-emerald">D5: Recruiter Marketplace Store:</span> Requisitions, candidate shortlists, offer letters.
+                  <span className="font-bold text-brand-emerald">
+                    D5: Recruiter Marketplace Store:
+                  </span>{" "}
+                  Requisitions, candidate shortlists, offer letters.
                 </li>
               </ul>
             </div>
@@ -670,7 +816,9 @@ function ArchitecturePage() {
                   <Code2 className="size-4" /> Gate Condition 1: Technical Mastery
                 </p>
                 <p className="text-copy-subtle leading-relaxed">
-                  100% verified completion on the student's Primary Specialization (all sandbox tasks + 18 Friday workplace projects + Day 90 capstone) AND ≥ {store.secondaryMinimum}% completion on any secondary enrolled courses.
+                  100% verified completion on the student's Primary Specialization (all sandbox
+                  tasks + 18 Friday workplace projects + Day 90 capstone) AND ≥{" "}
+                  {store.secondaryMinimum}% completion on any secondary enrolled courses.
                 </p>
                 <div className="rounded-lg bg-surface-dark p-2 font-mono text-[11px] text-brand-cyan">
                   Formula: Primary == 100% &amp;&amp; Secondary ≥ {store.secondaryMinimum}%
@@ -682,7 +830,9 @@ function ArchitecturePage() {
                   <Users className="size-4" /> Gate Condition 2: Placement Program
                 </p>
                 <p className="text-copy-subtle leading-relaxed">
-                  100% attendance recorded across the 90-day synchronized batch cohort calendar (90/90 days) AND a passing score of ≥ 60% on the Day 90 Final Placement Readiness Assessment.
+                  100% attendance recorded across the 90-day synchronized batch cohort calendar
+                  (90/90 days) AND a passing score of ≥ 60% on the Day 90 Final Placement Readiness
+                  Assessment.
                 </p>
                 <div className="rounded-lg bg-surface-dark p-2 font-mono text-[11px] text-brand-purple">
                   Formula: Attendance == 90/90 &amp;&amp; AssessmentDay90 ≥ 60%
@@ -704,7 +854,8 @@ function ArchitecturePage() {
 
               <div className="rounded-xl bg-surface-dark p-4 border border-line-soft font-mono text-xs text-foreground space-y-2">
                 <p className="text-brand-amber font-bold">
-                  Talent Score = (T × 25%) + (C × 20%) + (A × 15%) + (E × 15%) + (R × 15%) + (M × 10%)
+                  Talent Score = (T × 25%) + (C × 20%) + (A × 15%) + (E × 15%) + (R × 15%) + (M ×
+                  10%)
                 </p>
                 <div className="grid gap-2 sm:grid-cols-3 pt-2 text-[11px] text-copy-subtle border-t border-line-soft/80">
                   <div>• T = Technical Mastery (25%)</div>
@@ -720,7 +871,9 @@ function ArchitecturePage() {
                 <div className="rounded-xl border border-brand-purple/40 bg-brand-purple/10 p-3 text-center">
                   <p className="font-bold text-brand-purple text-sm">Elite Tier</p>
                   <p className="text-foreground font-bold mt-1">850 – 1000</p>
-                  <p className="text-[10px] text-copy-subtle mt-0.5">Top 5% · Direct Day-1 Placement</p>
+                  <p className="text-[10px] text-copy-subtle mt-0.5">
+                    Top 5% · Direct Day-1 Placement
+                  </p>
                 </div>
                 <div className="rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 p-3 text-center">
                   <p className="font-bold text-brand-cyan text-sm">Advanced Tier</p>

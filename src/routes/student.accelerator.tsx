@@ -53,10 +53,42 @@ export const Route = createFileRoute("/student/accelerator")({
   component: AcceleratorPage,
 });
 
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useLiveStudentProfile,
+  useLiveStudentProgress,
+  completeLiveDailyStep,
+  completeLivePlacementDay,
+} from "@/lib/data";
+
 function AcceleratorPage() {
   const store = useAppStore();
-  const [selectedDayNum, setSelectedDayNum] = useState<number>(store.placementDay || 1);
-  const [activeTab, setActiveTab] = useState<"practice" | "english-instructor" | "aptitude-instructor" | "90days-schedule">("practice");
+  const queryClient = useQueryClient();
+  const isLive = store.authProvider === "supabase";
+
+  const { data: liveProfileData } = useLiveStudentProfile(
+    store.supabaseSession?.user?.id,
+    isLive && !!store.supabaseSession?.user?.id,
+  );
+  const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
+  const { data: liveProgressData } = useLiveStudentProgress(
+    liveStudentId || undefined,
+    isLive && !!liveStudentId,
+  );
+
+  const cohortDay = isLive
+    ? (liveProfileData?.profile?.placement_day ?? 1)
+    : store.placementDay || 1;
+  const streak = isLive ? (liveProfileData?.profile?.streak ?? 0) : store.streak;
+  const xp = isLive ? (liveProfileData?.profile?.xp ?? 0) : store.xp;
+  const daily = isLive
+    ? liveProgressData?.daily || { english: false, aptitude: false, practice: false }
+    : store.daily;
+
+  const [selectedDayNum, setSelectedDayNum] = useState<number>(cohortDay);
+  const [activeTab, setActiveTab] = useState<
+    "practice" | "english-instructor" | "aptitude-instructor" | "90days-schedule"
+  >("practice");
   const [isInstructorMode, setIsInstructorMode] = useState<boolean>(false);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [puzzleAnswer, setPuzzleAnswer] = useState<number | null>(null);
@@ -67,12 +99,15 @@ function AcceleratorPage() {
   ]);
   const [pitch, setPitch] = useState(false);
 
-  const currentPlan: AcceleratorDay = useMemo(() => getAcceleratorDay(selectedDayNum), [selectedDayNum]);
+  const currentPlan: AcceleratorDay = useMemo(
+    () => getAcceleratorDay(selectedDayNum),
+    [selectedDayNum],
+  );
 
   const correctMcqs = currentPlan.practice.mcqs.filter((m, i) => answers[i] === m.answer).length;
   const isPuzzleCorrect = puzzleAnswer === currentPlan.practice.puzzle.answer;
   const totalCorrect = correctMcqs + (isPuzzleCorrect ? 1 : 0);
-  const doneCount = Object.values(store.daily).filter(Boolean).length;
+  const doneCount = Object.values(daily).filter(Boolean).length;
 
   const toggleWeek = (wNum: number) => {
     setExpandedWeeks((prev) => ({ ...prev, [wNum]: !prev[wNum] }));
@@ -80,8 +115,11 @@ function AcceleratorPage() {
 
   const runPitch = () => {
     setPitch(true);
-    setLog((l) => [`[voice] Microphone active: Recording 60s pitch on Day ${selectedDayNum} prompt…`, ...l]);
-    setTimeout(() => {
+    setLog((l) => [
+      `[voice] Microphone active: Recording 60s pitch on Day ${selectedDayNum} prompt…`,
+      ...l,
+    ]);
+    setTimeout(async () => {
       setPitch(false);
       setLog((l) => [
         `[voice] Analysis: Clarity 89% · Pace 76 wpm (Optimal) · Vocabulary Hits: ${currentPlan.english.keyVocabulary.slice(0, 2).join(", ")}`,
@@ -89,7 +127,19 @@ function AcceleratorPage() {
         "[voice] Competency evidence logged to Talent Score engine (+25 XP)",
         ...l,
       ]);
-      store.completeDailyStep("practice");
+      if (isLive && liveStudentId) {
+        await completeLiveDailyStep(liveStudentId, "practice");
+        await completeLivePlacementDay(liveStudentId, selectedDayNum);
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-progress", liveStudentId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+        });
+      } else {
+        store.completeDailyStep("practice");
+        store.completePlacementDay(selectedDayNum);
+      }
       toast.success("Voice pitch analysed successfully!", {
         description: "+25 XP awarded · Communication pillar updated",
       });
@@ -109,13 +159,13 @@ function AcceleratorPage() {
                 "flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all",
                 isInstructorMode
                   ? "border-brand-purple/60 bg-brand-purple/15 text-brand-purple shadow-sm"
-                  : "border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground"
+                  : "border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
               )}
             >
               <GraduationCap className="size-3.5" />
               {isInstructorMode ? "Instructor Lesson Mode Active" : "Switch to Instructor View"}
             </button>
-            <Chip tone="amber">🔥 Day {store.streak} Streak</Chip>
+            <Chip tone="amber">🔥 Day {streak} Streak</Chip>
           </div>
         }
       />
@@ -135,7 +185,7 @@ function AcceleratorPage() {
         />
         <Stat
           label="Placement XP Balance"
-          value={`${store.xp} XP`}
+          value={`${xp} XP`}
           accent="var(--brand-purple)"
           hint="+25 XP per completed block"
         />
@@ -190,10 +240,10 @@ function AcceleratorPage() {
                   isCurrent
                     ? "border-brand-cyan bg-brand-cyan/15 text-brand-cyan font-bold shadow-md"
                     : isToday
-                    ? "border-brand-amber/60 bg-brand-amber/10 text-brand-amber font-semibold"
-                    : isFriday
-                    ? "border-brand-purple/40 bg-brand-purple/5 text-copy-subtle hover:border-brand-purple"
-                    : "border-line-soft/80 bg-surface-elevated/70 text-copy-subtle hover:text-foreground hover:border-line-soft"
+                      ? "border-brand-amber/60 bg-brand-amber/10 text-brand-amber font-semibold"
+                      : isFriday
+                        ? "border-brand-purple/40 bg-brand-purple/5 text-copy-subtle hover:border-brand-purple"
+                        : "border-line-soft/80 bg-surface-elevated/70 text-copy-subtle hover:text-foreground hover:border-line-soft",
                 )}
               >
                 <span className="text-[9px] font-mono uppercase opacity-70">
@@ -216,7 +266,9 @@ function AcceleratorPage() {
           <div
             className={cn(
               "flex flex-col justify-between rounded-xl border p-4 transition-all text-left bg-surface-soft/80",
-              store.daily.english ? "border-brand-emerald/50" : "border-line-soft hover:border-brand-cyan/50"
+              store.daily.english
+                ? "border-brand-emerald/50"
+                : "border-line-soft hover:border-brand-cyan/50",
             )}
           >
             <div>
@@ -235,8 +287,12 @@ function AcceleratorPage() {
                   )}
                 </button>
               </div>
-              <h4 className="mt-2 text-sm font-bold text-foreground">{currentPlan.english.title}</h4>
-              <p className="mt-1 text-xs text-copy-subtle line-clamp-2">{currentPlan.english.instructorBrief}</p>
+              <h4 className="mt-2 text-sm font-bold text-foreground">
+                {currentPlan.english.title}
+              </h4>
+              <p className="mt-1 text-xs text-copy-subtle line-clamp-2">
+                {currentPlan.english.instructorBrief}
+              </p>
             </div>
             <div className="mt-4 pt-3 border-t border-line-soft/60 flex items-center justify-between">
               <button
@@ -255,7 +311,9 @@ function AcceleratorPage() {
           <div
             className={cn(
               "flex flex-col justify-between rounded-xl border p-4 transition-all text-left bg-surface-soft/80",
-              store.daily.aptitude ? "border-brand-emerald/50" : "border-line-soft hover:border-brand-purple/50"
+              store.daily.aptitude
+                ? "border-brand-emerald/50"
+                : "border-line-soft hover:border-brand-purple/50",
             )}
           >
             <div>
@@ -274,8 +332,12 @@ function AcceleratorPage() {
                   )}
                 </button>
               </div>
-              <h4 className="mt-2 text-sm font-bold text-foreground">{currentPlan.aptitude.title}</h4>
-              <p className="mt-1 text-xs text-copy-subtle line-clamp-2">{currentPlan.aptitude.instructorBrief}</p>
+              <h4 className="mt-2 text-sm font-bold text-foreground">
+                {currentPlan.aptitude.title}
+              </h4>
+              <p className="mt-1 text-xs text-copy-subtle line-clamp-2">
+                {currentPlan.aptitude.instructorBrief}
+              </p>
             </div>
             <div className="mt-4 pt-3 border-t border-line-soft/60 flex items-center justify-between">
               <button
@@ -294,7 +356,9 @@ function AcceleratorPage() {
           <div
             className={cn(
               "flex flex-col justify-between rounded-xl border p-4 transition-all text-left bg-surface-soft/80",
-              store.daily.practice ? "border-brand-emerald/50" : "border-line-soft hover:border-brand-emerald/50"
+              store.daily.practice
+                ? "border-brand-emerald/50"
+                : "border-line-soft hover:border-brand-emerald/50",
             )}
           >
             <div>
@@ -313,7 +377,9 @@ function AcceleratorPage() {
                   )}
                 </button>
               </div>
-              <h4 className="mt-2 text-sm font-bold text-foreground">10m In-App Combined Practice</h4>
+              <h4 className="mt-2 text-sm font-bold text-foreground">
+                10m In-App Combined Practice
+              </h4>
               <p className="mt-1 text-xs text-copy-subtle">
                 3 MCQs + 1 Logic Brainteaser + 60s AI Voice Pitch Recording
               </p>
@@ -341,7 +407,7 @@ function AcceleratorPage() {
             "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all",
             activeTab === "practice"
               ? "bg-brand-cyan text-surface-dark shadow-sm"
-              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground"
+              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
           )}
         >
           <Sparkles className="size-4" />
@@ -354,7 +420,7 @@ function AcceleratorPage() {
             "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all",
             activeTab === "english-instructor"
               ? "bg-brand-cyan text-surface-dark shadow-sm"
-              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground"
+              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
           )}
         >
           <BookOpen className="size-4" />
@@ -367,7 +433,7 @@ function AcceleratorPage() {
             "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all",
             activeTab === "aptitude-instructor"
               ? "bg-brand-purple text-surface-dark shadow-sm"
-              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground"
+              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
           )}
         >
           <Calculator className="size-4" />
@@ -380,7 +446,7 @@ function AcceleratorPage() {
             "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ml-auto",
             activeTab === "90days-schedule"
               ? "bg-surface-elevated text-brand-cyan border border-brand-cyan/60"
-              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground"
+              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
           )}
         >
           <ListOrdered className="size-4" />
@@ -396,7 +462,11 @@ function AcceleratorPage() {
             <Panel
               title={`Day ${selectedDayNum} Guided Practice: MCQs & Brainteaser`}
               subtitle="Instant answer validation with worked step-by-step explanations"
-              action={<Chip tone="cyan">{totalCorrect} / {currentPlan.practice.mcqs.length + 1} Correct</Chip>}
+              action={
+                <Chip tone="cyan">
+                  {totalCorrect} / {currentPlan.practice.mcqs.length + 1} Correct
+                </Chip>
+              }
             >
               <div className="space-y-4">
                 <p className="text-xs font-bold uppercase tracking-wider text-brand-cyan flex items-center gap-2">
@@ -405,7 +475,10 @@ function AcceleratorPage() {
                 </p>
 
                 {currentPlan.practice.mcqs.map((m, i) => (
-                  <div key={m.q} className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2">
+                  <div
+                    key={m.q}
+                    className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2"
+                  >
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-semibold text-foreground">
                         <span className="font-mono text-brand-cyan">Q{i + 1}.</span> {m.q}
@@ -432,12 +505,16 @@ function AcceleratorPage() {
                                 ? isRight
                                   ? "border-brand-emerald/60 bg-brand-emerald/10 text-brand-emerald font-bold"
                                   : "border-brand-rose/60 bg-brand-rose/10 text-brand-rose font-bold"
-                                : "border-line-soft bg-surface-elevated text-copy-subtle hover:text-foreground"
+                                : "border-line-soft bg-surface-elevated text-copy-subtle hover:text-foreground",
                             )}
                           >
-                            <span className="font-mono text-[10px] opacity-60">{String.fromCharCode(65 + oi)}.</span>
+                            <span className="font-mono text-[10px] opacity-60">
+                              {String.fromCharCode(65 + oi)}.
+                            </span>
                             <span>{opt}</span>
-                            {isPicked && isRight && <CheckCircle2 className="size-3.5 text-brand-emerald ml-auto" />}
+                            {isPicked && isRight && (
+                              <CheckCircle2 className="size-3.5 text-brand-emerald ml-auto" />
+                            )}
                           </button>
                         );
                       })}
@@ -460,7 +537,9 @@ function AcceleratorPage() {
                 </p>
 
                 <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2">
-                  <p className="text-xs font-semibold text-foreground">{currentPlan.practice.puzzle.q}</p>
+                  <p className="text-xs font-semibold text-foreground">
+                    {currentPlan.practice.puzzle.q}
+                  </p>
                   <div className="grid gap-1.5 sm:grid-cols-2">
                     {currentPlan.practice.puzzle.options.map((opt, oi) => {
                       const isPicked = puzzleAnswer === oi;
@@ -470,7 +549,8 @@ function AcceleratorPage() {
                           key={opt}
                           onClick={() => {
                             setPuzzleAnswer(oi);
-                            if (oi === currentPlan.practice.puzzle.answer) toast.success("Brainteaser Solved!");
+                            if (oi === currentPlan.practice.puzzle.answer)
+                              toast.success("Brainteaser Solved!");
                           }}
                           className={cn(
                             "flex items-center gap-2 rounded-lg border p-2 text-left text-xs transition-colors",
@@ -478,12 +558,16 @@ function AcceleratorPage() {
                               ? isRight
                                 ? "border-brand-emerald/60 bg-brand-emerald/10 text-brand-emerald font-bold"
                                 : "border-brand-rose/60 bg-brand-rose/10 text-brand-rose font-bold"
-                              : "border-line-soft bg-surface-elevated text-copy-subtle hover:text-foreground"
+                              : "border-line-soft bg-surface-elevated text-copy-subtle hover:text-foreground",
                           )}
                         >
-                          <span className="font-mono text-[10px] opacity-60">{String.fromCharCode(65 + oi)}.</span>
+                          <span className="font-mono text-[10px] opacity-60">
+                            {String.fromCharCode(65 + oi)}.
+                          </span>
                           <span>{opt}</span>
-                          {isPicked && isRight && <CheckCircle2 className="size-3.5 text-brand-emerald ml-auto" />}
+                          {isPicked && isRight && (
+                            <CheckCircle2 className="size-3.5 text-brand-emerald ml-auto" />
+                          )}
                         </button>
                       );
                     })}
@@ -520,7 +604,10 @@ function AcceleratorPage() {
                   <div className="pt-2 border-t border-line-soft/60 flex flex-wrap gap-1.5">
                     <span className="text-[10px] text-copy-subtle">Target Keywords:</span>
                     {currentPlan.practice.voicePrompt.targetKeywords.map((k) => (
-                      <span key={k} className="rounded bg-surface-dark px-1.5 py-0.5 text-[10px] font-mono text-brand-cyan border border-line-soft">
+                      <span
+                        key={k}
+                        className="rounded bg-surface-dark px-1.5 py-0.5 text-[10px] font-mono text-brand-cyan border border-line-soft"
+                      >
                         {k}
                       </span>
                     ))}
@@ -532,7 +619,11 @@ function AcceleratorPage() {
                   disabled={pitch}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-3 text-xs font-bold text-surface-dark shadow-md transition-opacity hover:opacity-90 disabled:opacity-60"
                 >
-                  {pitch ? <Mic className="size-4 animate-pulse text-brand-rose" /> : <Mic className="size-4" />}
+                  {pitch ? (
+                    <Mic className="size-4 animate-pulse text-brand-rose" />
+                  ) : (
+                    <Mic className="size-4" />
+                  )}
                   {pitch ? "Listening & Scoring Speech Cadence…" : "Record 60s Voice Pitch Drill"}
                 </button>
 
@@ -549,7 +640,9 @@ function AcceleratorPage() {
                   <div className="flex items-center gap-2">
                     <Video className="size-4 text-brand-cyan" />
                     <div>
-                      <p className="font-bold text-foreground">Day {selectedDayNum} English Broadcast</p>
+                      <p className="font-bold text-foreground">
+                        Day {selectedDayNum} English Broadcast
+                      </p>
                       <p className="text-[10px] text-copy-subtle">{currentPlan.english.title}</p>
                     </div>
                   </div>
@@ -568,7 +661,9 @@ function AcceleratorPage() {
                   <div className="flex items-center gap-2">
                     <Video className="size-4 text-brand-purple" />
                     <div>
-                      <p className="font-bold text-foreground">Day {selectedDayNum} Aptitude Broadcast</p>
+                      <p className="font-bold text-foreground">
+                        Day {selectedDayNum} Aptitude Broadcast
+                      </p>
                       <p className="text-[10px] text-copy-subtle">{currentPlan.aptitude.title}</p>
                     </div>
                   </div>
@@ -618,7 +713,9 @@ function AcceleratorPage() {
                   {currentPlan.english.instructorBrief}
                 </p>
                 <div className="rounded-lg bg-surface-dark p-3 border border-line-soft/80 space-y-1">
-                  <p className="text-[10px] font-mono uppercase text-brand-cyan">Spoken Grammar Focus:</p>
+                  <p className="text-[10px] font-mono uppercase text-brand-cyan">
+                    Spoken Grammar Focus:
+                  </p>
                   <p className="text-xs text-copy-subtle">{currentPlan.english.grammarRule}</p>
                 </div>
               </div>
@@ -689,7 +786,9 @@ function AcceleratorPage() {
                   {currentPlan.aptitude.instructorBrief}
                 </p>
                 <div className="rounded-lg bg-surface-dark p-3 border border-line-soft/80 space-y-1">
-                  <p className="text-[10px] font-mono uppercase text-brand-purple">Speed Math Rule:</p>
+                  <p className="text-[10px] font-mono uppercase text-brand-purple">
+                    Speed Math Rule:
+                  </p>
                   <p className="text-xs font-mono text-brand-purple font-bold">
                     {currentPlan.aptitude.formulaShortcut}
                   </p>
@@ -760,7 +859,11 @@ function AcceleratorPage() {
                       <span className="rounded-full bg-surface-dark px-2.5 py-0.5 text-[10px] font-mono text-copy-subtle border border-line-soft hidden sm:inline-block">
                         Days {(week.week - 1) * 5 + 1}–{week.week * 5}
                       </span>
-                      {isOpen ? <ChevronDown className="size-4 text-copy-subtle" /> : <ChevronRight className="size-4 text-copy-subtle" />}
+                      {isOpen ? (
+                        <ChevronDown className="size-4 text-copy-subtle" />
+                      ) : (
+                        <ChevronRight className="size-4 text-copy-subtle" />
+                      )}
                     </div>
                   </button>
 
@@ -781,8 +884,8 @@ function AcceleratorPage() {
                               isSelected
                                 ? "border-brand-cyan bg-brand-cyan/10 text-foreground font-semibold"
                                 : isFriday
-                                ? "border-brand-purple/40 bg-brand-purple/5 hover:border-brand-purple"
-                                : "border-line-soft bg-surface-elevated/60 hover:border-line-soft hover:bg-surface-elevated"
+                                  ? "border-brand-purple/40 bg-brand-purple/5 hover:border-brand-purple"
+                                  : "border-line-soft bg-surface-elevated/60 hover:border-line-soft hover:bg-surface-elevated",
                             )}
                           >
                             <div className="flex items-center gap-2.5">

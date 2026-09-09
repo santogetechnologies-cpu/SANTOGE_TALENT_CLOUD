@@ -3,14 +3,13 @@
  *
  * Architecture:
  * - ONE singleton `@supabase/supabase-js` client (supabaseClient) — initialized once, never recreated.
- * - ONE lightweight hand-rolled REST auth helper (supabaseAuth) — used by app-store.tsx for
- *   signIn, signUp, signOut, and the manual connection test. Kept for backward compatibility.
- * - No polling, no Realtime, no postgres_changes, no automatic DB queries.
- * - Supabase is AUTH infrastructure only for now. All application data uses mock/local sources.
+ * - Single source of truth for LIVE mode: Supabase PostgreSQL + Supabase Auth.
+ * - No background polling, no Realtime, no postgres_changes, no continuous setInterval synchronization.
+ * - Egress optimized: exact column projections and targeted query caching via React Query.
  *
  * Egress policy:
- * - 0 automatic background requests.
- * - Network calls only happen when the user explicitly clicks Sign In, Sign Up, or Test Connection.
+ * - 0 automatic background WebSocket connections.
+ * - Network calls execute purely on demand or via React Query caching strategies.
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -86,13 +85,8 @@ const ENV_KEY: string | undefined =
     ? (import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] as string | undefined)
     : undefined;
 
-const REAL_PROJECT_URL = "https://ylofqmmbwgrqtsrclnww.supabase.co";
-const REAL_PROJECT_KEY = "sb_publishable_bIuZOdaZ_m3jp6s6cyoV_A_P8mKwqXf";
-
-const DEFAULT_SUPABASE_URL =
-  ENV_URL && !ENV_URL.includes("placeholder") ? ENV_URL : REAL_PROJECT_URL;
-const DEFAULT_SUPABASE_ANON_KEY =
-  ENV_KEY && ENV_KEY !== "placeholder-key" ? ENV_KEY : REAL_PROJECT_KEY;
+const DEFAULT_SUPABASE_URL = ENV_URL || "";
+const DEFAULT_SUPABASE_ANON_KEY = ENV_KEY || "";
 
 // ---------------------------------------------------------------------------
 // Singleton @supabase/supabase-js client
@@ -111,28 +105,24 @@ export function getSupabaseClient(): SupabaseClient {
   if (_supabaseClient) return _supabaseClient;
 
   const config = getSupabaseConfig();
-  _supabaseClient = createClient(
-    config.url,
-    config.anonKey || "placeholder-key",
-    {
-      auth: {
-        autoRefreshToken: false,   // No background token-refresh polling
-        persistSession: true,       // Session stored in localStorage (read on mount only)
-        detectSessionInUrl: false,  // No URL scanning on every navigation
-      },
-      global: {
-        headers: {
-          "x-application-name": "santoge-talent-cloud",
-        },
-      },
-      // Realtime disabled — no websocket connections, zero egress from subscriptions.
-      realtime: {
-        params: {
-          eventsPerSecond: 0,
-        },
+  _supabaseClient = createClient(config.url, config.anonKey || "placeholder-key", {
+    auth: {
+      autoRefreshToken: true, // Standard auth token refresh
+      persistSession: true, // Session stored in localStorage
+      detectSessionInUrl: false, // No URL scanning on every navigation
+    },
+    global: {
+      headers: {
+        "x-application-name": "santoge-talent-cloud",
       },
     },
-  );
+    // Realtime disabled — no websocket connections, zero egress from subscriptions.
+    realtime: {
+      params: {
+        eventsPerSecond: 0,
+      },
+    },
+  });
 
   return _supabaseClient;
 }
@@ -151,6 +141,12 @@ const STORAGE_KEY_CONFIG = "santoge-supabase-config-v1";
 const STORAGE_KEY_SESSION = "santoge-supabase-session-v1";
 
 export function getSupabaseConfig(): SupabaseAuthConfig {
+  // In production, environment variables are authoritative
+  const isDev = typeof import.meta !== "undefined" && Boolean(import.meta.env.DEV);
+  if (!isDev && DEFAULT_SUPABASE_URL && DEFAULT_SUPABASE_ANON_KEY) {
+    return { url: DEFAULT_SUPABASE_URL, anonKey: DEFAULT_SUPABASE_ANON_KEY };
+  }
+
   if (typeof window === "undefined") {
     return { url: DEFAULT_SUPABASE_URL, anonKey: DEFAULT_SUPABASE_ANON_KEY };
   }
@@ -236,7 +232,9 @@ export const supabaseAuth = {
     ) {
       return {
         data: { session: null, user: null },
-        error: new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY."),
+        error: new Error(
+          "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.",
+        ),
       };
     }
 
@@ -306,13 +304,15 @@ export const supabaseAuth = {
     ) {
       return {
         data: { session: null, user: null },
-        error: new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY."),
+        error: new Error(
+          "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.",
+        ),
       };
     }
 
     // SECURITY: Public signup ALWAYS forces role="student".
     // No caller can escalate to "admin" through this endpoint.
-    const safeRole: "student" = "student";
+    const safeRole = "student" as const;
 
     try {
       const client = getSupabaseClient();
@@ -347,22 +347,22 @@ export const supabaseAuth = {
           } as SupabaseUser)
         : null;
 
-      const session: SupabaseSession | null = data.session && user
-        ? {
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-            expires_in: data.session.expires_in,
-            expires_at: data.session.expires_at,
-            token_type: data.session.token_type,
-            user,
-          }
-        : null;
+      const session: SupabaseSession | null =
+        data.session && user
+          ? {
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token,
+              expires_in: data.session.expires_in,
+              expires_at: data.session.expires_at,
+              token_type: data.session.token_type,
+              user,
+            }
+          : null;
 
       if (session) saveStoredSession(session);
       return { data: { session, user }, error: null };
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to register with Supabase.";
+      const message = err instanceof Error ? err.message : "Failed to register with Supabase.";
       return { data: { session: null, user: null }, error: new Error(message) };
     }
   },
@@ -407,7 +407,8 @@ export const supabaseAuth = {
     ) {
       return {
         ok: false,
-        message: "No valid Supabase project configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.",
+        message:
+          "No valid Supabase project configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.",
       };
     }
 
@@ -425,8 +426,7 @@ export const supabaseAuth = {
     } catch (err) {
       return {
         ok: false,
-        message:
-          err instanceof Error ? err.message : "Could not reach Supabase endpoint",
+        message: err instanceof Error ? err.message : "Could not reach Supabase endpoint",
       };
     }
   },
@@ -436,9 +436,7 @@ export const supabaseAuth = {
    * MANUAL only — called when Platform Super Admin explicitly requests password reset email.
    * NEVER called automatically or on a schedule.
    */
-  async resetPasswordForEmail(
-    email: string,
-  ): Promise<{ ok: boolean; message: string }> {
+  async resetPasswordForEmail(email: string): Promise<{ ok: boolean; message: string }> {
     const config = getSupabaseConfig();
     const cleanUrl = config.url.replace(/\/+$/, "");
 
@@ -461,3 +459,47 @@ export const supabaseAuth = {
     }
   },
 };
+
+/**
+ * Fetch authoritative user role from public.user_roles in Supabase PostgreSQL.
+ * Strictly verifies role in database.
+ */
+export async function fetchLiveUserRole(
+  authUserId: string,
+  _metadataRole?: string | undefined,
+  _userEmail?: string | undefined,
+): Promise<Role> {
+  if (!authUserId) return "student";
+  try {
+    const client = getSupabaseClient();
+
+    // 1. Primary check: Secure SECURITY DEFINER RPC get_my_role
+    try {
+      const { data: rpcRole, error: rpcErr } = await client.rpc("get_my_role");
+      if (!rpcErr && rpcRole) {
+        const r = String(rpcRole).toLowerCase();
+        if (r === "admin" || r === "super_admin") return "admin";
+        if (r === "student") return "student";
+      }
+    } catch {
+      // Fall through to direct table check
+    }
+
+    // 2. Direct query on public.user_roles
+    const { data, error } = await client
+      .from("user_roles")
+      .select("role")
+      .eq("auth_user_id", authUserId)
+      .maybeSingle();
+
+    if (!error && data?.role) {
+      const r = String(data.role).toLowerCase();
+      if (r === "admin" || r === "super_admin") return "admin";
+      return "student";
+    }
+
+    return "student";
+  } catch {
+    return "student";
+  }
+}

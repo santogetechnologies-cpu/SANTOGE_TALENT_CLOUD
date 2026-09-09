@@ -1,8 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Chip, Console, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore, type ProvisionedStudent } from "@/lib/app-store";
+import {
+  fetchLiveStudentRoster,
+  fetchLiveBatches,
+  provisionLiveStudents,
+  addLiveStudent,
+  deleteLiveStudent,
+} from "@/lib/data/admin-data";
 import {
   Download,
   Upload,
@@ -24,7 +32,10 @@ import {
 } from "lucide-react";
 import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
-import { AdminResetPasswordModal, type ResetPasswordStudent } from "@/components/admin-reset-password-modal";
+import {
+  AdminResetPasswordModal,
+  type ResetPasswordStudent,
+} from "@/components/admin-reset-password-modal";
 
 export const Route = createFileRoute("/admin/provisioning")({
   head: () => ({
@@ -38,7 +49,8 @@ export const Route = createFileRoute("/admin/provisioning")({
       { property: "og:title", content: "Bulk CSV Provisioning — SantoGe Talent Cloud" },
       {
         property: "og:description",
-        content: "Stage 0 Institutional Onboarding: Provision entire college batches from validated CSV.",
+        content:
+          "Stage 0 Institutional Onboarding: Provision entire college batches from validated CSV.",
       },
     ],
   }),
@@ -119,7 +131,10 @@ const COURSE_ALIASES: Record<string, TrackId> = {
 
 /** Normalizes flexible column header titles */
 const normalizeHeader = (raw: string): string => {
-  const clean = raw.trim().toLowerCase().replace(/[\s\-_]+/g, "");
+  const clean = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[\s\-_]+/g, "");
   if (["studentname", "name", "learnername", "fullname"].includes(clean)) return "student_name";
   if (["email", "emailaddress", "studentemail"].includes(clean)) return "email";
   if (["password", "pass", "temppassword"].includes(clean)) return "password";
@@ -135,6 +150,22 @@ const normalizeHeader = (raw: string): string => {
 
 function ProvisioningPage() {
   const store = useAppStore();
+  const queryClient = useQueryClient();
+  const isLive = store.authProvider === "supabase";
+
+  // Authoritative Live queries
+  const liveRosterQuery = useQuery({
+    queryKey: ["live", "student-roster"],
+    queryFn: () => fetchLiveStudentRoster({ pageSize: 500 }),
+    enabled: isLive,
+  });
+
+  const liveBatchesQuery = useQuery({
+    queryKey: ["live", "batches"],
+    queryFn: fetchLiveBatches,
+    enabled: isLive,
+  });
+
   const [csv, setCsv] = useState(TEMPLATE);
   const [log, setLog] = useState<string[]>([
     "[ready] Stage 0 Institutional Provisioning engine initialized.",
@@ -156,6 +187,7 @@ function ProvisioningPage() {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false);
   const [deleteTargetStudent, setDeleteTargetStudent] = useState<{
+    id?: string;
     name: string;
     email: string;
     rollNo: string;
@@ -170,8 +202,8 @@ function ProvisioningPage() {
   const [singleRollNo, setSingleRollNo] = useState("");
   const [singleDept, setSingleDept] = useState("CSE");
   const [singleBatchId, setSingleBatchId] = useState("");
-  const [singleCollege, setSingleCollege] = useState("PSG College of Technology");
-  const [singleTracks, setSingleTracks] = useState<TrackId[]>(["mern", "cloud"]);
+  const [singleCollege, setSingleCollege] = useState("");
+  const [singleTracks, setSingleTracks] = useState<TrackId[]>(["mern"]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -224,12 +256,15 @@ function ProvisioningPage() {
 
   const normalizeCourse = (raw: string | undefined): TrackId | null => {
     if (!raw) return null;
-    const cleaned = raw.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    const cleaned = raw
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
     if (!cleaned) return null;
     return COURSE_ALIASES[cleaned] || null;
   };
 
-  const processCsv = () => {
+  const processCsv = async () => {
     setIsProcessing(true);
     const lines = csv
       .trim()
@@ -287,23 +322,35 @@ function ProvisioningPage() {
       }
       seenEmails.add(email);
 
-      const rollNo = rowMap["roll_no"] || `STC${Date.now().toString().slice(-4)}${i + 1}`;
-      const dept = rowMap["dept"] || "CSE";
-      const batchId = rowMap["batch_id"] || "BATCH-2026-ABC-CSE-01";
-      const college = rowMap["college"] || "Partner Engineering College";
+      const rollNo =
+        rowMap["roll_no"] || (isLive ? "" : `STC${Date.now().toString().slice(-4)}${i + 1}`);
+      const dept = rowMap["dept"] || (isLive ? "" : "CSE");
+      const batchId = rowMap["batch_id"] || (isLive ? "" : "BATCH-2026-ABC-CSE-01");
+      const college = rowMap["college"] || "";
       const password = rowMap["password"] || "Temp@1234";
 
       // Track course assignments (1 to 3 tracks)
-      const c1 = normalizeCourse(rowMap["course_1"]) || "mern";
+      const c1 = normalizeCourse(rowMap["course_1"]) || (isLive ? "" : "mern");
       let c2 = normalizeCourse(rowMap["course_2"]) || "";
       let c3 = normalizeCourse(rowMap["course_3"]) || "";
 
       // Ensure de-duplicated tracks per student
-      if (c2 === c1) c2 = "";
-      if (c3 === c1 || c3 === c2) c3 = "";
+      if (c2 && c2 === c1) c2 = "";
+      if (c3 && (c3 === c1 || c3 === c2)) c3 = "";
+
+      if (isLive) {
+        if (!studentName || !rollNo || !dept || !batchId) {
+          out.push(
+            `[error] Row ${i + 2}: Missing required field (name, roll_no, dept, or batch_id) for "${email}"`,
+          );
+          return;
+        }
+      }
 
       // Track batch sizes
-      batchCounts[batchId] = (batchCounts[batchId] || 0) + 1;
+      if (batchId) {
+        batchCounts[batchId] = (batchCounts[batchId] || 0) + 1;
+      }
 
       const record: ProvisionedStudent = {
         student_name: studentName,
@@ -319,14 +366,16 @@ function ProvisioningPage() {
       };
 
       rows.push(record);
-      const coursesStr = [c1, c2, c3].filter(Boolean).join(", ");
+      const coursesStr = [c1, c2, c3].filter(Boolean).join(", ") || "No tracks assigned";
       out.push(`[provisioned] ${studentName} (${rollNo}) → ${batchId} [${coursesStr}]`);
     });
 
     // Check batch sizing rule: 100-300 students per batch
     Object.entries(batchCounts).forEach(([bid, count]) => {
       if (count > 300) {
-        out.push(`[alert] Batch ${bid} has ${count} students (Exceeds maximum recommended 300/batch).`);
+        out.push(
+          `[alert] Batch ${bid} has ${count} students (Exceeds maximum recommended 300/batch).`,
+        );
       } else {
         out.push(`[batch] Batch ${bid}: ${count} learners mapped (Capacity compliant).`);
       }
@@ -338,12 +387,53 @@ function ProvisioningPage() {
       return;
     }
 
-    // Persist to store (backend)
-    store.addProvisioned(rows);
-    out.push(`[complete] Successfully provisioned ${rows.length} student accounts.`);
-    out.push(`[auth] Portal credentials active. Students can authenticate at /login.`);
-    setLog(out);
-    toast.success(`${rows.length} learners onboarded with active portal logins!`);
+    if (isLive) {
+      const res = await provisionLiveStudents(rows);
+      if (res.count > 0) {
+        out.push(
+          `[complete] Successfully provisioned ${res.count} student accounts to Supabase backend.`,
+        );
+      }
+      if (res.failedCount > 0) {
+        out.push(`[warning] ${res.failedCount} records failed during provisioning:`);
+        (res.results || []).forEach((r) => {
+          if (!r.ok) {
+            out.push(`  ❌ ${r.email}: ${r.error || "Unknown error"}`);
+          }
+        });
+      }
+      if (res.ok) {
+        out.push(`[auth] Portal credentials active. Students can authenticate at /login.`);
+        setLog(out);
+        toast.success(`${res.count} learners onboarded to Live Supabase backend!`);
+      } else if (res.count > 0) {
+        out.push(`[auth] ${res.count} portal credentials active. ${res.failedCount} failed.`);
+        setLog(out);
+        toast.warning(
+          `Partial success: ${res.count} learners onboarded, ${res.failedCount} failed. Check console.`,
+        );
+      } else {
+        out.push(`[error] All records failed to provision: ${res.message || "Unknown error"}`);
+        setLog(out);
+        toast.error(res.message || "Failed to provision students to Supabase backend");
+      }
+
+      if (res.count > 0) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
+          queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+          queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
+        ]);
+      }
+    } else {
+      // Persist to store (backend demo)
+      store.addProvisioned(rows);
+      out.push(`[complete] Successfully provisioned ${rows.length} student accounts.`);
+      out.push(`[auth] Portal credentials active. Students can authenticate at /login.`);
+      setLog(out);
+      toast.success(`${rows.length} learners onboarded with active portal logins!`);
+    }
+
     setIsProcessing(false);
   };
 
@@ -352,11 +442,38 @@ function ProvisioningPage() {
     [store.deletedStudentEmails],
   );
 
-  const provisionedList = useMemo(() => {
+  const provisionedList: ProvisionedStudent[] = useMemo(() => {
+    if (isLive) {
+      const items = liveRosterQuery.data?.items || [];
+      return items.map((s) => ({
+        student_name: s.name,
+        email: s.email,
+        password: "••••••••",
+        roll_no: s.rollNo,
+        dept: s.dept,
+        course_1: s.tracks[0] || "",
+        course_2: s.tracks[1] || "",
+        course_3: s.tracks[2] || "",
+        batch_id: s.batchId,
+        college: s.college,
+      }));
+    }
     return (store.provisioned || []).filter((p) => !deletedSet.has(p.email.toLowerCase().trim()));
-  }, [store.provisioned, deletedSet]);
+  }, [isLive, liveRosterQuery.data, store.provisioned, deletedSet]);
 
-  const batchesList = store.batches || [];
+  const batchesList = useMemo(() => {
+    if (isLive && liveBatchesQuery.data) {
+      return liveBatchesQuery.data.map((b) => ({
+        id: b.id,
+        name: b.name,
+        enrolled: b.enrolled_count,
+        capacity: b.capacity,
+        dept: b.dept,
+        status: b.status,
+      }));
+    }
+    return store.batches || [];
+  }, [isLive, liveBatchesQuery.data, store.batches]);
 
   // Filtered provisioned list based on Search & Selectors
   const filteredProvisioned = useMemo(() => {
@@ -439,7 +556,7 @@ function ProvisioningPage() {
     });
   };
 
-  const handleSingleAdd = (e: React.FormEvent) => {
+  const handleSingleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!singleName.trim()) {
       toast.error("Please enter student's full name");
@@ -450,33 +567,87 @@ function ProvisioningPage() {
       return;
     }
 
-    const batchId = singleBatchId || store.batches[0]?.id || "BATCH-2026-ABC-CSE-01";
-    const password = singlePassword.trim() || "Temp@1234";
+    if (isLive) {
+      if (!singleBatchId.trim()) {
+        toast.error("Please select a batch");
+        return;
+      }
+      if (!singleRollNo.trim()) {
+        toast.error("Please enter a Roll / Student ID");
+        return;
+      }
+      if (!singleDept.trim()) {
+        toast.error("Please select or enter a department");
+        return;
+      }
+      if (!singleCollege.trim()) {
+        toast.error("Please enter the college / institution name");
+        return;
+      }
+      if (singleTracks.length === 0) {
+        toast.error("Please select at least 1 technical track (max 3)");
+        return;
+      }
 
-    const res = store.addStudent({
-      name: singleName.trim(),
-      email: singleEmail.trim().toLowerCase(),
-      password,
-      rollNo: singleRollNo.trim() || `STC${Date.now().toString().slice(-4)}`,
-      dept: singleDept.trim() || "CSE",
-      batchId,
-      college: singleCollege.trim() || "Partner Engineering College",
-      tracks: singleTracks,
-    });
+      const batchId = singleBatchId.trim();
+      const password = singlePassword.trim() || "Temp@1234";
 
-    if (res.ok) {
-      toast.success(`Student ${singleName.trim()} registered with active login!`);
-      setLog((prev) => [
-        `[provisioned] Single student registered: ${singleName.trim()} (${singleEmail.trim().toLowerCase()}) → ${batchId}`,
-        ...prev,
-      ]);
-      setIsSingleAddModalOpen(false);
-      setSingleName("");
-      setSingleEmail("");
-      setSinglePassword("Temp@1234");
-      setSingleRollNo("");
+      const res = await addLiveStudent({
+        name: singleName.trim(),
+        email: singleEmail.trim().toLowerCase(),
+        password,
+        rollNo: singleRollNo.trim(),
+        dept: singleDept.trim(),
+        batchId,
+        college: singleCollege.trim(),
+        tracks: singleTracks,
+      });
+
+      if (res.ok) {
+        toast.success(`Student ${singleName.trim()} registered to Supabase backend!`);
+        setLog((prev) => [
+          `[provisioned] Single student registered: ${singleName.trim()} (${singleEmail.trim().toLowerCase()}) → ${batchId}`,
+          ...prev,
+        ]);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
+          queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+          queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
+        ]);
+        setIsSingleAddModalOpen(false);
+        setSingleName("");
+        setSingleEmail("");
+        setSinglePassword("Temp@1234");
+        setSingleRollNo("");
+      } else {
+        toast.error(res.message);
+      }
     } else {
-      toast.error(res.message);
+      const res = await store.addStudent({
+        name: singleName.trim(),
+        email: singleEmail.trim().toLowerCase(),
+        password,
+        rollNo: singleRollNo.trim() || `STC${Date.now().toString().slice(-4)}`,
+        dept: singleDept.trim() || "CSE",
+        batchId,
+        college: singleCollege.trim() || "Partner Engineering College",
+        tracks: singleTracks,
+      });
+
+      if (res.ok) {
+        toast.success(`Student ${singleName.trim()} registered with active login!`);
+        setLog((prev) => [
+          `[provisioned] Single student registered: ${singleName.trim()} (${singleEmail.trim().toLowerCase()}) → ${batchId}`,
+          ...prev,
+        ]);
+        setIsSingleAddModalOpen(false);
+        setSingleName("");
+        setSingleEmail("");
+        setSinglePassword("Temp@1234");
+        setSingleRollNo("");
+      } else {
+        toast.error(res.message);
+      }
     }
   };
 
@@ -510,7 +681,11 @@ function ProvisioningPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-4">
-        <Stat label="Total Provisioned" value={provisionedList.length} hint="Active portal logins" />
+        <Stat
+          label="Total Provisioned"
+          value={provisionedList.length}
+          hint="Active portal logins"
+        />
         <Stat
           label="Required CSV Headers"
           value="10 Columns"
@@ -580,7 +755,9 @@ function ProvisioningPage() {
             onDrop={handleDrop}
             className={cn(
               "relative rounded-xl border transition-colors",
-              isDragging ? "border-brand-cyan bg-brand-cyan/10" : "border-line-soft bg-surface-dark",
+              isDragging
+                ? "border-brand-cyan bg-brand-cyan/10"
+                : "border-line-soft bg-surface-dark",
             )}
           >
             <textarea
@@ -739,7 +916,10 @@ function ProvisioningPage() {
               </thead>
               <tbody className="divide-y divide-line-soft/60 text-foreground">
                 {filteredProvisioned.slice(0, 50).map((p, idx) => (
-                  <tr key={`${p.email}-${idx}`} className="hover:bg-surface-soft/60 transition-colors">
+                  <tr
+                    key={`${p.email}-${idx}`}
+                    className="hover:bg-surface-soft/60 transition-colors"
+                  >
                     <td className="py-2.5 pr-4">
                       <p className="font-bold text-foreground">{p.student_name}</p>
                       <span className="inline-flex items-center gap-1 text-[10px] text-brand-emerald">
@@ -750,24 +930,29 @@ function ProvisioningPage() {
                     <td className="py-2.5 pr-4">
                       <span className="font-mono">{p.roll_no}</span> · {p.dept}
                     </td>
-                    <td className="py-2.5 pr-4 text-copy-subtle">
-                      {p.college || "Partner Engineering College"}
-                    </td>
+                    <td className="py-2.5 pr-4 text-copy-subtle">{p.college || "—"}</td>
                     <td className="py-2.5 pr-4">
                       <span className="rounded bg-surface-soft border border-line-soft px-2 py-0.5 font-mono text-[11px] text-brand-purple font-semibold">
-                        {p.batch_id}
+                        {p.batch_id || "Not Assigned"}
                       </span>
                     </td>
                     <td className="py-2.5 pr-4">
                       <div className="flex flex-wrap gap-1">
-                        {Array.from(new Set([p.course_1, p.course_2, p.course_3].filter(Boolean))).map((c, cIdx) => (
-                          <span
-                            key={`${p.email}-${c}-${cIdx}`}
-                            className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[10px] font-mono text-foreground"
-                          >
-                            {trackById(c as TrackId).short || c}
-                          </span>
-                        ))}
+                        {Array.from(new Set([p.course_1, p.course_2, p.course_3].filter(Boolean)))
+                          .length > 0 ? (
+                          Array.from(
+                            new Set([p.course_1, p.course_2, p.course_3].filter(Boolean)),
+                          ).map((c, cIdx) => (
+                            <span
+                              key={`${p.email}-${c}-${cIdx}`}
+                              className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[10px] font-mono text-foreground"
+                            >
+                              {trackById(c as TrackId).short || c}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-[10px] text-copy-subtle italic">Not Assigned</span>
+                        )}
                       </div>
                     </td>
                     <td className="py-2.5 text-right font-mono">
@@ -842,7 +1027,9 @@ function ProvisioningPage() {
                   <Plus className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-display text-base font-bold text-foreground">Add Single Learner</h3>
+                  <h3 className="font-display text-base font-bold text-foreground">
+                    Add Single Learner
+                  </h3>
                   <p className="text-[11px] text-copy-subtle">
                     Creates instant portal credentials, cohort sync, and technical track assignment.
                   </p>
@@ -900,10 +1087,14 @@ function ProvisioningPage() {
                     placeholder="Temp@1234"
                     className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60 font-mono"
                   />
-                  <span className="text-[10px] text-copy-subtle mt-0.5 block">Learner uses this password to log in</span>
+                  <span className="text-[10px] text-copy-subtle mt-0.5 block">
+                    Learner uses this password to log in
+                  </span>
                 </div>
                 <div>
-                  <label className="block font-semibold text-foreground mb-1">Roll / Registration Number</label>
+                  <label className="block font-semibold text-foreground mb-1">
+                    Roll / Registration Number
+                  </label>
                   <input
                     type="text"
                     value={singleRollNo}
@@ -935,11 +1126,11 @@ function ProvisioningPage() {
                     Placement Accelerator Cohort <span className="text-brand-rose">*</span>
                   </label>
                   <select
-                    value={singleBatchId || store.batches[0]?.id || ""}
+                    value={singleBatchId || (batchesList[0]?.id ?? "")}
                     onChange={(e) => setSingleBatchId(e.target.value)}
                     className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60"
                   >
-                    {store.batches.map((b) => (
+                    {batchesList.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.name} ({b.enrolled}/{b.capacity})
                       </option>
@@ -949,7 +1140,9 @@ function ProvisioningPage() {
               </div>
 
               <div>
-                <label className="block font-semibold text-foreground mb-1">Institution / College</label>
+                <label className="block font-semibold text-foreground mb-1">
+                  Institution / College
+                </label>
                 <input
                   type="text"
                   value={singleCollege}
@@ -982,7 +1175,10 @@ function ProvisioningPage() {
                             : "border-line-soft bg-surface-dark/60 text-copy-subtle hover:border-line-soft/80 hover:text-foreground",
                         )}
                       >
-                        <span className="size-2 rounded-full" style={{ backgroundColor: track.accent }} />
+                        <span
+                          className="size-2 rounded-full"
+                          style={{ backgroundColor: track.accent }}
+                        />
                         <span className="truncate">{track.name}</span>
                       </button>
                     );
@@ -1035,8 +1231,12 @@ function ProvisioningPage() {
                 <AlertTriangle className="size-5" />
               </div>
               <div>
-                <h3 className="font-display text-base font-bold text-foreground">Remove Provisioned Learner?</h3>
-                <p className="text-xs text-copy-subtle">This action permanently deletes the student account</p>
+                <h3 className="font-display text-base font-bold text-foreground">
+                  Remove Provisioned Learner?
+                </h3>
+                <p className="text-xs text-copy-subtle">
+                  This action permanently deletes the student account
+                </p>
               </div>
             </div>
 
@@ -1051,17 +1251,21 @@ function ProvisioningPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-copy-subtle font-medium">Roll Number:</span>
-                <span className="font-mono font-semibold text-foreground">{deleteTargetStudent.rollNo}</span>
+                <span className="font-mono font-semibold text-foreground">
+                  {deleteTargetStudent.rollNo}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-copy-subtle font-medium">Cohort Batch:</span>
-                <span className="font-mono font-bold text-brand-purple">{deleteTargetStudent.batchId}</span>
+                <span className="font-mono font-bold text-brand-purple">
+                  {deleteTargetStudent.batchId}
+                </span>
               </div>
             </div>
 
             <p className="text-xs text-copy-subtle leading-relaxed">
-              Removing this student will permanently revoke credentials, update cohort batch headcount, and record the
-              removal in the audit trail.
+              Removing this student will permanently revoke credentials, update cohort batch
+              headcount, and record the removal in the audit trail.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
@@ -1074,10 +1278,26 @@ function ProvisioningPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const res = store.deleteStudent(deleteTargetStudent.email);
-                  if (res.ok) {
-                    setDeleteTargetStudent(null);
+                onClick={async () => {
+                  if (isLive) {
+                    const identifier = deleteTargetStudent.id || deleteTargetStudent.email;
+                    const res = await deleteLiveStudent(identifier);
+                    if (res.ok) {
+                      toast.success(`Removed student ${deleteTargetStudent.name}`);
+                      await Promise.all([
+                        queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
+                        queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+                        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
+                      ]);
+                      setDeleteTargetStudent(null);
+                    } else {
+                      toast.error(res.error || "Failed to delete student from Supabase");
+                    }
+                  } else {
+                    const res = await store.deleteStudent(deleteTargetStudent.email);
+                    if (res.ok) {
+                      setDeleteTargetStudent(null);
+                    }
                   }
                 }}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors"
@@ -1099,7 +1319,9 @@ function ProvisioningPage() {
                 <AlertTriangle className="size-5" />
               </div>
               <div>
-                <h3 className="font-display text-base font-bold text-foreground">Clear All Provisioned Accounts?</h3>
+                <h3 className="font-display text-base font-bold text-foreground">
+                  Clear All Provisioned Accounts?
+                </h3>
                 <p className="text-xs text-copy-subtle">
                   Removes all {provisionedList.length} CSV provisioned learners from the system
                 </p>
@@ -1107,8 +1329,8 @@ function ProvisioningPage() {
             </div>
 
             <p className="text-xs text-copy-subtle leading-relaxed">
-              This action resets the bulk provisioning directory. Static demo accounts and manually created institutional
-              batches remain untouched.
+              This action resets the bulk provisioning directory. Static demo accounts and manually
+              created institutional batches remain untouched.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
@@ -1122,8 +1344,13 @@ function ProvisioningPage() {
               <button
                 type="button"
                 onClick={() => {
-                  store.clearAllProvisioned();
-                  setIsClearAllModalOpen(false);
+                  if (isLive) {
+                    toast.info("Bulk deletion not supported on live database for data safety");
+                    setIsClearAllModalOpen(false);
+                  } else {
+                    store.clearAllProvisioned();
+                    setIsClearAllModalOpen(false);
+                  }
                 }}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors"
               >

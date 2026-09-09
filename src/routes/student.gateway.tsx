@@ -1,16 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  Chip,
-  Console,
-  Meter,
-  PageHeader,
-  Panel,
-  Stat,
-} from "@/components/kit";
+import { Chip, Console, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore } from "@/lib/app-store";
-import { TRACKS, trackById } from "@/lib/tracks";
+import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
 import {
   FileText,
   ScanLine,
@@ -30,15 +23,33 @@ export const Route = createFileRoute("/student/gateway")({
   head: () => ({
     meta: [
       { title: "Dual Completion Gate & Phase 2 — SantoGe Talent Cloud" },
-      { name: "description", content: "Evaluate Dual Completion Gate (Technical + Placement), ATS resume scanner, mock interviews, certifications, and recruiter matching." },
+      {
+        name: "description",
+        content:
+          "Evaluate Dual Completion Gate (Technical + Placement), ATS resume scanner, mock interviews, certifications, and recruiter matching.",
+      },
       { property: "og:title", content: "Dual Completion Gate & Phase 2 — SantoGe Talent Cloud" },
-      { property: "og:description", content: "Dual completion gate, ATS scoring, mock interviews and recruiter matching." },
+      {
+        property: "og:description",
+        content: "Dual completion gate, ATS scoring, mock interviews and recruiter matching.",
+      },
     ],
   }),
   component: GatewayPage,
 });
 
-const KEYWORDS = ["React", "Node.js", "REST API", "SQL", "Docker", "Git", "Testing", "Agile", "TypeScript", "AWS"];
+const KEYWORDS = [
+  "React",
+  "Node.js",
+  "REST API",
+  "SQL",
+  "Docker",
+  "Git",
+  "Testing",
+  "Agile",
+  "TypeScript",
+  "AWS",
+];
 
 const SAMPLE_RESUME = `Ajay Kumar — Full Stack & Cloud Developer
 Summary: Passionate software engineer with hands-on experience building scalable web applications and microservices.
@@ -48,17 +59,123 @@ Projects:
 2. Cloud Infrastructure: Automated AWS EC2 and VPC provisioning using Terraform and Docker containers.
 3. Interactive Analytics Dashboard: Developed React SPA with state management and real-time WebSocket charts.`;
 
-const RECRUITERS = [
-  { company: "TCS Digital", track: "mern", minScore: 650, role: "Full Stack Engineer", package: "₹8.5 LPA" },
-  { company: "Infosys Wingspan", track: "cloud", minScore: 680, role: "Cloud & DevOps Associate", package: "₹9.2 LPA" },
-  { company: "Wipro Turbo", track: "aiml", minScore: 700, role: "AI/ML Solutions Dev", package: "₹10.0 LPA" },
-  { company: "Cognizant GenC Next", track: "java", minScore: 650, role: "Java Backend Engineer", package: "₹8.0 LPA" },
-  { company: "Accenture Advanced", track: "cyber", minScore: 720, role: "Cybersecurity Analyst", package: "₹11.0 LPA" },
-  { company: "Deloitte USI", track: "sap", minScore: 670, role: "SAP FICO Consultant", package: "₹9.5 LPA" },
+interface RecruiterItem {
+  company: string;
+  track: TrackId;
+  minScore: number;
+  role: string;
+  package: string;
+}
+
+const RECRUITERS: RecruiterItem[] = [
+  {
+    company: "TCS Digital",
+    track: "mern",
+    minScore: 650,
+    role: "Full Stack Engineer",
+    package: "₹8.5 LPA",
+  },
+  {
+    company: "Infosys Wingspan",
+    track: "cloud",
+    minScore: 680,
+    role: "Cloud & DevOps Associate",
+    package: "₹9.2 LPA",
+  },
+  {
+    company: "Wipro Turbo",
+    track: "aiml",
+    minScore: 700,
+    role: "AI/ML Solutions Dev",
+    package: "₹10.0 LPA",
+  },
+  {
+    company: "Cognizant GenC Next",
+    track: "java",
+    minScore: 650,
+    role: "Java Backend Engineer",
+    package: "₹8.0 LPA",
+  },
+  {
+    company: "Accenture Advanced",
+    track: "cyber",
+    minScore: 720,
+    role: "Cybersecurity Analyst",
+    package: "₹11.0 LPA",
+  },
+  {
+    company: "Deloitte USI",
+    track: "sap",
+    minScore: 690,
+    role: "SAP ABAP Consultant",
+    package: "₹9.5 LPA",
+  },
 ];
+
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useLiveHiringDrives,
+  useLiveStudentProfile,
+  useLiveStudentProgress,
+  useLivePlatformSettings,
+  updateLiveReadiness,
+  completeLiveMock,
+  issueLiveCertificate,
+} from "@/lib/data";
+import { trackProgress } from "@/lib/curriculum";
 
 function GatewayPage() {
   const store = useAppStore();
+  const queryClient = useQueryClient();
+  const isLive = store.authProvider === "supabase";
+
+  const { data: liveProfileData } = useLiveStudentProfile(
+    store.supabaseSession?.user?.id,
+    isLive && !!store.supabaseSession?.user?.id,
+  );
+  const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
+  const { data: liveProgressData } = useLiveStudentProgress(
+    liveStudentId || undefined,
+    isLive && !!liveStudentId,
+  );
+  const { data: livePlatformSettings } = useLivePlatformSettings(isLive);
+  const { data: liveHiringDrives } = useLiveHiringDrives(isLive);
+  const activeTracks: TrackId[] = useMemo(
+    () => (isLive ? liveProfileData?.tracks || [] : store.activeTracks),
+    [isLive, liveProfileData?.tracks, store.activeTracks],
+  );
+
+  const talentScore = isLive ? (liveProfileData?.profile?.talent_score ?? 0) : store.talentScore;
+  const attendance = isLive ? liveProgressData?.attendance || [] : store.attendance;
+  const assessments = isLive ? liveProgressData?.assessments || {} : store.assessments;
+  const certifications = isLive ? liveProgressData?.certifications || [] : store.certifications;
+  const skills = isLive ? liveProgressData?.skills || [] : store.skills;
+
+  const completionRule = isLive
+    ? (livePlatformSettings?.completionRule ?? "primary-plus-minimum")
+    : store.completionRule;
+  const secondaryMinimum = isLive
+    ? (livePlatformSettings?.secondaryMinimum ?? 50)
+    : store.secondaryMinimum;
+
+  const getTrackPct = (trackId: TrackId) => {
+    if (!isLive) return store.trackPercent(trackId);
+    return trackProgress(trackId, skills);
+  };
+
+  const recruitersList = useMemo(() => {
+    if (isLive) {
+      return (liveHiringDrives || []).map((d) => ({
+        company: d.company,
+        track: (activeTracks[0] || "mern") as TrackId,
+        minScore: d.minScore,
+        role: d.roles,
+        package: d.ctc,
+      }));
+    }
+    return RECRUITERS;
+  }, [isLive, liveHiringDrives, activeTracks]);
+
   const [resume, setResume] = useState(SAMPLE_RESUME);
   const [log, setLog] = useState<string[]>([]);
   const [mockScore, setMockScore] = useState(82);
@@ -69,40 +186,78 @@ function GatewayPage() {
   );
   const atsScore = Math.round((found.length / KEYWORDS.length) * 100);
 
-  const scan = () => {
+  const scan = async () => {
     const missing = KEYWORDS.filter((k) => !found.includes(k));
     setLog([
       `[ats] Parsed ${resume.split(/\s+/).length} tokens across experience blocks`,
       `[ats] Target keyword match: ${found.length}/${KEYWORDS.length} (${atsScore}%)`,
-      missing.length ? `[ats] Missing keywords: ${missing.join(", ")}` : "[ats] 100% Target skill coverage achieved",
-      atsScore >= 70 ? "[ats] PASS — Profile forwarded to Employer Marketplace" : "[ats] REVIEW — Below 70% threshold",
+      missing.length
+        ? `[ats] Missing keywords: ${missing.join(", ")}`
+        : "[ats] 100% Target skill coverage achieved",
+      atsScore >= 70
+        ? "[ats] PASS — Profile forwarded to Employer Marketplace"
+        : "[ats] REVIEW — Below 70% threshold",
     ]);
-    store.setReadiness({ R: atsScore });
+    if (isLive && liveStudentId) {
+      await updateLiveReadiness(liveStudentId, { R: atsScore });
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+      });
+    } else {
+      store.setReadiness({ R: atsScore });
+    }
     toast.success(`ATS Score updated to ${atsScore}%`);
   };
 
-  const handleMock = () => {
-    store.completeMock("ai-interview-01", mockScore);
+  const handleMock = async () => {
+    if (isLive && liveStudentId) {
+      await completeLiveMock(liveStudentId, "ai-interview-01", mockScore);
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-progress", liveStudentId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+      });
+    } else {
+      store.completeMock("ai-interview-01", mockScore);
+    }
+    toast.success(`Mock interview scored (${mockScore}%) · Pillar M updated!`);
   };
 
-  const handleIssueCert = (trackName: string) => {
-    store.issueCertificate(`SantoGe Certified · ${trackName}`);
+  const handleIssueCert = async (trackName: string) => {
+    const label = `SantoGe Certified · ${trackName}`;
+    if (isLive && liveStudentId) {
+      await issueLiveCertificate(liveStudentId, label);
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-progress", liveStudentId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+      });
+    } else {
+      store.issueCertificate(label);
+    }
+    toast.success(`Certificate issued: ${label}`);
   };
 
   // Dual gate calculations
-  const activeTrackDetails = store.activeTracks.map((id, index) => {
+  const activeTrackDetails = activeTracks.map((id, index) => {
     const t = trackById(id);
-    const pct = store.trackPercent(id);
-    const required = index === 0 ? 100 : store.completionRule === "all-tracks" ? 100 : store.secondaryMinimum;
+    const pct = getTrackPct(id);
+    const required = index === 0 ? 100 : completionRule === "all-tracks" ? 100 : secondaryMinimum;
     const passed = pct >= required;
     return { ...t, pct, required, passed, isPrimary: index === 0 };
   });
 
   const allTechPassed = activeTrackDetails.every((t) => t.passed);
-  const placementAttendancePassed = store.attendance.length >= 90;
-  const placementAssessmentPassed = (store.assessments["90"] ?? 0) >= 60;
+  const placementAttendancePassed = attendance.length >= 90;
+  const placementAssessmentPassed = (assessments["90"] ?? 0) >= 60;
   const placementPassed = placementAttendancePassed && placementAssessmentPassed;
   const dualGatePassed = allTechPassed && placementPassed;
+
+  const eligibleCompaniesCount = recruitersList.filter(
+    (r) => talentScore >= r.minScore && activeTracks.includes(r.track),
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -124,9 +279,24 @@ function GatewayPage() {
           accent={dualGatePassed ? "var(--brand-emerald)" : "var(--brand-amber)"}
           hint={dualGatePassed ? "Phase 2 Active" : "Satisfy both gates"}
         />
-        <Stat label="Talent Score" value={`${store.talentScore}/1000`} accent="var(--brand-cyan)" hint="Composite readiness" />
-        <Stat label="ATS Coverage" value={`${atsScore}%`} accent="var(--brand-purple)" hint={`${found.length}/${KEYWORDS.length} keywords`} />
-        <Stat label="Matched Openings" value={store.eligibleCompanies} accent="var(--brand-emerald)" hint="Recruiter marketplace" />
+        <Stat
+          label="Talent Score"
+          value={`${talentScore}/1000`}
+          accent="var(--brand-cyan)"
+          hint="Composite readiness"
+        />
+        <Stat
+          label="ATS Coverage"
+          value={`${atsScore}%`}
+          accent="var(--brand-purple)"
+          hint={`${found.length}/${KEYWORDS.length} keywords`}
+        />
+        <Stat
+          label="Matched Openings"
+          value={eligibleCompaniesCount}
+          accent="var(--brand-emerald)"
+          hint="Recruiter marketplace"
+        />
       </div>
 
       {/* DUAL COMPLETION GATE EVALUATOR */}
@@ -139,7 +309,11 @@ function GatewayPage() {
           <div className="rounded-xl border border-line-soft bg-surface-soft p-4 space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-bold text-foreground flex items-center gap-2">
-                {allTechPassed ? <CheckCircle2 className="size-4 text-brand-emerald" /> : <Lock className="size-4 text-brand-amber" />}
+                {allTechPassed ? (
+                  <CheckCircle2 className="size-4 text-brand-emerald" />
+                ) : (
+                  <Lock className="size-4 text-brand-amber" />
+                )}
                 1. Technical Competency Gate
               </p>
               <Chip tone={allTechPassed ? "emerald" : "amber"}>
@@ -147,17 +321,31 @@ function GatewayPage() {
               </Chip>
             </div>
             <p className="text-xs text-copy-subtle">
-              Rule: {store.completionRule === "all-tracks" ? "All selected tracks ≥ 100%" : `Primary track 100% + secondary tracks ≥ ${store.secondaryMinimum}%`}
+              Rule:{" "}
+              {completionRule === "all-tracks"
+                ? "All selected tracks ≥ 100%"
+                : `Primary track 100% + secondary tracks ≥ ${secondaryMinimum}%`}
             </p>
 
             <div className="space-y-2.5 pt-1">
               {activeTrackDetails.map((t) => (
-                <div key={t.id} className="rounded-lg border border-line-soft/80 bg-surface-dark/60 p-2.5">
+                <div
+                  key={t.id}
+                  className="rounded-lg border border-line-soft/80 bg-surface-dark/60 p-2.5"
+                >
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="font-semibold text-foreground">
-                      {t.name} {t.isPrimary && <span className="text-[10px] text-brand-cyan">(Primary)</span>}
+                      {t.name}{" "}
+                      {t.isPrimary && (
+                        <span className="text-[10px] text-brand-cyan">(Primary)</span>
+                      )}
                     </span>
-                    <span className={cn("font-mono text-[11px]", t.passed ? "text-brand-emerald" : "text-brand-amber")}>
+                    <span
+                      className={cn(
+                        "font-mono text-[11px]",
+                        t.passed ? "text-brand-emerald" : "text-brand-amber",
+                      )}
+                    >
                       {t.pct}% / {t.required}% req
                     </span>
                   </div>
@@ -171,7 +359,11 @@ function GatewayPage() {
           <div className="rounded-xl border border-line-soft bg-surface-soft p-4 space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-bold text-foreground flex items-center gap-2">
-                {placementPassed ? <CheckCircle2 className="size-4 text-brand-emerald" /> : <Lock className="size-4 text-brand-amber" />}
+                {placementPassed ? (
+                  <CheckCircle2 className="size-4 text-brand-emerald" />
+                ) : (
+                  <Lock className="size-4 text-brand-amber" />
+                )}
                 2. Placement Accelerator Gate
               </p>
               <Chip tone={placementPassed ? "emerald" : "amber"}>
@@ -186,19 +378,29 @@ function GatewayPage() {
               <div className="rounded-lg border border-line-soft/80 bg-surface-dark/60 p-2.5">
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="font-semibold text-foreground">Cohort Attendance</span>
-                  <span className="font-mono text-[11px] text-brand-cyan">{store.attendance.length} / 90 Days</span>
+                  <span className="font-mono text-[11px] text-brand-cyan">
+                    {attendance.length} / 90 Days
+                  </span>
                 </div>
-                <Meter value={Math.round((store.attendance.length / 90) * 100)} accent="var(--brand-purple)" />
+                <Meter
+                  value={Math.round((attendance.length / 90) * 100)}
+                  accent="var(--brand-purple)"
+                />
               </div>
 
               <div className="rounded-lg border border-line-soft/80 bg-surface-dark/60 p-2.5">
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="font-semibold text-foreground">Day 90 Final Assessment</span>
-                  <span className={cn("font-mono text-[11px]", (store.assessments["90"] ?? 0) >= 60 ? "text-brand-emerald" : "text-copy-subtle")}>
-                    {store.assessments["90"] ? `${store.assessments["90"]}% (Req ≥ 60%)` : "Pending Day 90"}
+                  <span
+                    className={cn(
+                      "font-mono text-[11px]",
+                      (assessments["90"] ?? 0) >= 60 ? "text-brand-emerald" : "text-copy-subtle",
+                    )}
+                  >
+                    {assessments["90"] ? `${assessments["90"]}% (Req ≥ 60%)` : "Pending Day 90"}
                   </span>
                 </div>
-                <Meter value={store.assessments["90"] ?? 0} accent="var(--brand-emerald)" />
+                <Meter value={assessments["90"] ?? 0} accent="var(--brand-emerald)" />
               </div>
             </div>
           </div>
@@ -256,11 +458,14 @@ function GatewayPage() {
 
           <Panel title="Verified Certifications" subtitle="Issue upon track milestone completion">
             <div className="space-y-2">
-              {store.activeTracks.map((id) => {
+              {activeTracks.map((id) => {
                 const t = trackById(id);
-                const isIssued = store.certifications.some((c) => c.includes(t.name));
+                const isIssued = certifications.some((c) => c.includes(t.name));
                 return (
-                  <div key={id} className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft p-3">
+                  <div
+                    key={id}
+                    className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft p-3"
+                  >
                     <div>
                       <p className="text-xs font-bold text-foreground">{t.name}</p>
                       <p className="text-[10px] text-copy-subtle">Verified Competency Credential</p>
@@ -289,11 +494,11 @@ function GatewayPage() {
       <Panel
         title="Recruiter Talent Marketplace"
         subtitle="Companies actively filtering STC candidates based on technical track, Talent Score, and verified projects"
-        action={<Chip tone="emerald">{RECRUITERS.length} Requisitions Active</Chip>}
+        action={<Chip tone="emerald">{recruitersList.length} Requisitions Active</Chip>}
       >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {RECRUITERS.map((r) => {
-            const isEligible = store.talentScore >= r.minScore && store.activeTracks.includes(r.track as any);
+          {recruitersList.map((r) => {
+            const isEligible = talentScore >= r.minScore && activeTracks.includes(r.track);
             const track = TRACKS.find((t) => t.id === r.track);
             return (
               <div
@@ -302,14 +507,16 @@ function GatewayPage() {
                   "rounded-xl border p-3.5 transition-all",
                   isEligible
                     ? "border-brand-emerald/50 bg-brand-emerald/5 shadow-md shadow-brand-emerald/5"
-                    : "border-line-soft bg-surface-soft opacity-80"
+                    : "border-line-soft bg-surface-soft opacity-80",
                 )}
               >
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
                     <Building2 className="size-3.5 text-brand-cyan" /> {r.company}
                   </span>
-                  <span className="font-mono text-xs font-bold text-brand-emerald">{r.package}</span>
+                  <span className="font-mono text-xs font-bold text-brand-emerald">
+                    {r.package}
+                  </span>
                 </div>
                 <p className="mt-1 text-xs font-semibold text-copy-subtle">{r.role}</p>
                 <div className="mt-2.5 flex items-center justify-between text-[11px]">
@@ -319,7 +526,12 @@ function GatewayPage() {
                   <span className="font-mono text-copy-subtle">Req: {r.minScore}+</span>
                 </div>
                 <div className="mt-3 border-t border-line-soft/60 pt-2 flex items-center justify-between text-[11px]">
-                  <span className={cn("font-semibold", isEligible ? "text-brand-emerald" : "text-brand-amber")}>
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      isEligible ? "text-brand-emerald" : "text-brand-amber",
+                    )}
+                  >
                     {isEligible ? "✓ Matched & Forwarded" : "Requires higher score"}
                   </span>
                   {isEligible && <Sparkles className="size-3 text-brand-emerald" />}

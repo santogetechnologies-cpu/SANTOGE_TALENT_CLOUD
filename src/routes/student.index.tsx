@@ -48,7 +48,8 @@ export const Route = createFileRoute("/student/")({
       { property: "og:title", content: "Today's Learning & Drills — SantoGe Talent Cloud" },
       {
         property: "og:description",
-        content: "Track your daily To-Do backlog from Day 1 to Day 90 with instant practice drills.",
+        content:
+          "Track your daily To-Do backlog from Day 1 to Day 90 with instant practice drills.",
       },
     ],
   }),
@@ -56,29 +57,84 @@ export const Route = createFileRoute("/student/")({
 });
 
 export function getScoreTier(score: number) {
-  if (score >= 850) return { label: "Elite Tier", tone: "emerald" as const, desc: "Top 5% · Direct Placement Shortlist" };
-  if (score >= 700) return { label: "Advanced", tone: "cyan" as const, desc: "High Requisition Matching Rate" };
-  if (score >= 550) return { label: "Intermediate", tone: "purple" as const, desc: "Standard Campus Drive Eligibility" };
+  if (score >= 850)
+    return {
+      label: "Elite Tier",
+      tone: "emerald" as const,
+      desc: "Top 5% · Direct Placement Shortlist",
+    };
+  if (score >= 700)
+    return { label: "Advanced", tone: "cyan" as const, desc: "High Requisition Matching Rate" };
+  if (score >= 550)
+    return {
+      label: "Intermediate",
+      tone: "purple" as const,
+      desc: "Standard Campus Drive Eligibility",
+    };
   return { label: "Foundational", tone: "amber" as const, desc: "Accelerating Core Competency" };
 }
 
 type DrillTab = "skills" | "placement";
 type FilterMode = "all" | "pending" | "completed";
 
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useLiveStudentProfile,
+  useLiveStudentProgress,
+  completeLivePlacementDay,
+  completeLiveTechnicalDay,
+  completeLiveDailyStep,
+} from "@/lib/data";
+
 function TodayLearningPage() {
   const store = useAppStore();
-  const cohortDay = store.placementDay || 1;
+  const queryClient = useQueryClient();
+  const isLive = store.authProvider === "supabase";
+
+  const { data: liveProfileData } = useLiveStudentProfile(
+    store.supabaseSession?.user?.id,
+    isLive && !!store.supabaseSession?.user?.id,
+  );
+  const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
+  const { data: liveProgressData } = useLiveStudentProgress(
+    liveStudentId || undefined,
+    isLive && !!liveStudentId,
+  );
+
+  const cohortDay = isLive
+    ? (liveProfileData?.profile?.placement_day ?? 1)
+    : store.placementDay || 1;
+
+  const activeTracks: TrackId[] = useMemo(
+    () => (isLive ? liveProfileData?.tracks || [] : store.activeTracks),
+    [isLive, liveProfileData?.tracks, store.activeTracks],
+  );
+
+  const streak = isLive ? (liveProfileData?.profile?.streak ?? 0) : store.streak;
+  const talentScore = isLive ? (liveProfileData?.profile?.talent_score ?? 0) : store.talentScore;
+  const attendance = useMemo(
+    () => (isLive ? liveProgressData?.attendance || [] : store.attendance),
+    [isLive, liveProgressData?.attendance, store.attendance],
+  );
+  const completedTechDays = useMemo(
+    () => (isLive ? liveProgressData?.completedTechDays || [] : store.completedTechDays || []),
+    [isLive, liveProgressData?.completedTechDays, store.completedTechDays],
+  );
+
   const [selectedDayNum, setSelectedDayNum] = useState<number>(cohortDay);
   const [activeDrillTab, setActiveDrillTab] = useState<DrillTab>("skills");
   const [filterMode, setFilterMode] = useState<FilterMode>("pending");
 
   // Primary active technical track
-  const primaryTrackId: TrackId = store.activeTracks[0] ?? "mern";
+  const primaryTrackId: TrackId = activeTracks[0] ?? "mern";
   const primaryTrack = trackById(primaryTrackId);
   const technicalSyllabus = useMemo(() => getTrackSyllabus(primaryTrackId), [primaryTrackId]);
 
   // Selected Day Data
-  const placementPlan: AcceleratorDay = useMemo(() => getAcceleratorDay(selectedDayNum), [selectedDayNum]);
+  const placementPlan: AcceleratorDay = useMemo(
+    () => getAcceleratorDay(selectedDayNum),
+    [selectedDayNum],
+  );
   const weekIdx = Math.floor((selectedDayNum - 1) / 5);
   const dayInWeekIdx = (selectedDayNum - 1) % 5;
   const currentWeekPlan = technicalSyllabus.weeks[weekIdx] || technicalSyllabus.weeks[0]!;
@@ -92,8 +148,8 @@ function TodayLearningPage() {
   const daysList = useMemo(() => {
     return Array.from({ length: Math.max(cohortDay, 1) }, (_, i) => {
       const dNum = i + 1;
-      const isPlacementDone = store.attendance.includes(dNum);
-      const isTechDone = (store.completedTechDays || []).includes(dNum);
+      const isPlacementDone = attendance.includes(dNum);
+      const isTechDone = completedTechDays.includes(dNum);
       const isFullyFinished = isPlacementDone && isTechDone;
 
       const accDay = getAcceleratorDay(dNum);
@@ -114,7 +170,7 @@ function TodayLearningPage() {
         isFriday: dNum % 5 === 0,
       };
     });
-  }, [cohortDay, store.attendance, store.completedTechDays, technicalSyllabus]);
+  }, [cohortDay, attendance, completedTechDays, technicalSyllabus]);
 
   const filteredDays = useMemo(() => {
     if (filterMode === "pending") return daysList.filter((d) => !d.isFullyFinished);
@@ -124,14 +180,16 @@ function TodayLearningPage() {
 
   const pendingCount = daysList.filter((d) => !d.isFullyFinished).length;
   const finishedCount = daysList.filter((d) => d.isFullyFinished).length;
-  const tier = getScoreTier(store.talentScore);
+  const tier = getScoreTier(talentScore);
 
   const handleSelectDayAndTab = (dayNum: number, tab: DrillTab) => {
     setSelectedDayNum(dayNum);
     setActiveDrillTab(tab);
     setAnswers({});
     setPitchRecorded(false);
-    toast.info(`Loaded Day ${dayNum} for ${tab === "skills" ? "Technical Skill Lab" : "Placement Accelerator"}`);
+    toast.info(
+      `Loaded Day ${dayNum} for ${tab === "skills" ? "Technical Skill Lab" : "Placement Accelerator"}`,
+    );
     // Smooth scroll down to the drill section
     const el = document.getElementById("daily-drill-workspace");
     if (el) el.scrollIntoView({ behavior: "smooth" });
@@ -139,19 +197,40 @@ function TodayLearningPage() {
 
   const handleRecordVoicePitch = () => {
     setPitchLoading(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       setPitchLoading(false);
       setPitchRecorded(true);
-      store.completeDailyStep("practice");
-      store.completePlacementDay(selectedDayNum);
+      if (isLive && liveStudentId) {
+        await completeLiveDailyStep(liveStudentId, "practice");
+        await completeLivePlacementDay(liveStudentId, selectedDayNum);
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-progress", liveStudentId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+        });
+      } else {
+        store.completeDailyStep("practice");
+        store.completePlacementDay(selectedDayNum);
+      }
       toast.success(`Day ${selectedDayNum} Placement Accelerator verified (+25 XP)!`, {
         description: "Voice pitch STAR score recorded · Attendance updated to finished.",
       });
     }, 1500);
   };
 
-  const handleCompleteTechnicalLab = () => {
-    store.completeTechDay(selectedDayNum);
+  const handleCompleteTechnicalLab = async () => {
+    if (isLive && liveStudentId) {
+      await completeLiveTechnicalDay(liveStudentId, selectedDayNum);
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-progress", liveStudentId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+      });
+    } else {
+      store.completeTechDay(selectedDayNum);
+    }
     toast.success(`Day ${selectedDayNum} ${primaryTrack.name} Lab verified (+50 XP)!`, {
       description: "Technical exercise passed automated tests · To-Do updated to finished.",
     });
@@ -165,8 +244,10 @@ function TodayLearningPage() {
         subtitle={`18 Weeks × 5 Working Days = 90 Days · Current Cohort Day: Day ${cohortDay}/90 · Daily To-Do Backlog & Twin 30-Min Exercises.`}
         action={
           <div className="flex items-center gap-2">
-            <Chip tone="amber">🔥 Day {store.streak} Streak</Chip>
-            <Chip tone={tier.tone}>{tier.label} ({store.talentScore}/1000)</Chip>
+            <Chip tone="amber">🔥 Day {streak} Streak</Chip>
+            <Chip tone={tier.tone}>
+              {tier.label} ({talentScore}/1000)
+            </Chip>
           </div>
         }
       />
@@ -193,7 +274,7 @@ function TodayLearningPage() {
         />
         <Stat
           label="Talent Score"
-          value={`${store.talentScore}/1000`}
+          value={`${talentScore}/1000`}
           accent="var(--brand-purple)"
           hint={tier.desc}
         />
@@ -213,7 +294,7 @@ function TodayLearningPage() {
                 "rounded-lg px-2.5 py-1 font-bold transition-colors",
                 filterMode === "pending"
                   ? "bg-brand-rose/20 text-brand-rose border border-brand-rose/40"
-                  : "text-copy-subtle hover:text-foreground"
+                  : "text-copy-subtle hover:text-foreground",
               )}
             >
               Pending To-Dos ({pendingCount})
@@ -224,7 +305,7 @@ function TodayLearningPage() {
                 "rounded-lg px-2.5 py-1 font-bold transition-colors",
                 filterMode === "all"
                   ? "bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/40"
-                  : "text-copy-subtle hover:text-foreground"
+                  : "text-copy-subtle hover:text-foreground",
               )}
             >
               All Days ({daysList.length})
@@ -235,7 +316,7 @@ function TodayLearningPage() {
                 "rounded-lg px-2.5 py-1 font-bold transition-colors",
                 filterMode === "completed"
                   ? "bg-brand-emerald/20 text-brand-emerald border border-brand-emerald/40"
-                  : "text-copy-subtle hover:text-foreground"
+                  : "text-copy-subtle hover:text-foreground",
               )}
             >
               Finished ({finishedCount})
@@ -247,9 +328,12 @@ function TodayLearningPage() {
           {filteredDays.length === 0 ? (
             <div className="rounded-2xl border border-brand-emerald/40 bg-brand-emerald/5 p-6 text-center space-y-2">
               <CheckCircle2 className="size-8 text-brand-emerald mx-auto" />
-              <h4 className="text-sm font-bold text-foreground">Outstanding Job! Zero Pending Backlog</h4>
+              <h4 className="text-sm font-bold text-foreground">
+                Outstanding Job! Zero Pending Backlog
+              </h4>
               <p className="text-xs text-copy-subtle">
-                You have completed all daily placement accelerator drills and technical skill sandbox labs up to Day {cohortDay}.
+                You have completed all daily placement accelerator drills and technical skill
+                sandbox labs up to Day {cohortDay}.
               </p>
             </div>
           ) : (
@@ -264,25 +348,33 @@ function TodayLearningPage() {
                     isSelected
                       ? "border-brand-cyan/80 bg-brand-cyan/5 shadow-md ring-1 ring-brand-cyan/40"
                       : d.isFullyFinished
-                      ? "border-line-soft opacity-85 hover:opacity-100"
-                      : "border-brand-rose/40 hover:border-brand-rose/70"
+                        ? "border-line-soft opacity-85 hover:opacity-100"
+                        : "border-brand-rose/40 hover:border-brand-rose/70",
                   )}
                 >
                   {/* Day Label & Badge */}
                   <div className="flex items-start sm:items-center gap-3 min-w-[200px]">
-                    <div className={cn(
-                      "flex size-10 shrink-0 items-center justify-center rounded-xl font-mono text-xs font-bold border",
-                      d.isFullyFinished
-                        ? "bg-brand-emerald/15 text-brand-emerald border-brand-emerald/40"
-                        : "bg-brand-rose/15 text-brand-rose border-brand-rose/40"
-                    )}>
+                    <div
+                      className={cn(
+                        "flex size-10 shrink-0 items-center justify-center rounded-xl font-mono text-xs font-bold border",
+                        d.isFullyFinished
+                          ? "bg-brand-emerald/15 text-brand-emerald border-brand-emerald/40"
+                          : "bg-brand-rose/15 text-brand-rose border-brand-rose/40",
+                      )}
+                    >
                       D{d.day}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-foreground text-sm">Day {d.day}</span>
-                        <span className="text-[10px] font-mono text-copy-subtle">({d.dayOfWeek})</span>
-                        {d.isFriday && <span className="rounded bg-brand-purple/20 px-1.5 py-0.5 text-[9px] font-mono font-bold text-brand-purple">Friday Sim</span>}
+                        <span className="text-[10px] font-mono text-copy-subtle">
+                          ({d.dayOfWeek})
+                        </span>
+                        {d.isFriday && (
+                          <span className="rounded bg-brand-purple/20 px-1.5 py-0.5 text-[9px] font-mono font-bold text-brand-purple">
+                            Friday Sim
+                          </span>
+                        )}
                       </div>
                       <div className="mt-0.5">
                         {d.isFullyFinished ? (
@@ -301,16 +393,24 @@ function TodayLearningPage() {
                   {/* Two Sub-Tasks: Placement & Skill */}
                   <div className="grid gap-2 sm:grid-cols-2 flex-1">
                     {/* Sub-Task 1: Placement Accelerator */}
-                    <div className={cn(
-                      "flex items-center justify-between rounded-xl border p-2.5",
-                      d.isPlacementDone ? "border-line-soft bg-surface-dark/70" : "border-brand-purple/30 bg-brand-purple/5"
-                    )}>
+                    <div
+                      className={cn(
+                        "flex items-center justify-between rounded-xl border p-2.5",
+                        d.isPlacementDone
+                          ? "border-line-soft bg-surface-dark/70"
+                          : "border-brand-purple/30 bg-brand-purple/5",
+                      )}
+                    >
                       <div className="min-w-0 pr-2">
                         <div className="flex items-center gap-1.5">
                           <Timer className="size-3 text-brand-purple shrink-0" />
-                          <span className="font-semibold text-foreground truncate">Placement 30m</span>
+                          <span className="font-semibold text-foreground truncate">
+                            Placement 30m
+                          </span>
                         </div>
-                        <p className="text-[10px] text-copy-subtle truncate mt-0.5">{d.placementTheme}</p>
+                        <p className="text-[10px] text-copy-subtle truncate mt-0.5">
+                          {d.placementTheme}
+                        </p>
                       </div>
 
                       <button
@@ -319,7 +419,7 @@ function TodayLearningPage() {
                           "shrink-0 rounded-lg px-2.5 py-1 font-mono text-[10px] font-bold transition-colors border",
                           d.isPlacementDone
                             ? "border-brand-emerald/40 bg-brand-emerald/10 text-brand-emerald"
-                            : "border-brand-purple/60 bg-brand-purple text-surface-dark hover:opacity-90"
+                            : "border-brand-purple/60 bg-brand-purple text-surface-dark hover:opacity-90",
                         )}
                       >
                         {d.isPlacementDone ? "Done ✓" : "To-Do →"}
@@ -327,16 +427,24 @@ function TodayLearningPage() {
                     </div>
 
                     {/* Sub-Task 2: Technical Skill */}
-                    <div className={cn(
-                      "flex items-center justify-between rounded-xl border p-2.5",
-                      d.isTechDone ? "border-line-soft bg-surface-dark/70" : "border-brand-cyan/30 bg-brand-cyan/5"
-                    )}>
+                    <div
+                      className={cn(
+                        "flex items-center justify-between rounded-xl border p-2.5",
+                        d.isTechDone
+                          ? "border-line-soft bg-surface-dark/70"
+                          : "border-brand-cyan/30 bg-brand-cyan/5",
+                      )}
+                    >
                       <div className="min-w-0 pr-2">
                         <div className="flex items-center gap-1.5">
                           <Code2 className="size-3 text-brand-cyan shrink-0" />
-                          <span className="font-semibold text-foreground truncate">{primaryTrack.short} 30m</span>
+                          <span className="font-semibold text-foreground truncate">
+                            {primaryTrack.short} 30m
+                          </span>
                         </div>
-                        <p className="text-[10px] text-copy-subtle truncate mt-0.5">{d.techTopic}</p>
+                        <p className="text-[10px] text-copy-subtle truncate mt-0.5">
+                          {d.techTopic}
+                        </p>
                       </div>
 
                       <button
@@ -345,7 +453,7 @@ function TodayLearningPage() {
                           "shrink-0 rounded-lg px-2.5 py-1 font-mono text-[10px] font-bold transition-colors border",
                           d.isTechDone
                             ? "border-brand-emerald/40 bg-brand-emerald/10 text-brand-emerald"
-                            : "border-brand-cyan/60 bg-brand-cyan text-surface-dark hover:opacity-90"
+                            : "border-brand-cyan/60 bg-brand-cyan text-surface-dark hover:opacity-90",
                         )}
                       >
                         {d.isTechDone ? "Done ✓" : "To-Do →"}
@@ -381,7 +489,7 @@ function TodayLearningPage() {
                 "flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all border",
                 activeDrillTab === "skills"
                   ? "border-brand-cyan/60 bg-brand-cyan text-surface-dark shadow-sm"
-                  : "border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground"
+                  : "border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
               )}
             >
               <Code2 className="size-4" />
@@ -394,7 +502,7 @@ function TodayLearningPage() {
                 "flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all border",
                 activeDrillTab === "placement"
                   ? "border-brand-purple/60 bg-brand-purple text-surface-dark shadow-sm"
-                  : "border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground"
+                  : "border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
               )}
             >
               <Timer className="size-4" />
@@ -409,7 +517,7 @@ function TodayLearningPage() {
             title={`Day ${selectedDayNum} Technical Practice · ${primaryTrack.name}`}
             subtitle={`Week ${weekIdx + 1}: ${currentWeekPlan.theme} · 100% In-Browser Code & Lab Simulation`}
             action={
-              (store.completedTechDays || []).includes(selectedDayNum) ? (
+              completedTechDays.includes(selectedDayNum) ? (
                 <Chip tone="emerald">Lab Verified ✓</Chip>
               ) : (
                 <Chip tone="amber">Pending Submission</Chip>
@@ -430,8 +538,12 @@ function TodayLearningPage() {
                 <h4 className="text-sm font-bold text-foreground">{currentTechDay.topic}</h4>
                 <p className="text-copy-subtle leading-relaxed">{currentTechDay.practice}</p>
                 <div className="pt-2 border-t border-line-soft/60 flex items-center justify-between text-[11px] text-copy-subtle">
-                  <span>Theme: <strong className="text-foreground">{currentWeekPlan.theme}</strong></span>
-                  <span className="font-mono text-brand-cyan">Workplace Skill: {currentWeekPlan.workplaceSkill}</span>
+                  <span>
+                    Theme: <strong className="text-foreground">{currentWeekPlan.theme}</strong>
+                  </span>
+                  <span className="font-mono text-brand-cyan">
+                    Workplace Skill: {currentWeekPlan.workplaceSkill}
+                  </span>
                 </div>
               </div>
 
@@ -439,19 +551,25 @@ function TodayLearningPage() {
               <div className="rounded-2xl border border-brand-cyan/30 bg-surface-soft p-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-brand-cyan flex items-center gap-1.5 text-sm">
-                    <Terminal className="size-4" /> 2. Hands-on Interactive Sandbox Simulation (10 Mins)
+                    <Terminal className="size-4" /> 2. Hands-on Interactive Sandbox Simulation (10
+                    Mins)
                   </span>
                   <span className="font-mono text-xs font-bold text-brand-amber">+50 XP</span>
                 </div>
                 <p className="text-copy-subtle leading-relaxed">
-                  Execute the code test runner or runtime simulator for <strong>{primaryTrack.name}</strong>. Solve today's practical challenge and submit to complete your To-Do.
+                  Execute the code test runner or runtime simulator for{" "}
+                  <strong>{primaryTrack.name}</strong>. Solve today's practical challenge and submit
+                  to complete your To-Do.
                 </p>
 
                 <div className="rounded-xl bg-surface-dark p-4 border border-line-soft font-mono text-xs text-copy-subtle space-y-1.5">
                   <p className="text-foreground font-bold flex items-center gap-2">
-                    <Terminal className="size-3.5 text-brand-cyan" /> Simulator: {primaryTrack.labTitle}
+                    <Terminal className="size-3.5 text-brand-cyan" /> Simulator:{" "}
+                    {primaryTrack.labTitle}
                   </p>
-                  <p className="text-[11px] text-copy-subtle">Virtual WebAssembly runner ready · Automated test validation on submit.</p>
+                  <p className="text-[11px] text-copy-subtle">
+                    Virtual WebAssembly runner ready · Automated test validation on submit.
+                  </p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
@@ -480,7 +598,7 @@ function TodayLearningPage() {
             title={`Day ${selectedDayNum} Placement Accelerator · ${placementPlan.theme}`}
             subtitle="10m English + 10m Aptitude + 10m In-App Guided Practice with AI Voice Pitch"
             action={
-              store.attendance.includes(selectedDayNum) ? (
+              attendance.includes(selectedDayNum) ? (
                 <Chip tone="emerald">Attendance Recorded ✓</Chip>
               ) : (
                 <Chip tone="purple">Pending Practice</Chip>
@@ -497,11 +615,18 @@ function TodayLearningPage() {
                     </span>
                     <span className="text-[10px] font-mono text-copy-subtle">06:00 IST</span>
                   </div>
-                  <h4 className="text-xs font-bold text-foreground">{placementPlan.english.title}</h4>
-                  <p className="text-copy-subtle leading-relaxed">{placementPlan.english.instructorBrief}</p>
+                  <h4 className="text-xs font-bold text-foreground">
+                    {placementPlan.english.title}
+                  </h4>
+                  <p className="text-copy-subtle leading-relaxed">
+                    {placementPlan.english.instructorBrief}
+                  </p>
                   <div className="flex flex-wrap gap-1 pt-1">
                     {placementPlan.english.keyVocabulary.map((v) => (
-                      <span key={v} className="rounded bg-surface-dark px-1.5 py-0.5 text-[10px] font-mono text-copy-subtle border border-line-soft">
+                      <span
+                        key={v}
+                        className="rounded bg-surface-dark px-1.5 py-0.5 text-[10px] font-mono text-copy-subtle border border-line-soft"
+                      >
                         {v}
                       </span>
                     ))}
@@ -516,8 +641,12 @@ function TodayLearningPage() {
                     </span>
                     <span className="text-[10px] font-mono text-copy-subtle">06:00 IST</span>
                   </div>
-                  <h4 className="text-xs font-bold text-foreground">{placementPlan.aptitude.title}</h4>
-                  <p className="text-copy-subtle leading-relaxed">{placementPlan.aptitude.instructorBrief}</p>
+                  <h4 className="text-xs font-bold text-foreground">
+                    {placementPlan.aptitude.title}
+                  </h4>
+                  <p className="text-copy-subtle leading-relaxed">
+                    {placementPlan.aptitude.instructorBrief}
+                  </p>
                   <div className="rounded-lg bg-surface-dark p-2 text-[11px] font-mono text-brand-purple border border-line-soft">
                     Rule: {placementPlan.aptitude.formulaShortcut}
                   </div>
@@ -537,7 +666,8 @@ function TodayLearningPage() {
                 {placementPlan.practice.mcqs[0] && (
                   <div className="rounded-xl bg-surface-dark p-4 border border-line-soft space-y-2.5">
                     <p className="font-bold text-foreground text-xs">
-                      <span className="text-brand-cyan font-mono">Q1.</span> {placementPlan.practice.mcqs[0].q}
+                      <span className="text-brand-cyan font-mono">Q1.</span>{" "}
+                      {placementPlan.practice.mcqs[0].q}
                     </p>
                     <div className="grid gap-1.5 sm:grid-cols-2">
                       {placementPlan.practice.mcqs[0].options.map((opt, oi) => {
@@ -556,7 +686,7 @@ function TodayLearningPage() {
                                 ? isRight
                                   ? "border-brand-emerald bg-brand-emerald/15 text-brand-emerald font-bold"
                                   : "border-brand-rose bg-brand-rose/15 text-brand-rose"
-                                : "border-line-soft bg-surface-elevated text-copy-subtle hover:text-foreground"
+                                : "border-line-soft bg-surface-elevated text-copy-subtle hover:text-foreground",
                             )}
                           >
                             {opt}
@@ -570,7 +700,9 @@ function TodayLearningPage() {
                 {/* 60s Voice Pitch Drill */}
                 <div className="rounded-xl bg-surface-dark p-4 border border-line-soft space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-foreground">🎙️ 60-Second AI Voice Pitch Challenge:</span>
+                    <span className="font-bold text-foreground">
+                      🎙️ 60-Second AI Voice Pitch Challenge:
+                    </span>
                     <span className="rounded bg-brand-purple/20 px-2 py-0.5 text-[10px] font-mono text-brand-purple font-bold">
                       STAR Speech Rubric
                     </span>
@@ -588,8 +720,8 @@ function TodayLearningPage() {
                     {pitchLoading
                       ? "Recording & Analyzing STAR Speech Cadence…"
                       : pitchRecorded
-                      ? "Voice Pitch Verified · Placement Marked Finished ✓"
-                      : `Record 60s Voice Pitch & Complete Day ${selectedDayNum} (+25 XP)`}
+                        ? "Voice Pitch Verified · Placement Marked Finished ✓"
+                        : `Record 60s Voice Pitch & Complete Day ${selectedDayNum} (+25 XP)`}
                   </button>
                 </div>
               </div>

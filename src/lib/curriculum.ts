@@ -6,21 +6,41 @@ export type Module = { id: string; name: string; skills: Skill[] };
 /** Individual technical curriculum — built per track, never per batch. */
 export function modulesFor(trackId: TrackId): Module[] {
   const t = trackById(trackId);
-  const keywords = t.tagline.split(",").map((k) => k.trim()).filter(Boolean);
+  const keywords = t.tagline
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
   const mk = (mi: number, name: string, skills: string[]): Module => ({
     id: `${trackId}-m${mi}`,
     name,
     skills: skills.map((s, si) => ({ id: `${trackId}-m${mi}-s${si}`, name: s })),
   });
   return [
-    mk(1, "Foundations", keywords.slice(0, 3).map((k) => `${k} fundamentals`)),
-    mk(2, "Sandbox practice", ["Guided sandbox drill", "Debugging challenge", `${t.labTitle} walkthrough`]),
-    mk(3, "Applied build", ["Project scaffold", "Feature implementation", "Code review & refactor"]),
-    mk(4, "Competency evidence", [`${t.labTitle} validation`, "Practical task submission", "Competency interview"]),
+    mk(
+      1,
+      "Foundations",
+      keywords.slice(0, 3).map((k) => `${k} fundamentals`),
+    ),
+    mk(2, "Sandbox practice", [
+      "Guided sandbox drill",
+      "Debugging challenge",
+      `${t.labTitle} walkthrough`,
+    ]),
+    mk(3, "Applied build", [
+      "Project scaffold",
+      "Feature implementation",
+      "Code review & refactor",
+    ]),
+    mk(4, "Competency evidence", [
+      `${t.labTitle} validation`,
+      "Practical task submission",
+      "Competency interview",
+    ]),
   ];
 }
 
-export const skillsFor = (trackId: TrackId): Skill[] => modulesFor(trackId).flatMap((m) => m.skills);
+export const skillsFor = (trackId: TrackId): Skill[] =>
+  modulesFor(trackId).flatMap((m) => m.skills);
 
 export const trackProgress = (trackId: TrackId, done: string[]) => {
   const all = skillsFor(trackId);
@@ -35,7 +55,11 @@ export const nextSkill = (trackId: TrackId, done: string[]) =>
 export function seedSkills(tracks: TrackId[], offsets: number[] = [7, 4, 2]) {
   const out: string[] = [];
   tracks.forEach((t, i) => {
-    out.push(...skillsFor(t).slice(0, offsets[i] ?? 1).map((s) => s.id));
+    out.push(
+      ...skillsFor(t)
+        .slice(0, offsets[i] ?? 1)
+        .map((s) => s.id),
+    );
   });
   return out;
 }
@@ -60,7 +84,12 @@ const APTITUDE = [
   "Probability basics",
   "Data interpretation",
 ];
-const PRACTICE = ["5 MCQ + 2 logic + voice pitch", "Mock GD round", "Rapid-fire quant sprint", "Peer speaking drill"];
+const PRACTICE = [
+  "5 MCQ + 2 logic + voice pitch",
+  "Mock GD round",
+  "Rapid-fire quant sprint",
+  "Peer speaking drill",
+];
 
 export type PlacementDay = {
   day: number;
@@ -79,7 +108,13 @@ export function placementDay(day: number): PlacementDay {
   const idx = day - 1;
   const weekday = WEEKDAYS[idx % 7] ?? "Mon";
   const milestone =
-    day === 30 ? "Foundation Assessment" : day === 60 ? "Application Assessment" : day === 90 ? "Final Placement Readiness Assessment" : null;
+    day === 30
+      ? "Foundation Assessment"
+      : day === 60
+        ? "Application Assessment"
+        : day === 90
+          ? "Final Placement Readiness Assessment"
+          : null;
   return {
     day,
     week: Math.floor(idx / 7) + 1,
@@ -106,14 +141,25 @@ export type LeaderRow = {
 };
 
 const NAMES = [
-  "Ajay Kumar", "Sneha Iyer", "Divya Menon", "Arun Prasad", "Kiran Babu", "Meera Nair",
-  "Vikram S", "Harish R", "Lakshmi P", "Naveen Kumar", "Fathima A", "Sandeep V",
+  "Ajay Kumar",
+  "Sneha Iyer",
+  "Divya Menon",
+  "Arun Prasad",
+  "Kiran Babu",
+  "Meera Nair",
+  "Vikram S",
+  "Harish R",
+  "Lakshmi P",
+  "Naveen Kumar",
+  "Fathima A",
+  "Sandeep V",
 ];
 
 const hash = (s: string) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7);
 
 export function leaderboard(batchId: string, includeName?: string): LeaderRow[] {
-  const names = includeName && !NAMES.includes(includeName) ? [includeName, ...NAMES.slice(0, 11)] : NAMES;
+  const names =
+    includeName && !NAMES.includes(includeName) ? [includeName, ...NAMES.slice(0, 11)] : NAMES;
   return names.map((name) => {
     const h = hash(name + batchId);
     return {

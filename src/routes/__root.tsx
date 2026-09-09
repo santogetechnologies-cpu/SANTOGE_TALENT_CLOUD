@@ -55,9 +55,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-dark px-4 text-foreground">
       <div className="w-full max-w-lg rounded-2xl border border-line-soft bg-surface-elevated p-6 text-center shadow-2xl">
-        <h1 className="text-xl font-bold tracking-tight text-brand-rose">
-          This page didn't load
-        </h1>
+        <h1 className="text-xl font-bold tracking-tight text-brand-rose">This page didn't load</h1>
         <p className="mt-2 text-xs text-copy-subtle">
           {error?.message || "An unexpected error occurred while rendering this page."}
         </p>
@@ -102,10 +100,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "SantoGe Talent Cloud — ITSE & Placement Accelerator" },
-      { name: "description", content: "Interactive technical skill engine, batch placement accelerator, and unified talent readiness workspace." },
+      {
+        name: "description",
+        content:
+          "Interactive technical skill engine, batch placement accelerator, and unified talent readiness workspace.",
+      },
       { name: "author", content: "SantoGe Talent Cloud" },
       { property: "og:title", content: "SantoGe Talent Cloud — ITSE & Placement Accelerator" },
-      { property: "og:description", content: "Dual-track readiness: 15 individual technical specialisations + synchronised 90-day placement cohort." },
+      {
+        property: "og:description",
+        content:
+          "Dual-track readiness: 15 individual technical specialisations + synchronised 90-day placement cohort.",
+      },
       { property: "og:type", content: "website" },
       { property: "og:image", content: "/og-image.svg" },
       { property: "og:image:type", content: "image/svg+xml" },
@@ -116,7 +122,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:image", content: "/og-image.svg" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
+      },
     ],
     links: [
       {

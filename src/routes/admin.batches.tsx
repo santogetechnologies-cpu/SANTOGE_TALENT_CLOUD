@@ -1,8 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Chip, Console, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore, type Batch } from "@/lib/app-store";
+import {
+  fetchLiveBatches,
+  createLiveBatch,
+  updateLiveBatch,
+  deleteLiveBatch,
+  fetchLiveStudentRoster,
+  deleteLiveStudent,
+} from "@/lib/data";
 import {
   RefreshCw,
   Plus,
@@ -20,15 +29,25 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AdminResetPasswordModal, type ResetPasswordStudent } from "@/components/admin-reset-password-modal";
+import {
+  AdminResetPasswordModal,
+  type ResetPasswordStudent,
+} from "@/components/admin-reset-password-modal";
 
 export const Route = createFileRoute("/admin/batches")({
   head: () => ({
     meta: [
       { title: "Batch & Telegram Hub — SantoGe Talent Cloud" },
-      { name: "description", content: "Manage 100–300 sizing constraints, batch renaming, Telegram sync webhooks, and synchronized placement broadcasts." },
+      {
+        name: "description",
+        content:
+          "Manage 100–300 sizing constraints, batch renaming, Telegram sync webhooks, and synchronized placement broadcasts.",
+      },
       { property: "og:title", content: "Batch & Telegram Hub — SantoGe Talent Cloud" },
-      { property: "og:description", content: "Manage batch capacity, renaming, and Telegram sync." },
+      {
+        property: "og:description",
+        content: "Manage batch capacity, renaming, and Telegram sync.",
+      },
     ],
   }),
   component: BatchesPage,
@@ -36,17 +55,33 @@ export const Route = createFileRoute("/admin/batches")({
 
 function BatchesPage() {
   const store = useAppStore();
+  const queryClient = useQueryClient();
+  const isLive = store.authProvider === "supabase";
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newBatchName, setNewBatchName] = useState("BATCH-2026-PSG-CSE-02");
   const [newBatchDept, setNewBatchDept] = useState("CSE");
   const [newBatchCapacity, setNewBatchCapacity] = useState(250);
-  
+
+  // Live Queries
+  const { data: liveBatches } = useQuery({
+    queryKey: ["live", "batches"],
+    queryFn: () => fetchLiveBatches(),
+    enabled: isLive,
+  });
+
+  const { data: liveRoster } = useQuery({
+    queryKey: ["live", "student-roster", "all"],
+    queryFn: () => fetchLiveStudentRoster({ institutionId: "all" }),
+    enabled: isLive,
+  });
+
   // Telegram broadcast simulator states
   const [broadcastTargetBatch, setBroadcastTargetBatch] = useState<string>("BATCH-2026-ABC-CSE-01");
   const [broadcastMessage, setBroadcastMessage] = useState(
-    "📢 Day 26 Morning Broadcast: English Idiom drills & Aptitude Work-Rate formulas are live! Join in-app guided practice before 09:00 AM."
+    "📢 Day 26 Morning Broadcast: English Idiom drills & Aptitude Work-Rate formulas are live! Join in-app guided practice before 09:00 AM.",
   );
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [broadcastLogs, setBroadcastLogs] = useState<string[]>([
@@ -65,8 +100,9 @@ function BatchesPage() {
     batchId: string;
   } | null>(null);
 
-  // Real learners only: custom students + provisioned students
+  // Real learners only: custom students + provisioned students (Demo Mode)
   const allLearners = useMemo(() => {
+    if (isLive) return [];
     const deleted = new Set((store.deletedStudentEmails || []).map((e) => e.toLowerCase().trim()));
 
     const fromCustom = Object.values(store.customStudents || {})
@@ -107,34 +143,57 @@ function BatchesPage() {
       }
     }
     return result;
-  }, [store.customStudents, store.provisioned, store.deletedStudentEmails]);
+  }, [isLive, store.customStudents, store.provisioned, store.deletedStudentEmails]);
 
   const batchesWithCounts = useMemo(() => {
+    if (isLive && liveBatches) {
+      return liveBatches.map((b) => ({
+        id: b.id,
+        name: b.name,
+        dept: b.dept,
+        capacity: b.capacity,
+        enrolled: b.enrolled_count ?? 0,
+        lastSync: b.last_sync_at ? new Date(b.last_sync_at).toLocaleTimeString("en-GB") : "Never",
+      }));
+    }
     return store.batches.map((b) => ({
       ...b,
       enrolled: allLearners.filter((l) => l.batchId === b.id).length,
     }));
-  }, [store.batches, allLearners]);
+  }, [isLive, liveBatches, store.batches, allLearners]);
 
   const totalCapacity = batchesWithCounts.reduce((s, b) => s + b.capacity, 0);
-  const totalEnrolled = allLearners.length;
+  const totalEnrolled = isLive
+    ? liveRoster?.totalCount || liveRoster?.items.length || 0
+    : allLearners.length;
 
-  const handleStartEdit = (b: Batch) => {
+  const handleStartEdit = (b: { id: string; name: string }) => {
     setEditingId(b.id);
     setEditName(b.name);
   };
 
-  const handleSaveEdit = (id: string) => {
+  const handleSaveEdit = async (id: string) => {
     if (!editName.trim()) {
       toast.error("Batch name cannot be empty");
       return;
     }
-    store.updateBatch(id, { name: editName.trim() });
+    if (isLive) {
+      const res = await updateLiveBatch(id, { name: editName.trim() });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
+        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] });
+        toast.success("Batch renamed in Supabase backend");
+      } else {
+        toast.error(res.error || "Failed to update batch");
+      }
+    } else {
+      store.updateBatch(id, { name: editName.trim() });
+      toast.success("Batch renamed successfully");
+    }
     setEditingId(null);
-    toast.success("Batch renamed successfully");
   };
 
-  const handleCreateBatch = (e: React.FormEvent) => {
+  const handleCreateBatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBatchName.trim()) {
       toast.error("Please enter a valid batch name");
@@ -145,43 +204,89 @@ function BatchesPage() {
       return;
     }
 
-    const newId = newBatchName.trim().toUpperCase().replace(/\s+/g, "-");
-    store.createBatch({
-      id: newId,
-      name: newBatchName.trim(),
-      dept: newBatchDept,
-      capacity: newBatchCapacity,
-      enrolled: 0,
-    });
-    setCreateModalOpen(false);
+    if (isLive) {
+      const res = await createLiveBatch({
+        name: newBatchName.trim(),
+        dept: newBatchDept,
+        capacity: newBatchCapacity,
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
+        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] });
+        toast.success(`Batch ${newBatchName} created in Supabase backend!`);
+        setCreateModalOpen(false);
+      } else {
+        toast.error(res.error || "Failed to create batch");
+      }
+    } else {
+      const newId = newBatchName.trim().toUpperCase().replace(/\s+/g, "-");
+      store.createBatch({
+        id: newId,
+        name: newBatchName.trim(),
+        dept: newBatchDept,
+        capacity: newBatchCapacity,
+        enrolled: 0,
+      });
+      toast.success("Batch created in demo state");
+      setCreateModalOpen(false);
+    }
   };
 
-  const handleDispatchTelegram = () => {
+  const handleDispatchTelegram = async () => {
     if (!broadcastMessage.trim()) return;
     setIsBroadcasting(true);
-    const learnerCount = allLearners.filter((l) => l.batchId === broadcastTargetBatch).length;
+    const learnerCount = isLive
+      ? (liveRoster?.items || []).filter((l) => l.batchId === broadcastTargetBatch).length
+      : allLearners.filter((l) => l.batchId === broadcastTargetBatch).length;
 
     setBroadcastLogs((prev) => [
-      `[tx] Dispatching webhook to Telegram channel: t.me/stc-${broadcastTargetBatch.toLowerCase()}`,
+      `[tx] Dispatching webhook simulation to Telegram channel: t.me/stc-${broadcastTargetBatch.toLowerCase()}`,
       `[tx] Payload: "${broadcastMessage.slice(0, 60)}…"`,
       ...prev,
     ]);
 
+    if (isLive) {
+      const batchItem = (liveBatches || []).find(
+        (b) => b.name === broadcastTargetBatch || b.id === broadcastTargetBatch,
+      );
+      if (batchItem) {
+        await updateLiveBatch(batchItem.id, { last_sync_at: new Date().toISOString() });
+        queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
+      }
+    } else {
+      store.syncBatch(broadcastTargetBatch);
+    }
+
     setTimeout(() => {
       setIsBroadcasting(false);
-      store.syncBatch(broadcastTargetBatch);
       setBroadcastLogs((prev) => [
-        `[delivered] Broadcast received by ${learnerCount} active devices via Telegram Bot API (200 OK)`,
+        `[simulated] Broadcast payload validated for ${learnerCount} active devices via @SantoGeTalentBot simulator (200 OK)`,
         ...prev,
       ]);
-      toast.success(`Broadcast delivered to ${broadcastTargetBatch}!`);
+      toast.success(`Simulated broadcast dispatched to ${broadcastTargetBatch}!`);
     }, 1200);
   };
 
-  // Filter learners in selected roster (strictly real custom + CSV provisioned, filtering deleted)
+  // Filter learners in selected roster
   const rosterLearners = useMemo(() => {
+    if (isLive) {
+      const items = liveRoster?.items || [];
+      return items
+        .filter((s) => s.batchId === rosterBatchId || rosterBatchId === "all")
+        .map((s) => ({
+          name: s.name,
+          email: s.email,
+          rollNo: s.rollNo,
+          dept: s.dept,
+          batchId: s.batchId,
+          college: s.college || "Partner Engineering College",
+          tracks: s.tracks as string[],
+          streak: 1,
+          placementDay: s.placementDay,
+        }));
+    }
     return allLearners.filter((s) => s.batchId === rosterBatchId || rosterBatchId === "all");
-  }, [rosterBatchId, allLearners]);
+  }, [isLive, liveRoster, rosterBatchId, allLearners]);
 
   return (
     <div className="space-y-6">
@@ -200,9 +305,24 @@ function BatchesPage() {
 
       <div className="grid gap-4 sm:grid-cols-4">
         <Stat label="Total Cohorts" value={batchesWithCounts.length} hint="Placement Accelerator" />
-        <Stat label="Total Capacity" value={totalCapacity} accent="var(--brand-purple)" hint="Sum of batch allocations" />
-        <Stat label="Enrolled Learners" value={totalEnrolled} accent="var(--brand-emerald)" hint="Active student profiles" />
-        <Stat label="Platform Fill Rate" value={`${Math.round((totalEnrolled / Math.max(totalCapacity, 1)) * 100)}%`} accent="var(--brand-amber)" hint="Cohort utilization" />
+        <Stat
+          label="Total Capacity"
+          value={totalCapacity}
+          accent="var(--brand-purple)"
+          hint="Sum of batch allocations"
+        />
+        <Stat
+          label="Enrolled Learners"
+          value={totalEnrolled}
+          accent="var(--brand-emerald)"
+          hint="Active student profiles"
+        />
+        <Stat
+          label="Platform Fill Rate"
+          value={`${Math.round((totalEnrolled / Math.max(totalCapacity, 1)) * 100)}%`}
+          accent="var(--brand-amber)"
+          hint="Cohort utilization"
+        />
       </div>
 
       {/* Batch Cards Grid */}
@@ -223,10 +343,16 @@ function BatchesPage() {
                       onChange={(e) => setEditName(e.target.value)}
                       className="rounded-lg border border-brand-cyan/60 bg-surface-dark px-2.5 py-1 text-sm font-bold text-foreground outline-none"
                     />
-                    <button onClick={() => handleSaveEdit(b.id)} className="text-brand-emerald hover:opacity-80">
+                    <button
+                      onClick={() => handleSaveEdit(b.id)}
+                      className="text-brand-emerald hover:opacity-80"
+                    >
                       <Check className="size-4" />
                     </button>
-                    <button onClick={() => setEditingId(null)} className="text-copy-subtle hover:text-foreground">
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="text-copy-subtle hover:text-foreground"
+                    >
                       <X className="size-4" />
                     </button>
                   </div>
@@ -269,14 +395,21 @@ function BatchesPage() {
                   {b.enrolled} / {b.capacity} ({fill}%)
                 </span>
               </div>
-              <Meter value={fill} accent={fill >= 80 ? "var(--brand-emerald)" : "var(--brand-cyan)"} />
+              <Meter
+                value={fill}
+                accent={fill >= 80 ? "var(--brand-emerald)" : "var(--brand-cyan)"}
+              />
 
               {/* Sizing Slider (100 - 300 constraint) */}
               <div className="mt-4 space-y-3 rounded-xl border border-line-soft bg-surface-soft p-3.5">
                 <div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-copy-subtle">Batch Sizing Constraint (100–300):</span>
-                    <span className="font-mono font-bold text-brand-purple">{b.capacity} students</span>
+                    <span className="font-semibold text-copy-subtle">
+                      Batch Sizing Constraint (100–300):
+                    </span>
+                    <span className="font-mono font-bold text-brand-purple">
+                      {b.capacity} students
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -301,7 +434,11 @@ function BatchesPage() {
                       type="number"
                       value={b.enrolled}
                       max={b.capacity}
-                      onChange={(e) => store.updateBatch(b.id, { enrolled: Math.min(Number(e.target.value), b.capacity) })}
+                      onChange={(e) =>
+                        store.updateBatch(b.id, {
+                          enrolled: Math.min(Number(e.target.value), b.capacity),
+                        })
+                      }
                       className="mt-1 w-full rounded-lg border border-line-soft bg-surface-dark px-2.5 py-1.5 font-mono text-xs text-foreground outline-none focus:border-brand-cyan/60"
                     />
                   </div>
@@ -336,7 +473,9 @@ function BatchesPage() {
         >
           <div className="space-y-3.5">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-copy-subtle">Target Batch Channel</label>
+              <label className="mb-1 block text-xs font-semibold text-copy-subtle">
+                Target Batch Channel
+              </label>
               <select
                 value={broadcastTargetBatch}
                 onChange={(e) => setBroadcastTargetBatch(e.target.value)}
@@ -351,7 +490,9 @@ function BatchesPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-copy-subtle">Broadcast Message Content</label>
+              <label className="mb-1 block text-xs font-semibold text-copy-subtle">
+                Broadcast Message Content
+              </label>
               <textarea
                 value={broadcastMessage}
                 onChange={(e) => setBroadcastMessage(e.target.value)}
@@ -366,7 +507,11 @@ function BatchesPage() {
               disabled={isBroadcasting}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-5 py-2.5 text-xs font-bold text-surface-dark shadow-md transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              {isBroadcasting ? <RefreshCw className="size-4 animate-spin" /> : <Send className="size-4" />}
+              {isBroadcasting ? (
+                <RefreshCw className="size-4 animate-spin" />
+              ) : (
+                <Send className="size-4" />
+              )}
               {isBroadcasting ? "Pushing to Telegram Webhook…" : "Dispatch to Telegram Channel"}
             </button>
           </div>
@@ -380,17 +525,28 @@ function BatchesPage() {
       {/* Create Batch Modal */}
       {createModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/70 backdrop-blur-md">
-          <form onSubmit={handleCreateBatch} className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4">
+          <form
+            onSubmit={handleCreateBatch}
+            className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4"
+          >
             <div className="flex items-center justify-between border-b border-line-soft pb-3">
-              <h3 className="font-display text-base font-bold text-foreground">Create Placement Batch</h3>
-              <button type="button" onClick={() => setCreateModalOpen(false)} className="text-copy-subtle hover:text-foreground">
+              <h3 className="font-display text-base font-bold text-foreground">
+                Create Placement Batch
+              </h3>
+              <button
+                type="button"
+                onClick={() => setCreateModalOpen(false)}
+                className="text-copy-subtle hover:text-foreground"
+              >
                 <X className="size-5" />
               </button>
             </div>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="mb-1 block font-semibold text-copy-subtle">Batch Name / Identifier</label>
+                <label className="mb-1 block font-semibold text-copy-subtle">
+                  Batch Name / Identifier
+                </label>
                 <input
                   type="text"
                   required
@@ -402,7 +558,9 @@ function BatchesPage() {
               </div>
 
               <div>
-                <label className="mb-1 block font-semibold text-copy-subtle">Academic Department</label>
+                <label className="mb-1 block font-semibold text-copy-subtle">
+                  Academic Department
+                </label>
                 <select
                   value={newBatchDept}
                   onChange={(e) => setNewBatchDept(e.target.value)}
@@ -458,10 +616,17 @@ function BatchesPage() {
           <div className="w-full max-w-2xl rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-line-soft pb-3">
               <div>
-                <h3 className="font-display text-base font-bold text-foreground">Cohort Roster: {rosterBatchId}</h3>
-                <p className="text-xs text-copy-subtle mt-0.5">Learners enrolled in this synchronized placement batch</p>
+                <h3 className="font-display text-base font-bold text-foreground">
+                  Cohort Roster: {rosterBatchId}
+                </h3>
+                <p className="text-xs text-copy-subtle mt-0.5">
+                  Learners enrolled in this synchronized placement batch
+                </p>
               </div>
-              <button onClick={() => setRosterBatchId(null)} className="text-copy-subtle hover:text-foreground">
+              <button
+                onClick={() => setRosterBatchId(null)}
+                className="text-copy-subtle hover:text-foreground"
+              >
                 <X className="size-5" />
               </button>
             </div>
@@ -469,20 +634,30 @@ function BatchesPage() {
             <div className="space-y-2">
               {rosterLearners.length > 0 ? (
                 rosterLearners.map((learner) => (
-                  <div key={learner.email} className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft p-3 text-xs">
+                  <div
+                    key={learner.email}
+                    className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft p-3 text-xs"
+                  >
                     <div>
                       <p className="font-bold text-foreground">{learner.name}</p>
-                      <p className="font-mono text-copy-subtle text-[11px]">{learner.rollNo} · {learner.email}</p>
+                      <p className="font-mono text-copy-subtle text-[11px]">
+                        {learner.rollNo} · {learner.email}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex gap-1">
                         {Array.from(new Set(learner.tracks || [])).map((t, idx) => (
-                          <span key={`${learner.email}-${t}-${idx}`} className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[10px] font-mono">
+                          <span
+                            key={`${learner.email}-${t}-${idx}`}
+                            className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[10px] font-mono"
+                          >
                             {t}
                           </span>
                         ))}
                       </div>
-                      <span className="font-mono text-brand-amber text-xs font-bold">🔥 {learner.streak}d</span>
+                      <span className="font-mono text-brand-amber text-xs font-bold">
+                        🔥 {learner.streak}d
+                      </span>
                       <button
                         onClick={() => {
                           setResetTargetStudent({
@@ -557,8 +732,12 @@ function BatchesPage() {
                 <AlertTriangle className="size-5" />
               </div>
               <div>
-                <h3 className="font-display text-base font-bold text-foreground">Remove Learner from Roster?</h3>
-                <p className="text-xs text-copy-subtle">This action permanently removes the student from this cohort</p>
+                <h3 className="font-display text-base font-bold text-foreground">
+                  Remove Learner from Roster?
+                </h3>
+                <p className="text-xs text-copy-subtle">
+                  This action permanently removes the student from this cohort
+                </p>
               </div>
             </div>
 
@@ -573,16 +752,21 @@ function BatchesPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-copy-subtle font-medium">Roll Number:</span>
-                <span className="font-mono font-semibold text-foreground">{deleteTargetStudent.rollNo}</span>
+                <span className="font-mono font-semibold text-foreground">
+                  {deleteTargetStudent.rollNo}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-copy-subtle font-medium">Cohort Batch:</span>
-                <span className="font-mono font-bold text-brand-purple">{deleteTargetStudent.batchId}</span>
+                <span className="font-mono font-bold text-brand-purple">
+                  {deleteTargetStudent.batchId}
+                </span>
               </div>
             </div>
 
             <p className="text-xs text-copy-subtle leading-relaxed">
-              Removing this student will permanently delete their progress, revoke active portal access, update cohort batch headcount, and record the removal in the audit log.
+              Removing this student will permanently delete their progress, revoke active portal
+              access, update cohort batch headcount, and record the removal in the audit log.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
@@ -595,8 +779,8 @@ function BatchesPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const res = store.deleteStudent(deleteTargetStudent.email);
+                onClick={async () => {
+                  const res = await store.deleteStudent(deleteTargetStudent.email);
                   if (res.ok) {
                     setDeleteTargetStudent(null);
                   }
@@ -613,4 +797,3 @@ function BatchesPage() {
     </div>
   );
 }
-

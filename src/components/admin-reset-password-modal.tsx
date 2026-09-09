@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAppStore } from "@/lib/app-store";
 import { supabaseAuth, getSupabaseConfig } from "@/lib/supabase";
+import { resetLiveStudentPassword } from "@/lib/data/admin-data";
 
 export interface ResetPasswordStudent {
   name?: string;
@@ -77,7 +78,12 @@ export function AdminResetPasswordModal({
       batchId: p.batch_id,
       dept: p.dept,
     })),
-  ].filter((s) => !(store.deletedStudentEmails || []).map((e) => e.toLowerCase().trim()).includes(s.email.toLowerCase().trim()));
+  ].filter(
+    (s) =>
+      !(store.deletedStudentEmails || [])
+        .map((e) => e.toLowerCase().trim())
+        .includes(s.email.toLowerCase().trim()),
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -97,8 +103,7 @@ export function AdminResetPasswordModal({
 
   const targetEmail = student?.email || emailInput.trim().toLowerCase();
   const matchedStudent =
-    student ||
-    allKnownLearners.find((l) => l.email.toLowerCase() === targetEmail);
+    student || allKnownLearners.find((l) => l.email.toLowerCase() === targetEmail);
 
   const handleGenerate = () => {
     setNewPassword(generateStrongPassword());
@@ -131,33 +136,34 @@ export function AdminResetPasswordModal({
     setIsSubmitting(true);
 
     try {
-      // 1. Reset in local store state & localStorage
-      const res = store.resetStudentPassword(targetEmail, newPassword);
-      if (!res.ok) {
-        toast.error(res.message);
-        setIsSubmitting(false);
-        return;
-      }
-
-      let supabaseMessage = "";
-
-      // 2. Optionally trigger Supabase recovery email
-      if (sendSupabaseEmail && hasSupabase) {
-        const sbRes = await supabaseAuth.resetPasswordForEmail(targetEmail);
-        if (sbRes.ok) {
-          supabaseMessage = "Recovery email dispatched via Supabase Auth";
-        } else {
-          supabaseMessage = `Supabase notice: ${sbRes.message}`;
+      if (store.authProvider === "supabase") {
+        const res = await resetLiveStudentPassword(targetEmail, newPassword);
+        if (!res.ok) {
+          toast.error(res.message || "Failed to reset student password in Supabase");
+          setIsSubmitting(false);
+          return;
         }
+
+        setSuccessInfo({
+          email: targetEmail,
+          password: newPassword,
+          supabaseMsg: res.message,
+        });
+        toast.success(`Password updated for ${matchedStudent?.name || targetEmail}`);
+      } else {
+        const res = await store.resetStudentPassword(targetEmail, newPassword);
+        if (!res.ok) {
+          toast.error(res.message);
+          setIsSubmitting(false);
+          return;
+        }
+
+        setSuccessInfo({
+          email: targetEmail,
+          password: newPassword,
+        });
+        toast.success(`Password reset successful for ${matchedStudent?.name || targetEmail}`);
       }
-
-      setSuccessInfo({
-        email: targetEmail,
-        password: newPassword,
-        supabaseMsg: supabaseMessage,
-      });
-
-      toast.success(`Password reset successful for ${matchedStudent?.name || targetEmail}`);
     } catch {
       toast.error("Failed to reset student password");
     } finally {
@@ -168,7 +174,6 @@ export function AdminResetPasswordModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md animate-in fade-in duration-200">
       <div className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-        
         {/* Header */}
         <div className="flex items-start justify-between border-b border-line-soft pb-3.5">
           <div className="flex items-center gap-2.5">
@@ -179,9 +184,7 @@ export function AdminResetPasswordModal({
               <h3 className="font-display text-base font-bold text-foreground">
                 Reset Student Password
               </h3>
-              <p className="text-xs text-copy-subtle">
-                Platform Super Admin Security Control
-              </p>
+              <p className="text-xs text-copy-subtle">Platform Super Admin Security Control</p>
             </div>
           </div>
           <button
@@ -201,18 +204,27 @@ export function AdminResetPasswordModal({
                 <span>Password Successfully Updated</span>
               </div>
               <p className="text-copy-subtle">
-                The student can immediately log in with these new credentials via the Demo or Live portal.
+                The student can immediately log in with these new credentials via the Demo or Live
+                portal.
               </p>
             </div>
 
             <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2.5">
               <div>
-                <span className="text-[11px] font-semibold text-copy-subtle block">Student Email</span>
-                <span className="font-mono text-xs font-bold text-foreground">{successInfo.email}</span>
+                <span className="text-[11px] font-semibold text-copy-subtle block">
+                  Student Email
+                </span>
+                <span className="font-mono text-xs font-bold text-foreground">
+                  {successInfo.email}
+                </span>
               </div>
               <div>
-                <span className="text-[11px] font-semibold text-copy-subtle block">New Password</span>
-                <span className="font-mono text-sm font-bold text-brand-cyan">{successInfo.password}</span>
+                <span className="text-[11px] font-semibold text-copy-subtle block">
+                  New Password
+                </span>
+                <span className="font-mono text-sm font-bold text-brand-cyan">
+                  {successInfo.password}
+                </span>
               </div>
               {successInfo.supabaseMsg && (
                 <div className="pt-2 border-t border-line-soft text-[11px] text-copy-subtle flex items-center gap-1.5">
@@ -228,7 +240,11 @@ export function AdminResetPasswordModal({
                 onClick={handleCopy}
                 className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-line-soft bg-surface-soft px-4 py-2.5 text-xs font-bold text-foreground hover:border-brand-cyan/60 transition-colors"
               >
-                {copied ? <Check className="size-3.5 text-brand-emerald" /> : <Copy className="size-3.5" />}
+                {copied ? (
+                  <Check className="size-3.5 text-brand-emerald" />
+                ) : (
+                  <Copy className="size-3.5" />
+                )}
                 {copied ? "Copied to Clipboard" : "Copy Credentials"}
               </button>
               <button
@@ -243,7 +259,6 @@ export function AdminResetPasswordModal({
         ) : (
           /* ================= INPUT FORM ================= */
           <form onSubmit={handleSubmit} className="space-y-4">
-            
             {/* Student Info Card (if selected) */}
             {matchedStudent ? (
               <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2 text-xs">
@@ -260,12 +275,18 @@ export function AdminResetPasswordModal({
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[11px] text-copy-subtle">
                   <div>
-                    <span className="block text-[10px] uppercase tracking-wider font-semibold">Email</span>
+                    <span className="block text-[10px] uppercase tracking-wider font-semibold">
+                      Email
+                    </span>
                     <span className="font-mono text-foreground">{matchedStudent.email}</span>
                   </div>
                   <div>
-                    <span className="block text-[10px] uppercase tracking-wider font-semibold">Cohort Batch</span>
-                    <span className="font-mono text-brand-purple font-semibold">{matchedStudent.batchId || "Default"}</span>
+                    <span className="block text-[10px] uppercase tracking-wider font-semibold">
+                      Cohort Batch
+                    </span>
+                    <span className="font-mono text-brand-purple font-semibold">
+                      {matchedStudent.batchId || "Default"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -335,7 +356,8 @@ export function AdminResetPasswordModal({
                     Dispatch Supabase Recovery Email
                   </p>
                   <p className="text-[11px] text-copy-subtle mt-0.5">
-                    Sends a password reset link to the learner's institutional inbox via Supabase Auth.
+                    Sends a password reset link to the learner's institutional inbox via Supabase
+                    Auth.
                   </p>
                 </div>
               </label>
