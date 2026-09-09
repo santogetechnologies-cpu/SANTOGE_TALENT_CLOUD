@@ -120,7 +120,7 @@ function SettingsPage() {
     ? liveProfileData?.profile?.batch_id || "Not Assigned"
     : store.student?.batchId || "BATCH-2026-ABC-CSE-01";
   const placementDay = isLive
-    ? liveProfileData?.profile?.placement_day || 1
+    ? (liveProfileData?.profile?.placement_day ?? 1)
     : store.placementDay || 1;
   const readiness = isLive
     ? {

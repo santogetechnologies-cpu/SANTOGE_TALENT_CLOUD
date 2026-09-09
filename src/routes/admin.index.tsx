@@ -505,18 +505,35 @@ function AdminAnalytics() {
       return;
     }
 
-    const batchId = newStudentBatchId || store.batches[0]?.id || "BATCH-2026-ABC-CSE-01";
-    const password = newStudentPassword.trim() || "Temp@1234";
-
     if (isLive) {
+      if (!newStudentBatchId.trim()) {
+        toast.error("Please select a batch");
+        return;
+      }
+      if (!newStudentRollNo.trim()) {
+        toast.error("Please enter a Roll / Student ID");
+        return;
+      }
+      if (!newStudentDept.trim()) {
+        toast.error("Please select or enter a department");
+        return;
+      }
+      if (!newStudentCollege.trim()) {
+        toast.error("Please enter the college / institution name");
+        return;
+      }
+
+      const batchId = newStudentBatchId.trim();
+      const password = newStudentPassword.trim() || "Temp@1234";
+
       const res = await addLiveStudent({
         name: newStudentName.trim(),
         email: newStudentEmail.trim().toLowerCase(),
         password: password,
-        rollNo: newStudentRollNo.trim() || `STC${Date.now().toString().slice(-4)}`,
-        dept: newStudentDept.trim() || "CSE",
+        rollNo: newStudentRollNo.trim(),
+        dept: newStudentDept.trim(),
         batchId: batchId,
-        college: newStudentCollege.trim() || "Partner Engineering College",
+        college: newStudentCollege.trim(),
         tracks: newStudentTracks,
       });
 
@@ -535,6 +552,8 @@ function AdminAnalytics() {
         toast.error(res.message);
       }
     } else {
+      const batchId = newStudentBatchId || store.batches[0]?.id || "BATCH-2026-ABC-CSE-01";
+      const password = newStudentPassword.trim() || "Temp@1234";
       const res = await store.addStudent({
         name: newStudentName.trim(),
         email: newStudentEmail.trim().toLowerCase(),

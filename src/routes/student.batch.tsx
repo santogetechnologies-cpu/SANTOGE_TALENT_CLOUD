@@ -103,12 +103,14 @@ function BatchPage() {
       (batchId ? (batchId.length > 12 ? `Batch ${batchId.slice(0, 8)}` : batchId) : "Not Assigned")
     : demoBatch?.name || batchId;
   const batchCapacity = isLive
-    ? liveBatchQuery.data?.batch?.capacity || (batchId ? 300 : 0)
-    : demoBatch?.capacity || 300;
+    ? (liveBatchQuery.data?.batch?.capacity ?? null)
+    : (demoBatch?.capacity ?? 300);
   const batchDept = isLive
     ? liveBatchQuery.data?.batch?.dept || liveProfileData?.profile?.dept || "Not Assigned"
     : demoBatch?.dept || "Engineering";
-  const batchEnrolled = isLive ? liveBatchQuery.data?.enrolled || 0 : demoBatch?.enrolled || 218;
+  const batchEnrolled = isLive
+    ? (liveBatchQuery.data?.enrolled ?? 0)
+    : (demoBatch?.enrolled ?? 218);
   const lastSync = isLive
     ? liveBatchQuery.data?.batch?.last_sync_at
       ? new Date(liveBatchQuery.data.batch.last_sync_at).toLocaleString("en-GB")
@@ -152,7 +154,7 @@ function BatchPage() {
           label="Batch size"
           value={batchEnrolled}
           accent="var(--brand-purple)"
-          hint={`${batchDept} · capacity ${batchCapacity}`}
+          hint={`${batchDept} · capacity ${batchCapacity != null ? batchCapacity : "Not Available"}`}
         />
         <Stat
           label="Assessments taken"

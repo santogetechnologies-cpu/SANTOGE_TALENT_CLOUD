@@ -101,16 +101,25 @@ function TodayLearningPage() {
     isLive && !!liveStudentId,
   );
 
-  const cohortDay = isLive ? liveProfileData?.profile?.placement_day || 1 : store.placementDay || 1;
+  const cohortDay = isLive
+    ? (liveProfileData?.profile?.placement_day ?? 1)
+    : store.placementDay || 1;
 
-  const activeTracks: TrackId[] = isLive ? liveProfileData?.tracks || [] : store.activeTracks;
+  const activeTracks: TrackId[] = useMemo(
+    () => (isLive ? liveProfileData?.tracks || [] : store.activeTracks),
+    [isLive, liveProfileData?.tracks, store.activeTracks],
+  );
 
   const streak = isLive ? (liveProfileData?.profile?.streak ?? 0) : store.streak;
   const talentScore = isLive ? (liveProfileData?.profile?.talent_score ?? 0) : store.talentScore;
-  const attendance = isLive ? liveProgressData?.attendance || [] : store.attendance;
-  const completedTechDays = isLive
-    ? liveProgressData?.completedTechDays || []
-    : store.completedTechDays || [];
+  const attendance = useMemo(
+    () => (isLive ? liveProgressData?.attendance || [] : store.attendance),
+    [isLive, liveProgressData?.attendance, store.attendance],
+  );
+  const completedTechDays = useMemo(
+    () => (isLive ? liveProgressData?.completedTechDays || [] : store.completedTechDays || []),
+    [isLive, liveProgressData?.completedTechDays, store.completedTechDays],
+  );
 
   const [selectedDayNum, setSelectedDayNum] = useState<number>(cohortDay);
   const [activeDrillTab, setActiveDrillTab] = useState<DrillTab>("skills");

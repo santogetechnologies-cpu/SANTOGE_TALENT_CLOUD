@@ -76,7 +76,9 @@ function AcceleratorPage() {
     isLive && !!liveStudentId,
   );
 
-  const cohortDay = isLive ? liveProfileData?.profile?.placement_day || 1 : store.placementDay || 1;
+  const cohortDay = isLive
+    ? (liveProfileData?.profile?.placement_day ?? 1)
+    : store.placementDay || 1;
   const streak = isLive ? (liveProfileData?.profile?.streak ?? 0) : store.streak;
   const xp = isLive ? (liveProfileData?.profile?.xp ?? 0) : store.xp;
   const daily = isLive

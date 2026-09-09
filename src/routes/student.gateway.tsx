@@ -140,8 +140,10 @@ function GatewayPage() {
   );
   const { data: livePlatformSettings } = useLivePlatformSettings(isLive);
   const { data: liveHiringDrives } = useLiveHiringDrives(isLive);
-
-  const activeTracks: TrackId[] = isLive ? liveProfileData?.tracks || [] : store.activeTracks;
+  const activeTracks: TrackId[] = useMemo(
+    () => (isLive ? liveProfileData?.tracks || [] : store.activeTracks),
+    [isLive, liveProfileData?.tracks, store.activeTracks],
+  );
 
   const talentScore = isLive ? (liveProfileData?.profile?.talent_score ?? 0) : store.talentScore;
   const attendance = isLive ? liveProgressData?.attendance || [] : store.attendance;

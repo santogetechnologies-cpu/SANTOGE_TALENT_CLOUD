@@ -451,7 +451,7 @@ function ProvisioningPage() {
         password: "••••••••",
         roll_no: s.rollNo,
         dept: s.dept,
-        course_1: s.tracks[0] || "mern",
+        course_1: s.tracks[0] || "",
         course_2: s.tracks[1] || "",
         course_3: s.tracks[2] || "",
         batch_id: s.batchId,
@@ -567,18 +567,39 @@ function ProvisioningPage() {
       return;
     }
 
-    const batchId = singleBatchId || batchesList[0]?.id || "BATCH-2026-ABC-CSE-01";
-    const password = singlePassword.trim() || "Temp@1234";
-
     if (isLive) {
+      if (!singleBatchId.trim()) {
+        toast.error("Please select a batch");
+        return;
+      }
+      if (!singleRollNo.trim()) {
+        toast.error("Please enter a Roll / Student ID");
+        return;
+      }
+      if (!singleDept.trim()) {
+        toast.error("Please select or enter a department");
+        return;
+      }
+      if (!singleCollege.trim()) {
+        toast.error("Please enter the college / institution name");
+        return;
+      }
+      if (singleTracks.length === 0) {
+        toast.error("Please select at least 1 technical track (max 3)");
+        return;
+      }
+
+      const batchId = singleBatchId.trim();
+      const password = singlePassword.trim() || "Temp@1234";
+
       const res = await addLiveStudent({
         name: singleName.trim(),
         email: singleEmail.trim().toLowerCase(),
         password,
-        rollNo: singleRollNo.trim() || `STC${Date.now().toString().slice(-4)}`,
-        dept: singleDept.trim() || "CSE",
+        rollNo: singleRollNo.trim(),
+        dept: singleDept.trim(),
         batchId,
-        college: singleCollege.trim() || "Partner Engineering College",
+        college: singleCollege.trim(),
         tracks: singleTracks,
       });
 
@@ -909,26 +930,29 @@ function ProvisioningPage() {
                     <td className="py-2.5 pr-4">
                       <span className="font-mono">{p.roll_no}</span> · {p.dept}
                     </td>
-                    <td className="py-2.5 pr-4 text-copy-subtle">
-                      {p.college || "Partner Engineering College"}
-                    </td>
+                    <td className="py-2.5 pr-4 text-copy-subtle">{p.college || "—"}</td>
                     <td className="py-2.5 pr-4">
                       <span className="rounded bg-surface-soft border border-line-soft px-2 py-0.5 font-mono text-[11px] text-brand-purple font-semibold">
-                        {p.batch_id}
+                        {p.batch_id || "Not Assigned"}
                       </span>
                     </td>
                     <td className="py-2.5 pr-4">
                       <div className="flex flex-wrap gap-1">
-                        {Array.from(
-                          new Set([p.course_1, p.course_2, p.course_3].filter(Boolean)),
-                        ).map((c, cIdx) => (
-                          <span
-                            key={`${p.email}-${c}-${cIdx}`}
-                            className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[10px] font-mono text-foreground"
-                          >
-                            {trackById(c as TrackId).short || c}
-                          </span>
-                        ))}
+                        {Array.from(new Set([p.course_1, p.course_2, p.course_3].filter(Boolean)))
+                          .length > 0 ? (
+                          Array.from(
+                            new Set([p.course_1, p.course_2, p.course_3].filter(Boolean)),
+                          ).map((c, cIdx) => (
+                            <span
+                              key={`${p.email}-${c}-${cIdx}`}
+                              className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[10px] font-mono text-foreground"
+                            >
+                              {trackById(c as TrackId).short || c}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-[10px] text-copy-subtle italic">Not Assigned</span>
+                        )}
                       </div>
                     </td>
                     <td className="py-2.5 text-right font-mono">
