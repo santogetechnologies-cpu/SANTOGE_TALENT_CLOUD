@@ -202,8 +202,8 @@ function ProvisioningPage() {
   const [singleRollNo, setSingleRollNo] = useState("");
   const [singleDept, setSingleDept] = useState("CSE");
   const [singleBatchId, setSingleBatchId] = useState("");
-  const [singleCollege, setSingleCollege] = useState("PSG College of Technology");
-  const [singleTracks, setSingleTracks] = useState<TrackId[]>(["mern", "cloud"]);
+  const [singleCollege, setSingleCollege] = useState("");
+  const [singleTracks, setSingleTracks] = useState<TrackId[]>(["mern"]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -322,23 +322,35 @@ function ProvisioningPage() {
       }
       seenEmails.add(email);
 
-      const rollNo = rowMap["roll_no"] || `STC${Date.now().toString().slice(-4)}${i + 1}`;
-      const dept = rowMap["dept"] || "CSE";
-      const batchId = rowMap["batch_id"] || "BATCH-2026-ABC-CSE-01";
-      const college = rowMap["college"] || "Partner Engineering College";
+      const rollNo =
+        rowMap["roll_no"] || (isLive ? "" : `STC${Date.now().toString().slice(-4)}${i + 1}`);
+      const dept = rowMap["dept"] || (isLive ? "" : "CSE");
+      const batchId = rowMap["batch_id"] || (isLive ? "" : "BATCH-2026-ABC-CSE-01");
+      const college = rowMap["college"] || "";
       const password = rowMap["password"] || "Temp@1234";
 
       // Track course assignments (1 to 3 tracks)
-      const c1 = normalizeCourse(rowMap["course_1"]) || "mern";
+      const c1 = normalizeCourse(rowMap["course_1"]) || (isLive ? "" : "mern");
       let c2 = normalizeCourse(rowMap["course_2"]) || "";
       let c3 = normalizeCourse(rowMap["course_3"]) || "";
 
       // Ensure de-duplicated tracks per student
-      if (c2 === c1) c2 = "";
-      if (c3 === c1 || c3 === c2) c3 = "";
+      if (c2 && c2 === c1) c2 = "";
+      if (c3 && (c3 === c1 || c3 === c2)) c3 = "";
+
+      if (isLive) {
+        if (!studentName || !rollNo || !dept || !batchId) {
+          out.push(
+            `[error] Row ${i + 2}: Missing required field (name, roll_no, dept, or batch_id) for "${email}"`,
+          );
+          return;
+        }
+      }
 
       // Track batch sizes
-      batchCounts[batchId] = (batchCounts[batchId] || 0) + 1;
+      if (batchId) {
+        batchCounts[batchId] = (batchCounts[batchId] || 0) + 1;
+      }
 
       const record: ProvisionedStudent = {
         student_name: studentName,
@@ -354,7 +366,7 @@ function ProvisioningPage() {
       };
 
       rows.push(record);
-      const coursesStr = [c1, c2, c3].filter(Boolean).join(", ");
+      const coursesStr = [c1, c2, c3].filter(Boolean).join(", ") || "No tracks assigned";
       out.push(`[provisioned] ${studentName} (${rollNo}) → ${batchId} [${coursesStr}]`);
     });
 
@@ -377,20 +389,41 @@ function ProvisioningPage() {
 
     if (isLive) {
       const res = await provisionLiveStudents(rows);
-      if (res.ok) {
+      if (res.count > 0) {
         out.push(
           `[complete] Successfully provisioned ${res.count} student accounts to Supabase backend.`,
         );
+      }
+      if (res.failedCount > 0) {
+        out.push(`[warning] ${res.failedCount} records failed during provisioning:`);
+        (res.results || []).forEach((r) => {
+          if (!r.ok) {
+            out.push(`  ❌ ${r.email}: ${r.error || "Unknown error"}`);
+          }
+        });
+      }
+      if (res.ok) {
         out.push(`[auth] Portal credentials active. Students can authenticate at /login.`);
         setLog(out);
         toast.success(`${res.count} learners onboarded to Live Supabase backend!`);
+      } else if (res.count > 0) {
+        out.push(`[auth] ${res.count} portal credentials active. ${res.failedCount} failed.`);
+        setLog(out);
+        toast.warning(
+          `Partial success: ${res.count} learners onboarded, ${res.failedCount} failed. Check console.`,
+        );
+      } else {
+        out.push(`[error] All records failed to provision: ${res.message || "Unknown error"}`);
+        setLog(out);
+        toast.error(res.message || "Failed to provision students to Supabase backend");
+      }
+
+      if (res.count > 0) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
           queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
           queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
         ]);
-      } else {
-        toast.error(res.message || "Failed to provision students to Supabase backend");
       }
     } else {
       // Persist to store (backend demo)
@@ -569,7 +602,7 @@ function ProvisioningPage() {
         toast.error(res.message);
       }
     } else {
-      const res = store.addStudent({
+      const res = await store.addStudent({
         name: singleName.trim(),
         email: singleEmail.trim().toLowerCase(),
         password,
@@ -1237,7 +1270,7 @@ function ProvisioningPage() {
                       toast.error(res.error || "Failed to delete student from Supabase");
                     }
                   } else {
-                    const res = store.deleteStudent(deleteTargetStudent.email);
+                    const res = await store.deleteStudent(deleteTargetStudent.email);
                     if (res.ok) {
                       setDeleteTargetStudent(null);
                     }

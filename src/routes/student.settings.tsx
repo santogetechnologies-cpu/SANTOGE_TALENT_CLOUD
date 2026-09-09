@@ -68,15 +68,81 @@ const PILLARS = [
   },
 ] as const;
 
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useLiveStudentProfile,
+  useLiveStudentProgress,
+  useLivePlatformSettings,
+  updateLiveStudentTracks,
+  updateLiveReadiness,
+} from "@/lib/data";
+
 function SettingsPage() {
   const store = useAppStore();
+  const queryClient = useQueryClient();
+  const isLive = store.authProvider === "supabase";
+
+  const { data: liveProfileData } = useLiveStudentProfile(
+    store.supabaseSession?.user?.id,
+    isLive && !!store.supabaseSession?.user?.id,
+  );
+  const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
+  const { data: liveProgressData } = useLiveStudentProgress(
+    liveStudentId || undefined,
+    isLive && !!liveStudentId,
+  );
+  const { data: livePlatformSettings } = useLivePlatformSettings(isLive);
+
+  const activeTracks: (typeof TRACKS)[number]["id"][] = isLive
+    ? liveProfileData?.tracks || []
+    : store.activeTracks;
+
+  const talentScore = isLive ? (liveProfileData?.profile?.talent_score ?? 0) : store.talentScore;
+  const completedLabs = isLive ? liveProgressData?.completedLabs || [] : store.completedLabs;
+  const studentName = isLive
+    ? liveProfileData?.profile?.name ||
+      store.supabaseSession?.user?.email?.split("@")[0] ||
+      "Student"
+    : (store.student?.name ?? `${store.student?.firstName ?? "Student"}`);
+  const studentEmail = isLive
+    ? liveProfileData?.profile?.email || store.supabaseSession?.user?.email || ""
+    : store.student?.email || "student@santoge.edu";
+  const studentCollege = isLive
+    ? liveProfileData?.profile?.college || "Not Assigned"
+    : store.student?.college || "SantoGe Institute of Technology";
+  const studentRollNo = isLive
+    ? liveProfileData?.profile?.roll_no || "Not Assigned"
+    : store.student?.rollNo || "2026-CSE-042";
+  const studentDept = isLive
+    ? liveProfileData?.profile?.dept || "Not Assigned"
+    : store.student?.dept || "Computer Science";
+  const studentBatchId = isLive
+    ? liveProfileData?.profile?.batch_id || "Not Assigned"
+    : store.student?.batchId || "BATCH-2026-ABC-CSE-01";
+  const placementDay = isLive
+    ? liveProfileData?.profile?.placement_day || 1
+    : store.placementDay || 1;
+  const readiness = isLive
+    ? {
+        T: liveProfileData?.profile?.readiness_t ?? 0,
+        C: liveProfileData?.profile?.readiness_c ?? 0,
+        A: liveProfileData?.profile?.readiness_a ?? 0,
+        E: liveProfileData?.profile?.readiness_e ?? 0,
+        R: liveProfileData?.profile?.readiness_r ?? 0,
+        M: liveProfileData?.profile?.readiness_m ?? 0,
+      }
+    : store.readiness;
+  const secondaryMinimum = isLive
+    ? (livePlatformSettings?.secondaryMinimum ?? 50)
+    : store.secondaryMinimum;
+
   const [domainFilter, setDomainFilter] = useState<string>("all");
   const [telegramNotifs, setTelegramNotifs] = useState(true);
   const [morningReminder, setMorningReminder] = useState(true);
 
-  const toggleTrack = (id: (typeof TRACKS)[number]["id"]) => {
-    const has = store.activeTracks.includes(id);
-    const next = has ? store.activeTracks.filter((t) => t !== id) : [...store.activeTracks, id];
+  const toggleTrack = async (id: (typeof TRACKS)[number]["id"]) => {
+    const has = activeTracks.includes(id);
+    const next = has ? activeTracks.filter((t) => t !== id) : [...activeTracks, id];
     if (next.length < 1) {
       toast.error("You must maintain at least 1 enrolled course track.");
       return;
@@ -85,7 +151,18 @@ function SettingsPage() {
       toast.error("Maximum 3 concurrent technical courses allowed per student.");
       return;
     }
-    store.setActiveTracks(next);
+    if (isLive && liveStudentId) {
+      const res = await updateLiveStudentTracks(liveStudentId, next);
+      if (!res.ok) {
+        toast.error(res.error || "Failed to update tracks");
+        return;
+      }
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+      });
+    } else {
+      store.setActiveTracks(next);
+    }
     toast.success(has ? "Course track unenrolled" : "Course track enrolled successfully!");
   };
 
@@ -101,25 +178,25 @@ function SettingsPage() {
       <PageHeader
         title="Settings & Course Selection"
         subtitle="Manage your technical specializations, cohort batch identity, and personal workspace preferences."
-        action={<Chip tone="purple">{store.activeTracks.length}/3 tracks enrolled</Chip>}
+        action={<Chip tone="purple">{activeTracks.length}/3 tracks enrolled</Chip>}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
           label="Talent Score"
-          value={`${store.talentScore}/1000`}
+          value={`${talentScore}/1000`}
           accent="var(--brand-cyan)"
           hint="Composite readiness"
         />
         <Stat
           label="Enrolled Courses"
-          value={`${store.activeTracks.length} / 3`}
+          value={`${activeTracks.length} / 3`}
           accent="var(--brand-purple)"
           hint="Technical tracks"
         />
         <Stat
           label="Verified Labs"
-          value={store.completedLabs.length}
+          value={completedLabs.length}
           accent="var(--brand-emerald)"
           hint="Passed sandbox drills"
         />
@@ -141,24 +218,17 @@ function SettingsPage() {
             <span className="text-[11px] font-semibold text-copy-subtle flex items-center gap-1.5">
               <User className="size-3.5 text-brand-cyan" /> Full Name
             </span>
-            <p className="text-sm font-bold text-foreground">
-              {store.student?.name ?? `${store.student?.firstName ?? ""}`}
-            </p>
-            <p className="text-xs text-copy-subtle font-mono">
-              {store.student?.email || "student@santoge.edu"}
-            </p>
+            <p className="text-sm font-bold text-foreground">{studentName}</p>
+            <p className="text-xs text-copy-subtle font-mono">{studentEmail}</p>
           </div>
 
           <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-1">
             <span className="text-[11px] font-semibold text-copy-subtle flex items-center gap-1.5">
               <GraduationCap className="size-3.5 text-brand-purple" /> Institution & Roll No
             </span>
-            <p className="text-sm font-bold text-foreground">
-              {store.student?.college || "SantoGe Institute of Technology"}
-            </p>
+            <p className="text-sm font-bold text-foreground">{studentCollege}</p>
             <p className="text-xs text-copy-subtle font-mono">
-              {store.student?.rollNo || "2026-CSE-042"} ·{" "}
-              {store.student?.dept || "Computer Science"}
+              {studentRollNo} · {studentDept}
             </p>
           </div>
 
@@ -166,11 +236,9 @@ function SettingsPage() {
             <span className="text-[11px] font-semibold text-copy-subtle flex items-center gap-1.5">
               <Shield className="size-3.5 text-brand-emerald" /> Placement Accelerator Batch
             </span>
-            <p className="text-sm font-bold text-foreground font-mono">
-              {store.student?.batchId || "BATCH-2026-ABC-CSE-01"}
-            </p>
+            <p className="text-sm font-bold text-foreground font-mono">{studentBatchId}</p>
             <p className="text-xs text-brand-emerald font-semibold">
-              Day {store.placementDay} of 90 · Synchronized Cohort
+              Day {placementDay} of 90 · Synchronized Cohort
             </p>
           </div>
         </div>
@@ -214,14 +282,13 @@ function SettingsPage() {
           <Info className="size-4 text-brand-cyan shrink-0" />
           <span>
             <strong>Dual Gate Rule:</strong> Primary track requires 100% completion; secondary
-            tracks require ≥ {store.secondaryMinimum}% completion before Phase 2 marketplace
-            unlocks.
+            tracks require ≥ {secondaryMinimum}% completion before Phase 2 marketplace unlocks.
           </span>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filteredTracks.map((t) => {
-            const index = store.activeTracks.indexOf(t.id);
+            const index = activeTracks.indexOf(t.id);
             const isEnrolled = index !== -1;
             const isPrimary = index === 0;
 
@@ -290,16 +357,24 @@ function SettingsPage() {
                     <span className="font-semibold text-foreground">{p.label}</span>
                     <span className="ml-1.5 text-[10px] text-copy-subtle">({p.desc})</span>
                   </div>
-                  <span className="font-mono font-bold text-brand-cyan">
-                    {store.readiness[p.key]}%
-                  </span>
+                  <span className="font-mono font-bold text-brand-cyan">{readiness[p.key]}%</span>
                 </div>
                 <input
                   type="range"
                   min={0}
                   max={100}
-                  value={store.readiness[p.key]}
-                  onChange={(e) => store.setReadiness({ [p.key]: Number(e.target.value) })}
+                  value={readiness[p.key]}
+                  onChange={async (e) => {
+                    const val = Number(e.target.value);
+                    if (isLive && liveStudentId) {
+                      await updateLiveReadiness(liveStudentId, { [p.key]: val });
+                      queryClient.invalidateQueries({
+                        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+                      });
+                    } else {
+                      store.setReadiness({ [p.key]: val });
+                    }
+                  }}
                   className="w-full accent-[var(--brand-cyan)]"
                 />
               </div>
@@ -374,21 +449,23 @@ function SettingsPage() {
                 </span>
               </button>
 
-              <button
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Are you sure you want to reset all demo progress and lab scores?",
-                    )
-                  ) {
-                    store.resetProgress();
-                    toast.success("Demo progress reset successfully");
-                  }
-                }}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand-rose/30 bg-brand-rose/5 px-4 py-3 text-xs font-bold text-brand-rose hover:bg-brand-rose/10"
-              >
-                <RotateCcw className="size-4" /> Reset Demo Progress & Labs
-              </button>
+              {!isLive && (
+                <button
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        "Are you sure you want to reset all demo progress and lab scores?",
+                      )
+                    ) {
+                      store.resetProgress();
+                      toast.success("Demo progress reset successfully");
+                    }
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand-rose/30 bg-brand-rose/5 px-4 py-3 text-xs font-bold text-brand-rose hover:bg-brand-rose/10"
+                >
+                  <RotateCcw className="size-4" /> Reset Demo Progress & Labs
+                </button>
+              )}
             </div>
           </Panel>
         </div>

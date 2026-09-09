@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Chip, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore, type CompletionRule } from "@/lib/app-store";
@@ -10,6 +11,8 @@ import {
   supabaseAuth,
   type SupabaseAuthConfig,
 } from "@/lib/supabase";
+
+import { useLivePlatformSettings, updateLivePlatformSettings } from "@/lib/data";
 
 export const Route = createFileRoute("/admin/settings")({
   head: () => ({
@@ -41,13 +44,27 @@ const WEIGHTS = [
 
 function AdminSettingsPage() {
   const store = useAppStore();
+  const isLive = store.authProvider === "supabase";
+  const { data: liveSettings } = useLivePlatformSettings(isLive);
+
   const [threshold, setThreshold] = useState(450);
   const [broadcast, setBroadcast] = useState("06:00");
   const [maxTracks, setMaxTracks] = useState(3);
   const [completionRule, setCompletionRuleState] = useState<CompletionRule>(store.completionRule);
   const [secondaryMin, setSecondaryMin] = useState(store.secondaryMinimum);
 
-  // Supabase live config
+  useEffect(() => {
+    if (isLive && liveSettings) {
+      if (liveSettings.completionRule) {
+        setCompletionRuleState(liveSettings.completionRule);
+      }
+      if (typeof liveSettings.secondaryMinimum === "number") {
+        setSecondaryMin(liveSettings.secondaryMinimum);
+      }
+    }
+  }, [isLive, liveSettings]);
+
+  const queryClient = useQueryClient();
   const [sbConfig, setSbConfig] = useState<SupabaseAuthConfig>({ url: "", anonKey: "" });
   const [sbTesting, setSbTesting] = useState(false);
   const [sbStatus, setSbStatus] = useState<string | null>(null);
@@ -56,9 +73,22 @@ function AdminSettingsPage() {
     setSbConfig(getSupabaseConfig());
   }, []);
 
-  const saveGateRules = () => {
-    store.setCompletionRule(completionRule, secondaryMin);
-    toast.success("Dual Completion Gate business rules saved");
+  const saveGateRules = async () => {
+    if (isLive) {
+      const res = await updateLivePlatformSettings({
+        completionRule,
+        secondaryMinimum: secondaryMin,
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["live", "platform-settings"] });
+        toast.success("Dual Gate configuration saved to Supabase!");
+      } else {
+        toast.error(res.error || "Failed to update platform settings in Supabase");
+      }
+    } else {
+      store.setCompletionRule(completionRule, secondaryMin);
+      toast.success("Dual Gate configuration saved!");
+    }
   };
 
   const saveSupabase = async () => {
@@ -195,7 +225,10 @@ function AdminSettingsPage() {
         </Panel>
 
         {/* Supabase Endpoint Config */}
-        <Panel title="Live Supabase Integration" subtitle="Connected authentication and user store">
+        <Panel
+          title="Live Supabase Integration (Developer Override)"
+          subtitle="Environment variables are authoritative in production; local overrides active in dev"
+        >
           <div className="space-y-3">
             <div>
               <label className="mb-1 block text-xs font-semibold text-copy-subtle">

@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Chip, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore } from "@/lib/app-store";
-import { fetchLiveBatches } from "@/lib/data/admin-data";
+import { fetchLiveBatches, upsertLiveContentItem } from "@/lib/data";
 import { TRACKS, type TrackId, trackById } from "@/lib/tracks";
 import { getTrackSyllabus } from "@/lib/syllabus-data";
 import {
@@ -54,6 +54,7 @@ type CMSTab = "placement-accelerator" | "technical-tracks";
 
 function ContentManagementPage() {
   const store = useAppStore();
+  const queryClient = useQueryClient();
   const isLive = store.authProvider === "supabase";
 
   const liveBatchesQuery = useQuery({
@@ -130,21 +131,74 @@ function ContentManagementPage() {
     setWorkplaceSkill(w.workplaceSkill);
   };
 
-  const handleSavePlacementContent = () => {
-    toast.success(`Day ${selectedPlacementDay} Placement Lesson updated!`, {
-      description: "Changes staged and synced to the daily 06:00 broadcast scheduler.",
-    });
+  const handleSavePlacementContent = async () => {
+    if (isLive) {
+      const res = await upsertLiveContentItem(
+        {
+          track: "Placement Accelerator",
+          kind: "English video",
+          titlePrefix: `Day ${selectedPlacementDay}:`,
+        },
+        {
+          title: `Day ${selectedPlacementDay}: ${englishTitle}`,
+          kind: "English video",
+          track: "Placement Accelerator",
+          duration: "10m",
+          status: "published",
+        },
+      );
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["live", "content"] });
+        toast.success(`Day ${selectedPlacementDay} Placement Lesson synced to Supabase!`, {
+          description:
+            "Curriculum metadata synced to content_items; teaching script staged for broadcast.",
+        });
+      } else {
+        toast.error(res.error || "Failed to persist curriculum changes to database");
+      }
+    } else {
+      toast.success(`Day ${selectedPlacementDay} Placement Lesson staged!`, {
+        description: "Changes staged in local state for daily 06:00 simulator.",
+      });
+    }
   };
 
-  const handleSaveTechnicalContent = () => {
-    toast.success(`${trackById(selectedTrackId).name} Week ${selectedWeekNum} updated!`, {
-      description: "Curriculum changes saved and sandbox tasks updated for learners.",
-    });
+  const handleSaveTechnicalContent = async () => {
+    if (isLive) {
+      const trackName = trackById(selectedTrackId).name;
+      const res = await upsertLiveContentItem(
+        {
+          track: trackName,
+          kind: "Lab brief",
+          titlePrefix: `${trackName} Week ${selectedWeekNum}:`,
+        },
+        {
+          title: `${trackName} Week ${selectedWeekNum}: ${weekTitle}`,
+          kind: "Lab brief",
+          track: trackName,
+          duration: "5 days",
+          status: "published",
+        },
+      );
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["live", "content"] });
+        toast.success(`${trackName} Week ${selectedWeekNum} synced to Supabase!`, {
+          description:
+            "Curriculum metadata synced to content_items; mini-project ticket staged for sandbox.",
+        });
+      } else {
+        toast.error(res.error || "Failed to persist technical track changes to database");
+      }
+    } else {
+      toast.success(`${trackById(selectedTrackId).name} Week ${selectedWeekNum} staged!`, {
+        description: "Curriculum changes updated in local state for sandbox tasks.",
+      });
+    }
   };
 
   const handleBroadcastInstantPush = () => {
-    toast.success("Live Broadcast Pushed to All 54 Batch Telegram Channels!", {
-      description: `Dispatched Day ${selectedPlacementDay} English & Aptitude lesson links via Telegram Webhook.`,
+    toast.success(`Simulated Broadcast Dispatched for Day ${selectedPlacementDay}!`, {
+      description: `Simulated Telegram webhook payload generated for @SantoGeTalentBot (Production bot token not configured).`,
     });
   };
 
@@ -159,7 +213,7 @@ function ContentManagementPage() {
               onClick={handleBroadcastInstantPush}
               className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-3.5 py-2 text-xs font-bold text-surface-dark shadow-sm hover:opacity-90 transition-opacity"
             >
-              <Send className="size-3.5" /> Push Live Telegram Broadcast
+              <Send className="size-3.5" /> Push Telegram Broadcast (Simulator)
             </button>
             <Chip tone="purple">Admin Authoring Hub</Chip>
           </div>

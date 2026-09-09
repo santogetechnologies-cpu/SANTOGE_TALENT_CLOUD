@@ -139,8 +139,47 @@ const SEARCH_ITEMS: SearchResult[] = [
   },
 ];
 
+import { useQueryClient } from "@tanstack/react-query";
+import { useLiveStudentProfile, updateLiveStudentTracks } from "@/lib/data";
+
 export function AppShell({ portal }: { portal: Role }) {
   const store = useAppStore();
+  const queryClient = useQueryClient();
+  const isLive = store.authProvider === "supabase";
+
+  const { data: liveProfileData } = useLiveStudentProfile(
+    store.supabaseSession?.user?.id,
+    isLive && portal === "student" && !!store.supabaseSession?.user?.id,
+  );
+  const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
+
+  const activeTracks: TrackId[] =
+    isLive && portal === "student" ? liveProfileData?.tracks || [] : store.activeTracks;
+
+  const streak =
+    isLive && portal === "student" ? (liveProfileData?.profile?.streak ?? 0) : store.streak;
+
+  const xp = isLive && portal === "student" ? (liveProfileData?.profile?.xp ?? 0) : store.xp;
+
+  const talentScore =
+    isLive && portal === "student"
+      ? (liveProfileData?.profile?.talent_score ?? 0)
+      : store.talentScore;
+
+  const gateUnlocked =
+    isLive && portal === "student"
+      ? (liveProfileData?.profile?.placement_day ?? 1) >= 30
+      : store.gateUnlocked;
+
+  const eligibleCompanies =
+    isLive && portal === "student"
+      ? talentScore >= 700
+        ? 6
+        : talentScore >= 500
+          ? 3
+          : 1
+      : store.eligibleCompanies;
+
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -190,9 +229,9 @@ export function AppShell({ portal }: { portal: Role }) {
     }
   };
 
-  const toggleCourseTrack = (id: TrackId) => {
-    const has = store.activeTracks.includes(id);
-    const next = has ? store.activeTracks.filter((t) => t !== id) : [...store.activeTracks, id];
+  const toggleCourseTrack = async (id: TrackId) => {
+    const has = activeTracks.includes(id);
+    const next = has ? activeTracks.filter((t) => t !== id) : [...activeTracks, id];
     if (next.length < 1) {
       toast.error("Please keep at least 1 active course track.");
       return;
@@ -201,7 +240,18 @@ export function AppShell({ portal }: { portal: Role }) {
       toast.error("Maximum 3 technical course tracks allowed simultaneously.");
       return;
     }
-    store.setActiveTracks(next);
+    if (isLive && liveStudentId) {
+      const res = await updateLiveStudentTracks(liveStudentId, next);
+      if (!res.ok) {
+        toast.error(res.error || "Failed to update tracks");
+        return;
+      }
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+      });
+    } else {
+      store.setActiveTracks(next);
+    }
     toast.success(has ? "Track removed from your active courses" : "Enrolled in track!");
   };
 
@@ -339,12 +389,12 @@ export function AppShell({ portal }: { portal: Role }) {
                 Talent Score
               </p>
               <span className="font-mono text-xs font-bold text-brand-cyan">
-                {store.talentScore}/1000
+                {talentScore}/1000
               </span>
             </div>
             <div className="mt-1.5 flex items-center justify-between text-[10px] text-copy-subtle">
-              <span>Gate: {store.gateUnlocked ? "Unlocked 🔓" : "In Progress 🔒"}</span>
-              <span className="text-brand-purple">{store.eligibleCompanies} Companies</span>
+              <span>Gate: {gateUnlocked ? "Unlocked 🔓" : "In Progress 🔒"}</span>
+              <span className="text-brand-purple">{eligibleCompanies} Companies</span>
             </div>
           </div>
         </aside>
@@ -385,16 +435,16 @@ export function AppShell({ portal }: { portal: Role }) {
               {portal === "student" && (
                 <>
                   <span className="hidden items-center gap-1.5 rounded-full border border-line-soft bg-surface-soft px-3 py-1.5 text-xs font-semibold text-brand-amber md:inline-flex">
-                    <Flame className="size-3.5" /> Day {store.streak}
+                    <Flame className="size-3.5" /> Day {streak}
                   </span>
                   <span className="hidden items-center gap-1.5 rounded-full border border-line-soft bg-surface-soft px-3 py-1.5 text-xs font-semibold text-brand-cyan sm:inline-flex">
-                    <Zap className="size-3.5" /> {store.xp} XP
+                    <Zap className="size-3.5" /> {xp} XP
                   </span>
                   <button
                     onClick={() => setCourseModalOpen(true)}
                     className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 px-2.5 py-1.5 text-xs font-bold text-brand-cyan hover:bg-brand-cyan/20"
                   >
-                    <BookOpen className="size-3.5" /> Course Switcher ({store.activeTracks.length}
+                    <BookOpen className="size-3.5" /> Course Switcher ({activeTracks.length}
                     /3)
                   </button>
                 </>
@@ -599,7 +649,7 @@ export function AppShell({ portal }: { portal: Role }) {
 
             <div className="flex items-center justify-between rounded-xl border border-brand-cyan/30 bg-brand-cyan/10 p-3 text-xs">
               <span className="font-semibold text-brand-cyan">
-                Active Selected Tracks: {store.activeTracks.length} / 3
+                Active Selected Tracks: {activeTracks.length} / 3
               </span>
               <span className="text-copy-subtle text-[11px]">
                 Rule: Min 1, Max 3 concurrent specializations
@@ -608,7 +658,7 @@ export function AppShell({ portal }: { portal: Role }) {
 
             <div className="grid gap-2.5 sm:grid-cols-2">
               {TRACKS.map((t) => {
-                const isSelected = store.activeTracks.includes(t.id);
+                const isSelected = activeTracks.includes(t.id);
                 return (
                   <button
                     key={t.id}

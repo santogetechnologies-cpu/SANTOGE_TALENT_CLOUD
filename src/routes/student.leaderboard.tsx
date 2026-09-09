@@ -39,11 +39,44 @@ const METRICS: { key: Metric; label: string }[] = [
   { key: "improvement", label: "Improvement rank" },
 ];
 
+import { useLiveStudentProfile, useLiveStudentProgress } from "@/lib/data";
+import { trackProgress } from "@/lib/curriculum";
+import type { TrackId } from "@/lib/tracks";
+
 function LeaderboardPage() {
   const store = useAppStore();
   const isLive = store.authProvider === "supabase";
-  const batchId = store.student?.batchId ?? "BATCH";
-  const me = store.student?.name ?? "You";
+
+  const { data: liveProfileData } = useLiveStudentProfile(
+    store.supabaseSession?.user?.id,
+    isLive && !!store.supabaseSession?.user?.id,
+  );
+  const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
+  const { data: liveProgressData } = useLiveStudentProgress(
+    liveStudentId || undefined,
+    isLive && !!liveStudentId,
+  );
+
+  const batchId = isLive
+    ? liveProfileData?.profile?.batch_id || ""
+    : (store.student?.batchId ?? "BATCH");
+  const me = isLive
+    ? liveProfileData?.profile?.name || store.supabaseSession?.user?.email?.split("@")[0] || "You"
+    : (store.student?.name ?? "You");
+
+  const activeTracks: TrackId[] = isLive ? liveProfileData?.tracks || [] : store.activeTracks;
+
+  const attendanceCount = isLive
+    ? (liveProgressData?.attendance?.length ?? 0)
+    : store.attendance.length;
+
+  const skills = isLive ? liveProgressData?.skills || [] : store.skills;
+
+  const getTrackPct = (trackId: TrackId) => {
+    if (!isLive) return store.trackPercent(trackId);
+    return trackProgress(trackId, skills);
+  };
+
   const [metric, setMetric] = useState<Metric>("aptitude");
 
   const liveLeaderboardQuery = useQuery({
@@ -74,20 +107,16 @@ function LeaderboardPage() {
   }, [demoRows, metric]);
 
   const liveRank = rows
-    ? rows.findIndex((r) => r.name === me || r.studentId === store.liveStudentId) + 1
+    ? rows.findIndex((r) => r.name === me || r.studentId === liveStudentId) + 1
     : 0;
-  const myRank = isLive
-    ? liveRank > 0
-      ? liveRank
-      : 1
-    : demoRanked.findIndex((r) => r.name === me) + 1;
+  const myRank = isLive ? liveRank : demoRanked.findIndex((r) => r.name === me) + 1;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Batch Leaderboard"
         subtitle="Leaderboards belong to the Placement Accelerator cohort — never to unrelated technical tracks."
-        action={<Chip tone="amber">{batchId}</Chip>}
+        action={<Chip tone="amber">{batchId || "No Batch"}</Chip>}
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -106,7 +135,7 @@ function LeaderboardPage() {
         />
         <Stat
           label="Days attended"
-          value={store.attendance.length}
+          value={attendanceCount}
           accent="var(--brand-emerald)"
           hint="Out of 90"
         />
@@ -140,7 +169,15 @@ function LeaderboardPage() {
         )}
 
         {isLive ? (
-          rows && rows.length > 0 ? (
+          liveLeaderboardQuery.isLoading ? (
+            <div className="rounded-xl border border-line-soft bg-surface-soft p-6 text-center text-xs text-copy-subtle">
+              Loading batch rankings from Supabase…
+            </div>
+          ) : liveLeaderboardQuery.isError ? (
+            <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-6 text-center text-xs text-rose-400">
+              Unable to load cohort leaderboard.
+            </div>
+          ) : rows && rows.length > 0 ? (
             <ol className="space-y-2">
               {rows.map((r, i) => {
                 const isMe = r.name === me || r.studentId === store.liveStudentId;
@@ -215,15 +252,15 @@ function LeaderboardPage() {
           evidence.
         </p>
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-          {store.activeTracks.map((id) => {
+          {activeTracks.map((id) => {
             const t = TRACKS.find((x) => x.id === id)!;
-            const pct = store.trackPercent(id);
+            const pct = getTrackPct(id);
             return (
               <div key={id} className="rounded-xl border border-line-soft bg-surface-soft p-3">
-                <p className="text-sm font-semibold text-foreground">{t.name}</p>
+                <p className="text-sm font-semibold text-foreground">{t?.name || id}</p>
                 <p className="mt-1 text-[11px] text-copy-subtle">Your competency progress</p>
                 <div className="mt-2">
-                  <Meter value={pct} accent={t.accent} />
+                  <Meter value={pct} accent={t?.accent} />
                 </div>
               </div>
             );

@@ -6,10 +6,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import {
-  fetchLiveStudentProfile,
-  fetchLiveStudentProgress,
-} from "./student-data";
+import { fetchLiveStudentProfile, fetchLiveStudentProgress } from "./student-data";
 import {
   fetchLiveAdminAnalytics,
   fetchLiveStudentRoster,

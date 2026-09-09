@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAppStore } from "@/lib/app-store";
 import { supabaseAuth, getSupabaseConfig } from "@/lib/supabase";
+import { resetLiveStudentPassword } from "@/lib/data/admin-data";
 
 export interface ResetPasswordStudent {
   name?: string;
@@ -135,33 +136,34 @@ export function AdminResetPasswordModal({
     setIsSubmitting(true);
 
     try {
-      // 1. Reset in local store state & localStorage
-      const res = store.resetStudentPassword(targetEmail, newPassword);
-      if (!res.ok) {
-        toast.error(res.message);
-        setIsSubmitting(false);
-        return;
-      }
-
-      let supabaseMessage = "";
-
-      // 2. Optionally trigger Supabase recovery email
-      if (sendSupabaseEmail && hasSupabase) {
-        const sbRes = await supabaseAuth.resetPasswordForEmail(targetEmail);
-        if (sbRes.ok) {
-          supabaseMessage = "Recovery email dispatched via Supabase Auth";
-        } else {
-          supabaseMessage = `Supabase notice: ${sbRes.message}`;
+      if (store.authProvider === "supabase") {
+        const res = await resetLiveStudentPassword(targetEmail, newPassword);
+        if (!res.ok) {
+          toast.error(res.message || "Failed to reset student password in Supabase");
+          setIsSubmitting(false);
+          return;
         }
+
+        setSuccessInfo({
+          email: targetEmail,
+          password: newPassword,
+          supabaseMsg: res.message,
+        });
+        toast.success(`Password updated for ${matchedStudent?.name || targetEmail}`);
+      } else {
+        const res = await store.resetStudentPassword(targetEmail, newPassword);
+        if (!res.ok) {
+          toast.error(res.message);
+          setIsSubmitting(false);
+          return;
+        }
+
+        setSuccessInfo({
+          email: targetEmail,
+          password: newPassword,
+        });
+        toast.success(`Password reset successful for ${matchedStudent?.name || targetEmail}`);
       }
-
-      setSuccessInfo({
-        email: targetEmail,
-        password: newPassword,
-        supabaseMsg: supabaseMessage,
-      });
-
-      toast.success(`Password reset successful for ${matchedStudent?.name || targetEmail}`);
     } catch {
       toast.error("Failed to reset student password");
     } finally {

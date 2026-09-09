@@ -3,14 +3,13 @@
  *
  * Architecture:
  * - ONE singleton `@supabase/supabase-js` client (supabaseClient) — initialized once, never recreated.
- * - ONE lightweight hand-rolled REST auth helper (supabaseAuth) — used by app-store.tsx for
- *   signIn, signUp, signOut, and the manual connection test. Kept for backward compatibility.
- * - No polling, no Realtime, no postgres_changes, no automatic DB queries.
- * - Supabase is AUTH infrastructure only for now. All application data uses mock/local sources.
+ * - Single source of truth for LIVE mode: Supabase PostgreSQL + Supabase Auth.
+ * - No background polling, no Realtime, no postgres_changes, no continuous setInterval synchronization.
+ * - Egress optimized: exact column projections and targeted query caching via React Query.
  *
  * Egress policy:
- * - 0 automatic background requests.
- * - Network calls only happen when the user explicitly clicks Sign In, Sign Up, or Test Connection.
+ * - 0 automatic background WebSocket connections.
+ * - Network calls execute purely on demand or via React Query caching strategies.
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -142,6 +141,12 @@ const STORAGE_KEY_CONFIG = "santoge-supabase-config-v1";
 const STORAGE_KEY_SESSION = "santoge-supabase-session-v1";
 
 export function getSupabaseConfig(): SupabaseAuthConfig {
+  // In production, environment variables are authoritative
+  const isDev = typeof import.meta !== "undefined" && Boolean(import.meta.env.DEV);
+  if (!isDev && DEFAULT_SUPABASE_URL && DEFAULT_SUPABASE_ANON_KEY) {
+    return { url: DEFAULT_SUPABASE_URL, anonKey: DEFAULT_SUPABASE_ANON_KEY };
+  }
+
   if (typeof window === "undefined") {
     return { url: DEFAULT_SUPABASE_URL, anonKey: DEFAULT_SUPABASE_ANON_KEY };
   }

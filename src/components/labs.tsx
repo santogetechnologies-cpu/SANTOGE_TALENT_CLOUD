@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Play, RotateCcw } from "lucide-react";
 import { Console, CodeEditor, Chip } from "@/components/kit";
 import { useAppStore } from "@/lib/app-store";
 import { TRACKS, type TrackId } from "@/lib/tracks";
+import { useLiveStudentProfile, useLiveStudentProgress, completeLiveLab } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 function LabFrame({
@@ -15,13 +17,37 @@ function LabFrame({
   children: (run: (lines: string[]) => void, lines: string[], reset: () => void) => React.ReactNode;
 }) {
   const store = useAppStore();
+  const queryClient = useQueryClient();
+  const isLive = store.authProvider === "supabase";
+
+  const { data: liveProfileData } = useLiveStudentProfile(
+    store.supabaseSession?.user?.id,
+    isLive && !!store.supabaseSession?.user?.id,
+  );
+  const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
+  const { data: liveProgressData } = useLiveStudentProgress(
+    liveStudentId || undefined,
+    isLive && !!liveStudentId,
+  );
+
   const [lines, setLines] = useState<string[]>([]);
   const track = TRACKS.find((t) => t.id === id)!;
-  const done = store.completedLabs.includes(id);
+  const completedLabs = isLive ? liveProgressData?.completedLabs || [] : store.completedLabs;
+  const done = completedLabs.includes(id);
 
-  const run = (out: string[]) => {
+  const run = async (out: string[]) => {
     setLines(out);
-    store.completeLab(id, track.labTitle);
+    if (isLive && liveStudentId) {
+      await completeLiveLab(liveStudentId, id, track.labTitle);
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-progress", liveStudentId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+      });
+    } else {
+      store.completeLab(id, track.labTitle);
+    }
   };
 
   return (

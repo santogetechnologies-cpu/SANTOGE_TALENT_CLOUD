@@ -55,96 +55,31 @@ export async function fetchLiveStudentProfile(
     .eq("status", "active")
     .maybeSingle();
 
-  if (profileErr || !profileData) {
+  if (profileErr) {
+    throw new Error(profileErr.message);
+  }
+
+  if (!profileData) {
     return null;
   }
 
   const profile = profileData as unknown as DbStudentProfile;
 
   // Fetch assigned tracks
-  const { data: tracksData } = await supabase
+  const { data: tracksData, error: tracksErr } = await supabase
     .from("student_tracks")
     .select("track_id,position")
     .eq("student_id", profile.id)
     .order("position", { ascending: true });
 
-  const rawTracks = (tracksData || []).map((t: { track_id: string }) => t.track_id as TrackId);
-  const tracks: TrackId[] =
-    rawTracks.length > 0 ? rawTracks : (["mern", "cloud", "aiml"] as TrackId[]);
-
-  return { profile, tracks };
-}
-
-/**
- * Ensures an authenticated student has a valid PostgreSQL profile record in Supabase.
- * Initial metrics start at authentic zero (0 XP, 0 talent score), never fabricated numbers.
- */
-export async function ensureLiveStudentProfile(
-  authUserId: string,
-  email: string,
-  metadata?:
-    | {
-        name?: string | undefined;
-        roll_no?: string | undefined;
-        rollNo?: string | undefined;
-        dept?: string | undefined;
-        college?: string | undefined;
-        tracks?: TrackId[] | undefined;
-      }
-    | undefined,
-): Promise<{ profile: DbStudentProfile; tracks: TrackId[] }> {
-  const existing = await fetchLiveStudentProfile(authUserId);
-  if (existing) return existing;
-
-  const supabase = getSupabaseClient();
-  const name = metadata?.name || email.split("@")[0] || "Student Learner";
-  const roll_no = metadata?.roll_no || metadata?.rollNo || "2026-LIVE";
-  const dept = metadata?.dept || "CSE";
-  const college = metadata?.college || "Partner Engineering College";
-  const rawTracks = metadata?.tracks || (["mern", "cloud", "aiml"] as TrackId[]);
-
-  const { data: inserted } = await supabase
-    .from("student_profiles")
-    .insert({
-      auth_user_id: authUserId,
-      email: email.toLowerCase().trim(),
-      name,
-      roll_no,
-      dept,
-      college,
-      status: "active",
-      xp: 0,
-      streak: 0,
-      placement_day: 1,
-      talent_score: 0,
-      readiness_t: 50,
-      readiness_c: 50,
-      readiness_a: 50,
-      readiness_e: 50,
-      readiness_r: 50,
-      readiness_m: 50,
-      updated_at: new Date().toISOString(),
-    })
-    .select(
-      "id,auth_user_id,institution_id,batch_id,name,email,roll_no,dept,college,status,xp,streak,placement_day,talent_score,readiness_t,readiness_c,readiness_a,readiness_e,readiness_r,readiness_m,created_at,updated_at",
-    )
-    .single();
-
-  const profile = (inserted || {}) as DbStudentProfile;
-
-  if (profile.id) {
-    const trackRows = rawTracks.slice(0, 3).map((track_id, idx) => ({
-      student_id: profile.id,
-      track_id,
-      position: idx + 1,
-    }));
-    await supabase.from("student_tracks").insert(trackRows);
+  if (tracksErr) {
+    throw new Error(tracksErr.message);
   }
 
-  return {
-    profile,
-    tracks: rawTracks.slice(0, 3),
-  };
+  const rawTracks = (tracksData || []).map((t: { track_id: string }) => t.track_id as TrackId);
+  const tracks: TrackId[] = rawTracks;
+
+  return { profile, tracks };
 }
 
 /**
@@ -196,6 +131,14 @@ export async function fetchLiveStudentProgress(studentId: string): Promise<{
     supabase.from("student_mocks").select("mock_id,score").eq("student_id", studentId),
     supabase.from("student_certifications").select("label").eq("student_id", studentId),
   ]);
+
+  if (skillsRes.error) throw new Error(skillsRes.error.message);
+  if (labsRes.error) throw new Error(labsRes.error.message);
+  if (attendanceRes.error) throw new Error(attendanceRes.error.message);
+  if (techDaysRes.error) throw new Error(techDaysRes.error.message);
+  if (assessmentsRes.error) throw new Error(assessmentsRes.error.message);
+  if (mocksRes.error) throw new Error(mocksRes.error.message);
+  if (certsRes.error) throw new Error(certsRes.error.message);
 
   const skills = (skillsRes.data || []).map((s: { skill_id: string }) => s.skill_id);
   const completedLabs = (labsRes.data || []).map((l: { lab_id: string }) => l.lab_id);
@@ -258,7 +201,12 @@ export async function completeLivePlacementDay(
     return { ok: false, error: error.message };
   }
 
-  return (data as { ok: boolean; placement_day?: number; xp?: number }) || { ok: true };
+  const res = data as { ok?: boolean; placement_day?: number; xp?: number; error?: string } | null;
+  if (res && res.ok === false) {
+    return { ok: false, error: res.error || "Failed to complete placement day" };
+  }
+
+  return res || { ok: true };
 }
 
 export async function completeLiveSkill(
@@ -278,6 +226,33 @@ export async function completeLiveSkill(
     return { ok: false, error: error.message };
   }
 
+  const res = data as { ok?: boolean; error?: string } | null;
+  if (res && res.ok === false) {
+    return { ok: false, error: res.error || "Failed to complete skill" };
+  }
+
+  return { ok: true };
+}
+
+export async function completeLiveTechnicalDay(
+  studentId: string,
+  day: number,
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getSupabaseClient();
+
+  const { error } = await supabase.from("student_technical_days").upsert(
+    {
+      student_id: studentId,
+      day,
+      completed_at: new Date().toISOString(),
+    },
+    { onConflict: "student_id,day" },
+  );
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
   return { ok: true };
 }
 
@@ -288,7 +263,7 @@ export async function completeLiveLab(
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
-  const { error } = await supabase.rpc("complete_student_lab", {
+  const { data, error } = await supabase.rpc("complete_student_lab", {
     p_student_id: studentId,
     p_lab_id: labId,
     p_label: label,
@@ -296,6 +271,11 @@ export async function completeLiveLab(
 
   if (error) {
     return { ok: false, error: error.message };
+  }
+
+  const res = data as { ok?: boolean; error?: string } | null;
+  if (res && res.ok === false) {
+    return { ok: false, error: res.error || "Failed to complete lab" };
   }
 
   return { ok: true };
@@ -307,13 +287,18 @@ export async function completeLiveDailyStep(
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
-  const { error } = await supabase.rpc("complete_student_daily_step", {
+  const { data, error } = await supabase.rpc("complete_student_daily_step", {
     p_student_id: studentId,
     p_step: step,
   });
 
   if (error) {
     return { ok: false, error: error.message };
+  }
+
+  const res = data as { ok?: boolean; error?: string } | null;
+  if (res && res.ok === false) {
+    return { ok: false, error: res.error || "Failed to complete daily step" };
   }
 
   return { ok: true };
@@ -326,7 +311,7 @@ export async function submitLiveAssessment(
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
-  const { error } = await supabase.rpc("submit_student_assessment", {
+  const { data, error } = await supabase.rpc("submit_student_assessment", {
     p_student_id: studentId,
     p_day: day,
     p_score: score,
@@ -334,6 +319,11 @@ export async function submitLiveAssessment(
 
   if (error) {
     return { ok: false, error: error.message };
+  }
+
+  const res = data as { ok?: boolean; error?: string } | null;
+  if (res && res.ok === false) {
+    return { ok: false, error: res.error || "Failed to submit assessment" };
   }
 
   return { ok: true };
@@ -347,7 +337,7 @@ export async function completeLiveMock(
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
-  const { error } = await supabase.rpc("complete_student_mock", {
+  const { data, error } = await supabase.rpc("complete_student_mock", {
     p_student_id: studentId,
     p_mock_id: mockId,
     p_score: score,
@@ -356,6 +346,11 @@ export async function completeLiveMock(
 
   if (error) {
     return { ok: false, error: error.message };
+  }
+
+  const res = data as { ok?: boolean; error?: string } | null;
+  if (res && res.ok === false) {
+    return { ok: false, error: res.error || "Failed to complete mock interview" };
   }
 
   return { ok: true };
@@ -367,7 +362,7 @@ export async function issueLiveCertificate(
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
-  const { error } = await supabase.rpc("issue_student_certificate", {
+  const { data, error } = await supabase.rpc("issue_student_certificate", {
     p_student_id: studentId,
     p_label: label,
   });
@@ -376,17 +371,28 @@ export async function issueLiveCertificate(
     return { ok: false, error: error.message };
   }
 
+  const res = data as { ok?: boolean; error?: string } | null;
+  if (res && res.ok === false) {
+    return { ok: false, error: res.error || "Failed to issue certificate" };
+  }
+
   return { ok: true };
 }
 
 export async function updateLiveStudentTracks(
   studentId: string,
   tracks: TrackId[],
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
   // Delete existing tracks
-  await supabase.from("student_tracks").delete().eq("student_id", studentId);
+  const { error: delErr } = await supabase
+    .from("student_tracks")
+    .delete()
+    .eq("student_id", studentId);
+  if (delErr) {
+    return { ok: false, error: delErr.message };
+  }
 
   // Insert new 1-3 tracks
   const rows = tracks.slice(0, 3).map((track_id, idx) => ({
@@ -396,7 +402,10 @@ export async function updateLiveStudentTracks(
   }));
 
   if (rows.length > 0) {
-    await supabase.from("student_tracks").insert(rows);
+    const { error: insErr } = await supabase.from("student_tracks").insert(rows);
+    if (insErr) {
+      return { ok: false, error: insErr.message };
+    }
   }
 
   return { ok: true };
@@ -405,7 +414,7 @@ export async function updateLiveStudentTracks(
 export async function updateLiveReadiness(
   studentId: string,
   readiness: Partial<ReadinessInputs>,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
   const patch: Record<string, number> = {};
@@ -417,10 +426,14 @@ export async function updateLiveReadiness(
   if (typeof readiness.M === "number") patch["readiness_m"] = readiness.M;
 
   if (Object.keys(patch).length > 0) {
-    await supabase
+    const { error } = await supabase
       .from("student_profiles")
       .update({ ...patch, updated_at: new Date().toISOString() })
       .eq("id", studentId);
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
   }
 
   return { ok: true };

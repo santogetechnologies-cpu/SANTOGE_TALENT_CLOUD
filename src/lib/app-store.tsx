@@ -22,10 +22,10 @@ import {
 } from "./supabase";
 import {
   fetchLiveStudentProfile,
-  ensureLiveStudentProfile,
   fetchLiveStudentProgress,
   completeLiveSkill,
   completeLivePlacementDay,
+  completeLiveTechnicalDay,
   completeLiveLab,
   completeLiveDailyStep,
   submitLiveAssessment,
@@ -40,6 +40,7 @@ import {
   addLiveStudent,
   deleteLiveStudent,
   provisionLiveStudents,
+  resetLiveStudentPassword,
   fetchLivePlatformSettings,
   updateLivePlatformSettings,
   fetchLiveHiringDrives,
@@ -352,7 +353,10 @@ type Store = Persisted &
     issueCertificate: (label: string) => void;
     setCompletionRule: (rule: CompletionRule, secondaryMinimum?: number) => void;
     cronLogs: CronLog[];
-    resetStudentPassword: (email: string, newPassword: string) => { ok: boolean; message: string };
+    resetStudentPassword: (
+      email: string,
+      newPassword?: string,
+    ) => Promise<{ ok: boolean; message: string }>;
     signIn: (email: string, password: string) => { ok: boolean; role?: Role; error?: string };
     signInSupabase: (
       email: string,
@@ -373,36 +377,53 @@ type Store = Persisted &
     signOut: () => void;
     setRole: (r: Role) => void;
     toggleTheme: () => void;
-    setActiveTracks: (t: TrackId[]) => void;
-    completeLab: (labId: string, label: string) => void;
-    completeDailyStep: (step: keyof DailySteps) => void;
-    setReadiness: (r: Partial<ReadinessInputs>) => void;
-    updateBatch: (id: string, patch: Partial<Batch>) => void;
-    createBatch: (b: Omit<Batch, "lastSync">) => void;
-    deleteBatch: (id: string) => void;
-    deleteStudent: (email: string) => { ok: boolean; message: string };
+    setActiveTracks: (t: TrackId[]) => Promise<void> | void;
+    completeLab: (labId: string, label: string) => Promise<void> | void;
+    completeDailyStep: (step: keyof DailySteps) => Promise<void> | void;
+    setReadiness: (r: Partial<ReadinessInputs>) => Promise<void> | void;
+    updateBatch: (
+      id: string,
+      patch: Partial<Batch>,
+    ) => Promise<{ ok: boolean; error?: string | undefined }>;
+    createBatch: (
+      b: Omit<Batch, "lastSync">,
+    ) => Promise<{ ok: boolean; error?: string | undefined }>;
+    deleteBatch: (id: string) => Promise<{ ok: boolean; error?: string | undefined }>;
+    deleteStudent: (email: string) => Promise<{ ok: boolean; message: string }>;
     addStudent: (student: {
       name: string;
       email: string;
-      password?: string;
+      password?: string | undefined;
       rollNo: string;
       dept: string;
       batchId: string;
-      college?: string;
-      tracks?: TrackId[];
-    }) => { ok: boolean; message: string };
+      college?: string | undefined;
+      tracks?: TrackId[] | undefined;
+    }) => Promise<{ ok: boolean; message: string }>;
     syncBatch: (id: string) => void;
     hiringDrives: HiringDrive[];
-    addHiringDrive: (drive: Omit<HiringDrive, "id">) => void;
-    updateHiringDrive: (id: string, patch: Partial<HiringDrive>) => void;
-    deleteHiringDrive: (id: string) => void;
+    addHiringDrive: (
+      drive: Omit<HiringDrive, "id">,
+    ) => Promise<{ ok: boolean; error?: string | undefined }>;
+    updateHiringDrive: (
+      id: string,
+      patch: Partial<HiringDrive>,
+    ) => Promise<{ ok: boolean; error?: string | undefined }>;
+    deleteHiringDrive: (id: string) => Promise<{ ok: boolean; error?: string | undefined }>;
     recalculateStudentScore: (email: string) => { ok: boolean; newScore: number; message: string };
     recalculateAllScores: () => { count: number; message: string };
-    addProvisioned: (rows: ProvisionedStudent[]) => void;
+    addProvisioned: (
+      rows: ProvisionedStudent[],
+    ) => Promise<{ ok: boolean; count: number; message: string }>;
     clearAllProvisioned: () => { ok: boolean; count: number };
-    addContent: (item: Omit<ContentItem, "id" | "updated">) => void;
-    updateContent: (id: string, patch: Partial<ContentItem>) => void;
-    removeContent: (id: string) => void;
+    addContent: (
+      item: Omit<ContentItem, "id" | "updated">,
+    ) => Promise<{ ok: boolean; error?: string | undefined }>;
+    updateContent: (
+      id: string,
+      patch: Partial<ContentItem>,
+    ) => Promise<{ ok: boolean; error?: string | undefined }>;
+    removeContent: (id: string) => Promise<{ ok: boolean; error?: string | undefined }>;
     pushCronLog: (log: Omit<CronLog, "id" | "time">) => void;
     resetProgress: () => void;
   };
@@ -495,7 +516,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           const secondaryMinimum = platformSettings?.secondaryMinimum ?? 50;
 
           if (role === "student") {
-            const liveData = await ensureLiveStudentProfile(user.id, userEmail, user.user_metadata);
+            const liveData = await fetchLiveStudentProfile(user.id);
             if (liveData?.profile) {
               setLiveStudentId(liveData.profile.id);
               const progress = await fetchLiveStudentProgress(liveData.profile.id);
@@ -505,10 +526,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                 password: "●●●●●●●●",
                 name: liveData.profile.name,
                 firstName: liveData.profile.name.split(" ")[0] || "Student",
-                rollNo: liveData.profile.roll_no || "2026-LIVE",
-                dept: liveData.profile.dept || "CSE",
-                batchId: liveData.profile.batch_id || "BATCH-2026-LIVE-01",
-                college: liveData.profile.college || "Partner Engineering College",
+                rollNo: liveData.profile.roll_no || "",
+                dept: liveData.profile.dept || "",
+                batchId: liveData.profile.batch_id || "",
+                college: liveData.profile.college || "",
                 tracks: sanitizeTracks(liveData.tracks),
                 xp: liveData.profile.xp,
                 streak: liveData.profile.streak,
@@ -722,7 +743,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
 
     // Live student login — fetch from Supabase
-    const liveData = await ensureLiveStudentProfile(user.id, userEmail, user.user_metadata);
+    const liveData = await fetchLiveStudentProfile(user.id);
+    if (!liveData?.profile) {
+      toast.error("Student profile not provisioned. Please contact your administrator.");
+      return {
+        ok: false,
+        error: "Student profile not provisioned. Please contact your administrator.",
+      };
+    }
+
     if (liveData?.profile) {
       setLiveStudentId(liveData.profile.id);
       const progress = await fetchLiveStudentProgress(liveData.profile.id);
@@ -732,10 +761,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         password: "●●●●●●●●",
         name: liveData.profile.name,
         firstName: liveData.profile.name.split(" ")[0] || "Student",
-        rollNo: liveData.profile.roll_no || "2026-LIVE",
-        dept: liveData.profile.dept || "CSE",
-        batchId: liveData.profile.batch_id || "BATCH-2026-LIVE-01",
-        college: liveData.profile.college || "Partner Engineering College",
+        rollNo: liveData.profile.roll_no || "",
+        dept: liveData.profile.dept || "",
+        batchId: liveData.profile.batch_id || "",
+        college: liveData.profile.college || "",
         tracks: sanitizeTracks(liveData.tracks),
         xp: liveData.profile.xp,
         streak: liveData.profile.streak,
@@ -891,7 +920,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const completeTechDay = useCallback(
-    (day: number) => {
+    async (day: number) => {
+      if (state.authProvider === "supabase" && liveStudentId) {
+        const res = await completeLiveTechnicalDay(liveStudentId, day);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to record technical progress in Supabase");
+          return;
+        }
+      }
       patchProfile((p) => {
         if (p.completedTechDays.includes(day)) return p;
         return {
@@ -903,7 +939,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       });
       toast.success(`Tech milestone Day ${day} completed`);
     },
-    [patchProfile],
+    [state.authProvider, liveStudentId, patchProfile],
   );
 
   const completeLab = useCallback(
@@ -1024,9 +1060,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const setReadiness = useCallback(
-    (r: Partial<ReadinessInputs>) => {
+    async (r: Partial<ReadinessInputs>) => {
       if (state.authProvider === "supabase" && liveStudentId) {
-        void updateLiveReadiness(liveStudentId, r);
+        const res = await updateLiveReadiness(liveStudentId, r);
+        if (!res.ok) {
+          toast.error("Failed to update readiness in Supabase");
+          return;
+        }
       }
       patchProfile((p) => ({ ...p, readiness: { ...p.readiness, ...r } }));
     },
@@ -1038,65 +1078,92 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // -------------------------------------------------------------------------
 
   const createBatch = useCallback(
-    (b: Omit<Batch, "lastSync">) => {
+    async (b: Omit<Batch, "lastSync">) => {
       if (state.authProvider === "supabase") {
-        void createLiveBatch({ name: b.name, capacity: b.capacity, dept: b.dept });
+        const res = await createLiveBatch({ name: b.name, capacity: b.capacity, dept: b.dept });
+        if (!res.ok) {
+          toast.error(res.error || "Failed to create batch in Supabase");
+          return { ok: false, error: res.error };
+        }
+        toast.success(`Batch ${b.name} created in Supabase`);
+        return { ok: true };
       }
       setState((s) => ({
         ...s,
         batches: [...s.batches, { ...b, enrolled: 0, lastSync: new Date().toISOString() }],
       }));
       toast.success(`Batch ${b.name} created`);
+      return { ok: true };
     },
     [state.authProvider],
   );
 
   const updateBatch = useCallback(
-    (id: string, patchObj: Partial<Batch>) => {
+    async (id: string, patchObj: Partial<Batch>) => {
       if (state.authProvider === "supabase") {
-        void updateLiveBatch(id, patchObj);
+        const res = await updateLiveBatch(id, patchObj);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to update batch in Supabase");
+          return { ok: false, error: res.error };
+        }
+        toast.success("Batch updated in Supabase");
+        return { ok: true };
       }
       setState((s) => ({
         ...s,
         batches: s.batches.map((b) => (b.id === id ? { ...b, ...patchObj } : b)),
       }));
       toast.success("Batch updated");
+      return { ok: true };
     },
     [state.authProvider],
   );
 
   const deleteBatch = useCallback(
-    (id: string) => {
+    async (id: string) => {
       if (state.authProvider === "supabase") {
-        void deleteLiveBatch(id);
+        const res = await deleteLiveBatch(id);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to delete batch in Supabase");
+          return { ok: false, error: res.error };
+        }
+        toast.success("Batch archived in Supabase");
+        return { ok: true };
       }
       setState((s) => ({ ...s, batches: s.batches.filter((b) => b.id !== id) }));
       toast.success("Batch removed");
+      return { ok: true };
     },
     [state.authProvider],
   );
 
   const syncBatch = useCallback(
-    (id: string) => {
-      updateBatch(id, { lastSync: new Date().toLocaleString("en-GB") });
+    async (id: string) => {
+      await updateBatch(id, { lastSync: new Date().toLocaleString("en-GB") });
       toast.success("Batch synchronized");
     },
     [updateBatch],
   );
 
   const addStudent = useCallback(
-    (studentInput: {
+    async (studentInput: {
       name: string;
       email: string;
-      password?: string;
+      password?: string | undefined;
       rollNo: string;
       dept: string;
       batchId: string;
-      college?: string;
-      tracks?: TrackId[];
+      college?: string | undefined;
+      tracks?: TrackId[] | undefined;
     }) => {
       if (state.authProvider === "supabase") {
-        void addLiveStudent(studentInput);
+        const res = await addLiveStudent(studentInput);
+        if (!res.ok) {
+          toast.error(res.message || "Failed to provision student");
+          return { ok: false, message: res.message };
+        }
+        toast.success(`Student ${studentInput.name} provisioned in Supabase`);
+        return { ok: true, message: res.message };
       }
       toast.success(`Student ${studentInput.name} registered`);
       return { ok: true, message: `Student account created for ${studentInput.email}` };
@@ -1105,9 +1172,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const deleteStudent = useCallback(
-    (emailOrId: string) => {
+    async (emailOrId: string) => {
       if (state.authProvider === "supabase") {
-        void deleteLiveStudent(emailOrId);
+        const res = await deleteLiveStudent(emailOrId);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to delete student in Supabase");
+          return { ok: false, message: res.error || "Delete failed" };
+        }
+        toast.success("Student profile archived from live database");
+        return { ok: true, message: "Student removed" };
       }
       toast.success(`Student removed from roster`);
       return { ok: true, message: `Student removed` };
@@ -1116,11 +1189,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const addProvisioned = useCallback(
-    (rows: ProvisionedStudent[]) => {
+    async (rows: ProvisionedStudent[]) => {
       if (state.authProvider === "supabase") {
-        void provisionLiveStudents(rows);
+        const res = await provisionLiveStudents(rows);
+        if (!res.ok) {
+          toast.error(res.message || "Bulk provisioning encountered errors");
+          return { ok: false, count: res.count, message: res.message };
+        }
+        toast.success(res.message);
+        return { ok: true, count: res.count, message: res.message };
       }
       toast.success(`${rows.length} learners onboarded to backend`);
+      return { ok: true, count: rows.length, message: "Onboarded" };
     },
     [state.authProvider],
   );
@@ -1129,61 +1209,100 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return { ok: true, count: 0 };
   }, []);
 
-  const resetStudentPassword = useCallback((_email: string, _newPassword: string) => {
-    toast.success("Password reset initiated via Supabase Auth");
-    return { ok: true, message: "Password reset successfully" };
-  }, []);
+  const resetStudentPassword = useCallback(
+    async (email: string, newPassword?: string) => {
+      if (state.authProvider === "supabase") {
+        const res = await resetLiveStudentPassword(email, newPassword);
+        if (!res.ok) {
+          toast.error(res.message);
+          return { ok: false, message: res.message };
+        }
+        toast.success(res.message);
+        return { ok: true, message: res.message };
+      }
+      toast.success("Password reset updated in demo mode");
+      return { ok: true, message: "Password reset successfully" };
+    },
+    [state.authProvider],
+  );
 
   // -------------------------------------------------------------------------
   // Hiring Drives & Content CMS
   // -------------------------------------------------------------------------
 
   const addHiringDrive = useCallback(
-    (drive: Omit<HiringDrive, "id">) => {
+    async (drive: Omit<HiringDrive, "id">) => {
       if (state.authProvider === "supabase") {
-        void createLiveHiringDrive(drive);
+        const res = await createLiveHiringDrive(drive);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to create hiring drive in Supabase");
+          return { ok: false, error: res.error };
+        }
+        toast.success("Hiring requisition created in Supabase");
+        return { ok: true };
       }
       setState((s) => ({
         ...s,
         hiringDrives: [{ ...drive, id: `hd-${Date.now()}` }, ...(s.hiringDrives ?? [])],
       }));
       toast.success("Hiring requisition created");
+      return { ok: true };
     },
     [state.authProvider],
   );
 
   const updateHiringDrive = useCallback(
-    (id: string, patchObj: Partial<HiringDrive>) => {
+    async (id: string, patchObj: Partial<HiringDrive>) => {
       if (state.authProvider === "supabase") {
-        void updateLiveHiringDrive(id, patchObj);
+        const res = await updateLiveHiringDrive(id, patchObj);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to update hiring drive in Supabase");
+          return { ok: false, error: res.error };
+        }
+        toast.success("Hiring drive updated in Supabase");
+        return { ok: true };
       }
       setState((s) => ({
         ...s,
         hiringDrives: (s.hiringDrives ?? []).map((d) => (d.id === id ? { ...d, ...patchObj } : d)),
       }));
       toast.success("Hiring drive updated");
+      return { ok: true };
     },
     [state.authProvider],
   );
 
   const deleteHiringDrive = useCallback(
-    (id: string) => {
+    async (id: string) => {
       if (state.authProvider === "supabase") {
-        void deleteLiveHiringDrive(id);
+        const res = await deleteLiveHiringDrive(id);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to delete hiring drive in Supabase");
+          return { ok: false, error: res.error };
+        }
+        toast.success("Hiring drive removed from Supabase");
+        return { ok: true };
       }
       setState((s) => ({
         ...s,
         hiringDrives: (s.hiringDrives ?? []).filter((d) => d.id !== id),
       }));
       toast.success("Hiring drive removed");
+      return { ok: true };
     },
     [state.authProvider],
   );
 
   const addContent = useCallback(
-    (item: Omit<ContentItem, "id" | "updated">) => {
+    async (item: Omit<ContentItem, "id" | "updated">) => {
       if (state.authProvider === "supabase") {
-        void createLiveContentItem(item);
+        const res = await createLiveContentItem(item);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to create content item in Supabase");
+          return { ok: false, error: res.error };
+        }
+        toast.success("Content item created in Supabase");
+        return { ok: true };
       }
       setState((s) => ({
         ...s,
@@ -1193,14 +1312,21 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         ],
       }));
       toast.success("Content item created");
+      return { ok: true };
     },
     [state.authProvider],
   );
 
   const updateContent = useCallback(
-    (id: string, patchObj: Partial<ContentItem>) => {
+    async (id: string, patchObj: Partial<ContentItem>) => {
       if (state.authProvider === "supabase") {
-        void updateLiveContentItem(id, patchObj);
+        const res = await updateLiveContentItem(id, patchObj);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to update content item in Supabase");
+          return { ok: false, error: res.error };
+        }
+        toast.success("Content item updated in Supabase");
+        return { ok: true };
       }
       setState((s) => ({
         ...s,
@@ -1208,28 +1334,40 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           c.id === id ? { ...c, ...patchObj, updated: new Date().toLocaleString("en-GB") } : c,
         ),
       }));
+      return { ok: true };
     },
     [state.authProvider],
   );
 
   const removeContent = useCallback(
-    (id: string) => {
+    async (id: string) => {
       if (state.authProvider === "supabase") {
-        void deleteLiveContentItem(id);
+        const res = await deleteLiveContentItem(id);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to delete content item in Supabase");
+          return { ok: false, error: res.error };
+        }
+        toast.success("Content item removed from Supabase");
+        return { ok: true };
       }
       setState((s) => ({ ...s, content: s.content.filter((c) => c.id !== id) }));
       toast.success("Content item removed");
+      return { ok: true };
     },
     [state.authProvider],
   );
 
   const setCompletionRule = useCallback(
-    (rule: CompletionRule, secondaryMinimum?: number) => {
+    async (rule: CompletionRule, secondaryMinimum?: number) => {
       if (state.authProvider === "supabase") {
-        void updateLivePlatformSettings({
+        const res = await updateLivePlatformSettings({
           completionRule: rule,
           secondaryMinimum: secondaryMinimum ?? state.secondaryMinimum,
         });
+        if (!res.ok) {
+          toast.error("Failed to update platform settings in Supabase");
+          return;
+        }
       }
       setState((s) => ({
         ...s,

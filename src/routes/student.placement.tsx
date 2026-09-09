@@ -90,12 +90,20 @@ const SEED: Opening[] = [
   },
 ];
 
+import { useLiveStudentProfile } from "@/lib/data";
+
 function PlacementPage() {
   const store = useAppStore();
   const isLive = store.authProvider === "supabase";
   const [demoRows, setDemoRows] = useState(SEED);
   const [liveStages, setLiveStages] = useState<Record<string, Stage | null>>({});
   const [query, setQuery] = useState("");
+
+  const { data: liveProfileData } = useLiveStudentProfile(
+    store.supabaseSession?.user?.id,
+    isLive && !!store.supabaseSession?.user?.id,
+  );
+  const talentScore = isLive ? (liveProfileData?.profile?.talent_score ?? 0) : store.talentScore;
 
   const { data: liveDrives } = useQuery({
     queryKey: ["live", "hiring-drives"],
@@ -162,10 +170,10 @@ function PlacementPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Talent Score" value={store.talentScore} />
+        <Stat label="Talent Score" value={talentScore} />
         <Stat
           label="Unlocked openings"
-          value={rows.filter((r) => store.talentScore >= r.minScore).length}
+          value={rows.filter((r) => talentScore >= r.minScore).length}
           accent="var(--brand-emerald)"
         />
         <Stat
@@ -192,7 +200,7 @@ function PlacementPage() {
       >
         <div className="space-y-2.5">
           {filtered.map((r) => {
-            const unlocked = store.talentScore >= r.minScore;
+            const unlocked = talentScore >= r.minScore;
             const progress = r.stage ? ((STAGES.indexOf(r.stage) + 1) / STAGES.length) * 100 : 0;
             return (
               <div key={r.id} className="rounded-xl border border-line-soft bg-surface-soft p-4">

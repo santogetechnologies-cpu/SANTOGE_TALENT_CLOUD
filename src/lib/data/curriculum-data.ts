@@ -42,11 +42,12 @@ export async function fetchLiveCurriculumSkills(trackId: TrackId): Promise<DbCur
 export async function fetchLiveContentItems(): Promise<ContentItem[]> {
   const supabase = getSupabaseClient();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("content_items")
     .select("id,title,kind,track,duration,status,updated_at")
     .order("updated_at", { ascending: false });
 
+  if (error) throw new Error(error.message);
   if (!data) return [];
 
   return (
@@ -109,6 +110,56 @@ export async function updateLiveContentItem(
   if (error) return { ok: false, error: error.message };
 
   return { ok: true };
+}
+
+export async function upsertLiveContentItem(
+  filter: { track: string; kind: ContentItem["kind"]; titlePrefix: string },
+  item: Omit<ContentItem, "id" | "updated">,
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  const supabase = getSupabaseClient();
+
+  const { data: existing, error: findErr } = await supabase
+    .from("content_items")
+    .select("id")
+    .eq("track", filter.track)
+    .eq("kind", filter.kind)
+    .ilike("title", `${filter.titlePrefix}%`)
+    .maybeSingle();
+
+  if (findErr) {
+    return { ok: false, error: findErr.message };
+  }
+
+  if (existing?.id) {
+    const { error: updErr } = await supabase
+      .from("content_items")
+      .update({
+        title: item.title,
+        duration: item.duration,
+        status: item.status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existing.id);
+
+    if (updErr) return { ok: false, error: updErr.message };
+    return { ok: true, id: existing.id };
+  } else {
+    const { data: insData, error: insErr } = await supabase
+      .from("content_items")
+      .insert({
+        title: item.title,
+        kind: item.kind,
+        track: item.track,
+        duration: item.duration,
+        status: item.status,
+        updated_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+
+    if (insErr) return { ok: false, error: insErr.message };
+    return { ok: true, id: (insData as { id: string })?.id };
+  }
 }
 
 export async function deleteLiveContentItem(id: string): Promise<{ ok: boolean; error?: string }> {

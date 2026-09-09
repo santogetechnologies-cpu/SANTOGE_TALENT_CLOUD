@@ -53,9 +53,37 @@ export const Route = createFileRoute("/student/accelerator")({
   component: AcceleratorPage,
 });
 
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useLiveStudentProfile,
+  useLiveStudentProgress,
+  completeLiveDailyStep,
+  completeLivePlacementDay,
+} from "@/lib/data";
+
 function AcceleratorPage() {
   const store = useAppStore();
-  const [selectedDayNum, setSelectedDayNum] = useState<number>(store.placementDay || 1);
+  const queryClient = useQueryClient();
+  const isLive = store.authProvider === "supabase";
+
+  const { data: liveProfileData } = useLiveStudentProfile(
+    store.supabaseSession?.user?.id,
+    isLive && !!store.supabaseSession?.user?.id,
+  );
+  const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
+  const { data: liveProgressData } = useLiveStudentProgress(
+    liveStudentId || undefined,
+    isLive && !!liveStudentId,
+  );
+
+  const cohortDay = isLive ? liveProfileData?.profile?.placement_day || 1 : store.placementDay || 1;
+  const streak = isLive ? (liveProfileData?.profile?.streak ?? 0) : store.streak;
+  const xp = isLive ? (liveProfileData?.profile?.xp ?? 0) : store.xp;
+  const daily = isLive
+    ? liveProgressData?.daily || { english: false, aptitude: false, practice: false }
+    : store.daily;
+
+  const [selectedDayNum, setSelectedDayNum] = useState<number>(cohortDay);
   const [activeTab, setActiveTab] = useState<
     "practice" | "english-instructor" | "aptitude-instructor" | "90days-schedule"
   >("practice");
@@ -77,7 +105,7 @@ function AcceleratorPage() {
   const correctMcqs = currentPlan.practice.mcqs.filter((m, i) => answers[i] === m.answer).length;
   const isPuzzleCorrect = puzzleAnswer === currentPlan.practice.puzzle.answer;
   const totalCorrect = correctMcqs + (isPuzzleCorrect ? 1 : 0);
-  const doneCount = Object.values(store.daily).filter(Boolean).length;
+  const doneCount = Object.values(daily).filter(Boolean).length;
 
   const toggleWeek = (wNum: number) => {
     setExpandedWeeks((prev) => ({ ...prev, [wNum]: !prev[wNum] }));
@@ -89,7 +117,7 @@ function AcceleratorPage() {
       `[voice] Microphone active: Recording 60s pitch on Day ${selectedDayNum} prompt…`,
       ...l,
     ]);
-    setTimeout(() => {
+    setTimeout(async () => {
       setPitch(false);
       setLog((l) => [
         `[voice] Analysis: Clarity 89% · Pace 76 wpm (Optimal) · Vocabulary Hits: ${currentPlan.english.keyVocabulary.slice(0, 2).join(", ")}`,
@@ -97,7 +125,19 @@ function AcceleratorPage() {
         "[voice] Competency evidence logged to Talent Score engine (+25 XP)",
         ...l,
       ]);
-      store.completeDailyStep("practice");
+      if (isLive && liveStudentId) {
+        await completeLiveDailyStep(liveStudentId, "practice");
+        await completeLivePlacementDay(liveStudentId, selectedDayNum);
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-progress", liveStudentId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+        });
+      } else {
+        store.completeDailyStep("practice");
+        store.completePlacementDay(selectedDayNum);
+      }
       toast.success("Voice pitch analysed successfully!", {
         description: "+25 XP awarded · Communication pillar updated",
       });
@@ -123,7 +163,7 @@ function AcceleratorPage() {
               <GraduationCap className="size-3.5" />
               {isInstructorMode ? "Instructor Lesson Mode Active" : "Switch to Instructor View"}
             </button>
-            <Chip tone="amber">🔥 Day {store.streak} Streak</Chip>
+            <Chip tone="amber">🔥 Day {streak} Streak</Chip>
           </div>
         }
       />
@@ -143,7 +183,7 @@ function AcceleratorPage() {
         />
         <Stat
           label="Placement XP Balance"
-          value={`${store.xp} XP`}
+          value={`${xp} XP`}
           accent="var(--brand-purple)"
           hint="+25 XP per completed block"
         />

@@ -112,8 +112,68 @@ const RECRUITERS: RecruiterItem[] = [
   },
 ];
 
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useLiveHiringDrives,
+  useLiveStudentProfile,
+  useLiveStudentProgress,
+  useLivePlatformSettings,
+  updateLiveReadiness,
+  completeLiveMock,
+  issueLiveCertificate,
+} from "@/lib/data";
+import { trackProgress } from "@/lib/curriculum";
+
 function GatewayPage() {
   const store = useAppStore();
+  const queryClient = useQueryClient();
+  const isLive = store.authProvider === "supabase";
+
+  const { data: liveProfileData } = useLiveStudentProfile(
+    store.supabaseSession?.user?.id,
+    isLive && !!store.supabaseSession?.user?.id,
+  );
+  const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
+  const { data: liveProgressData } = useLiveStudentProgress(
+    liveStudentId || undefined,
+    isLive && !!liveStudentId,
+  );
+  const { data: livePlatformSettings } = useLivePlatformSettings(isLive);
+  const { data: liveHiringDrives } = useLiveHiringDrives(isLive);
+
+  const activeTracks: TrackId[] = isLive ? liveProfileData?.tracks || [] : store.activeTracks;
+
+  const talentScore = isLive ? (liveProfileData?.profile?.talent_score ?? 0) : store.talentScore;
+  const attendance = isLive ? liveProgressData?.attendance || [] : store.attendance;
+  const assessments = isLive ? liveProgressData?.assessments || {} : store.assessments;
+  const certifications = isLive ? liveProgressData?.certifications || [] : store.certifications;
+  const skills = isLive ? liveProgressData?.skills || [] : store.skills;
+
+  const completionRule = isLive
+    ? (livePlatformSettings?.completionRule ?? "primary-plus-minimum")
+    : store.completionRule;
+  const secondaryMinimum = isLive
+    ? (livePlatformSettings?.secondaryMinimum ?? 50)
+    : store.secondaryMinimum;
+
+  const getTrackPct = (trackId: TrackId) => {
+    if (!isLive) return store.trackPercent(trackId);
+    return trackProgress(trackId, skills);
+  };
+
+  const recruitersList = useMemo(() => {
+    if (isLive) {
+      return (liveHiringDrives || []).map((d) => ({
+        company: d.company,
+        track: (activeTracks[0] || "mern") as TrackId,
+        minScore: d.minScore,
+        role: d.roles,
+        package: d.ctc,
+      }));
+    }
+    return RECRUITERS;
+  }, [isLive, liveHiringDrives, activeTracks]);
+
   const [resume, setResume] = useState(SAMPLE_RESUME);
   const [log, setLog] = useState<string[]>([]);
   const [mockScore, setMockScore] = useState(82);
@@ -124,7 +184,7 @@ function GatewayPage() {
   );
   const atsScore = Math.round((found.length / KEYWORDS.length) * 100);
 
-  const scan = () => {
+  const scan = async () => {
     const missing = KEYWORDS.filter((k) => !found.includes(k));
     setLog([
       `[ats] Parsed ${resume.split(/\s+/).length} tokens across experience blocks`,
@@ -136,33 +196,66 @@ function GatewayPage() {
         ? "[ats] PASS — Profile forwarded to Employer Marketplace"
         : "[ats] REVIEW — Below 70% threshold",
     ]);
-    store.setReadiness({ R: atsScore });
+    if (isLive && liveStudentId) {
+      await updateLiveReadiness(liveStudentId, { R: atsScore });
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+      });
+    } else {
+      store.setReadiness({ R: atsScore });
+    }
     toast.success(`ATS Score updated to ${atsScore}%`);
   };
 
-  const handleMock = () => {
-    store.completeMock("ai-interview-01", mockScore);
+  const handleMock = async () => {
+    if (isLive && liveStudentId) {
+      await completeLiveMock(liveStudentId, "ai-interview-01", mockScore);
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-progress", liveStudentId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+      });
+    } else {
+      store.completeMock("ai-interview-01", mockScore);
+    }
+    toast.success(`Mock interview scored (${mockScore}%) · Pillar M updated!`);
   };
 
-  const handleIssueCert = (trackName: string) => {
-    store.issueCertificate(`SantoGe Certified · ${trackName}`);
+  const handleIssueCert = async (trackName: string) => {
+    const label = `SantoGe Certified · ${trackName}`;
+    if (isLive && liveStudentId) {
+      await issueLiveCertificate(liveStudentId, label);
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-progress", liveStudentId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+      });
+    } else {
+      store.issueCertificate(label);
+    }
+    toast.success(`Certificate issued: ${label}`);
   };
 
   // Dual gate calculations
-  const activeTrackDetails = store.activeTracks.map((id, index) => {
+  const activeTrackDetails = activeTracks.map((id, index) => {
     const t = trackById(id);
-    const pct = store.trackPercent(id);
-    const required =
-      index === 0 ? 100 : store.completionRule === "all-tracks" ? 100 : store.secondaryMinimum;
+    const pct = getTrackPct(id);
+    const required = index === 0 ? 100 : completionRule === "all-tracks" ? 100 : secondaryMinimum;
     const passed = pct >= required;
     return { ...t, pct, required, passed, isPrimary: index === 0 };
   });
 
   const allTechPassed = activeTrackDetails.every((t) => t.passed);
-  const placementAttendancePassed = store.attendance.length >= 90;
-  const placementAssessmentPassed = (store.assessments["90"] ?? 0) >= 60;
+  const placementAttendancePassed = attendance.length >= 90;
+  const placementAssessmentPassed = (assessments["90"] ?? 0) >= 60;
   const placementPassed = placementAttendancePassed && placementAssessmentPassed;
   const dualGatePassed = allTechPassed && placementPassed;
+
+  const eligibleCompaniesCount = recruitersList.filter(
+    (r) => talentScore >= r.minScore && activeTracks.includes(r.track),
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -186,7 +279,7 @@ function GatewayPage() {
         />
         <Stat
           label="Talent Score"
-          value={`${store.talentScore}/1000`}
+          value={`${talentScore}/1000`}
           accent="var(--brand-cyan)"
           hint="Composite readiness"
         />
@@ -198,7 +291,7 @@ function GatewayPage() {
         />
         <Stat
           label="Matched Openings"
-          value={store.eligibleCompanies}
+          value={eligibleCompaniesCount}
           accent="var(--brand-emerald)"
           hint="Recruiter marketplace"
         />
@@ -227,9 +320,9 @@ function GatewayPage() {
             </div>
             <p className="text-xs text-copy-subtle">
               Rule:{" "}
-              {store.completionRule === "all-tracks"
+              {completionRule === "all-tracks"
                 ? "All selected tracks ≥ 100%"
-                : `Primary track 100% + secondary tracks ≥ ${store.secondaryMinimum}%`}
+                : `Primary track 100% + secondary tracks ≥ ${secondaryMinimum}%`}
             </p>
 
             <div className="space-y-2.5 pt-1">
@@ -284,11 +377,11 @@ function GatewayPage() {
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="font-semibold text-foreground">Cohort Attendance</span>
                   <span className="font-mono text-[11px] text-brand-cyan">
-                    {store.attendance.length} / 90 Days
+                    {attendance.length} / 90 Days
                   </span>
                 </div>
                 <Meter
-                  value={Math.round((store.attendance.length / 90) * 100)}
+                  value={Math.round((attendance.length / 90) * 100)}
                   accent="var(--brand-purple)"
                 />
               </div>
@@ -299,17 +392,13 @@ function GatewayPage() {
                   <span
                     className={cn(
                       "font-mono text-[11px]",
-                      (store.assessments["90"] ?? 0) >= 60
-                        ? "text-brand-emerald"
-                        : "text-copy-subtle",
+                      (assessments["90"] ?? 0) >= 60 ? "text-brand-emerald" : "text-copy-subtle",
                     )}
                   >
-                    {store.assessments["90"]
-                      ? `${store.assessments["90"]}% (Req ≥ 60%)`
-                      : "Pending Day 90"}
+                    {assessments["90"] ? `${assessments["90"]}% (Req ≥ 60%)` : "Pending Day 90"}
                   </span>
                 </div>
-                <Meter value={store.assessments["90"] ?? 0} accent="var(--brand-emerald)" />
+                <Meter value={assessments["90"] ?? 0} accent="var(--brand-emerald)" />
               </div>
             </div>
           </div>
@@ -367,9 +456,9 @@ function GatewayPage() {
 
           <Panel title="Verified Certifications" subtitle="Issue upon track milestone completion">
             <div className="space-y-2">
-              {store.activeTracks.map((id) => {
+              {activeTracks.map((id) => {
                 const t = trackById(id);
-                const isIssued = store.certifications.some((c) => c.includes(t.name));
+                const isIssued = certifications.some((c) => c.includes(t.name));
                 return (
                   <div
                     key={id}
@@ -403,12 +492,11 @@ function GatewayPage() {
       <Panel
         title="Recruiter Talent Marketplace"
         subtitle="Companies actively filtering STC candidates based on technical track, Talent Score, and verified projects"
-        action={<Chip tone="emerald">{RECRUITERS.length} Requisitions Active</Chip>}
+        action={<Chip tone="emerald">{recruitersList.length} Requisitions Active</Chip>}
       >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {RECRUITERS.map((r) => {
-            const isEligible =
-              store.talentScore >= r.minScore && store.activeTracks.includes(r.track);
+          {recruitersList.map((r) => {
+            const isEligible = talentScore >= r.minScore && activeTracks.includes(r.track);
             const track = TRACKS.find((t) => t.id === r.track);
             return (
               <div

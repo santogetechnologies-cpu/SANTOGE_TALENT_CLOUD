@@ -443,7 +443,7 @@ function LoginPage() {
                   onClick={() => setShowConfig(!showConfig)}
                   className="flex items-center gap-1.5 text-xs font-semibold text-copy-subtle hover:text-foreground"
                 >
-                  <Settings className="size-3.5" /> Endpoint Settings{" "}
+                  <Settings className="size-3.5" /> Developer Endpoint Override{" "}
                   <ChevronDown
                     className={cn("size-3 transition-transform", showConfig && "rotate-180")}
                   />

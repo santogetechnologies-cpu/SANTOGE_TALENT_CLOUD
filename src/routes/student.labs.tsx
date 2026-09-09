@@ -26,9 +26,27 @@ export const Route = createFileRoute("/student/labs")({
   component: LabsPage,
 });
 
+import { useLiveStudentProfile, useLiveStudentProgress } from "@/lib/data";
+
 function LabsPage() {
   const store = useAppStore();
-  const [selected, setSelected] = useState<TrackId>(store.activeTracks[0] ?? "mern");
+  const isLive = store.authProvider === "supabase";
+
+  const { data: liveProfileData } = useLiveStudentProfile(
+    store.supabaseSession?.user?.id,
+    isLive && !!store.supabaseSession?.user?.id,
+  );
+  const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
+  const { data: liveProgressData } = useLiveStudentProgress(
+    liveStudentId || undefined,
+    isLive && !!liveStudentId,
+  );
+
+  const activeTracks: TrackId[] = isLive ? liveProfileData?.tracks || [] : store.activeTracks;
+
+  const completedLabs = isLive ? liveProgressData?.completedLabs || [] : store.completedLabs;
+
+  const [selected, setSelected] = useState<TrackId>(activeTracks[0] ?? "mern");
   const [query, setQuery] = useState("");
 
   const filtered = TRACKS.filter(
@@ -43,7 +61,7 @@ function LabsPage() {
       <PageHeader
         title="Technical Labs"
         subtitle="Fifteen sandboxed skill engines. Execute, verify, and earn Talent Score."
-        action={<Chip tone="cyan">{store.completedLabs.length} labs verified</Chip>}
+        action={<Chip tone="cyan">{completedLabs.length} labs verified</Chip>}
       />
 
       <div className="grid gap-4 lg:grid-cols-[300px_1fr]">

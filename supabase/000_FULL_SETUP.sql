@@ -432,6 +432,9 @@ BEGIN
 END;
 $$;
 
+REVOKE EXECUTE ON FUNCTION public.grant_admin_role(TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.grant_admin_role(TEXT) TO service_role;
+
 -- ============================================================================
 -- 6. STORED PROCEDURES & ATOMIC RPCs
 -- ============================================================================

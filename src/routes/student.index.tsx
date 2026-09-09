@@ -77,15 +77,47 @@ export function getScoreTier(score: number) {
 type DrillTab = "skills" | "placement";
 type FilterMode = "all" | "pending" | "completed";
 
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useLiveStudentProfile,
+  useLiveStudentProgress,
+  completeLivePlacementDay,
+  completeLiveTechnicalDay,
+  completeLiveDailyStep,
+} from "@/lib/data";
+
 function TodayLearningPage() {
   const store = useAppStore();
-  const cohortDay = store.placementDay || 1;
+  const queryClient = useQueryClient();
+  const isLive = store.authProvider === "supabase";
+
+  const { data: liveProfileData } = useLiveStudentProfile(
+    store.supabaseSession?.user?.id,
+    isLive && !!store.supabaseSession?.user?.id,
+  );
+  const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
+  const { data: liveProgressData } = useLiveStudentProgress(
+    liveStudentId || undefined,
+    isLive && !!liveStudentId,
+  );
+
+  const cohortDay = isLive ? liveProfileData?.profile?.placement_day || 1 : store.placementDay || 1;
+
+  const activeTracks: TrackId[] = isLive ? liveProfileData?.tracks || [] : store.activeTracks;
+
+  const streak = isLive ? (liveProfileData?.profile?.streak ?? 0) : store.streak;
+  const talentScore = isLive ? (liveProfileData?.profile?.talent_score ?? 0) : store.talentScore;
+  const attendance = isLive ? liveProgressData?.attendance || [] : store.attendance;
+  const completedTechDays = isLive
+    ? liveProgressData?.completedTechDays || []
+    : store.completedTechDays || [];
+
   const [selectedDayNum, setSelectedDayNum] = useState<number>(cohortDay);
   const [activeDrillTab, setActiveDrillTab] = useState<DrillTab>("skills");
   const [filterMode, setFilterMode] = useState<FilterMode>("pending");
 
   // Primary active technical track
-  const primaryTrackId: TrackId = store.activeTracks[0] ?? "mern";
+  const primaryTrackId: TrackId = activeTracks[0] ?? "mern";
   const primaryTrack = trackById(primaryTrackId);
   const technicalSyllabus = useMemo(() => getTrackSyllabus(primaryTrackId), [primaryTrackId]);
 
@@ -107,8 +139,8 @@ function TodayLearningPage() {
   const daysList = useMemo(() => {
     return Array.from({ length: Math.max(cohortDay, 1) }, (_, i) => {
       const dNum = i + 1;
-      const isPlacementDone = store.attendance.includes(dNum);
-      const isTechDone = (store.completedTechDays || []).includes(dNum);
+      const isPlacementDone = attendance.includes(dNum);
+      const isTechDone = completedTechDays.includes(dNum);
       const isFullyFinished = isPlacementDone && isTechDone;
 
       const accDay = getAcceleratorDay(dNum);
@@ -129,7 +161,7 @@ function TodayLearningPage() {
         isFriday: dNum % 5 === 0,
       };
     });
-  }, [cohortDay, store.attendance, store.completedTechDays, technicalSyllabus]);
+  }, [cohortDay, attendance, completedTechDays, technicalSyllabus]);
 
   const filteredDays = useMemo(() => {
     if (filterMode === "pending") return daysList.filter((d) => !d.isFullyFinished);
@@ -139,7 +171,7 @@ function TodayLearningPage() {
 
   const pendingCount = daysList.filter((d) => !d.isFullyFinished).length;
   const finishedCount = daysList.filter((d) => d.isFullyFinished).length;
-  const tier = getScoreTier(store.talentScore);
+  const tier = getScoreTier(talentScore);
 
   const handleSelectDayAndTab = (dayNum: number, tab: DrillTab) => {
     setSelectedDayNum(dayNum);
@@ -156,19 +188,40 @@ function TodayLearningPage() {
 
   const handleRecordVoicePitch = () => {
     setPitchLoading(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       setPitchLoading(false);
       setPitchRecorded(true);
-      store.completeDailyStep("practice");
-      store.completePlacementDay(selectedDayNum);
+      if (isLive && liveStudentId) {
+        await completeLiveDailyStep(liveStudentId, "practice");
+        await completeLivePlacementDay(liveStudentId, selectedDayNum);
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-progress", liveStudentId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+        });
+      } else {
+        store.completeDailyStep("practice");
+        store.completePlacementDay(selectedDayNum);
+      }
       toast.success(`Day ${selectedDayNum} Placement Accelerator verified (+25 XP)!`, {
         description: "Voice pitch STAR score recorded · Attendance updated to finished.",
       });
     }, 1500);
   };
 
-  const handleCompleteTechnicalLab = () => {
-    store.completeTechDay(selectedDayNum);
+  const handleCompleteTechnicalLab = async () => {
+    if (isLive && liveStudentId) {
+      await completeLiveTechnicalDay(liveStudentId, selectedDayNum);
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-progress", liveStudentId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+      });
+    } else {
+      store.completeTechDay(selectedDayNum);
+    }
     toast.success(`Day ${selectedDayNum} ${primaryTrack.name} Lab verified (+50 XP)!`, {
       description: "Technical exercise passed automated tests · To-Do updated to finished.",
     });
@@ -182,9 +235,9 @@ function TodayLearningPage() {
         subtitle={`18 Weeks × 5 Working Days = 90 Days · Current Cohort Day: Day ${cohortDay}/90 · Daily To-Do Backlog & Twin 30-Min Exercises.`}
         action={
           <div className="flex items-center gap-2">
-            <Chip tone="amber">🔥 Day {store.streak} Streak</Chip>
+            <Chip tone="amber">🔥 Day {streak} Streak</Chip>
             <Chip tone={tier.tone}>
-              {tier.label} ({store.talentScore}/1000)
+              {tier.label} ({talentScore}/1000)
             </Chip>
           </div>
         }
@@ -212,7 +265,7 @@ function TodayLearningPage() {
         />
         <Stat
           label="Talent Score"
-          value={`${store.talentScore}/1000`}
+          value={`${talentScore}/1000`}
           accent="var(--brand-purple)"
           hint={tier.desc}
         />
@@ -455,7 +508,7 @@ function TodayLearningPage() {
             title={`Day ${selectedDayNum} Technical Practice · ${primaryTrack.name}`}
             subtitle={`Week ${weekIdx + 1}: ${currentWeekPlan.theme} · 100% In-Browser Code & Lab Simulation`}
             action={
-              (store.completedTechDays || []).includes(selectedDayNum) ? (
+              completedTechDays.includes(selectedDayNum) ? (
                 <Chip tone="emerald">Lab Verified ✓</Chip>
               ) : (
                 <Chip tone="amber">Pending Submission</Chip>
@@ -536,7 +589,7 @@ function TodayLearningPage() {
             title={`Day ${selectedDayNum} Placement Accelerator · ${placementPlan.theme}`}
             subtitle="10m English + 10m Aptitude + 10m In-App Guided Practice with AI Voice Pitch"
             action={
-              store.attendance.includes(selectedDayNum) ? (
+              attendance.includes(selectedDayNum) ? (
                 <Chip tone="emerald">Attendance Recorded ✓</Chip>
               ) : (
                 <Chip tone="purple">Pending Practice</Chip>

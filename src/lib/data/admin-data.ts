@@ -41,6 +41,8 @@ export type LiveAnalyticsData = {
   funnel: Array<{ label: string; count: number; pct: number; color: string }>;
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Fetch authoritative Live Super Admin analytics metrics from Supabase.
  */
@@ -58,9 +60,11 @@ export async function fetchLiveAdminAnalytics(
     .eq("status", "active");
 
   if (selectedInstId !== "all") {
-    studentQuery = studentQuery.or(
-      `institution_id.eq.${selectedInstId},college.ilike.%${selectedInstId}%`,
-    );
+    if (UUID_REGEX.test(selectedInstId)) {
+      studentQuery = studentQuery.eq("institution_id", selectedInstId);
+    } else {
+      studentQuery = studentQuery.ilike("college", `%${selectedInstId}%`);
+    }
   }
 
   const [studentsRes, batchesRes, institutionsRes] = await Promise.all([
@@ -75,6 +79,10 @@ export async function fetchLiveAdminAnalytics(
       .select("id,name,code,status,created_at,updated_at")
       .eq("status", "active"),
   ]);
+
+  if (studentsRes.error) throw new Error(studentsRes.error.message);
+  if (batchesRes.error) throw new Error(batchesRes.error.message);
+  if (institutionsRes.error) throw new Error(institutionsRes.error.message);
 
   const students = (studentsRes.data || []) as unknown as Array<{
     id: string;
@@ -232,9 +240,12 @@ export async function fetchLiveStudentRoster(options?: {
     .order("created_at", { ascending: false });
 
   if (options?.institutionId && options.institutionId !== "all") {
-    query = query.or(
-      `institution_id.eq.${options.institutionId},college.ilike.%${options.institutionId}%`,
-    );
+    const instId = options.institutionId;
+    if (UUID_REGEX.test(instId)) {
+      query = query.eq("institution_id", instId);
+    } else {
+      query = query.ilike("college", `%${instId}%`);
+    }
   }
 
   if (options?.searchQuery) {
@@ -258,7 +269,9 @@ export async function fetchLiveStudentRoster(options?: {
 
   query = query.range(page * pageSize, (page + 1) * pageSize - 1);
 
-  const { data: studentRows, count } = await query;
+  const { data: studentRows, count, error: studentErr } = await query;
+  if (studentErr) throw new Error(studentErr.message);
+
   if (!studentRows || studentRows.length === 0) {
     return { items: [], totalCount: count || 0 };
   }
@@ -266,11 +279,13 @@ export async function fetchLiveStudentRoster(options?: {
   const studentIds = studentRows.map((s: { id: string }) => s.id);
 
   // Fetch tracks for these students
-  const { data: tracksData } = await supabase
+  const { data: tracksData, error: tracksErr } = await supabase
     .from("student_tracks")
     .select("student_id,track_id,position")
     .in("student_id", studentIds)
     .order("position", { ascending: true });
+
+  if (tracksErr) throw new Error(tracksErr.message);
 
   const tracksByStudent: Record<string, TrackId[]> = {};
   (tracksData || []).forEach((t: { student_id: string; track_id: string }) => {
@@ -304,24 +319,24 @@ export async function fetchLiveStudentRoster(options?: {
     auth_user_id: s.auth_user_id,
     name: s.name,
     email: s.email,
-    rollNo: s.roll_no || "2026-ROLL",
-    dept: s.dept || "CSE",
-    college: s.college || "Partner Engineering College",
-    batchId: s.batch_id || "BATCH-2026-LIVE-01",
+    rollNo: s.roll_no || "",
+    dept: s.dept || "",
+    college: s.college || "",
+    batchId: s.batch_id || "",
     status: (s.status === "suspended" || s.status === "deleted" ? s.status : "active") as
       "active" | "suspended" | "deleted",
-    placementDay: s.placement_day,
-    talentScore: s.talent_score,
-    tracks: tracksByStudent[s.id] || ["mern", "cloud"],
+    placementDay: s.placement_day ?? 1,
+    talentScore: s.talent_score ?? 0,
+    tracks: tracksByStudent[s.id] || [],
     readiness: {
-      T: s.readiness_t,
-      C: s.readiness_c,
-      A: s.readiness_a,
-      E: s.readiness_e,
-      R: s.readiness_r,
-      M: s.readiness_m ?? 80,
+      T: s.readiness_t ?? 0,
+      C: s.readiness_c ?? 0,
+      A: s.readiness_a ?? 0,
+      E: s.readiness_e ?? 0,
+      R: s.readiness_r ?? 0,
+      M: s.readiness_m ?? 0,
     },
-    gateCleared: s.placement_day >= 30,
+    gateCleared: (s.placement_day ?? 1) >= 30,
   }));
 
   return { items, totalCount: count || items.length };
@@ -342,6 +357,9 @@ export async function fetchLiveBatches(): Promise<Array<DbBatch & { enrolled_cou
       .order("name", { ascending: true }),
     supabase.from("student_profiles").select("batch_id").eq("status", "active"),
   ]);
+
+  if (batchesRes.error) throw new Error(batchesRes.error.message);
+  if (studentsRes.error) throw new Error(studentsRes.error.message);
 
   const batchCounts: Record<string, number> = {};
   (studentsRes.data || []).forEach((s: { batch_id: string | null }) => {
@@ -417,15 +435,12 @@ export async function deleteLiveBatch(id: string): Promise<{ ok: boolean; error?
 // Student Management Mutations
 // ---------------------------------------------------------------------------
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /**
  * Resolves a batch name or UUID string into a valid public.batches(id) UUID.
- * Idempotently creates the batch row if it doesn't exist yet.
+ * Strictly verifies existence without auto-creating missing batches.
  */
 export async function resolveBatchId(
   batchIdentifier: string | undefined | null,
-  dept: string = "CSE",
 ): Promise<string | null> {
   if (!batchIdentifier) return null;
   const raw = batchIdentifier.trim();
@@ -444,20 +459,7 @@ export async function resolveBatchId(
     .maybeSingle();
   if (byName?.id) return byName.id;
 
-  // Create batch dynamically if not found
-  const { data: created } = await supabase
-    .from("batches")
-    .insert({
-      name: raw,
-      dept: dept || "CSE",
-      capacity: 300,
-      status: "active",
-      updated_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
-
-  return (created as { id: string })?.id ?? null;
+  return null;
 }
 
 export async function deleteLiveStudent(
@@ -480,117 +482,141 @@ export async function deleteLiveStudent(
 export async function addLiveStudent(student: {
   name: string;
   email: string;
-  password?: string;
+  password?: string | undefined;
   rollNo: string;
   dept: string;
   batchId: string;
-  college?: string;
-  tracks?: TrackId[];
+  college?: string | undefined;
+  tracks?: TrackId[] | undefined;
 }): Promise<{ ok: boolean; message: string; studentId?: string }> {
   const supabase = getSupabaseClient();
   const email = student.email.trim().toLowerCase();
   const password = student.password || "Temp@1234";
 
-  // Resolve batch UUID
-  const resolvedBatchUuid = await resolveBatchId(student.batchId, student.dept);
-
-  // 1. Sign up Supabase Auth user
-  const { data: authData, error: authErr } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        name: student.name,
-        role: "student",
-        roll_no: student.rollNo,
-        dept: student.dept,
-        batch_id: resolvedBatchUuid || student.batchId,
-        college: student.college || "Partner Engineering College",
-        tracks: student.tracks || ["mern", "cloud"],
+  // Secure Edge Function ONLY (no browser auth signup fallback)
+  const { data: edgeData, error: edgeErr } = await supabase.functions.invoke(
+    "admin-provision-students",
+    {
+      body: {
+        action: "create_single",
+        student: {
+          student_name: student.name,
+          email,
+          password,
+          roll_no: student.rollNo,
+          dept: student.dept,
+          batch_id: student.batchId,
+          college: student.college || "",
+          course_1: student.tracks?.[0] || "",
+          course_2: student.tracks?.[1] || "",
+          course_3: student.tracks?.[2] || "",
+        },
       },
+    },
+  );
+
+  if (edgeErr) {
+    return { ok: false, message: edgeErr.message || "Admin provisioning service error" };
+  }
+
+  const firstResult = edgeData?.results?.[0];
+  if (!firstResult?.ok) {
+    return {
+      ok: false,
+      message: firstResult?.error || edgeData?.error || "Failed to provision student in Supabase",
+    };
+  }
+
+  return { ok: true, message: `Student account provisioned for ${email}` };
+}
+
+export interface ProvisionResult {
+  ok: boolean;
+  count: number;
+  failedCount: number;
+  results: Array<{ email: string; ok: boolean; error?: string }>;
+  message: string;
+}
+
+export async function provisionLiveStudents(rows: ProvisionedStudent[]): Promise<ProvisionResult> {
+  const supabase = getSupabaseClient();
+
+  // Single bulk Edge Function call ONLY (no browser loop or fallback)
+  const { data: edgeData, error: edgeErr } = await supabase.functions.invoke(
+    "admin-provision-students",
+    {
+      body: {
+        action: "provision",
+        students: rows,
+      },
+    },
+  );
+
+  if (edgeErr) {
+    return {
+      ok: false,
+      count: 0,
+      failedCount: rows.length,
+      results: rows.map((r) => ({ email: r.email, ok: false, error: edgeErr.message })),
+      message: edgeErr.message || "Admin provisioning service failed",
+    };
+  }
+
+  return {
+    ok: Boolean(edgeData?.ok),
+    count: Number(edgeData?.count) || 0,
+    failedCount: Number(edgeData?.failedCount) || 0,
+    results: Array.isArray(edgeData?.results) ? edgeData.results : [],
+    message: edgeData?.message || `${edgeData?.count || 0} students provisioned`,
+  };
+}
+
+export async function resetLiveStudentPassword(
+  email: string,
+  newPassword?: string,
+  authUserId?: string,
+): Promise<{ ok: boolean; message: string }> {
+  const supabase = getSupabaseClient();
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (!newPassword || newPassword.length < 6) {
+    return { ok: false, message: "Password must be at least 6 characters long" };
+  }
+
+  // Look up auth_user_id from student_profiles if not passed directly
+  let targetAuthUserId = authUserId;
+  if (!targetAuthUserId) {
+    const { data: prof } = await supabase
+      .from("student_profiles")
+      .select("auth_user_id")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+    if (prof?.auth_user_id) {
+      targetAuthUserId = prof.auth_user_id;
+    }
+  }
+
+  // Secure Edge Function ONLY (no email recovery fallback)
+  const { data, error } = await supabase.functions.invoke("admin-provision-students", {
+    body: {
+      action: "reset_password",
+      email: normalizedEmail,
+      auth_user_id: targetAuthUserId,
+      new_password: newPassword,
     },
   });
 
-  if (authErr && !authErr.message.includes("already registered")) {
-    return { ok: false, message: authErr.message };
+  if (error) {
+    return { ok: false, message: error.message || "Failed to reset password via Edge Function" };
   }
 
-  const authUserId = authData?.user?.id;
-
-  // 2. Insert/Upsert into student_profiles (NEVER storing password in database)
-  const { data: profileData, error: profileErr } = await supabase
-    .from("student_profiles")
-    .upsert(
-      {
-        ...(authUserId ? { auth_user_id: authUserId } : {}),
-        name: student.name,
-        email,
-        roll_no: student.rollNo,
-        dept: student.dept,
-        batch_id: resolvedBatchUuid,
-        college: student.college || "Partner Engineering College",
-        status: "active",
-        xp: 0,
-        streak: 0,
-        placement_day: 1,
-        talent_score: 0,
-        readiness_t: 50,
-        readiness_c: 50,
-        readiness_a: 50,
-        readiness_e: 50,
-        readiness_r: 50,
-        readiness_m: 50,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "email" },
-    )
-    .select("id")
-    .single();
-
-  if (profileErr) {
-    return { ok: false, message: profileErr.message };
-  }
-
-  const studentId = (profileData as { id: string })?.id;
-
-  // 3. Assign technical tracks
-  if (studentId && student.tracks && student.tracks.length > 0) {
-    await supabase.from("student_tracks").delete().eq("student_id", studentId);
-    const trackRows = student.tracks.slice(0, 3).map((t, idx) => ({
-      student_id: studentId,
-      track_id: t,
-      position: idx + 1,
-    }));
-    await supabase.from("student_tracks").insert(trackRows);
-  }
-
-  return { ok: true, message: `Student account provisioned for ${email}`, studentId };
-}
-
-export async function provisionLiveStudents(
-  rows: ProvisionedStudent[],
-): Promise<{ ok: boolean; count: number; message: string }> {
-  let createdCount = 0;
-
-  for (const r of rows) {
-    const rawTracks = [r.course_1, r.course_2, r.course_3].filter(Boolean) as TrackId[];
-    const res = await addLiveStudent({
-      name: r.student_name,
-      email: r.email,
-      password: r.password || "Temp@1234",
-      rollNo: r.roll_no,
-      dept: r.dept,
-      batchId: r.batch_id,
-      college: r.college || "Partner Engineering College",
-      tracks: rawTracks.length > 0 ? rawTracks : ["mern", "cloud"],
-    });
-    if (res.ok) createdCount += 1;
+  if (!data?.ok) {
+    return { ok: false, message: data?.error || data?.message || "Failed to reset password" };
   }
 
   return {
     ok: true,
-    count: createdCount,
-    message: `${createdCount} students provisioned to Supabase backend`,
+    message: data.message || `Password successfully updated for ${normalizedEmail}`,
   };
 }
 
@@ -612,10 +638,10 @@ export async function fetchLivePlatformSettings(): Promise<DbPlatformSettings["v
 
 export async function updateLivePlatformSettings(
   value: DbPlatformSettings["value"],
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
-  await supabase.from("platform_settings").upsert(
+  const { error } = await supabase.from("platform_settings").upsert(
     {
       key: "completion_rules",
       value,
@@ -623,6 +649,10 @@ export async function updateLivePlatformSettings(
     },
     { onConflict: "key" },
   );
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
 
   return { ok: true };
 }

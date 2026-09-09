@@ -11,7 +11,9 @@ import {
   createLiveHiringDrive,
   addLiveStudent,
   deleteLiveStudent,
+  useLiveBatches,
 } from "@/lib/data";
+
 import {
   Building2,
   Users,
@@ -90,8 +92,8 @@ function AdminAnalytics() {
   const [newStudentRollNo, setNewStudentRollNo] = useState("");
   const [newStudentDept, setNewStudentDept] = useState("CSE");
   const [newStudentBatchId, setNewStudentBatchId] = useState("");
-  const [newStudentCollege, setNewStudentCollege] = useState("Partner Engineering College");
-  const [newStudentTracks, setNewStudentTracks] = useState<TrackId[]>(["mern", "cloud"]);
+  const [newStudentCollege, setNewStudentCollege] = useState("");
+  const [newStudentTracks, setNewStudentTracks] = useState<TrackId[]>(["mern"]);
 
   const readinessOf = (b: { enrolled: number; capacity: number }) =>
     Math.round((b.enrolled / Math.max(b.capacity, 1)) * 100);
@@ -140,6 +142,11 @@ function AdminAnalytics() {
       }),
     enabled: isLive,
   });
+
+  const { data: liveBatches } = useLiveBatches(isLive);
+  const availableBatches = useMemo(() => {
+    return isLive ? liveBatches || [] : store.batches;
+  }, [isLive, liveBatches, store.batches]);
 
   // Real learners only for Demo Mode
   const allStudents = useMemo(() => {
@@ -528,7 +535,7 @@ function AdminAnalytics() {
         toast.error(res.message);
       }
     } else {
-      const res = store.addStudent({
+      const res = await store.addStudent({
         name: newStudentName.trim(),
         email: newStudentEmail.trim().toLowerCase(),
         password: password,
@@ -617,7 +624,10 @@ function AdminAnalytics() {
         />
         <Stat
           label="Marketplace Ready Learners"
-          value={marketplaceReadyStudents.length.toLocaleString()}
+          value={(isLive
+            ? (liveAnalytics?.marketplaceReadyCount ?? 0)
+            : marketplaceReadyStudents.length
+          ).toLocaleString()}
           accent="var(--brand-emerald)"
           hint={`${marketplacePercent}% direct offer qualified`}
         />
@@ -745,12 +755,12 @@ function AdminAnalytics() {
                 <Plus className="size-3" />
                 <span>Add Drive</span>
               </button>
-              <Chip tone="emerald">{store.hiringDrives.length} Drives</Chip>
+              <Chip tone="emerald">{activeDrives.length} Drives</Chip>
             </div>
           }
         >
           <div className="space-y-2.5">
-            {store.hiringDrives.length === 0 ? (
+            {activeDrives.length === 0 ? (
               <div className="rounded-xl border border-line-soft bg-surface-soft p-6 text-center text-xs text-copy-subtle">
                 <Briefcase className="mx-auto size-7 text-copy-subtle/50 mb-2" />
                 <p className="font-semibold text-foreground">No active partner requisitions</p>
@@ -759,7 +769,7 @@ function AdminAnalytics() {
                 </p>
               </div>
             ) : (
-              store.hiringDrives.map((d) => {
+              activeDrives.map((d) => {
                 const eligible = instStudents.filter((s) => s.talentScore >= d.minScore).length;
                 const isSelected = selectedDriveId === d.id;
                 return (
@@ -821,11 +831,12 @@ function AdminAnalytics() {
             <button
               type="button"
               onClick={() => {
-                if (!newStudentBatchId && store.batches.length > 0) {
-                  setNewStudentBatchId(store.batches[0]?.id || "BATCH-2026-ABC-CSE-01");
+                if (!newStudentBatchId && availableBatches.length > 0) {
+                  setNewStudentBatchId(availableBatches[0]?.id || "BATCH-2026-ABC-CSE-01");
                 }
                 setIsAddStudentModalOpen(true);
               }}
+
               className="inline-flex items-center gap-1.5 rounded-xl border border-brand-purple/40 bg-brand-purple/10 px-3 py-1.5 text-xs font-semibold text-brand-purple hover:bg-brand-purple/20 transition-colors shadow-sm"
             >
               <Plus className="size-3.5" />
@@ -1310,7 +1321,7 @@ function AdminAnalytics() {
                       }
                     }
                   } else {
-                    const res = store.deleteStudent(deleteTargetStudent.email);
+                    const res = await store.deleteStudent(deleteTargetStudent.email);
                     if (res.ok) {
                       toast.success(`Student removed from demo roster`);
                     }
@@ -1564,15 +1575,18 @@ function AdminAnalytics() {
                     Placement Accelerator Cohort <span className="text-brand-rose">*</span>
                   </label>
                   <select
-                    value={newStudentBatchId || store.batches[0]?.id || ""}
+                    value={newStudentBatchId || availableBatches[0]?.id || ""}
                     onChange={(e) => setNewStudentBatchId(e.target.value)}
                     className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60"
                   >
-                    {store.batches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name} ({b.enrolled}/{b.capacity})
-                      </option>
-                    ))}
+                    {availableBatches.map((b) => {
+                      const enrolled = "enrolled_count" in b ? b.enrolled_count : b.enrolled;
+                      return (
+                        <option key={b.id} value={b.id}>
+                          {b.name} ({enrolled}/{b.capacity})
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               </div>

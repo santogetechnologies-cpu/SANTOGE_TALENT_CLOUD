@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Chip, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore } from "@/lib/app-store";
 import { PLACEMENT_DAYS, placementDay } from "@/lib/curriculum";
@@ -32,15 +32,37 @@ export const Route = createFileRoute("/student/batch")({
 
 const CHANNELS = ["English", "Aptitude", "Communication", "Announcements", "Reminders"];
 
+import {
+  useLiveStudentProfile,
+  useLiveStudentProgress,
+  completeLivePlacementDay,
+  submitLiveAssessment,
+} from "@/lib/data";
+
 function BatchPage() {
   const store = useAppStore();
+  const queryClient = useQueryClient();
   const isLive = store.authProvider === "supabase";
-  const batchId = store.student?.batchId ?? "BATCH";
+
+  const { data: liveProfileData } = useLiveStudentProfile(
+    store.supabaseSession?.user?.id,
+    isLive && !!store.supabaseSession?.user?.id,
+  );
+  const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
+  const { data: liveProgressData } = useLiveStudentProgress(
+    liveStudentId || undefined,
+    isLive && !!liveStudentId,
+  );
+
+  const batchId = isLive
+    ? liveProfileData?.profile?.batch_id || ""
+    : (store.student?.batchId ?? "BATCH");
 
   // In Live mode, fetch real batch details and enrolled count from Supabase
   const liveBatchQuery = useQuery({
     queryKey: ["live", "student-batch", batchId],
     queryFn: async () => {
+      if (!batchId) return { batch: null, enrolled: 0 };
       const supabase = getSupabaseClient();
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
         batchId,
@@ -63,40 +85,48 @@ function BatchPage() {
             .select("id", { count: "exact", head: true })
             .eq("batch_id", batchId)
             .eq("status", "active")
-        : Promise.resolve({ count: 0 });
+        : Promise.resolve({ count: 0, error: null });
 
       const [bRes, cRes] = await Promise.all([batchPromise, countPromise]);
+      if (bRes.error) throw new Error(bRes.error.message);
       return {
         batch: bRes.data,
         enrolled: cRes?.count || 0,
       };
     },
-    enabled: isLive && !!batchId && batchId !== "BATCH",
+    enabled: isLive && !!batchId,
   });
 
   const demoBatch = store.batches.find((b) => b.id === batchId);
   const batchName = isLive
-    ? liveBatchQuery.data?.batch?.name || batchId
+    ? liveBatchQuery.data?.batch?.name ||
+      (batchId ? (batchId.length > 12 ? `Batch ${batchId.slice(0, 8)}` : batchId) : "Not Assigned")
     : demoBatch?.name || batchId;
   const batchCapacity = isLive
-    ? liveBatchQuery.data?.batch?.capacity || 300
+    ? liveBatchQuery.data?.batch?.capacity || (batchId ? 300 : 0)
     : demoBatch?.capacity || 300;
   const batchDept = isLive
-    ? liveBatchQuery.data?.batch?.dept || "Engineering"
+    ? liveBatchQuery.data?.batch?.dept || liveProfileData?.profile?.dept || "Not Assigned"
     : demoBatch?.dept || "Engineering";
   const batchEnrolled = isLive ? liveBatchQuery.data?.enrolled || 0 : demoBatch?.enrolled || 218;
   const lastSync = isLive
     ? liveBatchQuery.data?.batch?.last_sync_at
       ? new Date(liveBatchQuery.data.batch.last_sync_at).toLocaleString("en-GB")
-      : "Daily 06:00 broadcast"
+      : "Not Synced"
     : (demoBatch?.lastSync ?? "handled by the daily 06:00 broadcast");
 
-  const [selected, setSelected] = useState(store.placementDay);
+  const placementDayNum = isLive
+    ? (liveProfileData?.profile?.placement_day ?? 1)
+    : store.placementDay || 1;
+  const attendance = isLive ? (liveProgressData?.attendance ?? []) : store.attendance;
+  const assessments = isLive ? (liveProgressData?.assessments ?? {}) : store.assessments;
+
+  const [selected, setSelected] = useState(placementDayNum);
   const day = placementDay(selected);
-  const attendancePct = Math.round((store.attendance.length / 90) * 100);
+  const attendancePct = Math.round((attendance.length / 90) * 100);
   const assessmentDays = useMemo(() => PLACEMENT_DAYS.filter((d) => d.assessment), []);
-  const attendedToday = store.attendance.includes(selected);
-  const assessmentScore = store.assessments[String(selected)];
+  const attendedToday = attendance.includes(selected);
+  const assessmentScore = assessments[String(selected)];
 
   return (
     <div className="space-y-6">
@@ -109,14 +139,14 @@ function BatchPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
           label="Cohort day"
-          value={`Day ${store.placementDay}/90`}
+          value={`Day ${placementDayNum}/90`}
           hint="Same day for every batchmate"
         />
         <Stat
           label="Attendance"
           value={`${attendancePct}%`}
           accent="var(--brand-emerald)"
-          hint={`${store.attendance.length} of 90 days`}
+          hint={`${attendance.length} of 90 days`}
         />
         <Stat
           label="Batch size"
@@ -126,7 +156,7 @@ function BatchPage() {
         />
         <Stat
           label="Assessments taken"
-          value={Object.keys(store.assessments).length}
+          value={Object.keys(assessments).length}
           accent="var(--brand-amber)"
           hint="Weekly + milestone"
         />
@@ -179,7 +209,7 @@ function BatchPage() {
       >
         <div className="grid grid-cols-10 gap-1.5">
           {PLACEMENT_DAYS.map((d) => {
-            const attended = store.attendance.includes(d.day);
+            const attended = attendance.includes(d.day);
             return (
               <button
                 key={d.day}
@@ -218,7 +248,19 @@ function BatchPage() {
           </ul>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
-              onClick={() => store.completePlacementDay(day.day)}
+              onClick={async () => {
+                if (isLive && liveStudentId) {
+                  await completeLivePlacementDay(liveStudentId, day.day);
+                  queryClient.invalidateQueries({
+                    queryKey: ["live", "student-progress", liveStudentId],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+                  });
+                } else {
+                  store.completePlacementDay(day.day);
+                }
+              }}
               disabled={attendedToday}
               className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-3 py-2 text-[11px] font-bold text-surface-dark disabled:opacity-50"
             >
@@ -233,7 +275,20 @@ function BatchPage() {
             </a>
             {day.assessment && (
               <button
-                onClick={() => store.submitAssessment(day.day, 60 + ((day.day * 7) % 35))}
+                onClick={async () => {
+                  const score = 60 + ((day.day * 7) % 35);
+                  if (isLive && liveStudentId) {
+                    await submitLiveAssessment(liveStudentId, day.day, score);
+                    queryClient.invalidateQueries({
+                      queryKey: ["live", "student-progress", liveStudentId],
+                    });
+                    queryClient.invalidateQueries({
+                      queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+                    });
+                  } else {
+                    store.submitAssessment(day.day, score);
+                  }
+                }}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-line-soft px-3 py-2 text-[11px] font-bold text-foreground hover:border-brand-cyan/60"
               >
                 <ClipboardCheck className="size-3.5" />{" "}
@@ -250,7 +305,7 @@ function BatchPage() {
       >
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {assessmentDays.map((d) => {
-            const score = store.assessments[String(d.day)];
+            const score = assessments[String(d.day)];
             return (
               <div
                 key={d.day}

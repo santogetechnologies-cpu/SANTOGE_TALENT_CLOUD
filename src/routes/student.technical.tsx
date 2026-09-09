@@ -51,10 +51,40 @@ export const Route = createFileRoute("/student/technical")({
   component: TechnicalPage,
 });
 
+import { useQueryClient } from "@tanstack/react-query";
+import { useLiveStudentProfile, useLiveStudentProgress, updateLiveStudentTracks } from "@/lib/data";
+
 function TechnicalPage() {
   const store = useAppStore();
-  const tracks =
-    store.activeTracks && store.activeTracks.length > 0 ? store.activeTracks : ["mern" as TrackId];
+  const queryClient = useQueryClient();
+  const isLive = store.authProvider === "supabase";
+
+  const { data: liveProfileData } = useLiveStudentProfile(
+    store.supabaseSession?.user?.id,
+    isLive && !!store.supabaseSession?.user?.id,
+  );
+  const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
+  const { data: liveProgressData } = useLiveStudentProgress(
+    liveStudentId || undefined,
+    isLive && !!liveStudentId,
+  );
+
+  const tracks: TrackId[] = isLive ? liveProfileData?.tracks || [] : store.activeTracks;
+
+  const skills = isLive ? liveProgressData?.skills || [] : store.skills;
+
+  const calculateTrackPct = (trackId: TrackId) => {
+    if (!isLive) return store.trackPercent(trackId);
+    const mods = modulesFor(trackId);
+    const total = mods.reduce((s, m) => s + m.skills.length, 0);
+    if (total === 0) return 0;
+    const done = mods.reduce(
+      (s, m) => s + m.skills.filter((sk) => skills.includes(sk.id)).length,
+      0,
+    );
+    return Math.round((done / total) * 100);
+  };
+
   const [selectedDomain, setSelectedDomain] = useState<string>("all");
   const [open, setOpen] = useState<TrackId>(tracks[0] ?? "mern");
   const [syllabusViewTab, setSyllabusViewTab] = useState<
@@ -75,9 +105,9 @@ function TechnicalPage() {
   const track = trackById(currentTrackId);
   const syllabus = useMemo(() => getTrackSyllabus(track.id), [track.id]);
   const modules = modulesFor(track.id);
-  const upcoming = nextSkill(track.id, store.skills);
+  const upcoming = nextSkill(track.id, skills);
   const avg = Math.round(
-    tracks.reduce((s, t) => s + store.trackPercent(t), 0) / Math.max(tracks.length, 1),
+    tracks.reduce((s, t) => s + calculateTrackPct(t), 0) / Math.max(tracks.length, 1),
   );
 
   const filteredCatalog = useMemo(() => {
@@ -85,23 +115,47 @@ function TechnicalPage() {
     return TRACKS.filter((t) => t.domain === selectedDomain);
   }, [selectedDomain]);
 
-  const toggleTrackEnrollment = (id: TrackId) => {
-    const isEnrolled = store.activeTracks.includes(id);
+  const toggleTrackEnrollment = async (id: TrackId) => {
+    const isEnrolled = tracks.includes(id);
     if (isEnrolled) {
-      if (store.activeTracks.length <= 1) {
+      if (tracks.length <= 1) {
         toast.error("You must maintain at least 1 active technical track.");
         return;
       }
-      store.setActiveTracks(store.activeTracks.filter((t) => t !== id));
+      const nextTracks = tracks.filter((t) => t !== id);
+      if (isLive && liveStudentId) {
+        const res = await updateLiveStudentTracks(liveStudentId, nextTracks);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to update tracks");
+          return;
+        }
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+        });
+      } else {
+        store.setActiveTracks(nextTracks);
+      }
       toast.success(`Removed ${trackById(id).name} from active tracks.`);
     } else {
-      if (store.activeTracks.length >= 3) {
+      if (tracks.length >= 3) {
         toast.error(
           "Maximum 3 active technical courses allowed simultaneously. Change in settings.",
         );
         return;
       }
-      store.setActiveTracks([...store.activeTracks, id]);
+      const nextTracks = [...tracks, id];
+      if (isLive && liveStudentId) {
+        const res = await updateLiveStudentTracks(liveStudentId, nextTracks);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to update tracks");
+          return;
+        }
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+        });
+      } else {
+        store.setActiveTracks(nextTracks);
+      }
       toast.success(`Enrolled in ${trackById(id).name}!`);
     }
   };
@@ -164,7 +218,7 @@ function TechnicalPage() {
         />
         <Stat
           label="Competency Mastery"
-          value={`${store.trackPercent(track.id)}%`}
+          value={`${calculateTrackPct(track.id)}%`}
           accent="var(--brand-amber)"
           hint={`Active track: ${track.short}`}
         />
@@ -184,7 +238,7 @@ function TechnicalPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from(new Set(tracks || [])).map((id, i) => {
             const t = trackById(id);
-            const pct = store.trackPercent(id);
+            const pct = calculateTrackPct(id);
             const isViewing = currentTrackId === id;
 
             return (

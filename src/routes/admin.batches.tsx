@@ -232,7 +232,7 @@ function BatchesPage() {
     }
   };
 
-  const handleDispatchTelegram = () => {
+  const handleDispatchTelegram = async () => {
     if (!broadcastMessage.trim()) return;
     setIsBroadcasting(true);
     const learnerCount = isLive
@@ -240,19 +240,30 @@ function BatchesPage() {
       : allLearners.filter((l) => l.batchId === broadcastTargetBatch).length;
 
     setBroadcastLogs((prev) => [
-      `[tx] Dispatching webhook to Telegram channel: t.me/stc-${broadcastTargetBatch.toLowerCase()}`,
+      `[tx] Dispatching webhook simulation to Telegram channel: t.me/stc-${broadcastTargetBatch.toLowerCase()}`,
       `[tx] Payload: "${broadcastMessage.slice(0, 60)}…"`,
       ...prev,
     ]);
 
+    if (isLive) {
+      const batchItem = (liveBatches || []).find(
+        (b) => b.name === broadcastTargetBatch || b.id === broadcastTargetBatch,
+      );
+      if (batchItem) {
+        await updateLiveBatch(batchItem.id, { last_sync_at: new Date().toISOString() });
+        queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
+      }
+    } else {
+      store.syncBatch(broadcastTargetBatch);
+    }
+
     setTimeout(() => {
       setIsBroadcasting(false);
-      store.syncBatch(broadcastTargetBatch);
       setBroadcastLogs((prev) => [
-        `[delivered] Broadcast received by ${learnerCount} active devices via Telegram Bot API (200 OK)`,
+        `[simulated] Broadcast payload validated for ${learnerCount} active devices via @SantoGeTalentBot simulator (200 OK)`,
         ...prev,
       ]);
-      toast.success(`Broadcast delivered to ${broadcastTargetBatch}!`);
+      toast.success(`Simulated broadcast dispatched to ${broadcastTargetBatch}!`);
     }, 1200);
   };
 
@@ -768,8 +779,8 @@ function BatchesPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const res = store.deleteStudent(deleteTargetStudent.email);
+                onClick={async () => {
+                  const res = await store.deleteStudent(deleteTargetStudent.email);
                   if (res.ok) {
                     setDeleteTargetStudent(null);
                   }
