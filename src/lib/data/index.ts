@@ -10,3 +10,4 @@ export * from "./admin-data";
 export * from "./curriculum-data";
 export * from "./placement-data";
 export * from "./hooks";
+export * from "./batch-lookup";

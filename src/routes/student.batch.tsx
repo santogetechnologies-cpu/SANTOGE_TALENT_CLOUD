@@ -37,6 +37,7 @@ import {
   useLiveStudentProgress,
   completeLivePlacementDay,
   submitLiveAssessment,
+  isUuid,
 } from "@/lib/data";
 
 function BatchPage() {
@@ -97,7 +98,13 @@ function BatchPage() {
 
   const batchName =
     liveBatchQuery.data?.batch?.name ||
-    (batchId ? (batchId.length > 12 ? `Batch ${batchId.slice(0, 8)}` : batchId) : "Not Assigned");
+    (batchId
+      ? isUuid(batchId)
+        ? liveBatchQuery.isLoading
+          ? "Loading Cohort..."
+          : "My Placement Cohort"
+        : batchId
+      : "Not Assigned");
   const batchCapacity = liveBatchQuery.data?.batch?.capacity ?? 300;
   const batchDept =
     liveBatchQuery.data?.batch?.dept || liveProfileData?.profile?.dept || "Engineering";

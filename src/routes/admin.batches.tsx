@@ -11,6 +11,7 @@ import {
   fetchLiveStudentRoster,
   deleteLiveStudent,
 } from "@/lib/data/admin-data";
+import { useBatchLookup } from "@/lib/data";
 import {
   RefreshCw,
   Plus,
@@ -54,6 +55,7 @@ export const Route = createFileRoute("/admin/batches")({
 
 function BatchesPage() {
   const queryClient = useQueryClient();
+  const { getBatchName } = useBatchLookup(true);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -315,7 +317,7 @@ function BatchesPage() {
                   </div>
                 )
               }
-              subtitle={`${b.dept} · ID: ${b.id}`}
+              subtitle={`${b.dept} · Active Placement Cohort`}
               action={
                 <div className="flex items-center gap-2">
                   <button
@@ -392,7 +394,7 @@ function BatchesPage() {
 
               <div className="mt-3 flex items-center justify-between text-[11px] text-copy-subtle">
                 <span className="flex items-center gap-1 text-brand-cyan">
-                  <Send className="size-3" /> t.me/stc-{b.id.toLowerCase()}
+                  <Send className="size-3" /> t.me/stc-{b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
                 </span>
                 <span>Last Synced: {b.lastSync ?? "Pending daily cron"}</span>
               </div>
@@ -419,7 +421,7 @@ function BatchesPage() {
               >
                 {batchesWithCounts.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.name} ({b.enrolled} learners · t.me/stc-{b.id.toLowerCase()})
+                    {b.name} ({b.enrolled} learners)
                   </option>
                 ))}
               </select>
@@ -553,7 +555,7 @@ function BatchesPage() {
             <div className="flex items-center justify-between border-b border-line-soft pb-3">
               <div>
                 <h3 className="font-display text-base font-bold text-foreground">
-                  Cohort Roster: {rosterBatchId}
+                  Cohort Roster: {getBatchName(rosterBatchId)}
                 </h3>
                 <p className="text-xs text-copy-subtle mt-0.5">
                   Learners enrolled in this synchronized placement batch
@@ -600,7 +602,7 @@ function BatchesPage() {
                             name: learner.name,
                             email: learner.email,
                             rollNo: learner.rollNo,
-                            batchId: learner.batchId,
+                            batchId: getBatchName(learner.batchId),
                             dept: learner.dept,
                             college: learner.college,
                           });
@@ -694,8 +696,8 @@ function BatchesPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-copy-subtle font-medium">Cohort Batch:</span>
-                <span className="font-mono font-bold text-brand-purple">
-                  {deleteTargetStudent.batchId}
+                <span className="font-bold text-brand-purple">
+                  {getBatchName(deleteTargetStudent.batchId)}
                 </span>
               </div>
             </div>

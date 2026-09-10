@@ -75,6 +75,7 @@ import {
   useLiveStudentProgress,
   useLivePlatformSettings,
   updateLiveReadiness,
+  useBatchLookup,
 } from "@/lib/data";
 
 function SettingsPage() {
@@ -91,6 +92,7 @@ function SettingsPage() {
     !!liveStudentId,
   );
   const { data: livePlatformSettings } = useLivePlatformSettings(true);
+  const { getBatchName } = useBatchLookup(true);
 
   const activeTracks: (typeof TRACKS)[number]["id"][] =
     liveProfileData?.tracks || store.activeTracks;
@@ -197,7 +199,7 @@ function SettingsPage() {
             <span className="text-[11px] font-semibold text-copy-subtle flex items-center gap-1.5">
               <Shield className="size-3.5 text-brand-emerald" /> Placement Accelerator Batch
             </span>
-            <p className="text-sm font-bold text-foreground font-mono">{studentBatchId}</p>
+            <p className="text-sm font-bold text-foreground">{getBatchName(studentBatchId)}</p>
             <p className="text-xs text-brand-emerald font-semibold">
               Day {placementDay} of 90 · Synchronized Cohort
             </p>

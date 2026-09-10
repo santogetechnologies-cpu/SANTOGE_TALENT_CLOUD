@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { supabaseAuth, getSupabaseConfig } from "@/lib/supabase";
 import { resetLiveStudentPassword } from "@/lib/data/admin-data";
+import { useBatchLookup } from "@/lib/data";
 
 export interface ResetPasswordStudent {
   name?: string;
@@ -51,6 +52,7 @@ export function AdminResetPasswordModal({
   const [sendSupabaseEmail, setSendSupabaseEmail] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { getBatchName } = useBatchLookup(isOpen);
   const [successInfo, setSuccessInfo] = useState<{
     email: string;
     password: string;
@@ -245,8 +247,8 @@ export function AdminResetPasswordModal({
                     <span className="block text-[10px] uppercase tracking-wider font-semibold">
                       Cohort Batch
                     </span>
-                    <span className="font-mono text-brand-purple font-semibold">
-                      {matchedStudent.batchId || "Default"}
+                    <span className="text-brand-purple font-semibold">
+                      {getBatchName(matchedStudent.batchId, "Default")}
                     </span>
                   </div>
                 </div>

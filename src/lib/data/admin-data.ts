@@ -10,6 +10,7 @@
 
 import { getSupabaseClient } from "@/lib/supabase";
 import type { TrackId } from "@/lib/tracks";
+import { isUuid } from "./batch-lookup";
 import type {
   DbBatch,
   DbStudentProfile,
@@ -37,6 +38,7 @@ export type LiveRosterItem = {
   dept: string;
   college: string;
   batchId: string;
+  batchName?: string;
   status: "active" | "suspended" | "deleted";
   placementDay: number;
   talentScore: number;
@@ -265,9 +267,22 @@ export async function fetchLiveStudentRoster(options?: {
 
   if (options?.searchQuery) {
     const q = options.searchQuery.trim();
-    query = query.or(
-      `name.ilike.%${q}%,email.ilike.%${q}%,roll_no.ilike.%${q}%,dept.ilike.%${q}%,college.ilike.%${q}%`,
-    );
+    // Search batch names so searching e.g. "PSG" or "BATCH-2026" returns learners in that batch
+    const { data: matchedBatches } = await supabase
+      .from("batches")
+      .select("id")
+      .ilike("name", `%${q}%`);
+
+    const matchedBatchIds = (matchedBatches || []).map((b: { id: string }) => b.id);
+    if (matchedBatchIds.length > 0) {
+      query = query.or(
+        `name.ilike.%${q}%,email.ilike.%${q}%,roll_no.ilike.%${q}%,dept.ilike.%${q}%,college.ilike.%${q}%,batch_id.in.(${matchedBatchIds.join(",")})`,
+      );
+    } else {
+      query = query.or(
+        `name.ilike.%${q}%,email.ilike.%${q}%,roll_no.ilike.%${q}%,dept.ilike.%${q}%,college.ilike.%${q}%`,
+      );
+    }
   }
 
   if (typeof options?.driveMinScore === "number") {
@@ -309,6 +324,22 @@ export async function fetchLiveStudentRoster(options?: {
     tracksByStudent[t.student_id] = list;
   });
 
+  // Resolve human-readable batch names for all students in this page
+  const uniqueBatchIds = Array.from(
+    new Set(studentRows.map((s: { batch_id: string | null }) => s.batch_id).filter(Boolean)),
+  ) as string[];
+
+  const batchMap = new Map<string, string>();
+  if (uniqueBatchIds.length > 0) {
+    const { data: batchesData } = await supabase
+      .from("batches")
+      .select("id,name")
+      .in("id", uniqueBatchIds);
+    (batchesData || []).forEach((b: { id: string; name: string }) => {
+      batchMap.set(b.id, b.name);
+    });
+  }
+
   interface StudentRow {
     id: string;
     auth_user_id: string | null;
@@ -338,6 +369,9 @@ export async function fetchLiveStudentRoster(options?: {
     dept: s.dept || "",
     college: s.college || "",
     batchId: s.batch_id || "",
+    batchName: s.batch_id
+      ? batchMap.get(s.batch_id) || (isUuid(s.batch_id) ? "Unknown Batch" : s.batch_id)
+      : "Not Assigned",
     status: (s.status === "suspended" || s.status === "deleted" ? s.status : "active") as
       "active" | "suspended" | "deleted",
     placementDay: s.placement_day ?? 1,
