@@ -96,6 +96,14 @@ function BatchesPage() {
     rollNo: string;
     batchId: string;
   } | null>(null);
+  const [deleteTargetBatch, setDeleteTargetBatch] = useState<{
+    id: string;
+    name: string;
+    dept: string;
+    capacity: number;
+    enrolled: number;
+  } | null>(null);
+  const [isDeletingBatch, setIsDeletingBatch] = useState(false);
 
   const batchesWithCounts = useMemo(() => {
     if (liveBatches) {
@@ -184,6 +192,32 @@ function BatchesPage() {
       setCreateModalOpen(false);
     } else {
       toast.error(res.error || "Failed to create batch");
+    }
+  };
+
+  const handleDeleteBatch = async () => {
+    if (!deleteTargetBatch) return;
+    setIsDeletingBatch(true);
+    try {
+      const res = await deleteLiveBatch(deleteTargetBatch.id);
+      if (res.ok) {
+        toast.success(`Batch "${deleteTargetBatch.name}" deleted successfully`);
+        if (rosterBatchId === deleteTargetBatch.id) {
+          setRosterBatchId(null);
+        }
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+          queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
+          queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
+        ]);
+        setDeleteTargetBatch(null);
+      } else {
+        toast.error(res.error || "Failed to delete batch");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete batch");
+    } finally {
+      setIsDeletingBatch(false);
     }
   };
 
@@ -319,18 +353,27 @@ function BatchesPage() {
               }
               subtitle={`${b.dept} · Active Placement Cohort`}
               action={
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => setRosterBatchId(b.id)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-[11px] font-semibold text-foreground hover:border-brand-purple/60"
+                    className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-[11px] font-semibold text-foreground hover:border-brand-purple/60 transition-colors"
                   >
                     <Users className="size-3" /> Roster
                   </button>
                   <button
                     onClick={() => handleSyncBatch(b.id)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-[11px] font-bold text-brand-cyan hover:border-brand-cyan/60"
+                    className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-[11px] font-bold text-brand-cyan hover:border-brand-cyan/60 transition-colors"
                   >
                     <RefreshCw className="size-3" /> Sync
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTargetBatch(b)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2 py-1 text-[11px] font-semibold text-copy-subtle hover:text-brand-rose hover:border-brand-rose/60 hover:bg-brand-rose/10 transition-colors"
+                    title={`Delete batch ${b.name}`}
+                  >
+                    <Trash2 className="size-3" />
+                    <span className="hidden sm:inline">Delete</span>
                   </button>
                 </div>
               }
@@ -561,12 +604,28 @@ function BatchesPage() {
                   Learners enrolled in this synchronized placement batch
                 </p>
               </div>
-              <button
-                onClick={() => setRosterBatchId(null)}
-                className="text-copy-subtle hover:text-foreground"
-              >
-                <X className="size-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentBatch = batchesWithCounts.find((b) => b.id === rosterBatchId);
+                    if (currentBatch) {
+                      setDeleteTargetBatch(currentBatch);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 rounded-lg border border-brand-rose/40 bg-brand-rose/10 px-2.5 py-1 text-[11px] font-semibold text-brand-rose hover:bg-brand-rose/20 transition-colors"
+                  title="Delete this cohort batch"
+                >
+                  <Trash2 className="size-3" />
+                  <span>Delete Batch</span>
+                </button>
+                <button
+                  onClick={() => setRosterBatchId(null)}
+                  className="text-copy-subtle hover:text-foreground"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -735,6 +794,101 @@ function BatchesPage() {
               >
                 <Trash2 className="size-3.5" />
                 <span>Confirm Delete</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Delete Confirmation Modal */}
+      {deleteTargetBatch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 border-b border-line-soft pb-3">
+              <div className="grid size-10 place-items-center rounded-xl bg-brand-rose/15 text-brand-rose border border-brand-rose/30">
+                <Trash2 className="size-5" />
+              </div>
+              <div>
+                <h3 className="font-display text-base font-bold text-foreground">
+                  Delete Placement Batch?
+                </h3>
+                <p className="text-xs text-copy-subtle">
+                  Permanently remove or archive this placement cohort
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-copy-subtle font-medium">Batch Name:</span>
+                <span className="font-bold text-foreground">{deleteTargetBatch.name}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-copy-subtle font-medium">Department:</span>
+                <span className="font-semibold text-brand-cyan">{deleteTargetBatch.dept}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-copy-subtle font-medium">Batch Capacity:</span>
+                <span className="font-mono text-foreground">
+                  {deleteTargetBatch.capacity} learners
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-copy-subtle font-medium">Enrolled Learners:</span>
+                <span
+                  className={cn(
+                    "font-bold font-mono",
+                    deleteTargetBatch.enrolled > 0 ? "text-brand-amber" : "text-brand-emerald",
+                  )}
+                >
+                  {deleteTargetBatch.enrolled} active
+                </span>
+              </div>
+            </div>
+
+            {deleteTargetBatch.enrolled > 0 ? (
+              <div className="rounded-xl border border-brand-amber/30 bg-brand-amber/10 p-3 text-xs text-brand-amber flex items-start gap-2">
+                <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                <span className="leading-relaxed">
+                  <strong>Notice:</strong> This cohort currently has{" "}
+                  <strong>{deleteTargetBatch.enrolled} enrolled student(s)</strong>. Deleting this
+                  batch will detach these learners (their cohort will be set to "Not Assigned")
+                  without deleting their accounts.
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs text-copy-subtle leading-relaxed">
+                This cohort has no currently enrolled students. It will be removed from all active
+                listings.
+              </p>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
+              <button
+                type="button"
+                disabled={isDeletingBatch}
+                onClick={() => setDeleteTargetBatch(null)}
+                className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground hover:bg-surface-elevated transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingBatch}
+                onClick={handleDeleteBatch}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors disabled:opacity-50"
+              >
+                {isDeletingBatch ? (
+                  <>
+                    <RefreshCw className="size-3.5 animate-spin" />
+                    <span>Deleting Batch…</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="size-3.5" />
+                    <span>Delete Batch</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

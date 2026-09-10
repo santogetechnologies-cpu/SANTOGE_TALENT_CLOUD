@@ -474,8 +474,24 @@ export async function updateLiveBatch(
 export async function deleteLiveBatch(id: string): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
 
-  const { error } = await supabase.from("batches").update({ status: "archived" }).eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  // Detach any assigned students so they display "Not Assigned" instead of referencing a deleted batch
+  await supabase.from("student_profiles").update({ batch_id: null }).eq("batch_id", id);
+
+  // Soft-archive so it immediately disappears from active listings
+  const { error: archiveError } = await supabase
+    .from("batches")
+    .update({ status: "archived" })
+    .eq("id", id);
+
+  // Also attempt hard delete if allowed by database policies
+  const { error: deleteError } = await supabase.from("batches").delete().eq("id", id);
+
+  if (archiveError && deleteError) {
+    return {
+      ok: false,
+      error: deleteError?.message || archiveError?.message || "Failed to delete batch",
+    };
+  }
 
   return { ok: true };
 }
