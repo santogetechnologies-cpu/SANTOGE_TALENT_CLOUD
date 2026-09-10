@@ -570,8 +570,8 @@ function ProvisioningPage() {
 
       if (res.ok) {
         toast.success(`Successfully cleared ${res.count || countToClear} student accounts`);
-        setLog((prev) => [
-          ...prev,
+        setCsv("");
+        setLog([
           `[cleared] Removed ${res.count || countToClear} student accounts from database (${new Date().toLocaleTimeString()}).`,
           `[refresh] Student directories and cohort batch headcounts updated.`,
         ]);
@@ -598,6 +598,12 @@ function ProvisioningPage() {
     } finally {
       setIsClearingAll(false);
     }
+  };
+
+  const handleClearEditorAndConsole = () => {
+    setCsv("");
+    setLog([]);
+    toast.success("Cleared CSV editor text and validation console log");
   };
 
   const copyCredentials = (email: string, pass: string) => {
@@ -778,6 +784,15 @@ function ProvisioningPage() {
               >
                 <RefreshCw className="size-3" /> Reset
               </button>
+              <button
+                type="button"
+                onClick={handleClearEditorAndConsole}
+                disabled={!csv && log.length === 0}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-brand-rose hover:underline ml-2 disabled:opacity-40 disabled:hover:no-underline"
+                title="Clear all CSV editor text and validation console log"
+              >
+                <Trash2 className="size-3" /> Clear All
+              </button>
             </div>
           }
         >
@@ -824,26 +839,24 @@ function ProvisioningPage() {
 
             <div className="flex items-center gap-2">
               {provisionedList.length > 0 && (
-                <>
-                  <button
-                    onClick={exportProvisioned}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-semibold text-foreground hover:border-brand-cyan/60 transition-colors"
-                  >
-                    <Download className="size-3.5" />
-                    <span>Export Credentials CSV</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setClearMode(isFiltered ? "filtered" : "all");
-                      setIsClearAllModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-3 py-2 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-colors"
-                  >
-                    <Trash2 className="size-3.5" />
-                    <span>Clear All</span>
-                  </button>
-                </>
+                <button
+                  onClick={exportProvisioned}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-semibold text-foreground hover:border-brand-cyan/60 transition-colors"
+                >
+                  <Download className="size-3.5" />
+                  <span>Export Credentials CSV</span>
+                </button>
               )}
+              <button
+                type="button"
+                onClick={handleClearEditorAndConsole}
+                disabled={!csv && log.length === 0}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-3 py-2 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Clear all CSV editor text and validation console log"
+              >
+                <Trash2 className="size-3.5" />
+                <span>Clear All</span>
+              </button>
             </div>
           </div>
         </Panel>
@@ -851,8 +864,23 @@ function ProvisioningPage() {
         <Panel
           title="Provisioning & Validation Log"
           subtitle="Real-time validation, track assignments, and batch capacity audits"
+          action={
+            log.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setLog([]);
+                  toast.info("Cleared console logs");
+                }}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-copy-subtle hover:text-brand-rose transition-colors"
+                title="Clear console output"
+              >
+                <Trash2 className="size-3" /> Clear Console
+              </button>
+            ) : undefined
+          }
         >
-          <Console lines={log} empty="Run provisioning to see validation logs." />
+          <Console lines={log} empty="Console empty. Run provisioning to see validation logs." />
         </Panel>
       </div>
 
@@ -895,10 +923,10 @@ function ProvisioningPage() {
                   setIsClearAllModalOpen(true);
                 }}
                 className="inline-flex items-center gap-1 rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-2.5 py-1 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-colors"
-                title="Clear student accounts"
+                title="Delete provisioned student accounts from database"
               >
                 <Trash2 className="size-3" />
-                <span>Clear All</span>
+                <span>Delete All Accounts</span>
               </button>
             </div>
           }
