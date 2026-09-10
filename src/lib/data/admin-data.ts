@@ -534,11 +534,29 @@ export async function deleteLiveStudent(
   const raw = studentIdentifier.trim();
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
 
-  const query = supabase
-    .from("student_profiles")
-    .update({ status: "deleted", updated_at: new Date().toISOString() });
+  if (isUuid) {
+    const { data, error } = await supabase
+      .from("student_profiles")
+      .update({ status: "deleted", updated_at: new Date().toISOString() })
+      .eq("id", raw)
+      .select("id");
 
-  const { error } = isUuid ? await query.eq("id", raw) : await query.eq("email", raw.toLowerCase());
+    if (error) return { ok: false, error: error.message };
+    if (data && data.length > 0) return { ok: true };
+
+    const { error: authErr } = await supabase
+      .from("student_profiles")
+      .update({ status: "deleted", updated_at: new Date().toISOString() })
+      .eq("auth_user_id", raw);
+
+    if (authErr) return { ok: false, error: authErr.message };
+    return { ok: true };
+  }
+
+  const { error } = await supabase
+    .from("student_profiles")
+    .update({ status: "deleted", updated_at: new Date().toISOString() })
+    .eq("email", raw.toLowerCase());
 
   if (error) return { ok: false, error: error.message };
   return { ok: true };

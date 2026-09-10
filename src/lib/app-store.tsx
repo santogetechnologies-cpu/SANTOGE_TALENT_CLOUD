@@ -22,6 +22,7 @@ import {
 import {
   fetchLiveStudentProfile,
   fetchLiveStudentProgress,
+  checkLiveStudentAccountStatus,
   completeLiveSkill,
   completeLivePlacementDay,
   completeLiveTechnicalDay,
@@ -347,8 +348,30 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const secondaryMinimum = platformSettings?.secondaryMinimum ?? 50;
 
         if (role === "student") {
+          const accountStatus = await checkLiveStudentAccountStatus(user.id, userEmail);
+          if (
+            accountStatus.isDeleted ||
+            accountStatus.status === "deleted" ||
+            accountStatus.status === "suspended" ||
+            !accountStatus.exists
+          ) {
+            await supabase.auth.signOut();
+            if (isMounted) {
+              setState((prev) => ({
+                ...prev,
+                role: "student",
+                sessionEmail: null,
+                supabaseSession: null,
+                liveStudentId: null,
+                student: null,
+                profile: DEFAULT_PROFILE,
+              }));
+            }
+            return;
+          }
+
           const liveData = await fetchLiveStudentProfile(user.id, userEmail);
-          if (liveData?.profile && isMounted) {
+          if (liveData?.profile && liveData.profile.status === "active" && isMounted) {
             const progress = await fetchLiveStudentProgress(liveData.profile.id);
 
             const studentInfo: StudentInfo = {
@@ -401,6 +424,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               profile: liveProfile,
               completionRule,
               secondaryMinimum,
+            }));
+          } else if (isMounted) {
+            await supabase.auth.signOut();
+            setState((prev) => ({
+              ...prev,
+              role: "student",
+              sessionEmail: null,
+              supabaseSession: null,
+              liveStudentId: null,
+              student: null,
+              profile: DEFAULT_PROFILE,
             }));
           }
         } else if (isMounted) {
@@ -507,9 +541,38 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return { ok: true, role: "admin" as Role };
       }
 
+      // Check account lifecycle status for student
+      const accountStatus = await checkLiveStudentAccountStatus(user.id, userEmail);
+      if (accountStatus.isDeleted || accountStatus.status === "deleted") {
+        const supabase = getSupabaseClient();
+        await supabase.auth.signOut();
+        return {
+          ok: false,
+          error: "This student account has been removed or deactivated by the institutional administrator. Login access is revoked.",
+        };
+      }
+
+      if (accountStatus.status === "suspended") {
+        const supabase = getSupabaseClient();
+        await supabase.auth.signOut();
+        return {
+          ok: false,
+          error: "This student account is currently suspended. Please contact your institution administrator.",
+        };
+      }
+
+      if (!accountStatus.exists) {
+        const supabase = getSupabaseClient();
+        await supabase.auth.signOut();
+        return {
+          ok: false,
+          error: "No active student account found for this login. Please contact your college administrator to be provisioned.",
+        };
+      }
+
       // Fetch live student profile
       const liveData = await fetchLiveStudentProfile(user.id, userEmail);
-      if (liveData?.profile) {
+      if (liveData?.profile && liveData.profile.status === "active") {
         const progress = await fetchLiveStudentProgress(liveData.profile.id);
 
         const studentInfo: StudentInfo = {
@@ -566,22 +629,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return { ok: true, role: "student" as Role };
       }
 
-      // Profile pending provisioning
-      setState((s) => ({
-        ...s,
-        role: "student",
-        sessionEmail: userEmail,
-        supabaseSession: session,
-        liveStudentId: null,
-        student: {
-          email: userEmail,
-          name: user.user_metadata?.name || userEmail.split("@")[0] || "Student",
-        },
-        profile: DEFAULT_PROFILE,
-        completionRule,
-        secondaryMinimum,
-      }));
-      return { ok: true, role: "student" as Role };
+      // If profile is not found or not active, reject sign in
+      const supabase = getSupabaseClient();
+      await supabase.auth.signOut();
+      return {
+        ok: false,
+        error: "Student profile is not active. Please contact your college administrator.",
+      };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to initialize student session";
       return { ok: false, error: msg };
@@ -827,7 +881,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // -------------------------------------------------------------------------
 
   const profile = state.profile;
-  const isAuthed = !!state.sessionEmail && !!state.supabaseSession;
+  const isAuthed =
+    !!state.sessionEmail &&
+    !!state.supabaseSession &&
+    (state.role === "admin" || (state.role === "student" && !!state.liveStudentId));
 
   const trackPercent = useCallback((id: TrackId) => trackPct(id, profile.skills), [profile.skills]);
 
