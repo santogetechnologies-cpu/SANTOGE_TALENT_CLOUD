@@ -27,6 +27,9 @@ import {
   Trash2,
   KeyRound,
   AlertTriangle,
+  Search,
+  Filter,
+  SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -104,6 +107,12 @@ function BatchesPage() {
     enrolled: number;
   } | null>(null);
   const [isDeletingBatch, setIsDeletingBatch] = useState(false);
+
+  // Search & Filter state for batches
+  const [searchQuery, setSearchQuery] = useState("");
+  const [deptFilter, setDeptFilter] = useState("all");
+  const [utilizationFilter, setUtilizationFilter] = useState("all");
+  const [rosterSearch, setRosterSearch] = useState("");
 
   const batchesWithCounts = useMemo(() => {
     if (liveBatches) {
@@ -252,11 +261,55 @@ function BatchesPage() {
     }, 1200);
   };
 
+  // Dynamic department list for filtering
+  const uniqueDepts = useMemo(() => {
+    const set = new Set<string>();
+    batchesWithCounts.forEach((b) => {
+      if (b.dept) set.add(b.dept);
+    });
+    return Array.from(set);
+  }, [batchesWithCounts]);
+
+  // Filtered batches matching search query and active filters
+  const filteredBatches = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return batchesWithCounts.filter((b) => {
+      const matchesSearch =
+        !q ||
+        b.name.toLowerCase().includes(q) ||
+        b.dept.toLowerCase().includes(q) ||
+        b.capacity.toString().includes(q) ||
+        b.enrolled.toString().includes(q);
+
+      const matchesDept =
+        deptFilter === "all" || b.dept.toUpperCase() === deptFilter.toUpperCase();
+
+      const fill = Math.round((b.enrolled / Math.max(b.capacity, 1)) * 100);
+      const matchesUtil =
+        utilizationFilter === "all" ||
+        (utilizationFilter === "high" && fill >= 80) ||
+        (utilizationFilter === "normal" && fill < 80 && b.enrolled > 0) ||
+        (utilizationFilter === "empty" && b.enrolled === 0);
+
+      return matchesSearch && matchesDept && matchesUtil;
+    });
+  }, [batchesWithCounts, searchQuery, deptFilter, utilizationFilter]);
+
   // Filter learners in selected roster
   const rosterLearners = useMemo(() => {
     const items = liveRoster?.items || [];
+    const q = rosterSearch.trim().toLowerCase();
     return items
       .filter((s) => s.batchId === rosterBatchId || rosterBatchId === "all")
+      .filter((s) => {
+        if (!q) return true;
+        return (
+          s.name.toLowerCase().includes(q) ||
+          s.email.toLowerCase().includes(q) ||
+          s.rollNo.toLowerCase().includes(q) ||
+          s.dept.toLowerCase().includes(q)
+        );
+      })
       .map((s) => ({
         name: s.name,
         email: s.email,
@@ -268,7 +321,7 @@ function BatchesPage() {
         streak: 1,
         placementDay: s.placementDay,
       }));
-  }, [liveRoster, rosterBatchId]);
+  }, [liveRoster, rosterBatchId, rosterSearch]);
 
   return (
     <div className="space-y-6">
@@ -307,9 +360,110 @@ function BatchesPage() {
         />
       </div>
 
+      {/* Batch Search & Filter Bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-copy-subtle" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search batches by name, department, size…"
+            className="w-full rounded-xl border border-line-soft bg-surface-soft pl-10 pr-9 py-2 text-xs text-foreground outline-none placeholder:text-copy-subtle focus:border-brand-cyan/60 transition-colors"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-copy-subtle hover:text-foreground"
+              title="Clear search"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <Filter className="size-3.5 text-copy-subtle" />
+            <select
+              value={deptFilter}
+              onChange={(e) => setDeptFilter(e.target.value)}
+              className="rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-medium text-foreground outline-none focus:border-brand-cyan/60"
+            >
+              <option value="all">All Departments</option>
+              {uniqueDepts.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <SlidersHorizontal className="size-3.5 text-copy-subtle" />
+            <select
+              value={utilizationFilter}
+              onChange={(e) => setUtilizationFilter(e.target.value)}
+              className="rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-medium text-foreground outline-none focus:border-brand-cyan/60"
+            >
+              <option value="all">All Capacities</option>
+              <option value="high">High Fill (≥80%)</option>
+              <option value="normal">Active (&lt;80%)</option>
+              <option value="empty">Empty (0 Learners)</option>
+            </select>
+          </div>
+
+          {(searchQuery || deptFilter !== "all" || utilizationFilter !== "all") && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setDeptFilter("all");
+                setUtilizationFilter("all");
+              }}
+              className="inline-flex items-center gap-1 rounded-lg bg-surface-dark border border-line-soft px-2.5 py-1.5 text-xs font-semibold text-foreground hover:text-brand-rose transition-colors"
+            >
+              <X className="size-3" />
+              <span>Clear</span>
+            </button>
+          )}
+
+          <Chip tone="purple">
+            {filteredBatches.length} of {batchesWithCounts.length} Batches
+          </Chip>
+        </div>
+      </div>
+
       {/* Batch Cards Grid */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {batchesWithCounts.map((b) => {
+        {filteredBatches.length === 0 ? (
+          <div className="col-span-full rounded-2xl border border-line-soft bg-surface-soft p-12 text-center space-y-3">
+            <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-surface-elevated border border-line-soft text-copy-subtle">
+              <Search className="size-6" />
+            </div>
+            <h4 className="font-display text-base font-bold text-foreground">
+              No Placement Batches Found
+            </h4>
+            <p className="text-xs text-copy-subtle max-w-md mx-auto">
+              No cohorts match your current search &ldquo;<span className="text-brand-cyan font-semibold">{searchQuery}</span>&rdquo;
+              {deptFilter !== "all" ? ` in department ${deptFilter}` : ""}.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setDeptFilter("all");
+                setUtilizationFilter("all");
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-line-soft bg-surface-elevated px-4 py-2 text-xs font-semibold text-foreground hover:border-brand-cyan/60 transition-colors"
+            >
+              <RefreshCw className="size-3.5" />
+              <span>Reset Search &amp; Filters</span>
+            </button>
+          </div>
+        ) : (
+          filteredBatches.map((b) => {
           const fill = Math.round((b.enrolled / Math.max(b.capacity, 1)) * 100);
           const isEditing = editingId === b.id;
 
@@ -443,7 +597,7 @@ function BatchesPage() {
               </div>
             </Panel>
           );
-        })}
+        }))}
       </div>
 
       {/* Telegram Webhook & Broadcast Simulator */}
@@ -626,6 +780,28 @@ function BatchesPage() {
                   <X className="size-5" />
                 </button>
               </div>
+            </div>
+
+            {/* Roster Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 size-3.5 text-copy-subtle" />
+              <input
+                type="text"
+                value={rosterSearch}
+                onChange={(e) => setRosterSearch(e.target.value)}
+                placeholder="Search learners by name, email, roll number, department…"
+                className="w-full rounded-xl border border-line-soft bg-surface-soft pl-9 pr-8 py-2 text-xs text-foreground outline-none placeholder:text-copy-subtle focus:border-brand-cyan/60 transition-colors"
+              />
+              {rosterSearch && (
+                <button
+                  type="button"
+                  onClick={() => setRosterSearch("")}
+                  className="absolute right-2.5 top-2.5 text-copy-subtle hover:text-foreground"
+                  title="Clear learner search"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
             </div>
 
             <div className="space-y-2">
