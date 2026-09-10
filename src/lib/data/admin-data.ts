@@ -544,6 +544,73 @@ export async function deleteLiveStudent(
   return { ok: true };
 }
 
+/**
+ * Clear provisioned student profiles (soft-delete status: "deleted").
+ * Accepts optional list of student IDs or emails to clear; if omitted, clears all active students.
+ */
+export async function clearAllLiveStudents(
+  target?: { emails?: string[]; ids?: string[] } | string[],
+): Promise<{ ok: boolean; count: number; error?: string }> {
+  const supabase = getSupabaseClient();
+
+  let emails: string[] = [];
+  let ids: string[] = [];
+
+  if (Array.isArray(target)) {
+    target.forEach((item) => {
+      const trimmed = item.trim();
+      if (UUID_REGEX.test(trimmed)) {
+        ids.push(trimmed);
+      } else {
+        emails.push(trimmed.toLowerCase());
+      }
+    });
+  } else if (target) {
+    if (target.emails) emails = target.emails.map((e) => e.trim().toLowerCase());
+    if (target.ids) ids = target.ids.map((id) => id.trim());
+  }
+
+  const chunkSize = 100;
+  let totalCleared = 0;
+
+  if (ids.length > 0) {
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      const chunk = ids.slice(i, i + chunkSize);
+      const { error, count } = await supabase
+        .from("student_profiles")
+        .update({ status: "deleted", updated_at: new Date().toISOString() })
+        .in("id", chunk);
+
+      if (error) return { ok: false, count: totalCleared, error: error.message };
+      totalCleared += count ?? chunk.length;
+    }
+    return { ok: true, count: totalCleared };
+  }
+
+  if (emails.length > 0) {
+    for (let i = 0; i < emails.length; i += chunkSize) {
+      const chunk = emails.slice(i, i + chunkSize);
+      const { error, count } = await supabase
+        .from("student_profiles")
+        .update({ status: "deleted", updated_at: new Date().toISOString() })
+        .in("email", chunk);
+
+      if (error) return { ok: false, count: totalCleared, error: error.message };
+      totalCleared += count ?? chunk.length;
+    }
+    return { ok: true, count: totalCleared };
+  }
+
+  const { error, count } = await supabase
+    .from("student_profiles")
+    .update({ status: "deleted", updated_at: new Date().toISOString() })
+    .eq("status", "active");
+
+  if (error) return { ok: false, count: 0, error: error.message };
+  return { ok: true, count: count ?? 0 };
+}
+
+
 export async function addLiveStudent(student: {
   name: string;
   email: string;

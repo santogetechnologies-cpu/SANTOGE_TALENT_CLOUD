@@ -9,6 +9,7 @@ import {
   provisionLiveStudents,
   addLiveStudent,
   deleteLiveStudent,
+  clearAllLiveStudents,
   type ProvisionedStudent,
 } from "@/lib/data/admin-data";
 import { isUuid } from "@/lib/data";
@@ -183,6 +184,8 @@ function ProvisioningPage() {
   const [resetTargetStudent, setResetTargetStudent] = useState<ResetPasswordStudent | null>(null);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false);
+  const [isClearingAll, setIsClearingAll] = useState(false);
+  const [clearMode, setClearMode] = useState<"filtered" | "all">("filtered");
   const [deleteTargetStudent, setDeleteTargetStudent] = useState<{
     id?: string;
     name: string;
@@ -542,6 +545,61 @@ function ProvisioningPage() {
     toast.success(`Exported ${provisionedList.length} credentials to CSV`);
   };
 
+  const isFiltered = filteredProvisioned.length < provisionedList.length;
+  const targetCountToClear =
+    isFiltered && clearMode === "filtered"
+      ? filteredProvisioned.length
+      : provisionedList.length;
+
+  const handleClearAll = async () => {
+    if (provisionedList.length === 0) {
+      toast.info("No provisioned records to clear.");
+      setIsClearAllModalOpen(false);
+      return;
+    }
+
+    setIsClearingAll(true);
+    try {
+      const targets =
+        isFiltered && clearMode === "filtered"
+          ? filteredProvisioned.map((s) => s.email)
+          : undefined;
+
+      const countToClear = targets ? targets.length : provisionedList.length;
+      const res = await clearAllLiveStudents(targets);
+
+      if (res.ok) {
+        toast.success(`Successfully cleared ${res.count || countToClear} student accounts`);
+        setLog((prev) => [
+          ...prev,
+          `[cleared] Removed ${res.count || countToClear} student accounts from database (${new Date().toLocaleTimeString()}).`,
+          `[refresh] Student directories and cohort batch headcounts updated.`,
+        ]);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
+          queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+          queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
+        ]);
+        setIsClearAllModalOpen(false);
+      } else {
+        toast.error(res.error || "Failed to clear student accounts");
+        setLog((prev) => [
+          ...prev,
+          `[error] Failed to clear student accounts: ${res.error || "Unknown error"} (${new Date().toLocaleTimeString()}).`,
+        ]);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unexpected error while clearing accounts";
+      toast.error(msg);
+      setLog((prev) => [
+        ...prev,
+        `[error] Exception clearing student accounts: ${msg} (${new Date().toLocaleTimeString()}).`,
+      ]);
+    } finally {
+      setIsClearingAll(false);
+    }
+  };
+
   const copyCredentials = (email: string, pass: string) => {
     navigator.clipboard.writeText(`Email: ${email} | Password: ${pass}`);
     setCopiedEmail(email);
@@ -775,7 +833,10 @@ function ProvisioningPage() {
                     <span>Export Credentials CSV</span>
                   </button>
                   <button
-                    onClick={() => setIsClearAllModalOpen(true)}
+                    onClick={() => {
+                      setClearMode(isFiltered ? "filtered" : "all");
+                      setIsClearAllModalOpen(true);
+                    }}
                     className="inline-flex items-center gap-1.5 rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-3 py-2 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-colors"
                   >
                     <Trash2 className="size-3.5" />
@@ -827,6 +888,18 @@ function ProvisioningPage() {
               <Chip tone="cyan">
                 {filteredProvisioned.length} of {provisionedList.length} Learners
               </Chip>
+              <button
+                type="button"
+                onClick={() => {
+                  setClearMode(isFiltered ? "filtered" : "all");
+                  setIsClearAllModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1 rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-2.5 py-1 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-colors"
+                title="Clear student accounts"
+              >
+                <Trash2 className="size-3" />
+                <span>Clear All</span>
+              </button>
             </div>
           }
         >
@@ -1298,30 +1371,109 @@ function ProvisioningPage() {
       {isClearAllModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md">
           <div className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 border-b border-line-soft pb-3">
-              <div className="grid size-10 place-items-center rounded-xl bg-brand-rose/15 text-brand-rose border border-brand-rose/30">
-                <AlertTriangle className="size-5" />
+            <div className="flex items-center justify-between border-b border-line-soft pb-3">
+              <div className="flex items-center gap-3">
+                <div className="grid size-10 place-items-center rounded-xl bg-brand-rose/15 text-brand-rose border border-brand-rose/30">
+                  <AlertTriangle className="size-5" />
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-bold text-foreground">
+                    Clear Provisioned Accounts
+                  </h3>
+                  <p className="text-xs text-copy-subtle">Irreversible Account Removal</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-display text-base font-bold text-foreground">
-                  Clear All Provisioned Accounts?
-                </h3>
-                <p className="text-xs text-copy-subtle">Safety Notice for Production Database</p>
-              </div>
+              <button
+                type="button"
+                disabled={isClearingAll}
+                onClick={() => setIsClearAllModalOpen(false)}
+                className="rounded-lg p-1.5 text-copy-subtle hover:bg-surface-soft hover:text-foreground transition-colors disabled:opacity-50"
+              >
+                <X className="size-4" />
+              </button>
             </div>
 
-            <p className="text-xs text-copy-subtle leading-relaxed">
-              In production, individual students can be deleted using the Delete button in the
-              table, or entire cohorts can be managed via the Batches panel.
-            </p>
+            <div className="space-y-3 text-xs text-copy-subtle">
+              <p className="leading-relaxed">
+                You are about to remove student accounts from the active directory. Their credentials will be deactivated and batch headcounts updated.
+              </p>
+
+              {isFiltered ? (
+                <div className="space-y-2 rounded-xl border border-line-soft bg-surface-soft p-3">
+                  <div className="font-semibold text-foreground">Select removal scope:</div>
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="clearScope"
+                      checked={clearMode === "filtered"}
+                      onChange={() => setClearMode("filtered")}
+                      className="accent-brand-rose"
+                      disabled={isClearingAll}
+                    />
+                    <span className="text-foreground font-medium">
+                      Filtered learners only (<span className="text-brand-rose font-bold">{filteredProvisioned.length}</span> students)
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="clearScope"
+                      checked={clearMode === "all"}
+                      onChange={() => setClearMode("all")}
+                      className="accent-brand-rose"
+                      disabled={isClearingAll}
+                    />
+                    <span>
+                      All active provisioned learners (<span className="font-semibold">{provisionedList.length}</span> total)
+                    </span>
+                  </label>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-brand-rose/20 bg-brand-rose/5 p-3 flex items-center justify-between">
+                  <span className="font-medium text-foreground">Total Accounts to Remove:</span>
+                  <span className="font-mono text-sm font-bold text-brand-rose">
+                    {provisionedList.length} Learners
+                  </span>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-line-soft bg-surface-soft/60 p-3 space-y-1">
+                <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                  <ShieldCheck className="size-3.5 text-brand-cyan" />
+                  <span>Audit & System Safety</span>
+                </div>
+                <p className="text-[11px] leading-normal text-copy-subtle">
+                  Student profiles are soft-deleted to maintain foreign-key consistency and audit trails. Cohort enrollments and executive analytics will recalculate immediately.
+                </p>
+              </div>
+            </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
               <button
                 type="button"
+                disabled={isClearingAll}
                 onClick={() => setIsClearAllModalOpen(false)}
-                className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground transition-colors"
+                className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground hover:bg-surface-elevated transition-colors disabled:opacity-50"
               >
-                Close
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isClearingAll || targetCountToClear === 0}
+                onClick={handleClearAll}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors disabled:opacity-50"
+              >
+                {isClearingAll ? (
+                  <>
+                    <RefreshCw className="size-3.5 animate-spin" />
+                    <span>Clearing {targetCountToClear} Accounts…</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="size-3.5" />
+                    <span>Confirm Clear ({targetCountToClear})</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
