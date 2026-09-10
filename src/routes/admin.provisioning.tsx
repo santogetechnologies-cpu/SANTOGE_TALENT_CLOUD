@@ -472,10 +472,20 @@ function ProvisioningPage() {
     return [];
   }, [liveBatchesQuery.data]);
 
+  const batchNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    batchesList.forEach((batch) => {
+      map.set(batch.id, batch.name);
+    });
+    return map;
+  }, [batchesList]);
+
   // Filtered provisioned list based on Search & Selectors
   const filteredProvisioned = useMemo(() => {
     return provisionedList.filter((p) => {
       const q = searchQuery.toLowerCase().trim();
+      const batchName = (p.batch_id ? batchNameById.get(p.batch_id) : "")?.toLowerCase() || "";
+
       const matchesQuery =
         !q ||
         p.student_name.toLowerCase().includes(q) ||
@@ -483,6 +493,7 @@ function ProvisioningPage() {
         p.roll_no.toLowerCase().includes(q) ||
         p.dept.toLowerCase().includes(q) ||
         p.batch_id.toLowerCase().includes(q) ||
+        batchName.includes(q) ||
         (p.college && p.college.toLowerCase().includes(q));
 
       const matchesBatch = selectedBatchFilter === "all" || p.batch_id === selectedBatchFilter;
@@ -494,7 +505,7 @@ function ProvisioningPage() {
 
       return matchesQuery && matchesBatch && matchesTrack;
     });
-  }, [provisionedList, searchQuery, selectedBatchFilter, selectedTrackFilter]);
+  }, [provisionedList, searchQuery, selectedBatchFilter, selectedTrackFilter, batchNameById]);
 
   const exportProvisioned = () => {
     if (provisionedList.length === 0) {
@@ -602,7 +613,7 @@ function ProvisioningPage() {
     if (res.ok) {
       toast.success(`Student ${singleName.trim()} registered to Supabase backend!`);
       setLog((prev) => [
-        `[provisioned] Single student registered: ${singleName.trim()} (${singleEmail.trim().toLowerCase()}) → ${batchId}`,
+        `[provisioned] Single student registered: ${singleName.trim()} (${singleEmail.trim().toLowerCase()}) → ${batchNameById.get(batchId) || batchId}`,
         ...prev,
       ]);
       await Promise.all([
@@ -836,7 +847,7 @@ function ProvisioningPage() {
                 <option value="all">All Batches ({batchesList.length})</option>
                 {batchesList.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.id} ({b.enrolled}/{b.capacity})
+                    {b.name} ({b.enrolled}/{b.capacity})
                   </option>
                 ))}
               </select>
@@ -901,8 +912,10 @@ function ProvisioningPage() {
                     </td>
                     <td className="py-2.5 pr-4 text-copy-subtle">{p.college || "—"}</td>
                     <td className="py-2.5 pr-4">
-                      <span className="rounded bg-surface-soft border border-line-soft px-2 py-0.5 font-mono text-[11px] text-brand-purple font-semibold">
-                        {p.batch_id || "Not Assigned"}
+                      <span className="rounded bg-surface-soft border border-line-soft px-2 py-0.5 text-[11px] text-brand-purple font-semibold">
+                        {p.batch_id
+                          ? batchNameById.get(p.batch_id) || "Unknown Batch"
+                          : "Not Assigned"}
                       </span>
                     </td>
                     <td className="py-2.5 pr-4">
@@ -949,7 +962,9 @@ function ProvisioningPage() {
                               name: p.student_name,
                               email: p.email,
                               rollNo: p.roll_no,
-                              batchId: p.batch_id,
+                              batchId: p.batch_id
+                                ? batchNameById.get(p.batch_id) || "Unknown Batch"
+                                : "Not Assigned",
                               dept: p.dept,
                               college: p.college || "Partner Engineering College",
                             });
@@ -1226,8 +1241,10 @@ function ProvisioningPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-copy-subtle font-medium">Cohort Batch:</span>
-                <span className="font-mono font-bold text-brand-purple">
-                  {deleteTargetStudent.batchId}
+                <span className="font-bold text-brand-purple">
+                  {deleteTargetStudent.batchId
+                    ? batchNameById.get(deleteTargetStudent.batchId) || "Unknown Batch"
+                    : "Not Assigned"}
                 </span>
               </div>
             </div>
