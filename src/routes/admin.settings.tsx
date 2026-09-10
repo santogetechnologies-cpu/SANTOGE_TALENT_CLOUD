@@ -5,12 +5,7 @@ import { toast } from "sonner";
 import { Chip, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore, type CompletionRule } from "@/lib/app-store";
 import { Moon, RotateCcw, Sun, Shield, Server, Lock, CheckCircle2, RefreshCw } from "lucide-react";
-import {
-  getSupabaseConfig,
-  saveSupabaseConfig,
-  supabaseAuth,
-  type SupabaseAuthConfig,
-} from "@/lib/supabase";
+import { getSupabaseConfig, supabaseAuth, isSupabaseConfigured } from "@/lib/supabase";
 
 import { useLivePlatformSettings, updateLivePlatformSettings } from "@/lib/data";
 
@@ -64,7 +59,7 @@ function AdminSettingsPage() {
   }, [liveSettings]);
 
   const queryClient = useQueryClient();
-  const [sbConfig, setSbConfig] = useState<SupabaseAuthConfig>({ url: "", anonKey: "" });
+  const [sbConfig, setSbConfig] = useState({ url: "", anonKey: "" });
   const [sbTesting, setSbTesting] = useState(false);
   const [sbStatus, setSbStatus] = useState<string | null>(null);
 
@@ -85,14 +80,13 @@ function AdminSettingsPage() {
     }
   };
 
-  const saveSupabase = async () => {
+  const testSupabase = async () => {
     setSbTesting(true);
-    const res = await supabaseAuth.testConnection(sbConfig);
+    const res = await supabaseAuth.testConnection();
     setSbTesting(false);
     if (res.ok) {
-      saveSupabaseConfig(sbConfig);
-      setSbStatus("Connected");
-      toast.success("Supabase live configuration updated & connected");
+      setSbStatus("Connected & Verified");
+      toast.success("Live Supabase backend connection verified");
     } else {
       setSbStatus(`Error: ${res.message}`);
       toast.error(res.message);
@@ -218,47 +212,50 @@ function AdminSettingsPage() {
           </div>
         </Panel>
 
-        {/* Supabase Endpoint Config */}
+        {/* Supabase Production Integration */}
         <Panel
-          title="Live Supabase Integration (Developer Override)"
-          subtitle="Environment variables are authoritative in production; local overrides active in dev"
+          title="Authoritative Supabase Production Backend"
+          subtitle="Single source of truth for all persistent application data & authentication"
+          action={
+            isSupabaseConfigured() ? (
+              <Chip tone="emerald">Live &amp; Enforced</Chip>
+            ) : (
+              <Chip tone="rose">Configuration Required</Chip>
+            )
+          }
         >
           <div className="space-y-3">
             <div>
               <label className="mb-1 block text-xs font-semibold text-copy-subtle">
-                Supabase Project URL
+                Authoritative Supabase Project URL
               </label>
-              <input
-                type="text"
-                value={sbConfig.url}
-                onChange={(e) => setSbConfig({ ...sbConfig, url: e.target.value })}
-                className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs font-mono text-foreground outline-none focus:border-brand-cyan/60"
-              />
+              <div className="rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs font-mono text-foreground">
+                {sbConfig.url || "VITE_SUPABASE_URL not configured"}
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-copy-subtle">
-                Supabase Anon Key
+                Public Client Key
               </label>
-              <input
-                type="password"
-                value={sbConfig.anonKey}
-                onChange={(e) => setSbConfig({ ...sbConfig, anonKey: e.target.value })}
-                className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs font-mono text-foreground outline-none focus:border-brand-cyan/60"
-              />
+              <div className="rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs font-mono text-copy-subtle">
+                {sbConfig.anonKey
+                  ? `${sbConfig.anonKey.slice(0, 16)}••••••••••••`
+                  : "VITE_SUPABASE_PUBLISHABLE_KEY not configured"}
+              </div>
             </div>
             <div className="flex items-center justify-between pt-1">
               <button
                 type="button"
-                onClick={saveSupabase}
-                disabled={sbTesting}
-                className="inline-flex items-center gap-2 rounded-xl bg-surface-elevated border border-line-soft px-3.5 py-2 text-xs font-bold text-foreground hover:border-brand-cyan/60"
+                onClick={testSupabase}
+                disabled={sbTesting || !isSupabaseConfigured()}
+                className="inline-flex items-center gap-2 rounded-xl bg-surface-elevated border border-line-soft px-3.5 py-2 text-xs font-bold text-foreground hover:border-brand-cyan/60 disabled:opacity-50"
               >
                 {sbTesting ? (
                   <RefreshCw className="size-3.5 animate-spin" />
                 ) : (
                   <Server className="size-3.5 text-brand-cyan" />
                 )}
-                Test &amp; Save Endpoint
+                Test Live Connection
               </button>
               {sbStatus && (
                 <span

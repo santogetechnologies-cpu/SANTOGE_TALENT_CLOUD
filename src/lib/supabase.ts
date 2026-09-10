@@ -85,14 +85,6 @@ const ENV_KEY: string | undefined =
     ? (import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] as string | undefined)
     : undefined;
 
-const DEFAULT_FALLBACK_URL = "https://ylofqmmbwgrqtsrclnww.supabase.co";
-const DEFAULT_FALLBACK_KEY = "sb_publishable_bIuZOdaZ_m3jp6s6cyoV_A_P8mKwqXf";
-
-const DEFAULT_SUPABASE_URL = (ENV_URL || DEFAULT_FALLBACK_URL).trim();
-const DEFAULT_SUPABASE_ANON_KEY = (ENV_KEY || DEFAULT_FALLBACK_KEY).trim();
-const FALLBACK_DUMMY_URL = "https://placeholder-project.supabase.co";
-const FALLBACK_DUMMY_KEY = "placeholder-anon-key";
-
 // ---------------------------------------------------------------------------
 // Singleton @supabase/supabase-js client
 //
@@ -107,27 +99,36 @@ const FALLBACK_DUMMY_KEY = "placeholder-anon-key";
 let _supabaseClient: SupabaseClient | null = null;
 
 export function isSupabaseConfigured(): boolean {
-  const config = getSupabaseConfig();
-  const cleanUrl = (config.url || "").replace(/\/+$/, "").trim();
-  const cleanKey = (config.anonKey || "").trim();
+  const url = (ENV_URL || "").trim();
+  const key = (ENV_KEY || "").trim();
   return Boolean(
-    cleanUrl &&
-    cleanUrl.startsWith("http") &&
-    !cleanUrl.includes("placeholder") &&
-    cleanKey &&
-    cleanKey !== "placeholder-key" &&
-    cleanKey !== "placeholder-anon-key",
+    url &&
+    url.startsWith("http") &&
+    !url.includes("placeholder") &&
+    key &&
+    key !== "placeholder-key" &&
+    key !== "placeholder-anon-key",
   );
+}
+
+export function getSupabaseConfig(): SupabaseAuthConfig {
+  return {
+    url: (ENV_URL || "").trim(),
+    anonKey: (ENV_KEY || "").trim(),
+  };
 }
 
 export function getSupabaseClient(): SupabaseClient {
   if (_supabaseClient) return _supabaseClient;
 
-  const config = getSupabaseConfig();
-  const safeUrl =
-    config.url && config.url.trim().startsWith("http") ? config.url.trim() : FALLBACK_DUMMY_URL;
-  const safeKey =
-    config.anonKey && config.anonKey.trim() ? config.anonKey.trim() : FALLBACK_DUMMY_KEY;
+  if (!isSupabaseConfigured()) {
+    throw new Error(
+      "Supabase is not configured. Please define VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in your .env file.",
+    );
+  }
+
+  const safeUrl = (ENV_URL || "").trim();
+  const safeKey = (ENV_KEY || "").trim();
 
   _supabaseClient = createClient(safeUrl, safeKey, {
     auth: {
@@ -151,86 +152,12 @@ export function getSupabaseClient(): SupabaseClient {
   return _supabaseClient;
 }
 
-// Re-initialize if config changes (e.g. admin manually sets a different project URL in the UI)
 export function resetSupabaseClient(): void {
   _supabaseClient = null;
 }
 
 // ---------------------------------------------------------------------------
-// Runtime config — allows the login page's "Endpoint Settings" panel to
-// override the URL/key without hardcoding (no secrets in source code).
-// ---------------------------------------------------------------------------
-
-const STORAGE_KEY_CONFIG = "santoge-supabase-config-v1";
-const STORAGE_KEY_SESSION = "santoge-supabase-session-v1";
-
-export function getSupabaseConfig(): SupabaseAuthConfig {
-  // In production, environment variables are authoritative
-  const isDev = typeof import.meta !== "undefined" && Boolean(import.meta.env.DEV);
-  if (!isDev && DEFAULT_SUPABASE_URL && DEFAULT_SUPABASE_ANON_KEY) {
-    return { url: DEFAULT_SUPABASE_URL, anonKey: DEFAULT_SUPABASE_ANON_KEY };
-  }
-
-  if (typeof window === "undefined") {
-    return { url: DEFAULT_SUPABASE_URL, anonKey: DEFAULT_SUPABASE_ANON_KEY };
-  }
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY_CONFIG);
-    if (saved) {
-      const parsed = JSON.parse(saved) as Partial<SupabaseAuthConfig>;
-      if (
-        parsed.url &&
-        !parsed.url.includes("placeholder") &&
-        parsed.anonKey &&
-        parsed.anonKey !== "placeholder-key"
-      ) {
-        return { url: parsed.url, anonKey: parsed.anonKey };
-      }
-    }
-  } catch {
-    // fallback to env defaults
-  }
-  return { url: DEFAULT_SUPABASE_URL, anonKey: DEFAULT_SUPABASE_ANON_KEY };
-}
-
-export function saveSupabaseConfig(config: SupabaseAuthConfig): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
-  // Reset the singleton so next auth call uses the updated config.
-  resetSupabaseClient();
-}
-
-// ---------------------------------------------------------------------------
-// Session persistence helpers (hand-rolled session cache)
-// Used by app-store.tsx to re-hydrate session on app startup (once, on mount).
-// ---------------------------------------------------------------------------
-
-export function getStoredSession(): SupabaseSession | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_SESSION);
-    if (!raw) return null;
-    return JSON.parse(raw) as SupabaseSession;
-  } catch {
-    return null;
-  }
-}
-
-export function saveStoredSession(session: SupabaseSession | null): void {
-  if (typeof window === "undefined") return;
-  if (!session) {
-    localStorage.removeItem(STORAGE_KEY_SESSION);
-  } else {
-    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
-  }
-}
-
-// ---------------------------------------------------------------------------
-// supabaseAuth — hand-rolled REST auth helpers
-//
-// These call the Supabase Auth REST API directly via fetch.
-// They are kept for full backward compatibility with app-store.tsx and login.tsx.
-// They are ONLY called when the user explicitly triggers a login action.
+// supabaseAuth — Supabase client authentication helpers
 // ---------------------------------------------------------------------------
 
 export const supabaseAuth = {
@@ -289,7 +216,6 @@ export const supabaseAuth = {
         },
       };
 
-      saveStoredSession(session);
       return { data: { session, user: session.user }, error: null };
     } catch (err) {
       const message =
@@ -346,13 +272,12 @@ export const supabaseAuth = {
         options: {
           data: {
             name: metadata.name ?? "Student Learner",
-            // safeRole is always "student" — metadata.role is intentionally ignored
             role: safeRole,
-            tracks: metadata.tracks ?? ["mern", "cloud", "aiml"],
-            batch_id: metadata.batch_id ?? "BATCH-2026-ABC-CSE-01",
-            dept: metadata.dept ?? "CSE",
-            roll_no: metadata.roll_no ?? "STC2026",
-            college: metadata.college ?? "Partner Engineering College",
+            ...(metadata.tracks ? { tracks: metadata.tracks } : {}),
+            ...(metadata.batch_id ? { batch_id: metadata.batch_id } : {}),
+            ...(metadata.dept ? { dept: metadata.dept } : {}),
+            ...(metadata.roll_no ? { roll_no: metadata.roll_no } : {}),
+            ...(metadata.college ? { college: metadata.college } : {}),
           },
         },
       });
@@ -383,7 +308,6 @@ export const supabaseAuth = {
             }
           : null;
 
-      if (session) saveStoredSession(session);
       return { data: { session, user }, error: null };
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to register with Supabase.";
@@ -396,16 +320,12 @@ export const supabaseAuth = {
    * Called ONLY when user explicitly clicks "Sign Out".
    */
   async signOut(): Promise<void> {
-    const session = getStoredSession();
-    if (session?.access_token) {
-      try {
-        const client = getSupabaseClient();
-        await client.auth.signOut();
-      } catch {
-        // Ignore network failure on logout — local session is cleared regardless.
-      }
+    try {
+      const client = getSupabaseClient();
+      await client.auth.signOut();
+    } catch {
+      // Ignore network failure on logout — client session is cleared regardless.
     }
-    saveStoredSession(null);
   },
 
   /**

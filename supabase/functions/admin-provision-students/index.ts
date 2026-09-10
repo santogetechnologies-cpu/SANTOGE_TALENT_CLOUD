@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/triple-slash-reference */
+/// <reference path="../deno.d.ts" />
+
 // This code runs in Supabase Edge Functions (Deno runtime).
 // SUPABASE_SERVICE_ROLE_KEY is accessed ONLY server-side.
 
@@ -330,7 +333,9 @@ Deno.serve(async (req) => {
           position: idx + 1,
         }));
 
-        const { error: insTrackErr } = await adminClient.from("student_tracks").insert(trackRows);
+        const { error: insTrackErr } = await adminClient
+          .from("student_tracks")
+          .upsert(trackRows, { onConflict: "student_id,track_id" });
         if (insTrackErr) {
           if (isNewlyCreatedAuthUser) {
             await adminClient.from("student_profiles").delete().eq("id", studentId);

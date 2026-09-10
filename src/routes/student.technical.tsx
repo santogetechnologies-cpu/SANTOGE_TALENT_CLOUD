@@ -230,52 +230,65 @@ function TechnicalPage() {
           </span>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from(new Set(tracks || [])).map((id, i) => {
-            const t = trackById(id);
-            const pct = calculateTrackPct(id);
-            const isViewing = currentTrackId === id;
+        {!tracks || tracks.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-line-soft bg-surface-soft/40 p-8 text-center">
+            <BookOpen className="mx-auto size-8 text-copy-muted mb-2" />
+            <p className="text-sm font-semibold text-foreground">
+              No technical tracks assigned yet
+            </p>
+            <p className="mt-1 text-xs text-copy-subtle max-w-md mx-auto">
+              Your institution administrator will assign 1 to 3 technical learning specializations
+              for your cohort. You can also explore and enroll in tracks from the catalog below.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from(new Set(tracks || [])).map((id, i) => {
+              const t = trackById(id);
+              const pct = calculateTrackPct(id);
+              const isViewing = currentTrackId === id;
 
-            return (
-              <Panel
-                key={`${id}-${i}`}
-                title={t.name}
-                subtitle={`${i === 0 ? "Primary Track (100% Gate)" : "Secondary Track"} · ${t.short}`}
-                className={cn(
-                  isViewing && "ring-2 ring-brand-cyan/60 shadow-lg shadow-brand-cyan/5",
-                )}
-                action={<span className="size-3 rounded-full" style={{ background: t.accent }} />}
-              >
-                <div className="mb-2 flex items-center justify-between text-xs">
-                  <span className="text-copy-subtle">90-Day Mastery</span>
-                  <span className="font-mono font-bold text-foreground">{pct}%</span>
-                </div>
-                <Meter value={pct} accent={t.accent} />
+              return (
+                <Panel
+                  key={`${id}-${i}`}
+                  title={t.name}
+                  subtitle={`${i === 0 ? "Primary Track (100% Gate)" : "Secondary Track"} · ${t.short}`}
+                  className={cn(
+                    isViewing && "ring-2 ring-brand-cyan/60 shadow-lg shadow-brand-cyan/5",
+                  )}
+                  action={<span className="size-3 rounded-full" style={{ background: t.accent }} />}
+                >
+                  <div className="mb-2 flex items-center justify-between text-xs">
+                    <span className="text-copy-subtle">90-Day Mastery</span>
+                    <span className="font-mono font-bold text-foreground">{pct}%</span>
+                  </div>
+                  <Meter value={pct} accent={t.accent} />
 
-                <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={() => setOpen(id)}
-                    className={cn(
-                      "flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-bold transition-all",
-                      isViewing
-                        ? "border-brand-cyan bg-brand-cyan/10 text-brand-cyan"
-                        : "border-line-soft bg-surface-soft text-foreground hover:border-brand-cyan/60",
-                    )}
-                  >
-                    <Play className="size-3 text-brand-cyan" />{" "}
-                    {isViewing ? "Inspecting Syllabus" : "View 90-Day Syllabus"}
-                  </button>
-                  <Link
-                    to="/student/labs"
-                    className="flex items-center justify-center gap-1 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-3 py-2 text-[11px] font-bold text-surface-dark shadow-sm"
-                  >
-                    <Terminal className="size-3" /> Sandbox
-                  </Link>
-                </div>
-              </Panel>
-            );
-          })}
-        </div>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={() => setOpen(id)}
+                      className={cn(
+                        "flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-bold transition-all",
+                        isViewing
+                          ? "border-brand-cyan bg-brand-cyan/10 text-brand-cyan"
+                          : "border-line-soft bg-surface-soft text-foreground hover:border-brand-cyan/60",
+                      )}
+                    >
+                      <Play className="size-3 text-brand-cyan" />{" "}
+                      {isViewing ? "Inspecting Syllabus" : "View 90-Day Syllabus"}
+                    </button>
+                    <Link
+                      to="/student/labs"
+                      className="flex items-center justify-center gap-1 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-3 py-2 text-[11px] font-bold text-surface-dark shadow-sm"
+                    >
+                      <Terminal className="size-3" /> Sandbox
+                    </Link>
+                  </div>
+                </Panel>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* =================================================================== */}

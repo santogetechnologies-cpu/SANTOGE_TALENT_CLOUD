@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { AppStoreProvider } from "@/lib/app-store";
 import { logAppError } from "../lib/error-telemetry";
+import { supabaseAuth } from "@/lib/supabase";
 
 function NotFoundComponent() {
   return (
@@ -42,7 +43,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     logAppError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
-  const handleHardReset = () => {
+  const handleHardReset = async () => {
+    try {
+      await supabaseAuth.signOut();
+    } catch {
+      /* ignore */
+    }
     try {
       localStorage.clear();
       sessionStorage.clear();

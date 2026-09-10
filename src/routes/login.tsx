@@ -1,26 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import {
-  Hexagon,
-  LogIn,
-  Server,
-  CheckCircle2,
-  AlertCircle,
-  Settings,
-  ChevronDown,
-  RefreshCw,
-  Info,
-} from "lucide-react";
+import { Hexagon, LogIn, Server, AlertCircle, RefreshCw, Info } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { useAppStore } from "@/lib/app-store";
-import {
-  getSupabaseConfig,
-  saveSupabaseConfig,
-  supabaseAuth,
-  type SupabaseAuthConfig,
-} from "@/lib/supabase";
-import { cn } from "@/lib/utils";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -52,19 +36,17 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Supabase connection config & test state
-  const [showConfig, setShowConfig] = useState(false);
-  const [sbConfig, setSbConfig] = useState<SupabaseAuthConfig>({ url: "", anonKey: "" });
-  const [connStatus, setConnStatus] = useState<"idle" | "testing" | "ok" | "err">("idle");
-  const [connMessage, setConnMessage] = useState("");
-
-  useEffect(() => {
-    setSbConfig(getSupabaseConfig());
-  }, []);
+  const isConfigured = isSupabaseConfigured();
 
   // Live Supabase submit handler
   const handleSupabaseSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (!isConfigured) {
+      setError(
+        "Supabase backend is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env",
+      );
+      return;
+    }
     if (!email || !password) {
       setError("Please enter your email and password");
       return;
@@ -82,22 +64,6 @@ function LoginPage() {
       res.role === "admin" ? "Signed in as Platform Super Admin" : "Signed in to Student Portal",
     );
     void navigate({ to: res.role === "admin" ? "/admin" : "/student" });
-  };
-
-  const testSupabaseConn = async () => {
-    setConnStatus("testing");
-    setConnMessage("Testing Supabase endpoint...");
-    const res = await supabaseAuth.testConnection(sbConfig);
-    if (res.ok) {
-      setConnStatus("ok");
-      setConnMessage(res.message);
-      saveSupabaseConfig(sbConfig);
-      toast.success("Supabase connected!");
-    } else {
-      setConnStatus("err");
-      setConnMessage(res.message);
-      toast.error(res.message);
-    }
   };
 
   return (
@@ -121,17 +87,8 @@ function LoginPage() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="inline-flex items-center gap-2 rounded-full border border-brand-emerald/30 bg-brand-emerald/10 px-3 py-1 text-[11px] font-semibold text-brand-emerald">
-              <Server className="size-3" /> Real Supabase Auth
+              <Server className="size-3" /> Supabase Production Auth
             </div>
-            <button
-              onClick={() => setShowConfig(!showConfig)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-copy-subtle hover:text-foreground"
-            >
-              <Settings className="size-3.5" /> Developer Endpoint Override{" "}
-              <ChevronDown
-                className={cn("size-3 transition-transform", showConfig && "rotate-180")}
-              />
-            </button>
           </div>
 
           <h1 className="mt-4 font-display text-2xl font-bold text-foreground">
@@ -142,61 +99,15 @@ function LoginPage() {
             administrator.
           </p>
 
-          {/* Collapsible Supabase Project Config Drawer */}
-          {showConfig && (
-            <div className="mt-4 rounded-xl border border-line-soft bg-surface-soft p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-foreground">Supabase Project Endpoint</p>
-                {connStatus === "ok" && (
-                  <span className="flex items-center gap-1 text-[11px] font-semibold text-brand-emerald">
-                    <CheckCircle2 className="size-3.5" /> Live &amp; Connected
-                  </span>
-                )}
-              </div>
+          {!isConfigured && (
+            <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-brand-rose/40 bg-brand-rose/10 p-3 text-xs text-brand-rose">
+              <AlertCircle className="size-4 shrink-0 mt-0.5" />
               <div>
-                <label className="mb-1 block text-[11px] font-semibold text-copy-subtle">
-                  Project URL (VITE_SUPABASE_URL)
-                </label>
-                <input
-                  type="text"
-                  value={sbConfig.url}
-                  onChange={(e) => setSbConfig({ ...sbConfig, url: e.target.value })}
-                  placeholder="https://your-project.supabase.co"
-                  className="w-full rounded-lg border border-line-soft bg-surface-dark px-3 py-2 text-xs font-mono text-foreground outline-none focus:border-brand-cyan/60"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold text-copy-subtle">
-                  Publishable Key (VITE_SUPABASE_PUBLISHABLE_KEY)
-                </label>
-                <input
-                  type="password"
-                  value={sbConfig.anonKey}
-                  onChange={(e) => setSbConfig({ ...sbConfig, anonKey: e.target.value })}
-                  placeholder="sb_publishable_..."
-                  className="w-full rounded-lg border border-line-soft bg-surface-dark px-3 py-2 text-xs font-mono text-foreground outline-none focus:border-brand-cyan/60"
-                />
-              </div>
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={testSupabaseConn}
-                  disabled={connStatus === "testing"}
-                  className="flex items-center gap-1.5 rounded-lg bg-surface-elevated border border-line-soft px-3 py-1.5 text-xs font-bold text-foreground hover:border-brand-cyan/50"
-                >
-                  <RefreshCw className={cn("size-3", connStatus === "testing" && "animate-spin")} />{" "}
-                  Test Connection
-                </button>
-                {connMessage && (
-                  <span
-                    className={cn(
-                      "text-[11px]",
-                      connStatus === "ok" ? "text-brand-emerald" : "text-brand-rose",
-                    )}
-                  >
-                    {connMessage}
-                  </span>
-                )}
+                <p className="font-bold">Backend Connection Required</p>
+                <p className="mt-0.5 text-[11px] opacity-90">
+                  VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are not configured. Please
+                  supply production environment variables.
+                </p>
               </div>
             </div>
           )}
@@ -212,7 +123,7 @@ function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="student@college.edu or admin@gmail.com"
+                placeholder="student@college.edu or admin@domain.com"
                 className="w-full rounded-xl border border-line-soft bg-surface-soft px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-brand-cyan/60"
               />
             </div>
@@ -237,7 +148,7 @@ function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !isConfigured}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-3 text-sm font-bold text-surface-dark transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {loading ? (

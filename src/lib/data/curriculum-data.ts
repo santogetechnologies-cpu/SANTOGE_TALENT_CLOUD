@@ -1,7 +1,7 @@
 /**
  * SantoGe Talent Cloud — Curriculum Data Service
  *
- * Authoritative integration for Live Supabase mode (Curriculum & Content CMS) and Demo mode.
+ * Authoritative integration for Live Supabase mode (Curriculum & Content CMS).
  * Rules:
  * - Specific column selection only (NO select('*')).
  * - Zero realtime subscriptions, zero continuous polling.

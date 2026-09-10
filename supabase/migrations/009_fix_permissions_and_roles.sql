@@ -110,10 +110,24 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
 
--- 5. Seed Super Admin Role explicitly for designated bootstrap user
-INSERT INTO public.user_roles (auth_user_id, role)
-VALUES ('e6c4e39c-b521-4c37-96a1-be3720e57cb8', 'super_admin')
-ON CONFLICT (auth_user_id) DO UPDATE SET role = 'super_admin';
+-- 5. Dynamic Super Admin Bootstrap Helper Function
+CREATE OR REPLACE FUNCTION public.bootstrap_super_admin(p_email TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    SELECT id INTO v_user_id FROM auth.users WHERE email = LOWER(TRIM(p_email));
+    IF v_user_id IS NOT NULL THEN
+        INSERT INTO public.user_roles (auth_user_id, role)
+        VALUES (v_user_id, 'super_admin')
+        ON CONFLICT (auth_user_id) DO UPDATE SET role = 'super_admin';
+    END IF;
+END;
+$$;
 
 -- Ensure all other existing auth users have a role record (default to student)
 INSERT INTO public.user_roles (auth_user_id, role)
