@@ -41,6 +41,23 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
   useEffect(() => {
     logAppError(error, { boundary: "tanstack_root_error_component" });
+
+    // Automatically recover from chunk hash mismatches caused by fresh deployments
+    const msg = error?.message || "";
+    if (
+      msg.includes("Failed to fetch dynamically imported module") ||
+      msg.includes("dynamically imported module") ||
+      msg.includes("Loading chunk") ||
+      msg.includes("error loading dynamically imported module")
+    ) {
+      const key = `chunk_reload_${window.location.pathname}`;
+      const lastReload = sessionStorage.getItem(key);
+      const now = Date.now();
+      if (!lastReload || now - Number(lastReload) > 10000) {
+        sessionStorage.setItem(key, String(now));
+        window.location.reload();
+      }
+    }
   }, [error]);
 
   const handleHardReset = async () => {
@@ -58,15 +75,23 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     window.location.href = "/";
   };
 
+  const isChunkError =
+    error?.message?.includes("dynamically imported module") ||
+    error?.message?.includes("Loading chunk");
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-dark px-4 text-foreground">
       <div className="w-full max-w-lg rounded-2xl border border-line-soft bg-surface-elevated p-6 text-center shadow-2xl">
-        <h1 className="text-xl font-bold tracking-tight text-brand-rose">This page didn't load</h1>
+        <h1 className="text-xl font-bold tracking-tight text-brand-rose">
+          {isChunkError ? "New Version Available" : "This page didn't load"}
+        </h1>
         <p className="mt-2 text-xs text-copy-subtle">
-          {error?.message || "An unexpected error occurred while rendering this page."}
+          {isChunkError
+            ? "A new update has been deployed to SantoGe Talent Cloud. Please reload to load the latest application assets."
+            : error?.message || "An unexpected error occurred while rendering this page."}
         </p>
 
-        {error?.stack && (
+        {error?.stack && !isChunkError && (
           <div className="mt-4 max-h-40 overflow-y-auto rounded-xl border border-line-soft bg-surface-dark p-3 text-left font-mono text-[10px] text-copy-subtle">
             <pre className="whitespace-pre-wrap">{error.stack}</pre>
           </div>
@@ -74,20 +99,30 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
+            onClick={() => window.location.reload()}
             className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2 text-xs font-bold text-surface-dark transition-opacity hover:opacity-90"
           >
-            Try again
+            Reload Application
           </button>
-          <button
-            onClick={handleHardReset}
-            className="inline-flex items-center justify-center rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-4 py-2 text-xs font-bold text-brand-rose hover:bg-brand-rose/20"
-          >
-            Reset storage &amp; reload
-          </button>
+          {!isChunkError && (
+            <>
+              <button
+                onClick={() => {
+                  router.invalidate();
+                  reset();
+                }}
+                className="inline-flex items-center justify-center rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-foreground hover:bg-surface-elevated"
+              >
+                Try again
+              </button>
+              <button
+                onClick={handleHardReset}
+                className="inline-flex items-center justify-center rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-4 py-2 text-xs font-bold text-brand-rose hover:bg-brand-rose/20"
+              >
+                Reset storage &amp; reload
+              </button>
+            </>
+          )}
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-foreground hover:bg-surface-elevated"
@@ -164,6 +199,23 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    const handlePreloadError = () => {
+      const key = `chunk_reload_${window.location.pathname}`;
+      const lastReload = sessionStorage.getItem(key);
+      const now = Date.now();
+      if (!lastReload || now - Number(lastReload) > 10000) {
+        sessionStorage.setItem(key, String(now));
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener("vite:preloadError", handlePreloadError);
+    return () => {
+      window.removeEventListener("vite:preloadError", handlePreloadError);
+    };
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
