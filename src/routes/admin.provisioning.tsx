@@ -11,6 +11,7 @@ import {
   deleteLiveStudent,
   type ProvisionedStudent,
 } from "@/lib/data/admin-data";
+import { isUuid } from "@/lib/data";
 import {
   Download,
   Upload,
@@ -381,7 +382,9 @@ function ProvisioningPage() {
 
       rows.push(record);
       const coursesStr = [c1, c2, c3].filter(Boolean).join(", ") || "No tracks assigned";
-      out.push(`[provisioned] ${studentName} (${rollNo}) → ${batchId} [${coursesStr}]`);
+      const displayBatch =
+        batchNameById.get(batchId) || (isUuid(batchId) ? "Assigned Batch" : batchId);
+      out.push(`[provisioned] ${studentName} (${rollNo}) → ${displayBatch} [${coursesStr}]`);
     });
 
     // Check batch sizing rule: 100-300 students per batch
@@ -612,8 +615,10 @@ function ProvisioningPage() {
 
     if (res.ok) {
       toast.success(`Student ${singleName.trim()} registered to Supabase backend!`);
+      const singleDisplayBatch =
+        batchNameById.get(batchId) || (isUuid(batchId) ? "Assigned Batch" : batchId);
       setLog((prev) => [
-        `[provisioned] Single student registered: ${singleName.trim()} (${singleEmail.trim().toLowerCase()}) → ${batchNameById.get(batchId) || batchId}`,
+        `[provisioned] Single student registered: ${singleName.trim()} (${singleEmail.trim().toLowerCase()}) → ${singleDisplayBatch}`,
         ...prev,
       ]);
       await Promise.all([

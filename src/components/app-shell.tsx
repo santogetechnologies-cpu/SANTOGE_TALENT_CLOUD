@@ -137,7 +137,7 @@ const SEARCH_ITEMS: SearchResult[] = [
 ];
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useLiveStudentProfile } from "@/lib/data";
+import { useLiveStudentProfile, useBatchLookup } from "@/lib/data";
 
 export function AppShell({ portal }: { portal: Role }) {
   const store = useAppStore();
@@ -148,6 +148,7 @@ export function AppShell({ portal }: { portal: Role }) {
     portal === "student" && !!store.supabaseSession?.user?.id,
   );
   const liveStudentId = liveProfileData?.profile?.id || store.liveStudentId;
+  const { getBatchName } = useBatchLookup(portal === "student");
 
   const activeTracks: TrackId[] =
     portal === "student" ? liveProfileData?.tracks || store.activeTracks : store.activeTracks;
@@ -299,8 +300,17 @@ export function AppShell({ portal }: { portal: Role }) {
                 <span>
                   {liveProfileData?.profile?.roll_no || store.student?.rollNo || "2026-CSE"}
                 </span>
-                <span className="font-mono text-foreground">
-                  {liveProfileData?.profile?.batch_id || store.student?.batchId || "Cohort"}
+                <span
+                  className="truncate max-w-[120px] font-medium text-foreground text-right"
+                  title={getBatchName(
+                    liveProfileData?.profile?.batch_id || store.student?.batchId,
+                    "Cohort",
+                  )}
+                >
+                  {getBatchName(
+                    liveProfileData?.profile?.batch_id || store.student?.batchId,
+                    "Cohort",
+                  )}
                 </span>
               </div>
             )}

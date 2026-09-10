@@ -25,7 +25,12 @@ export const Route = createFileRoute("/student/leaderboard")({
   component: LeaderboardPage,
 });
 
-import { useLiveStudentProfile, useLiveStudentProgress, useLiveLeaderboard } from "@/lib/data";
+import {
+  useLiveStudentProfile,
+  useLiveStudentProgress,
+  useLiveLeaderboard,
+  useBatchLookup,
+} from "@/lib/data";
 import { trackProgress } from "@/lib/curriculum";
 import type { TrackId } from "@/lib/tracks";
 
@@ -43,6 +48,7 @@ function LeaderboardPage() {
   );
 
   const batchId = liveProfileData?.profile?.batch_id || store.student?.batchId || "";
+  const { getBatchName } = useBatchLookup(true);
   const me =
     liveProfileData?.profile?.name ||
     store.student?.name ||
@@ -79,7 +85,7 @@ function LeaderboardPage() {
       <PageHeader
         title="Batch Leaderboard"
         subtitle="Leaderboards belong to the Placement Accelerator cohort — never to unrelated technical tracks."
-        action={<Chip tone="amber">{batchId || "No Batch"}</Chip>}
+        action={<Chip tone="amber">{getBatchName(batchId, "Cohort Leaderboard")}</Chip>}
       />
 
       <div className="grid gap-4 sm:grid-cols-3">

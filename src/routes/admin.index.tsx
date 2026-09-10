@@ -13,6 +13,7 @@ import {
   deleteLiveStudent,
   updateLiveBatch,
   useLiveBatches,
+  useBatchLookup,
 } from "@/lib/data";
 
 import {
@@ -141,6 +142,7 @@ function AdminAnalytics() {
   });
 
   const { data: liveBatches } = useLiveBatches(true);
+  const { getBatchName } = useBatchLookup(true);
   const availableBatches = useMemo(() => {
     return liveBatches || [];
   }, [liveBatches]);
@@ -490,7 +492,7 @@ function AdminAnalytics() {
                     <span className="text-brand-cyan font-mono">
                       {b.lastSync
                         ? `Synced: ${b.lastSync}`
-                        : `Telegram: t.me/stc-${b.id.toLowerCase()}`}
+                        : `Telegram: t.me/stc-${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                     </span>
                   </div>
                 </div>
@@ -703,8 +705,8 @@ function AdminAnalytics() {
                     </p>
                   </td>
                   <td className="py-3 pr-4">
-                    <span className="rounded-md border border-line-soft bg-surface-soft px-2 py-0.5 font-mono text-[11px]">
-                      {s.batchId}
+                    <span className="rounded-md border border-line-soft bg-surface-soft px-2 py-0.5 text-[11px] font-semibold text-brand-purple">
+                      {s.batchName || getBatchName(s.batchId)}
                     </span>
                   </td>
                   <td className="py-3 pr-4">
@@ -748,7 +750,7 @@ function AdminAnalytics() {
                             name: s.name,
                             email: s.email,
                             rollNo: s.rollNo,
-                            batchId: s.batchId,
+                            batchId: s.batchName || getBatchName(s.batchId),
                             dept: s.dept,
                             college: s.college,
                           });
@@ -772,7 +774,7 @@ function AdminAnalytics() {
                             name: s.name,
                             email: s.email,
                             rollNo: s.rollNo,
-                            batchId: s.batchId,
+                            batchId: s.batchName || getBatchName(s.batchId),
                           });
                         }}
                         className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2 py-1 text-[11px] font-semibold text-copy-subtle hover:text-brand-rose hover:border-brand-rose/60 hover:bg-brand-rose/10 transition-colors"
@@ -844,8 +846,8 @@ function AdminAnalytics() {
                 </div>
                 <div>
                   <p className="text-copy-subtle">Placement Batch</p>
-                  <p className="font-mono text-brand-purple font-bold mt-0.5">
-                    {activeModalStudent.batchId}
+                  <p className="text-brand-purple font-bold mt-0.5">
+                    {activeModalStudent.batchName || getBatchName(activeModalStudent.batchId)}
                   </p>
                 </div>
               </div>
@@ -958,7 +960,8 @@ function AdminAnalytics() {
                       name: activeModalStudent.name,
                       email: activeModalStudent.email,
                       rollNo: activeModalStudent.rollNo,
-                      batchId: activeModalStudent.batchId,
+                      batchId:
+                        activeModalStudent.batchName || getBatchName(activeModalStudent.batchId),
                     });
                   }}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-3 py-2 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-colors"
@@ -973,7 +976,8 @@ function AdminAnalytics() {
                       name: activeModalStudent.name,
                       email: activeModalStudent.email,
                       rollNo: activeModalStudent.rollNo,
-                      batchId: activeModalStudent.batchId,
+                      batchId:
+                        activeModalStudent.batchName || getBatchName(activeModalStudent.batchId),
                       dept: activeModalStudent.dept,
                       college: activeModalStudent.college,
                     });
@@ -1044,8 +1048,8 @@ function AdminAnalytics() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-copy-subtle font-medium">Cohort Batch:</span>
-                <span className="font-mono font-bold text-brand-purple">
-                  {deleteTargetStudent.batchId}
+                <span className="font-bold text-brand-purple">
+                  {getBatchName(deleteTargetStudent.batchId)}
                 </span>
               </div>
             </div>
