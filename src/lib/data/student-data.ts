@@ -38,6 +38,65 @@ export type LiveStudentData = {
 };
 
 /**
+ * Check if a student profile exists and verify its active/deleted/suspended lifecycle status.
+ * Used during authentication gates to strictly prevent deleted learners from logging in.
+ */
+export async function checkLiveStudentAccountStatus(
+  authUserId: string,
+  email?: string,
+): Promise<{
+  exists: boolean;
+  status: "active" | "suspended" | "deleted" | null;
+  isDeleted: boolean;
+  profileId?: string;
+}> {
+  const supabase = getSupabaseClient();
+  const normalizedEmail = email?.trim().toLowerCase();
+
+  // Try finding by auth_user_id first
+  const { data: byAuth } = await supabase
+    .from("student_profiles")
+    .select("id,status,email,auth_user_id")
+    .eq("auth_user_id", authUserId)
+    .maybeSingle();
+
+  if (byAuth) {
+    const status = (byAuth.status || "active") as "active" | "suspended" | "deleted";
+    return {
+      exists: true,
+      status,
+      isDeleted: status === "deleted",
+      profileId: byAuth.id,
+    };
+  }
+
+  // Fallback check by email if authUserId is not yet linked
+  if (normalizedEmail) {
+    const { data: byEmail } = await supabase
+      .from("student_profiles")
+      .select("id,status,email,auth_user_id")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+
+    if (byEmail) {
+      const status = (byEmail.status || "active") as "active" | "suspended" | "deleted";
+      return {
+        exists: true,
+        status,
+        isDeleted: status === "deleted",
+        profileId: byEmail.id,
+      };
+    }
+  }
+
+  return {
+    exists: false,
+    status: null,
+    isDeleted: false,
+  };
+}
+
+/**
  * Fetch a Live student profile and assigned tracks from Supabase by auth user ID.
  */
 export async function fetchLiveStudentProfile(
