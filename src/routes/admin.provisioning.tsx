@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Chip, Console, PageHeader, Panel, Stat } from "@/components/kit";
@@ -31,6 +31,7 @@ import {
   ShieldCheck,
   Layers,
   X,
+  Terminal,
 } from "lucide-react";
 import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
@@ -150,6 +151,29 @@ const normalizeHeader = (raw: string): string => {
   return clean;
 };
 
+/** Log line parser for IDE terminal styling */
+function parseLogLine(raw: string) {
+  const match = raw.match(/^\[([a-z0-9_-]+)\]\s*(.*)$/i);
+  if (!match || !match[1]) {
+    return { tag: null, text: raw };
+  }
+  return { tag: match[1].toLowerCase(), text: match[2] ?? "" };
+}
+
+const TAG_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+  ready: { bg: "bg-brand-cyan/15 border-brand-cyan/30 text-brand-cyan", text: "text-brand-cyan", label: "READY" },
+  policy: { bg: "bg-brand-purple/15 border-brand-purple/30 text-brand-purple", text: "text-copy-subtle", label: "POLICY" },
+  batch: { bg: "bg-brand-cyan/15 border-brand-cyan/30 text-brand-cyan", text: "text-foreground", label: "BATCH" },
+  provisioned: { bg: "bg-brand-emerald/15 border-brand-emerald/30 text-brand-emerald", text: "text-foreground", label: "PROVISIONED" },
+  auth: { bg: "bg-brand-purple/15 border-brand-purple/30 text-brand-purple", text: "text-brand-purple", label: "AUTH" },
+  complete: { bg: "bg-brand-emerald/20 border-brand-emerald/40 text-brand-emerald", text: "text-brand-emerald font-semibold", label: "COMPLETE" },
+  warning: { bg: "bg-brand-amber/15 border-brand-amber/30 text-brand-amber", text: "text-brand-amber", label: "WARNING" },
+  alert: { bg: "bg-brand-amber/15 border-brand-amber/30 text-brand-amber", text: "text-brand-amber", label: "ALERT" },
+  error: { bg: "bg-brand-rose/15 border-brand-rose/30 text-brand-rose", text: "text-brand-rose font-medium", label: "ERROR" },
+  cleared: { bg: "bg-brand-rose/15 border-brand-rose/30 text-brand-rose", text: "text-brand-rose", label: "CLEARED" },
+  refresh: { bg: "bg-brand-cyan/15 border-brand-cyan/30 text-brand-cyan", text: "text-copy-subtle", label: "REFRESH" },
+};
+
 function ProvisioningPage() {
   const queryClient = useQueryClient();
 
@@ -174,6 +198,8 @@ function ProvisioningPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+  const [isLogCopied, setIsLogCopied] = useState(false);
+  const consoleEndRef = useRef<HTMLDivElement>(null);
 
   // Table filters & search
   const [searchQuery, setSearchQuery] = useState("");
@@ -606,6 +632,22 @@ function ProvisioningPage() {
     toast.success("Cleared CSV editor text and validation console log");
   };
 
+  const handleCopyLog = () => {
+    if (log.length === 0) return;
+    navigator.clipboard.writeText(log.join("\n"));
+    setIsLogCopied(true);
+    toast.success("Copied console logs to clipboard");
+    setTimeout(() => setIsLogCopied(false), 2000);
+  };
+
+  useEffect(() => {
+    consoleEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [log]);
+
+  const csvRowCount = useMemo(() => {
+    return Math.max(0, csv.trim().split("\n").filter(Boolean).length - 1);
+  }, [csv]);
+
   const copyCredentials = (email: string, pass: string) => {
     navigator.clipboard.writeText(`Email: ${email} | Password: ${pass}`);
     setCopiedEmail(email);
@@ -755,43 +797,51 @@ function ProvisioningPage() {
         />
       </div>
 
-      {/* CSV Input & Log Section */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* CSV Input & Log Section — Symmetrical IDE Workbench */}
+      <div className="grid gap-5 lg:grid-cols-2 items-stretch">
+        {/* Left: CSV Editor Panel */}
         <Panel
+          className="flex flex-col h-full"
           title="CSV Upload & Bulk Provisioning Editor"
           subtitle="Paste CSV text, drag & drop your institution file, or download the standard template"
           action={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-brand-purple hover:underline"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-xs font-semibold text-foreground hover:border-brand-purple/50 hover:bg-brand-purple/10 hover:text-brand-purple transition-all"
+                title="Upload CSV from computer"
               >
-                <Upload className="size-3.5" /> Upload File
+                <Upload className="size-3.5" />
+                <span>Upload</span>
               </button>
               <button
                 type="button"
                 onClick={downloadTemplate}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-brand-cyan hover:underline ml-2"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-xs font-semibold text-foreground hover:border-brand-cyan/50 hover:bg-brand-cyan/10 hover:text-brand-cyan transition-all"
+                title="Download standard 10-column CSV template"
               >
-                <Download className="size-3.5" /> Download Template
+                <Download className="size-3.5" />
+                <span>Template</span>
               </button>
               <button
                 type="button"
                 onClick={resetToTemplate}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-copy-subtle hover:text-foreground ml-2"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-xs font-semibold text-copy-subtle hover:text-foreground hover:bg-surface-elevated transition-all"
                 title="Reset textarea to default template"
               >
-                <RefreshCw className="size-3" /> Reset
+                <RefreshCw className="size-3.5" />
+                <span>Reset</span>
               </button>
               <button
                 type="button"
                 onClick={handleClearEditorAndConsole}
                 disabled={!csv && log.length === 0}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-brand-rose hover:underline ml-2 disabled:opacity-40 disabled:hover:no-underline"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-brand-rose/30 bg-brand-rose/10 px-2.5 py-1 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Clear all CSV editor text and validation console log"
               >
-                <Trash2 className="size-3" /> Clear All
+                <Trash2 className="size-3.5" />
+                <span>Clear All</span>
               </button>
             </div>
           }
@@ -812,30 +862,63 @@ function ProvisioningPage() {
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
             className={cn(
-              "relative rounded-xl border transition-colors",
+              "relative flex flex-col flex-1 rounded-xl border transition-colors overflow-hidden",
               isDragging
-                ? "border-brand-cyan bg-brand-cyan/10"
+                ? "border-brand-cyan bg-brand-cyan/10 shadow-lg shadow-brand-cyan/10"
                 : "border-line-soft bg-surface-dark",
             )}
           >
+            {/* Terminal Window Header Bar */}
+            <div className="flex items-center justify-between border-b border-line-soft bg-surface-elevated/70 px-3.5 py-2 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full bg-brand-rose/80" />
+                  <span className="size-2.5 rounded-full bg-brand-amber/80" />
+                  <span className="size-2.5 rounded-full bg-brand-emerald/80" />
+                </div>
+                <span className="font-mono text-[11px] font-medium text-copy-subtle ml-1">
+                  student-provisioning.csv
+                </span>
+              </div>
+              <div className="flex items-center gap-2 font-mono text-[10px] text-copy-subtle">
+                <span className="rounded bg-surface-soft px-1.5 py-0.5 font-semibold text-brand-purple">
+                  10 Columns
+                </span>
+                <span>
+                  {csvRowCount} {csvRowCount === 1 ? "row" : "rows"}
+                </span>
+                <span>•</span>
+                <span>UTF-8</span>
+              </div>
+            </div>
+
             <textarea
               value={csv}
               onChange={(e) => setCsv(e.target.value)}
-              rows={13}
-              placeholder="Paste comma-separated student rows here…"
-              className="w-full bg-transparent p-3 font-mono text-[11px] text-foreground outline-none focus:border-brand-cyan/60"
+              wrap="off"
+              placeholder="Paste comma-separated student rows here or drag & drop a .csv file…"
+              className="h-[360px] flex-1 w-full resize-none bg-transparent p-3.5 font-mono text-[11.5px] leading-relaxed text-foreground outline-none whitespace-pre overflow-x-auto overflow-y-auto selection:bg-brand-cyan/20"
             />
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <button
-              onClick={processCsv}
-              disabled={isProcessing}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2.5 text-xs font-bold text-surface-dark shadow-md hover:opacity-95 transition-opacity disabled:opacity-50"
-            >
-              <Upload className="size-4" />
-              <span>{isProcessing ? "Processing Rows…" : "Run Provisioning & Issue Logins"}</span>
-            </button>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={processCsv}
+                disabled={isProcessing || !csv.trim()}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2.5 text-xs font-bold text-surface-dark shadow-md hover:opacity-95 transition-opacity disabled:opacity-50"
+              >
+                {isProcessing ? (
+                  <RefreshCw className="size-4 animate-spin" />
+                ) : (
+                  <Upload className="size-4" />
+                )}
+                <span>{isProcessing ? "Processing Rows…" : "Run Provisioning & Issue Logins"}</span>
+              </button>
+              <span className="text-[11px] font-mono text-copy-subtle hidden sm:inline">
+                {csvRowCount > 0 ? `${csvRowCount} student records ready` : "No rows"}
+              </span>
+            </div>
 
             <div className="flex items-center gap-2">
               {provisionedList.length > 0 && (
@@ -844,7 +927,7 @@ function ProvisioningPage() {
                   className="inline-flex items-center gap-1.5 rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-semibold text-foreground hover:border-brand-cyan/60 transition-colors"
                 >
                   <Download className="size-3.5" />
-                  <span>Export Credentials CSV</span>
+                  <span>Export CSV</span>
                 </button>
               )}
               <button
@@ -861,26 +944,159 @@ function ProvisioningPage() {
           </div>
         </Panel>
 
+        {/* Right: Validation & Audit Console Panel */}
         <Panel
+          className="flex flex-col h-full"
           title="Provisioning & Validation Log"
           subtitle="Real-time validation, track assignments, and batch capacity audits"
           action={
-            log.length > 0 ? (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-0.5 text-[11px] font-semibold text-brand-cyan">
+                <span className="size-1.5 rounded-full bg-brand-cyan animate-pulse" />
+                <span>Live Console</span>
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyLog}
+                disabled={log.length === 0}
+                className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-xs font-semibold text-copy-subtle hover:text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Copy console logs to clipboard"
+              >
+                {isLogCopied ? (
+                  <Check className="size-3.5 text-brand-emerald" />
+                ) : (
+                  <Copy className="size-3.5" />
+                )}
+                <span>{isLogCopied ? "Copied" : "Copy Log"}</span>
+              </button>
               <button
                 type="button"
                 onClick={() => {
                   setLog([]);
                   toast.info("Cleared console logs");
                 }}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-copy-subtle hover:text-brand-rose transition-colors"
+                disabled={log.length === 0}
+                className="inline-flex items-center gap-1 rounded-lg border border-brand-rose/30 bg-brand-rose/10 px-2.5 py-1 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Clear console output"
               >
-                <Trash2 className="size-3" /> Clear Console
+                <Trash2 className="size-3.5" />
+                <span>Clear Console</span>
               </button>
-            ) : undefined
+            </div>
           }
         >
-          <Console lines={log} empty="Console empty. Run provisioning to see validation logs." />
+          <div className="relative flex flex-col flex-1 rounded-xl border border-line-soft bg-surface-dark overflow-hidden">
+            {/* Terminal Window Header Bar */}
+            <div className="flex items-center justify-between border-b border-line-soft bg-surface-elevated/70 px-3.5 py-2 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full bg-brand-rose/80" />
+                  <span className="size-2.5 rounded-full bg-brand-amber/80" />
+                  <span className="size-2.5 rounded-full bg-brand-emerald/80" />
+                </div>
+                <span className="font-mono text-[11px] font-medium text-copy-subtle ml-1">
+                  provisioning-audit.log
+                </span>
+              </div>
+              <div className="flex items-center gap-2 font-mono text-[10px] text-copy-subtle">
+                <span className="rounded bg-surface-soft px-1.5 py-0.5 font-semibold text-brand-cyan">
+                  Live Stdout
+                </span>
+                <span>
+                  {log.length} {log.length === 1 ? "event" : "events"}
+                </span>
+              </div>
+            </div>
+
+            {/* Terminal Body */}
+            <div className="h-[360px] flex-1 overflow-y-auto overflow-x-auto p-3.5 font-mono text-[11.5px] leading-relaxed space-y-1.5 bg-brand-ink/40">
+              {log.length === 0 ? (
+                <div className="grid h-full place-items-center text-center p-6">
+                  <div>
+                    <div className="mx-auto mb-2 grid size-10 place-items-center rounded-xl bg-surface-soft text-copy-subtle">
+                      <Terminal className="size-5" />
+                    </div>
+                    <p className="text-xs font-semibold text-foreground">Console Ready</p>
+                    <p className="mt-1 max-w-xs text-[11px] text-copy-subtle">
+                      Awaiting provisioning execution. Paste or upload CSV on the left and click
+                      &quot;Run Provisioning & Issue Logins&quot; to inspect line-by-line validation,
+                      track mappings, and batch audits.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                log.map((line, idx) => {
+                  const { tag, text } = parseLogLine(line);
+                  const style = tag ? TAG_STYLES[tag] : null;
+
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-start gap-2 group hover:bg-surface-soft/40 px-1.5 py-0.5 rounded transition-colors"
+                    >
+                      <span className="select-none text-[10px] text-copy-subtle/50 font-mono w-5 text-right flex-shrink-0 pt-0.5">
+                        {idx + 1}
+                      </span>
+                      {style ? (
+                        <div className="flex items-baseline gap-2 flex-wrap min-w-0">
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded border px-1.5 py-0.2 text-[9.5px] font-bold uppercase tracking-wider flex-shrink-0",
+                              style.bg,
+                            )}
+                          >
+                            {style.label}
+                          </span>
+                          <span className={cn("break-all", style.text)}>{text}</span>
+                        </div>
+                      ) : (
+                        <span className="text-brand-cyan/90 break-all pl-1">{line}</span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+              <div ref={consoleEndRef} />
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div className="flex items-center gap-2 text-xs text-copy-subtle">
+              <span className="size-2 rounded-full bg-brand-emerald animate-pulse" />
+              <span className="font-mono text-[11px]">Audit Engine Active</span>
+              <span className="text-line-soft">•</span>
+              <span className="font-mono text-[11px] text-copy-subtle">0–1000 TS Gates</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCopyLog}
+                disabled={log.length === 0}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isLogCopied ? (
+                  <Check className="size-3.5 text-brand-emerald" />
+                ) : (
+                  <Copy className="size-3.5" />
+                )}
+                <span>{isLogCopied ? "Copied" : "Copy Log"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLog([]);
+                  toast.info("Cleared console logs");
+                }}
+                disabled={log.length === 0}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-3 py-2 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Clear console output"
+              >
+                <Trash2 className="size-3.5" />
+                <span>Clear Console</span>
+              </button>
+            </div>
+          </div>
         </Panel>
       </div>
 
