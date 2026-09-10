@@ -626,10 +626,9 @@ function ProvisioningPage() {
     }
   };
 
-  const handleClearEditorAndConsole = () => {
+  const handleClearCsvText = () => {
     setCsv("");
-    setLog([]);
-    toast.success("Cleared CSV editor text and validation console log");
+    toast.success("Cleared student-provisioning.csv text");
   };
 
   const handleCopyLog = () => {
@@ -833,16 +832,6 @@ function ProvisioningPage() {
                 <RefreshCw className="size-3.5" />
                 <span>Reset</span>
               </button>
-              <button
-                type="button"
-                onClick={handleClearEditorAndConsole}
-                disabled={!csv && log.length === 0}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-brand-rose/30 bg-brand-rose/10 px-2.5 py-1 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Clear all CSV editor text and validation console log"
-              >
-                <Trash2 className="size-3.5" />
-                <span>Clear All</span>
-              </button>
             </div>
           }
         >
@@ -932,10 +921,10 @@ function ProvisioningPage() {
               )}
               <button
                 type="button"
-                onClick={handleClearEditorAndConsole}
-                disabled={!csv && log.length === 0}
+                onClick={handleClearCsvText}
+                disabled={!csv}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-3 py-2 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Clear all CSV editor text and validation console log"
+                title="Clear student-provisioning.csv text"
               >
                 <Trash2 className="size-3.5" />
                 <span>Clear All</span>
@@ -1068,33 +1057,8 @@ function ProvisioningPage() {
               <span className="font-mono text-[11px] text-copy-subtle">0–1000 TS Gates</span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleCopyLog}
-                disabled={log.length === 0}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {isLogCopied ? (
-                  <Check className="size-3.5 text-brand-emerald" />
-                ) : (
-                  <Copy className="size-3.5" />
-                )}
-                <span>{isLogCopied ? "Copied" : "Copy Log"}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLog([]);
-                  toast.info("Cleared console logs");
-                }}
-                disabled={log.length === 0}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-3 py-2 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Clear console output"
-              >
-                <Trash2 className="size-3.5" />
-                <span>Clear Console</span>
-              </button>
+            <div className="flex items-center gap-2 font-mono text-[11px] text-copy-subtle">
+              <span>{log.length} {log.length === 1 ? "event recorded" : "events recorded"}</span>
             </div>
           </div>
         </Panel>
