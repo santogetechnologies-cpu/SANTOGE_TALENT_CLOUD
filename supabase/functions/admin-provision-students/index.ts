@@ -37,6 +37,88 @@ interface RequestBody {
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const VALID_TRACKS = new Set([
+  "mern",
+  "java",
+  "aiml",
+  "datascience",
+  "cloud",
+  "cyber",
+  "sre",
+  "uiux",
+  "qa",
+  "mobile",
+  "medical",
+  "marketing",
+  "sap",
+  "hr",
+  "bianalytics",
+]);
+
+const TRACK_ALIASES: Record<string, string> = {
+  mern: "mern",
+  fullstack: "mern",
+  react: "mern",
+  node: "mern",
+  java: "java",
+  spring: "java",
+  aiml: "aiml",
+  ai: "aiml",
+  ml: "aiml",
+  datascience: "datascience",
+  data: "datascience",
+  python: "datascience",
+  cloud: "cloud",
+  devops: "cloud",
+  aws: "cloud",
+  azure: "cloud",
+  cyber: "cyber",
+  security: "cyber",
+  cybersecurity: "cyber",
+  sre: "sre",
+  uiux: "uiux",
+  design: "uiux",
+  figma: "uiux",
+  qa: "qa",
+  testing: "qa",
+  automation: "qa",
+  mobile: "mobile",
+  flutter: "mobile",
+  reactnative: "mobile",
+  android: "mobile",
+  medical: "medical",
+  healthcare: "medical",
+  marketing: "marketing",
+  digitalmarketing: "marketing",
+  sap: "sap",
+  fico: "sap",
+  hr: "hr",
+  payroll: "hr",
+  bianalytics: "bianalytics",
+  bi: "bianalytics",
+  powerbi: "bianalytics",
+};
+
+function normalizeAndValidateCourse(
+  raw: string | undefined,
+): { ok: boolean; trackId?: string; error?: string } {
+  if (!raw || !raw.trim()) {
+    return { ok: true };
+  }
+  const clean = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  const mapped = TRACK_ALIASES[clean];
+  if (!mapped || !VALID_TRACKS.has(mapped)) {
+    return {
+      ok: false,
+      error: `Invalid course code: "${raw}". Must match a supported track ID.`,
+    };
+  }
+  return { ok: true, trackId: mapped };
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -221,10 +303,28 @@ Deno.serve(async (req) => {
 
       const password = item.password || "Temp@1234";
       const college = item.college?.trim() || "";
-      const rawTracks = [item.course_1, item.course_2, item.course_3]
-        .map((c) => c?.trim())
-        .filter(Boolean) as string[];
-      const tracks = rawTracks.slice(0, 3);
+
+      // Validate technical course tracks strictly
+      const c1Res = normalizeAndValidateCourse(item.course_1);
+      if (!c1Res.ok) {
+        return { ok: false, email, error: `course_1: ${c1Res.error}` };
+      }
+      const c2Res = normalizeAndValidateCourse(item.course_2);
+      if (!c2Res.ok) {
+        return { ok: false, email, error: `course_2: ${c2Res.error}` };
+      }
+      const c3Res = normalizeAndValidateCourse(item.course_3);
+      if (!c3Res.ok) {
+        return { ok: false, email, error: `course_3: ${c3Res.error}` };
+      }
+
+      const rawTracks = [c1Res.trackId, c2Res.trackId, c3Res.trackId].filter(Boolean) as string[];
+      const tracks: string[] = [];
+      for (const t of rawTracks) {
+        if (!tracks.includes(t)) {
+          tracks.push(t);
+        }
+      }
 
       // 1. Resolve Batch UUID strictly
       const batchResult = await resolveBatchUuid(item.batch_id);

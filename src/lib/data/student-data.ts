@@ -407,51 +407,16 @@ export async function issueLiveCertificate(
   return { ok: true };
 }
 
-export async function updateLiveStudentTracks(
-  studentId: string,
-  tracks: TrackId[],
-): Promise<{ ok: boolean; error?: string }> {
-  const supabase = getSupabaseClient();
-  const validTracks = tracks.slice(0, 3);
-
-  // 1. Remove any previously assigned tracks not in the updated list
-  if (validTracks.length > 0) {
-    const { error: delErr } = await supabase
-      .from("student_tracks")
-      .delete()
-      .eq("student_id", studentId)
-      .not("track_id", "in", `(${validTracks.join(",")})`);
-    if (delErr) {
-      console.warn("Could not prune deselected tracks:", delErr.message);
-    }
-  } else {
-    const { error: delErr } = await supabase
-      .from("student_tracks")
-      .delete()
-      .eq("student_id", studentId);
-    if (delErr) {
-      return { ok: false, error: delErr.message };
-    }
-  }
-
-  // 2. Upsert the current tracks (atomic & idempotent, eliminating 409 conflicts)
-  if (validTracks.length > 0) {
-    const rows = validTracks.map((track_id, idx) => ({
-      student_id: studentId,
-      track_id,
-      position: idx + 1,
-    }));
-
-    const { error: upsertErr } = await supabase
-      .from("student_tracks")
-      .upsert(rows, { onConflict: "student_id,track_id" });
-
-    if (upsertErr) {
-      return { ok: false, error: upsertErr.message };
-    }
-  }
-
-  return { ok: true };
+/**
+ * Authoritative check to verify if a requested track is assigned to the student.
+ * Ensures student access is strictly limited to their admin-assigned student_tracks.
+ */
+export function isStudentTrackAssigned(
+  assignedTracks: TrackId[] | undefined,
+  trackId: string | undefined,
+): boolean {
+  if (!assignedTracks || !trackId) return false;
+  return assignedTracks.includes(trackId as TrackId);
 }
 
 export async function updateLiveReadiness(

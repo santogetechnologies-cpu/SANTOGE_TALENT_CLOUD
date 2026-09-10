@@ -30,7 +30,6 @@ import {
   submitLiveAssessment,
   completeLiveMock,
   issueLiveCertificate,
-  updateLiveStudentTracks,
   updateLiveReadiness,
   fetchLiveBatches,
   createLiveBatch,
@@ -248,7 +247,7 @@ type AppStoreContextValue = AppStoreState & {
   setRole: (r: Role) => void;
   toggleTheme: () => void;
   setReadiness: (patch: Partial<ReadinessInputs>) => void;
-  setActiveTracks: (tracks: TrackId[], syncToDb?: boolean) => void;
+  setActiveTracks: (tracks: TrackId[]) => void;
   setDailyStep: (key: "english" | "aptitude" | "practice", val: boolean) => void;
   completeDailyStep: (key: "english" | "aptitude" | "practice") => void;
   completeSkill: (trackId: TrackId, skillId: string, name: string) => void;
@@ -650,12 +649,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const setActiveTracks = useCallback((tracks: TrackId[], syncToDb = false) => {
+  const setActiveTracks = useCallback((tracks: TrackId[]) => {
     setState((s) => {
       const nextProfile = { ...s.profile, activeTracks: tracks };
-      if (syncToDb && s.liveStudentId) {
-        void updateLiveStudentTracks(s.liveStudentId, tracks);
-      }
       return { ...s, profile: nextProfile };
     });
   }, []);

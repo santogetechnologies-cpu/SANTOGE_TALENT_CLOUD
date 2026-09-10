@@ -30,7 +30,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { useAppStore, type Role } from "@/lib/app-store";
-import { TRACKS, type TrackId } from "@/lib/tracks";
+import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
@@ -137,7 +137,7 @@ const SEARCH_ITEMS: SearchResult[] = [
 ];
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useLiveStudentProfile, updateLiveStudentTracks } from "@/lib/data";
+import { useLiveStudentProfile } from "@/lib/data";
 
 export function AppShell({ portal }: { portal: Role }) {
   const store = useAppStore();
@@ -211,31 +211,6 @@ export function AppShell({ portal }: { portal: Role }) {
   const signOut = () => {
     store.signOut();
     void navigate({ to: "/login" });
-  };
-
-  const toggleCourseTrack = async (id: TrackId) => {
-    const has = activeTracks.includes(id);
-    const next = has ? activeTracks.filter((t) => t !== id) : [...activeTracks, id];
-    if (next.length < 1) {
-      toast.error("Please keep at least 1 active course track.");
-      return;
-    }
-    if (next.length > 3) {
-      toast.error("Maximum 3 technical course tracks allowed simultaneously.");
-      return;
-    }
-    if (liveStudentId) {
-      const res = await updateLiveStudentTracks(liveStudentId, next);
-      if (!res.ok) {
-        toast.error(res.error || "Failed to update tracks");
-        return;
-      }
-      queryClient.invalidateQueries({
-        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
-      });
-    }
-    store.setActiveTracks(next);
-    toast.success(has ? "Track removed from your active courses" : "Enrolled in track!");
   };
 
   if (!store.ready || !store.isAuthed) {
@@ -434,10 +409,9 @@ export function AppShell({ portal }: { portal: Role }) {
                   </span>
                   <button
                     onClick={() => setCourseModalOpen(true)}
-                    className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 px-2.5 py-1.5 text-xs font-bold text-brand-cyan hover:bg-brand-cyan/20"
+                    className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-1.5 text-xs font-bold text-brand-cyan hover:bg-brand-cyan/20 transition-colors"
                   >
-                    <BookOpen className="size-3.5" /> Course Switcher ({activeTracks.length}
-                    /3)
+                    <BookOpen className="size-3.5" /> Assigned Courses ({activeTracks.length})
                   </button>
                 </>
               )}
@@ -530,7 +504,7 @@ export function AppShell({ portal }: { portal: Role }) {
         </div>
       )}
 
-      {/* ================= COURSE SWITCHER MODAL (1-3 Tracks) ================= */}
+      {/* ================= ASSIGNED COURSES VIEW MODAL (Read-Only) ================= */}
       {courseModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/70 backdrop-blur-md">
           <div className="w-full max-w-2xl rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
@@ -539,12 +513,12 @@ export function AppShell({ portal }: { portal: Role }) {
                 <div className="flex items-center gap-2">
                   <BookOpen className="size-4 text-brand-cyan" />
                   <h3 className="font-display text-base font-bold text-foreground">
-                    Interactive Technical Course Switcher
+                    Assigned Technical Courses
                   </h3>
                 </div>
                 <p className="text-xs text-copy-subtle mt-0.5">
-                  Select between 1 and 3 specialized technical courses. Self-paced and independent
-                  of your placement batch cohort.
+                  Technical specializations assigned by your Platform Admin. Course assignments are
+                  managed centrally and cannot be changed by students.
                 </p>
               </div>
               <button
@@ -557,58 +531,64 @@ export function AppShell({ portal }: { portal: Role }) {
 
             <div className="flex items-center justify-between rounded-xl border border-brand-cyan/30 bg-brand-cyan/10 p-3 text-xs">
               <span className="font-semibold text-brand-cyan">
-                Active Selected Tracks: {activeTracks.length} / 3
+                Assigned Tracks: {activeTracks.length} Specialization{activeTracks.length !== 1 ? "s" : ""}
               </span>
-              <span className="text-copy-subtle text-[11px]">
-                Rule: Min 1, Max 3 concurrent specializations
+              <span className="text-[11px] font-semibold text-brand-emerald">
+                ✓ Admin Assigned
               </span>
             </div>
 
-            <div className="grid gap-2.5 sm:grid-cols-2">
-              {TRACKS.map((t) => {
-                const isSelected = activeTracks.includes(t.id);
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => toggleCourseTrack(t.id)}
-                    className={cn(
-                      "flex items-start justify-between rounded-xl border p-3 text-left transition-all",
-                      isSelected
-                        ? "border-brand-cyan/70 bg-surface-soft shadow-sm"
-                        : "border-line-soft bg-surface-dark/40 hover:border-line-soft/80",
-                    )}
-                  >
-                    <div className="min-w-0 pr-2">
-                      <div className="flex items-center gap-2">
-                        <span className="size-2 rounded-full" style={{ background: t.accent }} />
-                        <p className="text-xs font-bold text-foreground">{t.name}</p>
-                      </div>
-                      <p className="mt-1 text-[11px] text-copy-subtle line-clamp-1">{t.tagline}</p>
-                      <p className="mt-1 font-mono text-[10px] text-brand-cyan">
-                        Lab: {t.labTitle}
-                      </p>
-                    </div>
+            {activeTracks.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-line-soft p-6 text-center text-xs text-copy-subtle">
+                No technical courses currently assigned. Please contact your institution administrator.
+              </div>
+            ) : (
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                {activeTracks.map((trackId, idx) => {
+                  const t = trackById(trackId);
+                  const isPrimary = idx === 0;
+                  return (
                     <div
-                      className={cn(
-                        "grid size-5 shrink-0 place-items-center rounded-lg border",
-                        isSelected
-                          ? "border-brand-cyan bg-brand-cyan text-surface-dark"
-                          : "border-line-soft bg-surface-soft",
-                      )}
+                      key={t.id}
+                      className="flex items-start justify-between rounded-xl border border-brand-cyan/40 bg-surface-soft p-3.5 text-left shadow-sm"
                     >
-                      {isSelected && <Check className="size-3.5 stroke-[3]" />}
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center gap-2">
+                          <span className="size-2 rounded-full" style={{ background: t.accent }} />
+                          <p className="text-xs font-bold text-foreground">{t.name}</p>
+                        </div>
+                        <p className="mt-1 text-[11px] text-copy-subtle line-clamp-1">{t.tagline}</p>
+                        <p className="mt-1 font-mono text-[10px] text-brand-cyan">
+                          Lab: {t.labTitle}
+                        </p>
+                      </div>
+                      <div className="shrink-0 flex flex-col items-end gap-1">
+                        <span
+                          className={cn(
+                            "rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                            isPrimary
+                              ? "bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/40"
+                              : "bg-surface-elevated text-copy-subtle border border-line-soft",
+                          )}
+                        >
+                          {isPrimary ? "Primary" : `Track #${idx + 1}`}
+                        </span>
+                        <span className="text-[9px] font-semibold text-brand-emerald">
+                          Admin Assigned
+                        </span>
+                      </div>
                     </div>
-                  </button>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
               <button
                 onClick={() => setCourseModalOpen(false)}
-                className="rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-5 py-2.5 text-xs font-bold text-surface-dark"
+                className="rounded-xl bg-surface-soft border border-line-soft px-5 py-2 text-xs font-bold text-foreground hover:bg-surface-elevated transition-colors"
               >
-                Save &amp; Continue Learning
+                Close
               </button>
             </div>
           </div>

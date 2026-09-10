@@ -320,6 +320,8 @@ BEGIN
     DROP POLICY IF EXISTS "Admins can manage all student profiles" ON public.student_profiles;
     DROP POLICY IF EXISTS "Students can read their own tracks" ON public.student_tracks;
     DROP POLICY IF EXISTS "Students can manage their own tracks" ON public.student_tracks;
+    DROP POLICY IF EXISTS "Students can read own assigned tracks" ON public.student_tracks;
+    DROP POLICY IF EXISTS "Admins can manage student tracks" ON public.student_tracks;
     DROP POLICY IF EXISTS "Settings readable by authenticated users" ON public.platform_settings;
     DROP POLICY IF EXISTS "Settings manageable by Admins" ON public.platform_settings;
     DROP POLICY IF EXISTS "Curriculum tracks readable by all authenticated" ON public.curriculum_tracks;
@@ -358,8 +360,11 @@ CREATE POLICY "Students can read their own profile" ON public.student_profiles F
 CREATE POLICY "Students can update their own permitted profile fields" ON public.student_profiles FOR UPDATE TO authenticated USING (auth_user_id = auth.uid() OR public.is_admin()) WITH CHECK (auth_user_id = auth.uid() OR public.is_admin());
 CREATE POLICY "Admins can manage all student profiles" ON public.student_profiles FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
-CREATE POLICY "Students can read their own tracks" ON public.student_tracks FOR SELECT TO authenticated USING (student_id = public.current_student_id() OR public.is_admin());
-CREATE POLICY "Students can manage their own tracks" ON public.student_tracks FOR ALL TO authenticated USING (student_id = public.current_student_id() OR public.is_admin()) WITH CHECK (student_id = public.current_student_id() OR public.is_admin());
+CREATE POLICY "Students can read own assigned tracks" ON public.student_tracks FOR SELECT TO authenticated USING (student_id = public.current_student_id() OR public.is_admin());
+CREATE POLICY "Admins can manage student tracks" ON public.student_tracks FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+REVOKE INSERT, UPDATE, DELETE ON public.student_tracks FROM authenticated;
+GRANT SELECT ON public.student_tracks TO authenticated;
+GRANT ALL ON public.student_tracks TO service_role;
 
 CREATE POLICY "Settings readable by authenticated users" ON public.platform_settings FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Settings manageable by Admins" ON public.platform_settings FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
@@ -547,6 +552,16 @@ BEGIN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
 
+    -- Enforce track assignment for non-admins
+    IF NOT public.is_admin() THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM public.student_tracks
+            WHERE student_id = p_student_id AND track_id = p_track_id
+        ) THEN
+            RAISE EXCEPTION 'Access Denied: Student is not assigned to course track %', p_track_id;
+        END IF;
+    END IF;
+
     INSERT INTO public.student_skill_completions (student_id, skill_id, track_id, completed_at)
     VALUES (p_student_id, p_skill_id, p_track_id, now())
     ON CONFLICT (student_id, skill_id) DO NOTHING;
@@ -579,6 +594,16 @@ DECLARE
 BEGIN
     IF NOT (public.is_admin() OR p_student_id = public.current_student_id()) THEN
         RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    -- Enforce track assignment for non-admins
+    IF NOT public.is_admin() THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM public.student_tracks
+            WHERE student_id = p_student_id AND track_id = p_lab_id
+        ) THEN
+            RAISE EXCEPTION 'Access Denied: Student is not assigned to course lab %', p_lab_id;
+        END IF;
     END IF;
 
     INSERT INTO public.student_lab_completions (student_id, lab_id, label, completed_at)
