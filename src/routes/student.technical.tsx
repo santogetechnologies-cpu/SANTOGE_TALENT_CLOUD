@@ -1,31 +1,36 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { Chip, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore } from "@/lib/app-store";
 import { modulesFor, nextSkill } from "@/lib/curriculum";
-import { TRACKS, DOMAINS, type TrackId, trackById } from "@/lib/tracks";
+import { trackById, type TrackId } from "@/lib/tracks";
 import { getTrackSyllabus } from "@/lib/syllabus-data";
 import { cn } from "@/lib/utils";
 import {
-  CheckCircle2,
-  Circle,
-  Play,
-  UserRound,
-  Terminal,
-  BookOpen,
-  Sparkles,
-  Layers,
-  Check,
-  Zap,
   ArrowRight,
+  Award,
+  BookOpen,
   Briefcase,
   Calendar,
-  Award,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
-  ShieldCheck,
+  Code2,
+  Cpu,
+  FileCode2,
+  FolderGit2,
+  GraduationCap,
+  Layers,
+  Lock,
+  Play,
   Quote,
+  ShieldCheck,
+  ShieldAlert,
+  Sparkles,
+  Terminal,
   Target,
+  Zap,
+  ExternalLink,
   FileCheck2,
   Flame,
   Search,
@@ -52,7 +57,7 @@ export const Route = createFileRoute("/student/technical")({
 });
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useLiveStudentProfile, useLiveStudentProgress, updateLiveStudentTracks } from "@/lib/data";
+import { useLiveStudentProfile, useLiveStudentProgress, isStudentTrackAssigned } from "@/lib/data";
 
 function TechnicalPage() {
   const store = useAppStore();
@@ -82,7 +87,11 @@ function TechnicalPage() {
     return Math.round((done / total) * 100);
   };
 
-  const [selectedDomain, setSelectedDomain] = useState<string>("all");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const searchParams = new URLSearchParams(location.search);
+  const requestedTrackFromUrl = searchParams.get("track");
+
   const [open, setOpen] = useState<TrackId>(tracks[0] ?? "mern");
   const [syllabusViewTab, setSyllabusViewTab] = useState<
     "90days" | "simulations" | "portfolio" | "capstone"
@@ -98,7 +107,16 @@ function TechnicalPage() {
   });
   const [syllabusSearch, setSyllabusSearch] = useState("");
 
-  const currentTrackId = tracks.includes(open) ? open : (tracks[0] ?? "mern");
+  const isRequestedUnassigned =
+    Boolean(requestedTrackFromUrl) && !isStudentTrackAssigned(tracks, requestedTrackFromUrl ?? undefined);
+
+  const currentTrackId: TrackId =
+    !isRequestedUnassigned && requestedTrackFromUrl && isStudentTrackAssigned(tracks, requestedTrackFromUrl ?? undefined)
+      ? (requestedTrackFromUrl as TrackId)
+      : isStudentTrackAssigned(tracks, open)
+        ? open
+        : (tracks[0] ?? "mern");
+
   const track = trackById(currentTrackId);
   const syllabus = useMemo(() => getTrackSyllabus(track.id), [track.id]);
   const modules = modulesFor(track.id);
@@ -106,54 +124,6 @@ function TechnicalPage() {
   const avg = Math.round(
     tracks.reduce((s, t) => s + calculateTrackPct(t), 0) / Math.max(tracks.length, 1),
   );
-
-  const filteredCatalog = useMemo(() => {
-    if (selectedDomain === "all") return TRACKS;
-    return TRACKS.filter((t) => t.domain === selectedDomain);
-  }, [selectedDomain]);
-
-  const toggleTrackEnrollment = async (id: TrackId) => {
-    const isEnrolled = tracks.includes(id);
-    if (isEnrolled) {
-      if (tracks.length <= 1) {
-        toast.error("You must maintain at least 1 active technical track.");
-        return;
-      }
-      const nextTracks = tracks.filter((t) => t !== id);
-      if (liveStudentId) {
-        const res = await updateLiveStudentTracks(liveStudentId, nextTracks);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to update tracks");
-          return;
-        }
-        queryClient.invalidateQueries({
-          queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
-        });
-      }
-      store.setActiveTracks(nextTracks);
-      toast.success(`Removed ${trackById(id).name} from active tracks.`);
-    } else {
-      if (tracks.length >= 3) {
-        toast.error(
-          "Maximum 3 active technical courses allowed simultaneously. Change in settings.",
-        );
-        return;
-      }
-      const nextTracks = [...tracks, id];
-      if (liveStudentId) {
-        const res = await updateLiveStudentTracks(liveStudentId, nextTracks);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to update tracks");
-          return;
-        }
-        queryClient.invalidateQueries({
-          queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
-        });
-      }
-      store.setActiveTracks(nextTracks);
-      toast.success(`Enrolled in ${trackById(id).name}!`);
-    }
-  };
 
   const toggleWeekExpand = (wNum: number) => {
     setExpandedWeeks((prev) => ({ ...prev, [wNum]: !prev[wNum] }));
@@ -193,7 +163,7 @@ function TechnicalPage() {
       <PageHeader
         title="90-Day Placement-Oriented Syllabus & Technical Engine"
         subtitle="18 Weeks × 5 Working Days = 90 Days. Days 1–4: 20m Concept + 10m Practice. Friday: Workplace Simulation. Built to crack technical interviews on day 90."
-        action={<Chip tone="cyan">{tracks.length} of 3 active specializations</Chip>}
+        action={<Chip tone="emerald">{tracks.length} Admin Assigned</Chip>}
       />
 
       {/* KPI Stats */}
@@ -225,8 +195,8 @@ function TechnicalPage() {
           <p className="text-xs font-bold uppercase tracking-wider text-copy-subtle">
             Select Active Course Track to Inspect 90-Day Syllabus
           </p>
-          <span className="text-[11px] text-copy-subtle">
-            Click 'View Syllabus' on any enrolled specialization
+          <span className="text-[11px] font-semibold text-brand-emerald flex items-center gap-1">
+            <CheckCircle2 className="size-3.5" /> Admin-Assigned Specializations
           </span>
         </div>
 
@@ -237,8 +207,8 @@ function TechnicalPage() {
               No technical tracks assigned yet
             </p>
             <p className="mt-1 text-xs text-copy-subtle max-w-md mx-auto">
-              Your institution administrator will assign 1 to 3 technical learning specializations
-              for your cohort. You can also explore and enroll in tracks from the catalog below.
+              Your technical learning specializations are assigned centrally by your institution
+              administrator via Platform CSV provisioning.
             </p>
           </div>
         ) : (
@@ -291,14 +261,44 @@ function TechnicalPage() {
         )}
       </div>
 
+      {/* Access Denied Warning when navigating to an unassigned track */}
+      {isRequestedUnassigned && (
+        <div className="rounded-2xl border border-brand-rose/40 bg-brand-rose/10 p-8 text-center space-y-4 shadow-xl">
+          <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-rose/20 text-brand-rose">
+            <ShieldAlert className="size-7" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-foreground">Access Denied: Unassigned Course</h3>
+            <p className="mt-2 text-xs text-copy-subtle max-w-lg mx-auto leading-relaxed">
+              You are not authorized to access the syllabus or drills for{" "}
+              <span className="font-mono font-bold text-brand-rose">"{requestedTrackFromUrl}"</span>.
+              Course access is strictly restricted to technical specializations assigned by your
+              Platform Administrator.
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              onClick={() => {
+                if (tracks[0]) setOpen(tracks[0]);
+                void navigate({ to: "/student/technical" });
+              }}
+              className="rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-6 py-2.5 text-xs font-bold text-surface-dark shadow-md hover:opacity-90 transition-opacity"
+            >
+              Return to Primary Track ({tracks[0] ? trackById(tracks[0]).name : "Dashboard"})
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* =================================================================== */}
       {/* 90-DAY PLACEMENT SYLLABUS & PROJECT PLAN MASTER SUITE */}
       {/* =================================================================== */}
-      <Panel
-        title={`90-Day Placement Syllabus · ${syllabus.trackName}`}
-        subtitle={`Target Role: ${syllabus.targetRole} · Structure: 18 Weeks × 5 Working Days = 90 Learning Days`}
-        action={<Chip tone="emerald">{syllabus.weeks.length} Weeks Structured</Chip>}
-      >
+      {!isRequestedUnassigned && tracks.length > 0 && (
+        <Panel
+          title={`90-Day Placement Syllabus · ${syllabus.trackName}`}
+          subtitle={`Target Role: ${syllabus.targetRole} · Structure: 18 Weeks × 5 Working Days = 90 Learning Days`}
+          action={<Chip tone="emerald">{syllabus.weeks.length} Weeks Structured</Chip>}
+        >
         {/* Career Progression & Interview Pitch Banner */}
         <div className="grid gap-4 lg:grid-cols-3 mb-6">
           {/* Career Ladder */}
@@ -764,6 +764,9 @@ function TechnicalPage() {
           </div>
         )}
       </Panel>
-    </div>
-  );
+    )}
+  </div>
+);
 }
+
+

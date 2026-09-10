@@ -250,14 +250,19 @@ function ProvisioningPage() {
     toast.info("Editor reset to default standard template");
   };
 
-  const normalizeCourse = (raw: string | undefined): TrackId | null => {
-    if (!raw) return null;
+  const normalizeCourse = (
+    raw: string | undefined,
+  ): { ok: boolean; trackId?: TrackId; error?: string } => {
+    if (!raw || !raw.trim()) return { ok: true };
     const cleaned = raw
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "");
-    if (!cleaned) return null;
-    return COURSE_ALIASES[cleaned] || null;
+    const mapped = COURSE_ALIASES[cleaned];
+    if (!mapped) {
+      return { ok: false, error: `Invalid course code "${raw}". Must match a valid track.` };
+    }
+    return { ok: true, trackId: mapped };
   };
 
   const processCsv = async () => {
@@ -324,10 +329,26 @@ function ProvisioningPage() {
       const college = rowMap["college"] || "";
       const password = rowMap["password"] || "Temp@1234";
 
-      // Track course assignments (1 to 3 tracks)
-      const c1 = normalizeCourse(rowMap["course_1"]) || "mern";
-      let c2 = normalizeCourse(rowMap["course_2"]) || "";
-      let c3 = normalizeCourse(rowMap["course_3"]) || "";
+      // Track course assignments: strict validation, never default missing course to mern
+      const c1Val = normalizeCourse(rowMap["course_1"]);
+      if (!c1Val.ok) {
+        out.push(`[error] Row ${i + 2}: course_1 has invalid course code "${rowMap["course_1"]}" for "${email}"`);
+        return;
+      }
+      const c2Val = normalizeCourse(rowMap["course_2"]);
+      if (!c2Val.ok) {
+        out.push(`[error] Row ${i + 2}: course_2 has invalid course code "${rowMap["course_2"]}" for "${email}"`);
+        return;
+      }
+      const c3Val = normalizeCourse(rowMap["course_3"]);
+      if (!c3Val.ok) {
+        out.push(`[error] Row ${i + 2}: course_3 has invalid course code "${rowMap["course_3"]}" for "${email}"`);
+        return;
+      }
+
+      const c1 = c1Val.trackId || "";
+      let c2 = c2Val.trackId || "";
+      let c3 = c3Val.trackId || "";
 
       // Ensure de-duplicated tracks per student
       if (c2 && c2 === c1) c2 = "";
@@ -388,7 +409,7 @@ function ProvisioningPage() {
     }
     if (res.failedCount > 0) {
       out.push(`[warning] ${res.failedCount} records failed during provisioning:`);
-      (res.results || []).forEach((r) => {
+      (res.results || []).forEach((r: { email: string; ok: boolean; error?: string }) => {
         if (!r.ok) {
           out.push(`  ❌ ${r.email}: ${r.error || "Unknown error"}`);
         }

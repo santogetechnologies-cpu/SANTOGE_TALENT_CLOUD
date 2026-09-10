@@ -18,6 +18,7 @@ import {
   Layers,
   Sparkles,
   Info,
+  CheckCircle2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/student/settings")({
@@ -73,7 +74,6 @@ import {
   useLiveStudentProfile,
   useLiveStudentProgress,
   useLivePlatformSettings,
-  updateLiveStudentTracks,
   updateLiveReadiness,
 } from "@/lib/data";
 
@@ -127,37 +127,8 @@ function SettingsPage() {
   };
   const secondaryMinimum = livePlatformSettings?.secondaryMinimum ?? store.secondaryMinimum;
 
-  const [domainFilter, setDomainFilter] = useState<string>("all");
   const [telegramNotifs, setTelegramNotifs] = useState(true);
   const [morningReminder, setMorningReminder] = useState(true);
-
-  const toggleTrack = async (id: (typeof TRACKS)[number]["id"]) => {
-    const has = activeTracks.includes(id);
-    const next = has ? activeTracks.filter((t) => t !== id) : [...activeTracks, id];
-    if (next.length < 1) {
-      toast.error("You must maintain at least 1 enrolled course track.");
-      return;
-    }
-    if (next.length > 3) {
-      toast.error("Maximum 3 concurrent technical courses allowed per student.");
-      return;
-    }
-    if (liveStudentId) {
-      const res = await updateLiveStudentTracks(liveStudentId, next);
-      if (!res.ok) {
-        toast.error(res.error || "Failed to update tracks");
-        return;
-      }
-      queryClient.invalidateQueries({
-        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
-      });
-    }
-    store.setActiveTracks(next);
-    toast.success(has ? "Course track unenrolled" : "Course track enrolled successfully!");
-  };
-
-  const filteredTracks =
-    domainFilter === "all" ? TRACKS : TRACKS.filter((t) => t.domain === domainFilter);
 
   const sendTestBroadcast = () => {
     toast.success("Telegram test broadcast simulated: '06:00 Daily Placement Accelerator ready!'");
@@ -166,9 +137,9 @@ function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Settings & Course Selection"
-        subtitle="Manage your technical specializations, cohort batch identity, and personal workspace preferences."
-        action={<Chip tone="purple">{activeTracks.length}/3 tracks enrolled</Chip>}
+        title="Settings & Assigned Courses"
+        subtitle="Review your Admin-assigned technical specializations, cohort batch identity, and workspace preferences."
+        action={<Chip tone="cyan">{activeTracks.length} track{activeTracks.length !== 1 ? "s" : ""} assigned</Chip>}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -179,10 +150,10 @@ function SettingsPage() {
           hint="Composite readiness"
         />
         <Stat
-          label="Enrolled Courses"
+          label="Assigned Courses"
           value={`${activeTracks.length} / 3`}
           accent="var(--brand-purple)"
-          hint="Technical tracks"
+          hint="Admin assigned"
         />
         <Stat
           label="Verified Labs"
@@ -234,39 +205,11 @@ function SettingsPage() {
         </div>
       </Panel>
 
-      {/* COURSE SELECTION & SPECIALIZATIONS */}
+      {/* ASSIGNED TECHNICAL COURSES (ADMIN-ASSIGNED ONLY) */}
       <Panel
-        title="Technical Course Enrolment (1 to 3 Tracks)"
-        subtitle="Individual, self-paced learning paths. The first selected track is your Primary Specialization for Dual Gate."
-        action={
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button
-              onClick={() => setDomainFilter("all")}
-              className={cn(
-                "rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors",
-                domainFilter === "all"
-                  ? "bg-brand-cyan text-surface-dark"
-                  : "bg-surface-soft text-copy-subtle hover:text-foreground",
-              )}
-            >
-              All (15)
-            </button>
-            {DOMAINS.map((d) => (
-              <button
-                key={d.id}
-                onClick={() => setDomainFilter(d.id)}
-                className={cn(
-                  "rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors",
-                  domainFilter === d.id
-                    ? "bg-brand-cyan text-surface-dark"
-                    : "bg-surface-soft text-copy-subtle hover:text-foreground",
-                )}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-        }
+        title="Assigned Technical Courses"
+        subtitle="Technical courses assigned by your Platform Admin. Course assignments are managed centrally and cannot be changed by students."
+        action={<Chip tone="emerald">Admin Assigned</Chip>}
       >
         <div className="mb-3 rounded-xl border border-brand-cyan/20 bg-brand-cyan/5 p-3 text-xs text-copy-subtle flex items-center gap-2">
           <Info className="size-4 text-brand-cyan shrink-0" />
@@ -276,61 +219,52 @@ function SettingsPage() {
           </span>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredTracks.map((t) => {
-            const index = activeTracks.indexOf(t.id);
-            const isEnrolled = index !== -1;
-            const isPrimary = index === 0;
+        {activeTracks.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-line-soft bg-surface-soft/40 p-8 text-center text-xs text-copy-subtle">
+            No technical courses currently assigned. Course assignments are provisioned centrally by
+            your institution administrator.
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {activeTracks.map((trackId, index) => {
+              const t = trackById(trackId);
+              const isPrimary = index === 0;
 
-            return (
-              <div
-                key={t.id}
-                className={cn(
-                  "relative rounded-xl border p-4 transition-all flex flex-col justify-between",
-                  isEnrolled
-                    ? "border-brand-cyan/70 bg-surface-elevated shadow-md shadow-brand-cyan/5"
-                    : "border-line-soft bg-surface-soft hover:border-line-strong",
-                )}
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="size-2.5 rounded-full shrink-0"
-                        style={{ background: t.accent }}
-                      />
-                      <p className="text-sm font-bold text-foreground">{t.name}</p>
-                    </div>
-                    {isEnrolled && (
+              return (
+                <div
+                  key={t.id}
+                  className="relative rounded-xl border border-brand-cyan/50 bg-surface-elevated p-4 transition-all flex flex-col justify-between shadow-sm"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="size-2.5 rounded-full shrink-0"
+                          style={{ background: t.accent }}
+                        />
+                        <p className="text-sm font-bold text-foreground">{t.name}</p>
+                      </div>
                       <Chip tone={isPrimary ? "cyan" : "purple"}>
                         {isPrimary ? "Primary (100%)" : `Track #${index + 1}`}
                       </Chip>
-                    )}
+                    </div>
+                    <p className="mt-1 text-xs text-copy-subtle">{t.tagline}</p>
+                    <p className="mt-2 text-[11px] font-mono text-copy-subtle/80">
+                      Lab: <span className="text-foreground font-semibold">{t.labTitle}</span>
+                    </p>
                   </div>
-                  <p className="mt-1 text-xs text-copy-subtle">{t.tagline}</p>
-                  <p className="mt-2 text-[11px] font-mono text-copy-subtle/80">
-                    Lab: <span className="text-foreground font-semibold">{t.labTitle}</span>
-                  </p>
-                </div>
 
-                <div className="mt-4 pt-3 border-t border-line-soft/60 flex items-center justify-between">
-                  <span className="text-[11px] font-mono text-copy-subtle">{t.short}</span>
-                  <button
-                    onClick={() => toggleTrack(t.id)}
-                    className={cn(
-                      "rounded-lg px-3 py-1 text-xs font-bold transition-colors",
-                      isEnrolled
-                        ? "bg-brand-rose/10 text-brand-rose hover:bg-brand-rose/20"
-                        : "bg-surface-elevated text-brand-cyan border border-line-soft hover:border-brand-cyan/60",
-                    )}
-                  >
-                    {isEnrolled ? "Drop Course" : "Enrol Course +"}
-                  </button>
+                  <div className="mt-4 pt-3 border-t border-line-soft/60 flex items-center justify-between">
+                    <span className="text-[11px] font-mono text-copy-subtle">{t.short}</span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-emerald">
+                      <CheckCircle2 className="size-3.5" /> Assigned by Platform Admin
+                    </span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </Panel>
 
       {/* READINESS & NOTIFICATION SETTINGS */}

@@ -20,6 +20,14 @@ import type {
 
 export type { ProvisionedStudent };
 
+export interface ProvisionResult {
+  ok: boolean;
+  count: number;
+  failedCount: number;
+  results: Array<{ email: string; ok: boolean; error?: string }>;
+  message: string;
+}
+
 export type LiveRosterItem = {
   id: string;
   auth_user_id: string | null;
