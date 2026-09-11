@@ -248,7 +248,7 @@ export async function fetchLiveAdminAnalytics(
         const words = targetCollegeName.split(/\s+/).filter((w) => w.length > 2);
         if (words.some((w) => b.name.toLowerCase().includes(w.toLowerCase()))) return true;
       }
-      if (batchCounts[b.id] > 0) return true;
+      if ((batchCounts[b.id] ?? 0) > 0) return true;
       return false;
     });
 

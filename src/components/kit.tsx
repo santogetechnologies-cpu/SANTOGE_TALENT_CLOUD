@@ -7,15 +7,17 @@ export function Panel({
   action,
   children,
   className,
+  id,
 }: {
   title?: ReactNode;
   subtitle?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
+  id?: string;
 }) {
   return (
-    <section className={cn("rounded-xl border border-border bg-card p-5 shadow-xs transition-colors", className)}>
+    <section id={id} className={cn("rounded-xl border border-border bg-card p-5 shadow-xs transition-colors", className)}>
       {(title || action) && (
         <header className="mb-4 flex items-start justify-between gap-3">
           <div>
@@ -62,21 +64,57 @@ export function Stat({
   hint,
   accent,
   tone,
+  onClick,
+  active,
+  actionLabel,
+  className,
 }: {
   label: string;
   value: ReactNode;
   hint?: string;
   accent?: string;
   tone?: string;
+  onClick?: () => void;
+  active?: boolean;
+  actionLabel?: string;
+  className?: string;
 }) {
+  const isClickable = Boolean(onClick);
   return (
-    <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
-      <p className="text-xs font-medium text-muted-foreground">
-        {label}
-      </p>
+    <div
+      onClick={onClick}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={
+        isClickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
+      className={cn(
+        "group relative rounded-xl border border-border bg-card p-4 shadow-xs transition-all text-left",
+        isClickable &&
+          "cursor-pointer hover:border-primary/50 hover:bg-muted/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary select-none",
+        active && "border-primary bg-primary/5 ring-1 ring-primary",
+        className,
+      )}
+    >
+      <div className="flex items-center justify-between gap-1">
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        {actionLabel && (
+          <span className="text-[10px] font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+            {actionLabel}
+          </span>
+        )}
+      </div>
       <p
         className={cn(
           "mt-2 text-2xl font-bold tracking-tight text-foreground",
+          tone === "brand" && "text-primary",
           tone === "cyan" && "text-sky-600 dark:text-sky-400",
           tone === "purple" && "text-violet-600 dark:text-violet-400",
           tone === "emerald" && "text-emerald-600 dark:text-emerald-400",
