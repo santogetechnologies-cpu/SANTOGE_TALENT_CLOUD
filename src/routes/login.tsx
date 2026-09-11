@@ -377,7 +377,7 @@ function LoginPage() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-blue-600/5 blur-[140px] pointer-events-none" />
 
       {/* Top Header Bar */}
-      <header className="relative z-10 w-full max-w-5xl mx-auto flex items-center justify-between pb-3">
+      <header className="relative z-10 w-full max-w-5xl mx-auto flex items-center pb-3">
         {/* Brand identity */}
         <div className="flex items-center gap-3">
           <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-md shadow-indigo-600/20">
@@ -387,14 +387,6 @@ function LoginPage() {
             <span className="text-base font-bold tracking-tight text-white">SantoGe</span>
             <span className="text-sm font-medium text-slate-400">Talent Cloud</span>
           </div>
-        </div>
-
-        {/* Portal Status Badge (Always Dark Mode) */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-800 bg-slate-900/80 backdrop-blur-md text-xs font-medium text-slate-300 shadow-xs">
-          <span className="size-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
-          <span className="hidden sm:inline">Placement Accelerator</span>
-          <span className="text-slate-500 hidden sm:inline">·</span>
-          <span>Portal Access</span>
         </div>
       </header>
 
