@@ -106,6 +106,7 @@ function AdminAnalytics() {
   const { data: liveAnalytics } = useQuery({
     queryKey: ["live", "admin-analytics", selectedInst],
     queryFn: () => fetchLiveAdminAnalytics(selectedInst),
+    placeholderData: (prev) => prev,
   });
 
   const { data: liveDrives } = useQuery({
@@ -139,6 +140,7 @@ function AdminAnalytics() {
         tier: tierFilter !== "all" ? tierFilter : undefined,
         driveMinScore: selectedDrive?.minScore,
       }),
+    placeholderData: (prev) => prev,
   });
 
   const { data: liveBatches } = useLiveBatches(true);
@@ -147,9 +149,23 @@ function AdminAnalytics() {
     return liveBatches || [];
   }, [liveBatches]);
 
-  // Institutions dropdown list
+  // Institutions dropdown list (cached so options never vanish during transitions)
+  const [cachedInstitutions, setCachedInstitutions] = useState<Array<{ id: string; name: string }>>(
+    [],
+  );
+
+  useEffect(() => {
+    if (liveAnalytics?.institutions && liveAnalytics.institutions.length > 0) {
+      setCachedInstitutions(liveAnalytics.institutions.map((i) => ({ id: i.id, name: i.name })));
+    }
+  }, [liveAnalytics?.institutions]);
+
   const institutions = useMemo(() => {
-    const list = liveAnalytics?.institutions || [];
+    const list =
+      liveAnalytics?.institutions && liveAnalytics.institutions.length > 0
+        ? liveAnalytics.institutions
+        : cachedInstitutions;
+
     return [
       {
         id: "all",
@@ -160,7 +176,7 @@ function AdminAnalytics() {
       },
       ...list.map((i) => ({ id: i.id, name: i.name })),
     ];
-  }, [liveAnalytics?.institutions]);
+  }, [liveAnalytics?.institutions, cachedInstitutions]);
 
   // KPI Metrics
   const totalEnrolled = liveAnalytics?.totalEnrolled ?? 0;

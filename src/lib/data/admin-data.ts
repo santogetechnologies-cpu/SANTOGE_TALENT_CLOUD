@@ -68,24 +68,13 @@ export async function fetchLiveAdminAnalytics(
 ): Promise<LiveAnalyticsData> {
   const supabase = getSupabaseClient();
 
-  // 1. Fetch active students with specific columns
-  let studentQuery = supabase
-    .from("student_profiles")
-    .select(
-      "id,name,email,dept,college,batch_id,institution_id,status,placement_day,talent_score,readiness_t,readiness_c,readiness_a,readiness_e,readiness_r,readiness_m",
-    )
-    .eq("status", "active");
-
-  if (selectedInstId !== "all") {
-    if (UUID_REGEX.test(selectedInstId)) {
-      studentQuery = studentQuery.eq("institution_id", selectedInstId);
-    } else {
-      studentQuery = studentQuery.ilike("college", `%${selectedInstId}%`);
-    }
-  }
-
-  const [studentsRes, batchesRes, institutionsRes] = await Promise.all([
-    studentQuery,
+  // 1. Fetch metadata for all active students, batches, and institutions unconditionally
+  // so the dropdown of partner institutions is ALWAYS complete, stable, and accurate!
+  const [allStudentsMetaRes, batchesRes, institutionsRes] = await Promise.all([
+    supabase
+      .from("student_profiles")
+      .select("id,college,institution_id,batch_id")
+      .eq("status", "active"),
     supabase
       .from("batches")
       .select("id,institution_id,name,capacity,dept,status,last_sync_at,created_at,updated_at")
@@ -97,11 +86,126 @@ export async function fetchLiveAdminAnalytics(
       .eq("status", "active"),
   ]);
 
-  if (studentsRes.error) throw new Error(studentsRes.error.message);
+  if (allStudentsMetaRes.error) throw new Error(allStudentsMetaRes.error.message);
   if (batchesRes.error) throw new Error(batchesRes.error.message);
   if (institutionsRes.error) throw new Error(institutionsRes.error.message);
 
-  const students = (studentsRes.data || []) as unknown as Array<{
+  // 2. Build stable platform-wide institutions list from all active students & institutions
+  const instMap = new Map<
+    string,
+    { id: string; name: string; code: string; studentCount: number; collegeNames: string[] }
+  >();
+
+  (institutionsRes.data || []).forEach((inst: DbInstitution) => {
+    instMap.set(inst.id, {
+      id: inst.id,
+      name: inst.name,
+      code: inst.code,
+      studentCount: 0,
+      collegeNames: [inst.name.toLowerCase()],
+    });
+  });
+
+  (allStudentsMetaRes.data || []).forEach(
+    (s: { college: string | null; institution_id: string | null }) => {
+      const colName = s.college?.trim();
+      const instId = s.institution_id;
+
+      if (instId && instMap.has(instId)) {
+        instMap.get(instId)!.studentCount += 1;
+        if (colName && !instMap.get(instId)!.collegeNames.includes(colName.toLowerCase())) {
+          instMap.get(instId)!.collegeNames.push(colName.toLowerCase());
+        }
+      } else if (colName) {
+        let matchedEntry:
+          | { id: string; name: string; code: string; studentCount: number; collegeNames: string[] }
+          | undefined;
+        for (const entry of instMap.values()) {
+          if (
+            entry.name.toLowerCase() === colName.toLowerCase() ||
+            entry.collegeNames.includes(colName.toLowerCase())
+          ) {
+            matchedEntry = entry;
+            break;
+          }
+        }
+        if (matchedEntry) {
+          matchedEntry.studentCount += 1;
+          if (!matchedEntry.collegeNames.includes(colName.toLowerCase())) {
+            matchedEntry.collegeNames.push(colName.toLowerCase());
+          }
+        } else {
+          instMap.set(colName, {
+            id: colName,
+            name: colName,
+            code: colName,
+            studentCount: 1,
+            collegeNames: [colName.toLowerCase()],
+          });
+        }
+      }
+    },
+  );
+
+  // Resolve target institution details if filtering
+  let targetInstId: string | null = null;
+  let targetCollegeName: string | null = null;
+
+  if (selectedInstId !== "all") {
+    const cleanLookup = selectedInstId.trim();
+    const cleanNoHyphens = cleanLookup.replace(/-/g, " ").toLowerCase();
+
+    if (instMap.has(cleanLookup)) {
+      const entry = instMap.get(cleanLookup)!;
+      targetInstId = UUID_REGEX.test(entry.id) ? entry.id : null;
+      targetCollegeName = entry.name;
+    } else {
+      for (const entry of instMap.values()) {
+        if (
+          entry.id.toLowerCase() === cleanLookup.toLowerCase() ||
+          entry.name.toLowerCase() === cleanNoHyphens ||
+          entry.collegeNames.includes(cleanNoHyphens) ||
+          entry.id.toLowerCase().replace(/-/g, " ") === cleanNoHyphens
+        ) {
+          targetInstId = UUID_REGEX.test(entry.id) ? entry.id : null;
+          targetCollegeName = entry.name;
+          break;
+        }
+      }
+    }
+
+    if (!targetCollegeName) {
+      targetCollegeName = selectedInstId.replace(/-/g, " ").trim();
+      if (UUID_REGEX.test(selectedInstId)) {
+        targetInstId = selectedInstId;
+      }
+    }
+  }
+
+  // 3. Query filtered students based on selection
+  let studentQuery = supabase
+    .from("student_profiles")
+    .select(
+      "id,name,email,dept,college,batch_id,institution_id,status,placement_day,talent_score,readiness_t,readiness_c,readiness_a,readiness_e,readiness_r,readiness_m",
+    )
+    .eq("status", "active");
+
+  if (selectedInstId !== "all") {
+    if (targetInstId && targetCollegeName) {
+      studentQuery = studentQuery.or(
+        `institution_id.eq.${targetInstId},college.ilike.%${targetCollegeName}%`,
+      );
+    } else if (targetInstId) {
+      studentQuery = studentQuery.eq("institution_id", targetInstId);
+    } else if (targetCollegeName) {
+      studentQuery = studentQuery.ilike("college", `%${targetCollegeName}%`);
+    }
+  }
+
+  const { data: studentsData, error: studentsError } = await studentQuery;
+  if (studentsError) throw new Error(studentsError.message);
+
+  const students = (studentsData || []) as unknown as Array<{
     id: string;
     name: string;
     email: string;
@@ -121,7 +225,7 @@ export async function fetchLiveAdminAnalytics(
 
   const totalEnrolled = students.length;
 
-  // Batch enrolled mapping derived dynamically from student_profiles
+  // Batch enrolled mapping derived dynamically from filtered students
   const batchCounts: Record<string, number> = {};
   students.forEach((s) => {
     if (s.batch_id) {
@@ -130,10 +234,23 @@ export async function fetchLiveAdminAnalytics(
   });
 
   const rawBatches = (batchesRes.data || []) as DbBatch[];
-  const batches = rawBatches.map((b) => ({
-    ...b,
-    enrolled_count: batchCounts[b.id] || 0,
-  }));
+  const batches = rawBatches
+    .map((b) => ({
+      ...b,
+      enrolled_count: batchCounts[b.id] || 0,
+    }))
+    .filter((b) => {
+      if (selectedInstId === "all") return true;
+      if (targetInstId && b.institution_id === targetInstId) return true;
+      if (targetCollegeName && b.name.toLowerCase().includes(targetCollegeName.toLowerCase()))
+        return true;
+      if (targetCollegeName) {
+        const words = targetCollegeName.split(/\s+/).filter((w) => w.length > 2);
+        if (words.some((w) => b.name.toLowerCase().includes(w.toLowerCase()))) return true;
+      }
+      if (batchCounts[b.id] > 0) return true;
+      return false;
+    });
 
   // Average readiness
   let avgReadiness = 0;
@@ -154,28 +271,6 @@ export async function fetchLiveAdminAnalytics(
   const marketplaceReadyCount = students.filter((s) => s.talent_score >= 700).length;
   const marketplacePercent =
     totalEnrolled > 0 ? Math.round((marketplaceReadyCount / totalEnrolled) * 100) : 0;
-
-  // Institutions aggregation
-  const instMap = new Map<
-    string,
-    { id: string; name: string; code: string; studentCount: number }
-  >();
-  (institutionsRes.data || []).forEach((inst: DbInstitution) => {
-    instMap.set(inst.id, { id: inst.id, name: inst.name, code: inst.code, studentCount: 0 });
-  });
-
-  students.forEach((s) => {
-    if (s.institution_id && instMap.has(s.institution_id)) {
-      const existing = instMap.get(s.institution_id)!;
-      existing.studentCount += 1;
-    } else if (s.college) {
-      const colId = s.college.toLowerCase().replace(/\s+/g, "-");
-      if (!instMap.has(colId)) {
-        instMap.set(colId, { id: colId, name: s.college, code: colId, studentCount: 0 });
-      }
-      instMap.get(colId)!.studentCount += 1;
-    }
-  });
 
   // Dynamic Funnel calculations
   const stage1 = totalEnrolled;
@@ -225,7 +320,12 @@ export async function fetchLiveAdminAnalytics(
     avgReadiness,
     marketplaceReadyCount,
     marketplacePercent,
-    institutions: Array.from(instMap.values()),
+    institutions: Array.from(instMap.values()).map((i) => ({
+      id: i.id,
+      name: i.name,
+      code: i.code,
+      studentCount: i.studentCount,
+    })),
     batches,
     funnel,
   };
@@ -257,11 +357,21 @@ export async function fetchLiveStudentRoster(options?: {
     .order("created_at", { ascending: false });
 
   if (options?.institutionId && options.institutionId !== "all") {
-    const instId = options.institutionId;
+    const instId = options.institutionId.trim();
     if (UUID_REGEX.test(instId)) {
-      query = query.eq("institution_id", instId);
+      const { data: instData } = await supabase
+        .from("institutions")
+        .select("name")
+        .eq("id", instId)
+        .maybeSingle();
+      if (instData?.name) {
+        query = query.or(`institution_id.eq.${instId},college.ilike.%${instData.name}%`);
+      } else {
+        query = query.eq("institution_id", instId);
+      }
     } else {
-      query = query.ilike("college", `%${instId}%`);
+      const cleanCol = instId.replace(/-/g, " ").trim();
+      query = query.ilike("college", `%${cleanCol}%`);
     }
   }
 
