@@ -36,6 +36,8 @@ import {
   Plus,
   X,
   SlidersHorizontal,
+  Download,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -76,6 +78,14 @@ function AdminAnalytics() {
     rollNo: string;
     batchId: string;
   } | null>(null);
+
+  // Interactive Grid button & filter states
+  const [selectedBatchFilter, setSelectedBatchFilter] = useState<string | null>(null);
+  const [selectedFunnelStage, setSelectedFunnelStage] = useState<number | null>(null);
+  const [isReadinessModalOpen, setIsReadinessModalOpen] = useState(false);
+  const [activeKpiFilter, setActiveKpiFilter] = useState<"all" | "marketplace" | null>(null);
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const [isRecalculatingAll, setIsRecalculatingAll] = useState(false);
 
   // New Requisition modal states
   const [isNewDriveModalOpen, setIsNewDriveModalOpen] = useState(false);
@@ -215,8 +225,167 @@ function AdminAnalytics() {
     { label: "Recruiter Offers & Marketplace Ready", count: 0, pct: 0, color: "#10b981" },
   ];
 
-  // Filtered Students from Live Supabase Roster
-  const filteredStudents = liveRoster?.items || [];
+  // Computed Cohort Readiness Dimension Averages for Audit Modal
+  const cohortAverages = useMemo(() => {
+    const list = liveRoster?.items || [];
+    if (list.length === 0) {
+      return { T: 65, C: 60, A: 58, E: 72, R: 54, M: 40 };
+    }
+    const sum = list.reduce(
+      (acc, s) => {
+        acc.T += s.readiness?.T ?? 60;
+        acc.C += s.readiness?.C ?? 60;
+        acc.A += s.readiness?.A ?? 55;
+        acc.E += s.readiness?.E ?? 70;
+        acc.R += s.readiness?.R ?? 50;
+        acc.M += s.readiness?.M ?? 40;
+        return acc;
+      },
+      { T: 0, C: 0, A: 0, E: 0, R: 0, M: 0 },
+    );
+    const n = list.length;
+    return {
+      T: Math.round(sum.T / n),
+      C: Math.round(sum.C / n),
+      A: Math.round(sum.A / n),
+      E: Math.round(sum.E / n),
+      R: Math.round(sum.R / n),
+      M: Math.round(sum.M / n),
+    };
+  }, [liveRoster?.items]);
+
+  // Filtered Students from Live Supabase Roster + Batch & Funnel grid filter interactions
+  const displayedStudents = useMemo(() => {
+    let list = liveRoster?.items || [];
+    if (selectedBatchFilter) {
+      list = list.filter(
+        (s) =>
+          s.batchId === selectedBatchFilter ||
+          s.batchName === selectedBatchFilter ||
+          getBatchName(s.batchId) === selectedBatchFilter,
+      );
+    }
+    if (selectedFunnelStage !== null) {
+      if (selectedFunnelStage === 2) list = list.filter((s) => s.placementDay >= 2);
+      else if (selectedFunnelStage === 3) list = list.filter((s) => s.talentScore >= 500);
+      else if (selectedFunnelStage === 4) list = list.filter((s) => s.placementDay >= 30 || s.gateCleared);
+      else if (selectedFunnelStage === 5) list = list.filter((s) => s.talentScore >= 600);
+      else if (selectedFunnelStage === 6) list = list.filter((s) => s.talentScore >= 700);
+    }
+    return list;
+  }, [liveRoster?.items, selectedBatchFilter, selectedFunnelStage, getBatchName]);
+
+  const filteredStudents = displayedStudents;
+
+  const handleResetAllFilters = () => {
+    setSearchQuery("");
+    setTrackFilter("all");
+    setTierFilter("all");
+    setSelectedDriveId(null);
+    setSelectedBatchFilter(null);
+    setSelectedFunnelStage(null);
+    setActiveKpiFilter(null);
+    toast.info("Cleared all active filters");
+  };
+
+  const hasActiveFilters = Boolean(
+    searchQuery ||
+    trackFilter !== "all" ||
+    tierFilter !== "all" ||
+    selectedDriveId !== null ||
+    selectedBatchFilter !== null ||
+    selectedFunnelStage !== null ||
+    activeKpiFilter !== null
+  );
+
+  const handleExportCSV = () => {
+    if (filteredStudents.length === 0) {
+      toast.error("No student records available to export");
+      return;
+    }
+
+    const headers = [
+      "Student Name",
+      "Email Address",
+      "Roll Number",
+      "Department",
+      "Institution",
+      "Placement Batch",
+      "Assigned Tracks",
+      "Talent Score",
+      "Placement Day",
+      "Dual Gate Cleared",
+      "Status Tier",
+    ];
+
+    const rows = filteredStudents.map((s) => [
+      `"${(s.name || "").replace(/"/g, '""')}"`,
+      `"${(s.email || "").replace(/"/g, '""')}"`,
+      `"${(s.rollNo || "").replace(/"/g, '""')}"`,
+      `"${(s.dept || "").replace(/"/g, '""')}"`,
+      `"${(s.college || "").replace(/"/g, '""')}"`,
+      `"${(s.batchName || getBatchName(s.batchId) || "").replace(/"/g, '""')}"`,
+      `"${(s.tracks || []).join("; ")}"`,
+      s.talentScore,
+      s.placementDay,
+      s.gateCleared ? "YES" : "NO",
+      s.talentScore >= 700
+        ? "Marketplace Ready"
+        : s.talentScore >= 450
+          ? "ATS Unlocked"
+          : "Phase 1 Learning",
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `SantoGe_Cohort_Roster_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success(`Exported ${filteredStudents.length} student records as CSV`);
+  };
+
+  const handleSyncAllBatches = async () => {
+    if (activeBatches.length === 0) {
+      toast.error("No active batches found to sync");
+      return;
+    }
+    setIsSyncingAll(true);
+    try {
+      const now = new Date().toISOString();
+      await Promise.all(
+        activeBatches.map((b) => updateLiveBatch(b.id, { last_sync_at: now }))
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
+        queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
+      ]);
+      toast.success(`Synchronized all ${activeBatches.length} cohort batches with Telegram webhook`);
+    } catch {
+      toast.error("Failed to sync some batches");
+    } finally {
+      setIsSyncingAll(false);
+    }
+  };
+
+  const handleRecalculateAll = async () => {
+    setIsRecalculatingAll(true);
+    try {
+      store.recalculateAllScores();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
+        queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
+      ]);
+      toast.success("Triggered platform-wide Unified Talent Score recalculation");
+    } catch {
+      toast.error("Failed to trigger recalculation");
+    } finally {
+      setIsRecalculatingAll(false);
+    }
+  };
 
   const activeModalStudent =
     (liveRoster?.items || []).find((s) => s.email === selectedStudentEmail) || null;
@@ -372,7 +541,7 @@ function AdminAnalytics() {
         </div>
       </div>
 
-      {/* High-Level Platform KPIs */}
+      {/* High-Level Platform KPIs (Interactive Grid Buttons) */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
           label="Total Enrolled Learners"
@@ -385,25 +554,97 @@ function AdminAnalytics() {
                 : "Across partner institutions"
               : "In selected institution"
           }
+          onClick={() => {
+            handleResetAllFilters();
+            setActiveKpiFilter("all");
+            toast.info("Displaying all provisioned cohort learners");
+            document.getElementById("student-roster")?.scrollIntoView({ behavior: "smooth" });
+          }}
+          active={activeKpiFilter === "all"}
+          actionLabel="View Roster ↓"
         />
         <Stat
           label="Active Cohort Batches"
           value={totalBatches}
           tone="purple"
           hint="100–300 learners per batch"
+          onClick={() => {
+            document.getElementById("active-batches")?.scrollIntoView({ behavior: "smooth" });
+            toast.info("Inspecting active placement cohorts");
+          }}
+          actionLabel="Inspect Batches ↓"
         />
         <Stat
           label="Avg Cohort Readiness"
           value={`${avgReadiness}%`}
           tone="cyan"
           hint="Composite readiness index"
+          onClick={() => {
+            setIsReadinessModalOpen(true);
+          }}
+          actionLabel="Audit Breakdown ↗"
         />
         <Stat
           label="Marketplace Ready Learners"
           value={(liveAnalytics?.marketplaceReadyCount ?? 0).toLocaleString()}
           tone="emerald"
           hint={`${marketplacePercent}% direct offer qualified`}
+          onClick={() => {
+            setTierFilter("marketplace");
+            setSelectedFunnelStage(6);
+            setActiveKpiFilter("marketplace");
+            toast.success("Filtered for Marketplace Ready learners (Talent Score 700+)");
+            document.getElementById("student-roster")?.scrollIntoView({ behavior: "smooth" });
+          }}
+          active={tierFilter === "marketplace" || activeKpiFilter === "marketplace"}
+          actionLabel="Filter 700+ ↓"
         />
+      </div>
+
+      {/* Quick Action Command Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            if (!newStudentBatchId && availableBatches.length > 0) {
+              setNewStudentBatchId(availableBatches[0]?.id || "BATCH-2026-ABC-CSE-01");
+            }
+            setIsAddStudentModalOpen(true);
+          }}
+          className="flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-all shadow-xs"
+        >
+          <Plus className="size-4" />
+          <span>Add Learner</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleExportCSV}
+          className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground hover:bg-muted transition-all shadow-xs"
+        >
+          <Download className="size-4 text-emerald-600 dark:text-emerald-400" />
+          <span>Export Roster CSV</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSyncAllBatches}
+          disabled={isSyncingAll}
+          className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground hover:bg-muted transition-all shadow-xs disabled:opacity-50"
+        >
+          <RefreshCw className={cn("size-4 text-sky-600 dark:text-sky-400", isSyncingAll && "animate-spin")} />
+          <span>{isSyncingAll ? "Syncing..." : "Sync Telegram Hub"}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleRecalculateAll}
+          disabled={isRecalculatingAll}
+          className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground hover:bg-muted transition-all shadow-xs disabled:opacity-50"
+        >
+          <Sparkles className={cn("size-4 text-amber-600 dark:text-amber-400", isRecalculatingAll && "animate-spin")} />
+          <span>{isRecalculatingAll ? "Calculating..." : "Recalculate Scores"}</span>
+        </button>
       </div>
 
       {/* Cohort Health Gauge & Placement Funnel */}
@@ -431,7 +672,18 @@ function AdminAnalytics() {
 
         <Panel
           title="Placement Conversion Funnel"
-          subtitle="Stage 0 CSV through Phase 2 Recruiter Offers"
+          subtitle="Click any milestone stage below to filter student roster"
+          action={
+            selectedFunnelStage !== null ? (
+              <button
+                type="button"
+                onClick={() => setSelectedFunnelStage(null)}
+                className="text-[11px] font-semibold text-destructive hover:underline"
+              >
+                Clear Stage
+              </button>
+            ) : undefined
+          }
           className="lg:col-span-2"
         >
           <div className="space-y-3.5">
@@ -441,52 +693,122 @@ function AdminAnalytics() {
                 6-stage placement funnel.
               </div>
             ) : (
-              cohortFunnel.map((f) => (
-                <div key={f.label}>
-                  <div className="mb-1.5 flex items-center justify-between text-xs">
-                    <span className="font-semibold text-foreground">{f.label}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-muted-foreground text-[11px]">
-                        {f.count.toLocaleString()} learners
-                      </span>
-                      <span className="font-mono font-bold text-foreground">{f.pct}%</span>
+              cohortFunnel.map((f, idx) => {
+                const stageNum = idx + 1;
+                const isSelected = selectedFunnelStage === stageNum;
+                return (
+                  <div
+                    key={f.label}
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedFunnelStage(null);
+                        toast.info("Cleared funnel stage filter");
+                      } else {
+                        setSelectedFunnelStage(stageNum);
+                        toast.success(`Filtered for: ${f.label} (${f.count.toLocaleString()} learners)`);
+                        document.getElementById("student-roster")?.scrollIntoView({ behavior: "smooth" });
+                      }
+                    }}
+                    className={cn(
+                      "group rounded-xl border p-2.5 transition-all cursor-pointer select-none",
+                      isSelected
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "border-transparent hover:border-border hover:bg-muted/30",
+                    )}
+                    title={`Click to filter student roster by ${f.label}`}
+                  >
+                    <div className="mb-1.5 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                          {f.label}
+                        </span>
+                        {isSelected && (
+                          <span className="rounded bg-primary/20 border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary">
+                            Active Filter
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-muted-foreground text-[11px]">
+                          {f.count.toLocaleString()} learners
+                        </span>
+                        <span className="font-mono font-bold text-foreground">{f.pct}%</span>
+                      </div>
                     </div>
+                    <Meter value={f.pct} tone={isSelected ? "cyan" : "brand"} />
                   </div>
-                  <Meter value={f.pct} tone="brand" />
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </Panel>
       </div>
 
       {/* Live Batches & Track Demand */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2" id="active-batches">
         <Panel
           title="Active Placement Batches"
-          subtitle="Synchronized Placement cohorts (100–300 sizing)"
-          action={<Chip tone="cyan">{activeBatches.length} cohorts</Chip>}
+          subtitle="Synchronized Placement cohorts (100–300 sizing). Click to filter roster."
+          action={
+            <div className="flex items-center gap-2">
+              {selectedBatchFilter && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedBatchFilter(null)}
+                  className="text-[11px] font-semibold text-destructive hover:underline"
+                >
+                  Clear Filter
+                </button>
+              )}
+              <Chip tone="cyan">{activeBatches.length} cohorts</Chip>
+            </div>
+          }
         >
           <div className="space-y-3">
             {activeBatches.map((b) => {
               const fill = readinessOf(b);
+              const isSelected = selectedBatchFilter === b.id;
               return (
                 <div
                   key={b.id}
-                  className="rounded-xl border border-border bg-card p-4 shadow-xs"
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedBatchFilter(null);
+                      toast.info("Cleared batch filter");
+                    } else {
+                      setSelectedBatchFilter(b.id);
+                      toast.success(`Filtered for cohort batch: ${b.name}`);
+                      document.getElementById("student-roster")?.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                  className={cn(
+                    "rounded-xl border p-4 shadow-xs transition-all cursor-pointer select-none",
+                    isSelected
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-border bg-card hover:border-border/80 hover:bg-muted/20",
+                  )}
+                  title="Click to filter Student Roster by this cohort batch"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <p className="text-sm font-semibold text-foreground">{b.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-foreground">{b.name}</p>
+                        {isSelected && (
+                          <span className="rounded bg-primary/20 border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary">
+                            Active Filter
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         {b.dept} · Capacity: {b.capacity} (Max 300)
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <Chip tone={fill >= 80 ? "emerald" : "amber"}>{fill}% Fill Rate</Chip>
                       <button
                         type="button"
-                        onClick={async () => {
+                        onClick={async (e) => {
+                          e.stopPropagation();
                           await updateLiveBatch(b.id, { last_sync_at: new Date().toISOString() });
                           queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] });
                           toast.success(`Batch ${b.name} synchronized with Telegram webhook`);
@@ -603,10 +925,22 @@ function AdminAnalytics() {
 
       {/* Comprehensive Student Cohort Roster Table */}
       <Panel
+        id="student-roster"
         title="Student Roster & Cohort Management"
         subtitle="Individual 1–3 technical tracks & placement accelerator progress across all provisioned learners"
         action={
           <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetAllFilters}
+                className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shadow-xs"
+                title="Reset all active filters"
+              >
+                <X className="size-3.5" />
+                <span>Reset Filters</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -642,7 +976,51 @@ function AdminAnalytics() {
               className="inline-flex items-center gap-1 rounded-md bg-card border border-border px-2.5 py-1 text-xs font-semibold text-foreground hover:text-destructive transition-colors shadow-xs"
             >
               <X className="size-3.5" />
-              <span>Clear Filter</span>
+              <span>Clear Drive Filter</span>
+            </button>
+          </div>
+        )}
+
+        {/* Active Cohort Batch Filter Banner */}
+        {selectedBatchFilter && (
+          <div className="mb-4 flex items-center justify-between rounded-xl border border-purple-500/30 bg-purple-500/5 p-3 text-xs">
+            <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-medium">
+              <Users className="size-4 shrink-0" />
+              <span>
+                Filtered by cohort batch:{" "}
+                <strong className="text-foreground">{getBatchName(selectedBatchFilter)}</strong>
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedBatchFilter(null)}
+              className="inline-flex items-center gap-1 rounded-md bg-card border border-border px-2.5 py-1 text-xs font-semibold text-foreground hover:text-destructive transition-colors shadow-xs"
+            >
+              <X className="size-3.5" />
+              <span>Clear Batch Filter</span>
+            </button>
+          </div>
+        )}
+
+        {/* Active Funnel Stage Filter Banner */}
+        {selectedFunnelStage !== null && (
+          <div className="mb-4 flex items-center justify-between rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-3 text-xs">
+            <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-medium">
+              <Sparkles className="size-4 shrink-0" />
+              <span>
+                Filtered by placement funnel stage:{" "}
+                <strong className="text-foreground">
+                  {cohortFunnel[selectedFunnelStage - 1]?.label ?? `Stage ${selectedFunnelStage}`}
+                </strong>
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedFunnelStage(null)}
+              className="inline-flex items-center gap-1 rounded-md bg-card border border-border px-2.5 py-1 text-xs font-semibold text-foreground hover:text-destructive transition-colors shadow-xs"
+            >
+              <X className="size-3.5" />
+              <span>Clear Funnel Filter</span>
             </button>
           </div>
         )}
@@ -1439,6 +1817,119 @@ function AdminAnalytics() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Platform Readiness & Composite Audit Modal */}
+      {isReadinessModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="grid size-9 place-items-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                  <Activity className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">
+                    Platform Readiness &amp; Composite Audit
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Aggregated T·C·A·E·R·M dimensions across {totalEnrolled.toLocaleString()} learners
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReadinessModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground p-1"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Overall Gauge / Composite Score Banner */}
+              <div className="flex items-center justify-between rounded-xl border border-sky-500/30 bg-sky-500/5 p-4">
+                <div>
+                  <p className="text-muted-foreground font-medium">Average Cohort Readiness</p>
+                  <p className="text-2xl font-bold text-foreground mt-0.5">{avgReadiness}%</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Platform Health Index: {Math.min(1000, avgReadiness * 10)} / 1000
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    {marketplacePercent}% Offer Ready
+                  </span>
+                </div>
+              </div>
+
+              {/* 6 Dimension Breakdown */}
+              <div className="rounded-xl border border-border bg-card p-4 space-y-3.5 shadow-xs">
+                <h4 className="font-semibold text-foreground text-xs border-b border-border pb-2">
+                  T·C·A·E·R·M Weight Breakdown
+                </h4>
+                <div className="grid grid-cols-2 gap-3 text-[11px]">
+                  <div>
+                    <div className="flex justify-between text-muted-foreground mb-1">
+                      <span>Technical (25% weight):</span>
+                      <span className="font-mono font-bold text-foreground">{cohortAverages.T}%</span>
+                    </div>
+                    <Meter value={cohortAverages.T} tone="brand" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-muted-foreground mb-1">
+                      <span>Placement (20% weight):</span>
+                      <span className="font-mono font-bold text-foreground">{cohortAverages.C}%</span>
+                    </div>
+                    <Meter value={cohortAverages.C} tone="brand" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-muted-foreground mb-1">
+                      <span>Aptitude (15% weight):</span>
+                      <span className="font-mono font-bold text-foreground">{cohortAverages.A}%</span>
+                    </div>
+                    <Meter value={cohortAverages.A} tone="brand" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-muted-foreground mb-1">
+                      <span>English (15% weight):</span>
+                      <span className="font-mono font-bold text-foreground">{cohortAverages.E}%</span>
+                    </div>
+                    <Meter value={cohortAverages.E} tone="brand" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-muted-foreground mb-1">
+                      <span>Resume (15% weight):</span>
+                      <span className="font-mono font-bold text-foreground">{cohortAverages.R}%</span>
+                    </div>
+                    <Meter value={cohortAverages.R} tone="brand" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-muted-foreground mb-1">
+                      <span>Mock / Soft (10% weight):</span>
+                      <span className="font-mono font-bold text-foreground">{cohortAverages.M}%</span>
+                    </div>
+                    <Meter value={cohortAverages.M} tone="brand" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border bg-muted/20 p-3 text-[11px] text-muted-foreground leading-relaxed">
+                The Composite Readiness Index aggregates daily placement attendance, skill checkpoints, MCQ pass rates, and portfolio commits to gate Phase 2 career recruitment unlocking.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setIsReadinessModalOpen(false)}
+                className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
+              >
+                Close Audit
+              </button>
+            </div>
           </div>
         </div>
       )}
