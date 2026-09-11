@@ -33,6 +33,13 @@ import {
   FileCheck2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useLiveStudentProfile,
+  useLiveStudentProgress,
+  completeLiveDailyStep,
+  completeLivePlacementDay,
+} from "@/lib/data";
 
 export const Route = createFileRoute("/student/accelerator")({
   head: () => ({
@@ -52,14 +59,6 @@ export const Route = createFileRoute("/student/accelerator")({
   }),
   component: AcceleratorPage,
 });
-
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  useLiveStudentProfile,
-  useLiveStudentProgress,
-  completeLiveDailyStep,
-  completeLivePlacementDay,
-} from "@/lib/data";
 
 function AcceleratorPage() {
   const store = useAppStore();
@@ -141,7 +140,7 @@ function AcceleratorPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="30-Minute Daily Placement Accelerator"
         subtitle="18 Weeks × 5 Working Days = 90 Days. 10m English Instructor Plan + 10m Aptitude Instructor Plan + 10m In-App Combined Practice Drill."
@@ -150,10 +149,10 @@ function AcceleratorPage() {
             <button
               onClick={() => setIsInstructorMode(!isInstructorMode)}
               className={cn(
-                "flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all",
+                "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all",
                 isInstructorMode
-                  ? "border-brand-purple/60 bg-brand-purple/15 text-brand-purple shadow-sm"
-                  : "border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
+                  ? "border-primary/40 bg-primary/10 text-primary shadow-xs"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50",
               )}
             >
               <GraduationCap className="size-3.5" />
@@ -174,40 +173,40 @@ function AcceleratorPage() {
         <Stat
           label="Practice Accuracy"
           value={`${totalCorrect} / ${currentPlan.practice.mcqs.length + 1}`}
-          accent="var(--brand-emerald)"
+          tone="emerald"
           hint="3 MCQs + 1 Logic Brainteaser"
         />
         <Stat
           label="Placement XP Balance"
           value={`${xp} XP`}
-          accent="var(--brand-purple)"
+          tone="brand"
           hint="+25 XP per completed block"
         />
         <Stat
           label="Cohort Telegram Sync"
           value="Live @ 06:00"
-          accent="var(--brand-cyan)"
+          tone="cyan"
           hint="t.me/stc-batch · Mon–Fri"
         />
       </div>
 
       {/* Day Selector Ribbon (90 Days / 18 Weeks) */}
-      <div className="rounded-2xl border border-line-soft bg-surface-soft/60 p-4 backdrop-blur-sm">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <Calendar className="size-4 text-brand-cyan" />
-            <span className="text-xs font-bold text-foreground">
+            <Calendar className="size-4 text-primary" />
+            <span className="text-xs font-semibold text-foreground">
               Select Accelerator Day (Week {currentPlan.week} · {currentPlan.dayOfWeek})
             </span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSelectedDayNum(store.placementDay || 1)}
-              className="rounded-lg border border-line-soft bg-surface-elevated px-2 py-0.5 text-[11px] font-mono text-brand-cyan hover:border-brand-cyan/60"
+              className="rounded-md border border-border bg-muted/60 px-2.5 py-1 text-[11px] font-mono font-medium text-foreground hover:bg-muted hover:border-border/80 transition-colors"
             >
               Jump to Today (Day {store.placementDay || 1})
             </button>
-            <span className="text-[11px] text-copy-subtle font-mono">
+            <span className="text-[11px] text-muted-foreground font-mono">
               Day {selectedDayNum} of 90
             </span>
           </div>
@@ -230,17 +229,17 @@ function AcceleratorPage() {
                   setPuzzleAnswer(null);
                 }}
                 className={cn(
-                  "flex flex-col items-center justify-center min-w-[54px] rounded-xl border p-2 text-center transition-all text-xs",
+                  "flex flex-col items-center justify-center min-w-[54px] rounded-lg border p-2 text-center transition-all text-xs",
                   isCurrent
-                    ? "border-brand-cyan bg-brand-cyan/15 text-brand-cyan font-bold shadow-md"
+                    ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
                     : isToday
-                      ? "border-brand-amber/60 bg-brand-amber/10 text-brand-amber font-semibold"
+                      ? "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold"
                       : isFriday
-                        ? "border-brand-purple/40 bg-brand-purple/5 text-copy-subtle hover:border-brand-purple"
-                        : "border-line-soft/80 bg-surface-elevated/70 text-copy-subtle hover:text-foreground hover:border-line-soft",
+                        ? "border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                        : "border-border/70 bg-card text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/40",
                 )}
               >
-                <span className="text-[9px] font-mono uppercase opacity-70">
+                <span className="text-[9px] font-mono uppercase tracking-wider opacity-70">
                   {isFriday ? "Fri Test" : `W${weekNum}`}
                 </span>
                 <span className="font-mono text-xs font-bold mt-0.5">D{dayNum}</span>
@@ -259,43 +258,43 @@ function AcceleratorPage() {
           {/* Step 1: English */}
           <div
             className={cn(
-              "flex flex-col justify-between rounded-xl border p-4 transition-all text-left bg-surface-soft/80",
+              "flex flex-col justify-between rounded-xl border p-4 transition-all text-left bg-card shadow-xs",
               store.daily.english
-                ? "border-brand-emerald/50"
-                : "border-line-soft hover:border-brand-cyan/50",
+                ? "border-emerald-500/40 bg-emerald-500/5"
+                : "border-border hover:border-primary/40",
             )}
           >
             <div>
               <div className="flex items-center justify-between">
-                <span className="rounded bg-surface-dark px-2 py-0.5 text-[10px] font-mono text-copy-subtle border border-line-soft">
+                <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-mono font-medium text-muted-foreground border border-border">
                   10 min · English
                 </span>
                 <button
                   onClick={() => store.completeDailyStep("english")}
-                  className="text-copy-subtle hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {store.daily.english ? (
-                    <CheckCircle2 className="size-4 text-brand-emerald" />
+                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
                   ) : (
-                    <Circle className="size-4 text-copy-subtle" />
+                    <Circle className="size-4 text-muted-foreground/60" />
                   )}
                 </button>
               </div>
-              <h4 className="mt-2 text-sm font-bold text-foreground">
+              <h4 className="mt-2.5 text-sm font-semibold text-foreground">
                 {currentPlan.english.title}
               </h4>
-              <p className="mt-1 text-xs text-copy-subtle line-clamp-2">
+              <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                 {currentPlan.english.instructorBrief}
               </p>
             </div>
-            <div className="mt-4 pt-3 border-t border-line-soft/60 flex items-center justify-between">
+            <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
               <button
                 onClick={() => setActiveTab("english-instructor")}
-                className="text-xs font-bold text-brand-cyan hover:underline"
+                className="text-xs font-semibold text-primary hover:underline"
               >
                 {isInstructorMode ? "View Instructor Guide →" : "View Lesson & Audio →"}
               </button>
-              <span className="font-mono text-[11px] text-brand-amber font-semibold">
+              <span className="font-mono text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
                 {store.daily.english ? "Completed ✓" : "+25 XP"}
               </span>
             </div>
@@ -304,43 +303,43 @@ function AcceleratorPage() {
           {/* Step 2: Aptitude */}
           <div
             className={cn(
-              "flex flex-col justify-between rounded-xl border p-4 transition-all text-left bg-surface-soft/80",
+              "flex flex-col justify-between rounded-xl border p-4 transition-all text-left bg-card shadow-xs",
               store.daily.aptitude
-                ? "border-brand-emerald/50"
-                : "border-line-soft hover:border-brand-purple/50",
+                ? "border-emerald-500/40 bg-emerald-500/5"
+                : "border-border hover:border-primary/40",
             )}
           >
             <div>
               <div className="flex items-center justify-between">
-                <span className="rounded bg-surface-dark px-2 py-0.5 text-[10px] font-mono text-copy-subtle border border-line-soft">
+                <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-mono font-medium text-muted-foreground border border-border">
                   10 min · Aptitude
                 </span>
                 <button
                   onClick={() => store.completeDailyStep("aptitude")}
-                  className="text-copy-subtle hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {store.daily.aptitude ? (
-                    <CheckCircle2 className="size-4 text-brand-emerald" />
+                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
                   ) : (
-                    <Circle className="size-4 text-copy-subtle" />
+                    <Circle className="size-4 text-muted-foreground/60" />
                   )}
                 </button>
               </div>
-              <h4 className="mt-2 text-sm font-bold text-foreground">
+              <h4 className="mt-2.5 text-sm font-semibold text-foreground">
                 {currentPlan.aptitude.title}
               </h4>
-              <p className="mt-1 text-xs text-copy-subtle line-clamp-2">
+              <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                 {currentPlan.aptitude.instructorBrief}
               </p>
             </div>
-            <div className="mt-4 pt-3 border-t border-line-soft/60 flex items-center justify-between">
+            <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
               <button
                 onClick={() => setActiveTab("aptitude-instructor")}
-                className="text-xs font-bold text-brand-purple hover:underline"
+                className="text-xs font-semibold text-primary hover:underline"
               >
                 {isInstructorMode ? "View Instructor Guide →" : "View Formulas & Tricks →"}
               </button>
-              <span className="font-mono text-[11px] text-brand-amber font-semibold">
+              <span className="font-mono text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
                 {store.daily.aptitude ? "Completed ✓" : "+25 XP"}
               </span>
             </div>
@@ -349,43 +348,43 @@ function AcceleratorPage() {
           {/* Step 3: Combined Practice */}
           <div
             className={cn(
-              "flex flex-col justify-between rounded-xl border p-4 transition-all text-left bg-surface-soft/80",
+              "flex flex-col justify-between rounded-xl border p-4 transition-all text-left bg-card shadow-xs",
               store.daily.practice
-                ? "border-brand-emerald/50"
-                : "border-line-soft hover:border-brand-emerald/50",
+                ? "border-emerald-500/40 bg-emerald-500/5"
+                : "border-border hover:border-primary/40",
             )}
           >
             <div>
               <div className="flex items-center justify-between">
-                <span className="rounded bg-surface-dark px-2 py-0.5 text-[10px] font-mono text-copy-subtle border border-line-soft">
+                <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-mono font-medium text-muted-foreground border border-border">
                   10 min · Practice
                 </span>
                 <button
                   onClick={() => store.completeDailyStep("practice")}
-                  className="text-copy-subtle hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {store.daily.practice ? (
-                    <CheckCircle2 className="size-4 text-brand-emerald" />
+                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
                   ) : (
-                    <Circle className="size-4 text-copy-subtle" />
+                    <Circle className="size-4 text-muted-foreground/60" />
                   )}
                 </button>
               </div>
-              <h4 className="mt-2 text-sm font-bold text-foreground">
+              <h4 className="mt-2.5 text-sm font-semibold text-foreground">
                 10m In-App Combined Practice
               </h4>
-              <p className="mt-1 text-xs text-copy-subtle">
+              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
                 3 MCQs + 1 Logic Brainteaser + 60s AI Voice Pitch Recording
               </p>
             </div>
-            <div className="mt-4 pt-3 border-t border-line-soft/60 flex items-center justify-between">
+            <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
               <button
                 onClick={() => setActiveTab("practice")}
-                className="text-xs font-bold text-brand-emerald hover:underline"
+                className="text-xs font-semibold text-primary hover:underline"
               >
                 Launch Practice Drill →
               </button>
-              <span className="font-mono text-[11px] text-brand-amber font-semibold">
+              <span className="font-mono text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
                 {store.daily.practice ? "Completed ✓" : "+25 XP"}
               </span>
             </div>
@@ -394,63 +393,63 @@ function AcceleratorPage() {
       </Panel>
 
       {/* Main Tab Navigation */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-line-soft/80 pb-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
         <button
           onClick={() => setActiveTab("practice")}
           className={cn(
-            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all",
+            "flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all",
             activeTab === "practice"
-              ? "bg-brand-cyan text-surface-dark shadow-sm"
-              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50",
           )}
         >
-          <Sparkles className="size-4" />
+          <Sparkles className="size-3.5" />
           10m In-App Guided Practice
         </button>
 
         <button
           onClick={() => setActiveTab("english-instructor")}
           className={cn(
-            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all",
+            "flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all",
             activeTab === "english-instructor"
-              ? "bg-brand-cyan text-surface-dark shadow-sm"
-              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50",
           )}
         >
-          <BookOpen className="size-4" />
+          <BookOpen className="size-3.5" />
           10m English Instructor Master Plan
         </button>
 
         <button
           onClick={() => setActiveTab("aptitude-instructor")}
           className={cn(
-            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all",
+            "flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all",
             activeTab === "aptitude-instructor"
-              ? "bg-brand-purple text-surface-dark shadow-sm"
-              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50",
           )}
         >
-          <Calculator className="size-4" />
+          <Calculator className="size-3.5" />
           10m Aptitude Instructor Master Plan
         </button>
 
         <button
           onClick={() => setActiveTab("90days-schedule")}
           className={cn(
-            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ml-auto",
+            "flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ml-auto",
             activeTab === "90days-schedule"
-              ? "bg-surface-elevated text-brand-cyan border border-brand-cyan/60"
-              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50",
           )}
         >
-          <ListOrdered className="size-4" />
+          <ListOrdered className="size-3.5" />
           Full 90-Day Schedule (18 Weeks)
         </button>
       </div>
 
       {/* TAB 1: IN-APP GUIDED PRACTICE */}
       {activeTab === "practice" && (
-        <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
+        <div className="grid gap-4 lg:grid-cols-[1fr_400px]">
           {/* Left Column: MCQs + Logic Brainteaser */}
           <div className="space-y-4">
             <Panel
@@ -463,26 +462,26 @@ function AcceleratorPage() {
               }
             >
               <div className="space-y-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-brand-cyan flex items-center gap-2">
-                  <FileCheck2 className="size-3.5" />
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <FileCheck2 className="size-3.5 text-primary" />
                   Part 1: Daily Placement MCQs ({currentPlan.practice.mcqs.length} Questions)
                 </p>
 
                 {currentPlan.practice.mcqs.map((m, i) => (
                   <div
                     key={m.q}
-                    className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2"
+                    className="rounded-xl border border-border bg-muted/20 p-4 space-y-3"
                   >
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-semibold text-foreground">
-                        <span className="font-mono text-brand-cyan">Q{i + 1}.</span> {m.q}
+                        <span className="font-mono text-primary mr-1.5">Q{i + 1}.</span> {m.q}
                       </p>
-                      <span className="rounded bg-surface-dark px-2 py-0.5 text-[9px] font-mono uppercase text-copy-subtle border border-line-soft">
+                      <span className="rounded bg-muted px-2 py-0.5 text-[9px] font-mono uppercase text-muted-foreground border border-border">
                         {m.category}
                       </span>
                     </div>
 
-                    <div className="grid gap-1.5 sm:grid-cols-2">
+                    <div className="grid gap-2 sm:grid-cols-2">
                       {m.options.map((opt, oi) => {
                         const isPicked = answers[i] === oi;
                         const isRight = oi === m.answer;
@@ -494,20 +493,20 @@ function AcceleratorPage() {
                               if (oi === m.answer) toast.success(`Q${i + 1} Correct!`);
                             }}
                             className={cn(
-                              "flex items-center gap-2 rounded-lg border p-2 text-left text-xs transition-colors",
+                              "flex items-center gap-2 rounded-lg border p-2.5 text-left text-xs transition-colors",
                               isPicked
                                 ? isRight
-                                  ? "border-brand-emerald/60 bg-brand-emerald/10 text-brand-emerald font-bold"
-                                  : "border-brand-rose/60 bg-brand-rose/10 text-brand-rose font-bold"
-                                : "border-line-soft bg-surface-elevated text-copy-subtle hover:text-foreground",
+                                  ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold"
+                                  : "border-rose-500/60 bg-rose-500/10 text-rose-700 dark:text-rose-400 font-semibold"
+                                : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50",
                             )}
                           >
                             <span className="font-mono text-[10px] opacity-60">
                               {String.fromCharCode(65 + oi)}.
                             </span>
-                            <span>{opt}</span>
+                            <span className="flex-1">{opt}</span>
                             {isPicked && isRight && (
-                              <CheckCircle2 className="size-3.5 text-brand-emerald ml-auto" />
+                              <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 ml-auto shrink-0" />
                             )}
                           </button>
                         );
@@ -515,26 +514,26 @@ function AcceleratorPage() {
                     </div>
 
                     {answers[i] !== undefined && (
-                      <div className="mt-2 rounded-lg bg-surface-dark/80 p-2.5 border border-line-soft/80 text-[11px] text-copy-subtle">
-                        <span className="font-bold text-brand-cyan">Explanation: </span>
+                      <div className="mt-2 rounded-lg bg-muted/60 p-3 border border-border text-xs text-muted-foreground leading-relaxed">
+                        <span className="font-semibold text-foreground">Explanation: </span>
                         {m.explanation}
                       </div>
                     )}
                   </div>
                 ))}
 
-                <div className="border-t border-line-soft/80 pt-3" />
+                <div className="border-t border-border pt-3" />
 
-                <p className="text-xs font-bold uppercase tracking-wider text-brand-purple flex items-center gap-2">
-                  <Calculator className="size-3.5" />
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Calculator className="size-3.5 text-primary" />
                   Part 2: Logical Reasoning Brainteaser
                 </p>
 
-                <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2">
+                <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
                   <p className="text-xs font-semibold text-foreground">
                     {currentPlan.practice.puzzle.q}
                   </p>
-                  <div className="grid gap-1.5 sm:grid-cols-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     {currentPlan.practice.puzzle.options.map((opt, oi) => {
                       const isPicked = puzzleAnswer === oi;
                       const isRight = oi === currentPlan.practice.puzzle.answer;
@@ -547,20 +546,20 @@ function AcceleratorPage() {
                               toast.success("Brainteaser Solved!");
                           }}
                           className={cn(
-                            "flex items-center gap-2 rounded-lg border p-2 text-left text-xs transition-colors",
+                            "flex items-center gap-2 rounded-lg border p-2.5 text-left text-xs transition-colors",
                             isPicked
                               ? isRight
-                                ? "border-brand-emerald/60 bg-brand-emerald/10 text-brand-emerald font-bold"
-                                : "border-brand-rose/60 bg-brand-rose/10 text-brand-rose font-bold"
-                              : "border-line-soft bg-surface-elevated text-copy-subtle hover:text-foreground",
+                                ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold"
+                                : "border-rose-500/60 bg-rose-500/10 text-rose-700 dark:text-rose-400 font-semibold"
+                              : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50",
                           )}
                         >
                           <span className="font-mono text-[10px] opacity-60">
                             {String.fromCharCode(65 + oi)}.
                           </span>
-                          <span>{opt}</span>
+                          <span className="flex-1">{opt}</span>
                           {isPicked && isRight && (
-                            <CheckCircle2 className="size-3.5 text-brand-emerald ml-auto" />
+                            <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 ml-auto shrink-0" />
                           )}
                         </button>
                       );
@@ -568,8 +567,8 @@ function AcceleratorPage() {
                   </div>
 
                   {puzzleAnswer !== null && (
-                    <div className="mt-2 rounded-lg bg-surface-dark/80 p-2.5 border border-line-soft/80 text-[11px] text-copy-subtle">
-                      <span className="font-bold text-brand-purple">Solution: </span>
+                    <div className="mt-2 rounded-lg bg-muted/60 p-3 border border-border text-xs text-muted-foreground leading-relaxed">
+                      <span className="font-semibold text-foreground">Solution: </span>
                       {currentPlan.practice.puzzle.explanation}
                     </div>
                   )}
@@ -585,22 +584,22 @@ function AcceleratorPage() {
               subtitle={`STAR Speech Rubric: ${currentPlan.practice.voicePrompt.starCategory}`}
             >
               <div className="space-y-3">
-                <div className="rounded-xl border border-line-soft bg-surface-soft p-3 text-xs text-copy-subtle space-y-2">
+                <div className="rounded-xl border border-border bg-muted/20 p-3.5 text-xs text-muted-foreground space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-foreground">🎙️ Daily Speech Challenge:</span>
-                    <span className="rounded bg-brand-cyan/10 px-2 py-0.5 text-[9px] font-mono text-brand-cyan">
+                    <span className="font-semibold text-foreground">🎙️ Daily Speech Challenge:</span>
+                    <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-mono font-semibold text-primary">
                       Day {selectedDayNum}
                     </span>
                   </div>
-                  <p className="text-foreground/90 leading-relaxed font-medium">
+                  <p className="text-foreground leading-relaxed font-medium">
                     "{currentPlan.practice.voicePrompt.prompt}"
                   </p>
-                  <div className="pt-2 border-t border-line-soft/60 flex flex-wrap gap-1.5">
-                    <span className="text-[10px] text-copy-subtle">Target Keywords:</span>
+                  <div className="pt-2 border-t border-border flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] text-muted-foreground">Target Keywords:</span>
                     {currentPlan.practice.voicePrompt.targetKeywords.map((k) => (
                       <span
                         key={k}
-                        className="rounded bg-surface-dark px-1.5 py-0.5 text-[10px] font-mono text-brand-cyan border border-line-soft"
+                        className="rounded bg-card px-2 py-0.5 text-[10px] font-mono text-primary border border-border font-medium"
                       >
                         {k}
                       </span>
@@ -611,10 +610,10 @@ function AcceleratorPage() {
                 <button
                   onClick={runPitch}
                   disabled={pitch}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-3 text-xs font-bold text-surface-dark shadow-md transition-opacity hover:opacity-90 disabled:opacity-60"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground shadow-xs transition-opacity hover:opacity-90 disabled:opacity-60"
                 >
                   {pitch ? (
-                    <Mic className="size-4 animate-pulse text-brand-rose" />
+                    <Mic className="size-4 animate-pulse text-rose-300" />
                   ) : (
                     <Mic className="size-4" />
                   )}
@@ -630,14 +629,14 @@ function AcceleratorPage() {
               subtitle="Synchronized daily 06:00 broadcast stream"
             >
               <div className="space-y-2.5 text-xs">
-                <div className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft p-3">
-                  <div className="flex items-center gap-2">
-                    <Video className="size-4 text-brand-cyan" />
+                <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3 shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <Video className="size-4 text-primary shrink-0" />
                     <div>
-                      <p className="font-bold text-foreground">
+                      <p className="font-semibold text-foreground">
                         Day {selectedDayNum} English Broadcast
                       </p>
-                      <p className="text-[10px] text-copy-subtle">{currentPlan.english.title}</p>
+                      <p className="text-[11px] text-muted-foreground">{currentPlan.english.title}</p>
                     </div>
                   </div>
                   <button
@@ -645,20 +644,20 @@ function AcceleratorPage() {
                       store.completeDailyStep("english");
                       toast.success(`Day ${selectedDayNum} English marked complete!`);
                     }}
-                    className="rounded-lg bg-surface-elevated border border-line-soft px-2.5 py-1 text-[11px] font-bold text-brand-cyan hover:border-brand-cyan/60"
+                    className="rounded-md bg-muted/60 border border-border px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
                   >
                     Watch (10m)
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft p-3">
-                  <div className="flex items-center gap-2">
-                    <Video className="size-4 text-brand-purple" />
+                <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3 shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <Video className="size-4 text-primary shrink-0" />
                     <div>
-                      <p className="font-bold text-foreground">
+                      <p className="font-semibold text-foreground">
                         Day {selectedDayNum} Aptitude Broadcast
                       </p>
-                      <p className="text-[10px] text-copy-subtle">{currentPlan.aptitude.title}</p>
+                      <p className="text-[11px] text-muted-foreground">{currentPlan.aptitude.title}</p>
                     </div>
                   </div>
                   <button
@@ -666,7 +665,7 @@ function AcceleratorPage() {
                       store.completeDailyStep("aptitude");
                       toast.success(`Day ${selectedDayNum} Aptitude marked complete!`);
                     }}
-                    className="rounded-lg bg-surface-elevated border border-line-soft px-2.5 py-1 text-[11px] font-bold text-brand-purple hover:border-brand-purple/60"
+                    className="rounded-md bg-muted/60 border border-border px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
                   >
                     Watch (10m)
                   </button>
@@ -686,60 +685,60 @@ function AcceleratorPage() {
         >
           <div className="space-y-6">
             {/* Timeline Breakdown Bar */}
-            <div className="rounded-xl border border-brand-cyan/30 bg-brand-cyan/5 p-4 space-y-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-brand-cyan">
-                <Clock className="size-4" />
+            <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                <Clock className="size-4 text-primary" />
                 <span>Instructor 10-Minute Timeline Structure:</span>
               </div>
-              <p className="text-xs text-foreground font-mono bg-surface-dark/80 p-2.5 rounded-lg border border-line-soft">
+              <p className="text-xs text-foreground font-mono bg-card p-3 rounded-lg border border-border">
                 {currentPlan.english.deliveryTimeline}
               </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               {/* Concept & Teaching Brief */}
-              <div className="rounded-xl border border-line-soft bg-surface-soft p-4 space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-brand-cyan flex items-center gap-1.5">
-                  <BookOpen className="size-4" />
+              <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-xs">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <BookOpen className="size-4 text-primary" />
                   1. Concept Brief & Teaching Mandate
                 </h4>
-                <p className="text-xs text-foreground/90 leading-relaxed font-medium">
+                <p className="text-xs text-foreground leading-relaxed font-medium">
                   {currentPlan.english.instructorBrief}
                 </p>
-                <div className="rounded-lg bg-surface-dark p-3 border border-line-soft/80 space-y-1">
-                  <p className="text-[10px] font-mono uppercase text-brand-cyan">
+                <div className="rounded-lg bg-muted/50 p-3 border border-border space-y-1">
+                  <p className="text-[10px] font-mono uppercase font-semibold text-primary">
                     Spoken Grammar Focus:
                   </p>
-                  <p className="text-xs text-copy-subtle">{currentPlan.english.grammarRule}</p>
+                  <p className="text-xs text-muted-foreground">{currentPlan.english.grammarRule}</p>
                 </div>
               </div>
 
               {/* Corporate Vocabulary & Phrases */}
-              <div className="rounded-xl border border-line-soft bg-surface-soft p-4 space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-brand-purple flex items-center gap-1.5">
-                  <Volume2 className="size-4" />
+              <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-xs">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Volume2 className="size-4 text-primary" />
                   2. Key Corporate Vocabulary & Action Verbs
                 </h4>
-                <p className="text-xs text-copy-subtle">
+                <p className="text-xs text-muted-foreground">
                   Mandate students to articulate these phrases during choral drill and 60s pitch:
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {currentPlan.english.keyVocabulary.map((v) => (
                     <span
                       key={v}
-                      className="rounded-lg border border-line-soft bg-surface-elevated px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm"
+                      className="rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-xs font-medium text-foreground"
                     >
                       🗣️ {v}
                     </span>
                   ))}
                 </div>
-                <div className="mt-4 pt-3 border-t border-line-soft/60">
+                <div className="mt-4 pt-3 border-t border-border">
                   <button
                     onClick={() => {
                       store.completeDailyStep("english");
                       toast.success("10m English Lesson Completed (+25 XP)");
                     }}
-                    className="w-full rounded-xl bg-brand-cyan py-2.5 text-xs font-bold text-surface-dark hover:opacity-90 transition-opacity"
+                    className="w-full rounded-lg bg-primary py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
                   >
                     Mark 10m English Lesson Complete (+25 XP)
                   </button>
@@ -759,58 +758,58 @@ function AcceleratorPage() {
         >
           <div className="space-y-6">
             {/* Timeline Breakdown Bar */}
-            <div className="rounded-xl border border-brand-purple/30 bg-brand-purple/5 p-4 space-y-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-brand-purple">
-                <Clock className="size-4" />
+            <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                <Clock className="size-4 text-primary" />
                 <span>Instructor 10-Minute Timeline Structure:</span>
               </div>
-              <p className="text-xs text-foreground font-mono bg-surface-dark/80 p-2.5 rounded-lg border border-line-soft">
+              <p className="text-xs text-foreground font-mono bg-card p-3 rounded-lg border border-border">
                 {currentPlan.aptitude.deliveryTimeline}
               </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               {/* Formula & Shortcut Technique */}
-              <div className="rounded-xl border border-line-soft bg-surface-soft p-4 space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-brand-purple flex items-center gap-1.5">
-                  <Calculator className="size-4" />
+              <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-xs">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Calculator className="size-4 text-primary" />
                   1. Core Formula & Speed Shortcut
                 </h4>
-                <p className="text-xs text-foreground/90 leading-relaxed font-medium">
+                <p className="text-xs text-foreground leading-relaxed font-medium">
                   {currentPlan.aptitude.instructorBrief}
                 </p>
-                <div className="rounded-lg bg-surface-dark p-3 border border-line-soft/80 space-y-1">
-                  <p className="text-[10px] font-mono uppercase text-brand-purple">
+                <div className="rounded-lg bg-muted/50 p-3 border border-border space-y-1">
+                  <p className="text-[10px] font-mono uppercase font-semibold text-primary">
                     Speed Math Rule:
                   </p>
-                  <p className="text-xs font-mono text-brand-purple font-bold">
+                  <p className="text-xs font-mono text-foreground font-semibold">
                     {currentPlan.aptitude.formulaShortcut}
                   </p>
                 </div>
               </div>
 
               {/* Solved Walkthrough Example */}
-              <div className="rounded-xl border border-line-soft bg-surface-soft p-4 space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-brand-amber flex items-center gap-1.5">
-                  <FileCheck2 className="size-4" />
+              <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-xs">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <FileCheck2 className="size-4 text-primary" />
                   2. Solved Instructor Demonstration
                 </h4>
-                <p className="text-xs text-copy-subtle">
+                <p className="text-xs text-muted-foreground">
                   Demonstrate this live on blackboard/screen within minutes 03:00 to 07:00:
                 </p>
-                <div className="rounded-lg bg-surface-dark p-3 border border-line-soft/80 space-y-1.5 text-xs">
-                  <p className="font-bold text-foreground">Step-by-Step Model Solution:</p>
-                  <p className="text-copy-subtle leading-relaxed font-mono text-[11px]">
+                <div className="rounded-lg bg-muted/50 p-3 border border-border space-y-1.5 text-xs">
+                  <p className="font-semibold text-foreground">Step-by-Step Model Solution:</p>
+                  <p className="text-muted-foreground leading-relaxed font-mono text-[11px]">
                     {currentPlan.aptitude.solvedExample}
                   </p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-line-soft/60">
+                <div className="mt-4 pt-3 border-t border-border">
                   <button
                     onClick={() => {
                       store.completeDailyStep("aptitude");
                       toast.success("10m Aptitude Lesson Completed (+25 XP)");
                     }}
-                    className="w-full rounded-xl bg-brand-purple py-2.5 text-xs font-bold text-surface-dark hover:opacity-90 transition-opacity"
+                    className="w-full rounded-lg bg-primary py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
                   >
                     Mark 10m Aptitude Lesson Complete (+25 XP)
                   </button>
@@ -834,35 +833,35 @@ function AcceleratorPage() {
               return (
                 <div
                   key={week.week}
-                  className="rounded-2xl border border-line-soft bg-surface-soft/60 overflow-hidden transition-all"
+                  className="rounded-xl border border-border bg-card overflow-hidden transition-all shadow-xs"
                 >
                   <button
                     onClick={() => toggleWeek(week.week)}
-                    className="flex w-full items-center justify-between p-4 text-left hover:bg-surface-elevated/40 transition-colors"
+                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/40 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-xl bg-brand-cyan/15 font-mono text-xs font-bold text-brand-cyan border border-brand-cyan/30">
+                      <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 font-mono text-xs font-bold text-primary border border-primary/20">
                         W{week.week}
                       </div>
                       <div>
-                        <h4 className="text-sm font-bold text-foreground">{week.title}</h4>
-                        <p className="text-xs text-copy-subtle">{week.focus}</p>
+                        <h4 className="text-sm font-semibold text-foreground">{week.title}</h4>
+                        <p className="text-xs text-muted-foreground">{week.focus}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="rounded-full bg-surface-dark px-2.5 py-0.5 text-[10px] font-mono text-copy-subtle border border-line-soft hidden sm:inline-block">
+                      <span className="rounded-md bg-muted px-2.5 py-0.5 text-[10px] font-mono text-muted-foreground border border-border hidden sm:inline-block">
                         Days {(week.week - 1) * 5 + 1}–{week.week * 5}
                       </span>
                       {isOpen ? (
-                        <ChevronDown className="size-4 text-copy-subtle" />
+                        <ChevronDown className="size-4 text-muted-foreground" />
                       ) : (
-                        <ChevronRight className="size-4 text-copy-subtle" />
+                        <ChevronRight className="size-4 text-muted-foreground" />
                       )}
                     </div>
                   </button>
 
                   {isOpen && (
-                    <div className="border-t border-line-soft/80 p-4 space-y-2 bg-surface-dark/30">
+                    <div className="border-t border-border p-4 space-y-2 bg-muted/20">
                       {week.days.map((d) => {
                         const isFriday = d.day % 5 === 0;
                         const isSelected = d.day === selectedDayNum;
@@ -874,19 +873,19 @@ function AcceleratorPage() {
                               setActiveTab("practice");
                             }}
                             className={cn(
-                              "flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border p-3 cursor-pointer transition-all text-xs",
+                              "flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border p-3 cursor-pointer transition-all text-xs",
                               isSelected
-                                ? "border-brand-cyan bg-brand-cyan/10 text-foreground font-semibold"
+                                ? "border-primary bg-primary/10 text-foreground font-semibold shadow-xs"
                                 : isFriday
-                                  ? "border-brand-purple/40 bg-brand-purple/5 hover:border-brand-purple"
-                                  : "border-line-soft bg-surface-elevated/60 hover:border-line-soft hover:bg-surface-elevated",
+                                  ? "border-border bg-card hover:border-primary/40"
+                                  : "border-border bg-card hover:border-border/80 hover:bg-muted/30",
                             )}
                           >
                             <div className="flex items-center gap-2.5">
-                              <span className="font-mono text-xs font-bold text-brand-cyan min-w-[50px]">
+                              <span className="font-mono text-xs font-bold text-primary min-w-[50px]">
                                 Day {d.day}
                               </span>
-                              <span className="text-[11px] text-copy-subtle font-mono">
+                              <span className="text-[11px] text-muted-foreground font-mono">
                                 ({d.dayOfWeek})
                               </span>
                               <span className="font-medium text-foreground">{d.theme}</span>
@@ -896,11 +895,11 @@ function AcceleratorPage() {
                               {isFriday ? (
                                 <Chip tone="purple">Friday Mock Assessment</Chip>
                               ) : (
-                                <span className="text-[10px] text-copy-subtle font-mono">
+                                <span className="text-[10px] text-muted-foreground font-mono">
                                   10m Eng + 10m Apt + 10m Drill
                                 </span>
                               )}
-                              <span className="text-brand-cyan text-xs font-bold hover:underline">
+                              <span className="text-primary text-xs font-semibold hover:underline">
                                 Open Day →
                               </span>
                             </div>

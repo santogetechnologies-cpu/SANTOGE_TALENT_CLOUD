@@ -67,43 +67,42 @@ function LoginPage() {
   };
 
   return (
-    <div className="app-grid min-h-screen bg-background px-4 py-8 sm:py-12">
-      <div className="mx-auto w-full max-w-[540px] space-y-6">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-[440px] space-y-6">
         {/* Brand Header */}
-        <div className="flex flex-col items-center text-center gap-3">
-          <span className="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-brand-cyan to-brand-purple shadow-lg shadow-brand-cyan/20">
-            <Hexagon className="size-7 text-surface-dark" />
+        <div className="flex flex-col items-center text-center gap-2.5">
+          <span className="grid size-11 place-items-center rounded-xl bg-primary text-primary-foreground shadow-xs">
+            <Hexagon className="size-6" />
           </span>
           <div>
-            <p className="font-display text-2xl font-bold text-foreground">SantoGe Talent Cloud</p>
-            <p className="text-xs font-semibold uppercase tracking-widest text-copy-subtle mt-0.5">
+            <h1 className="text-xl font-bold tracking-tight text-foreground">SantoGe Talent Cloud</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Interactive Technical Skill Engine · Placement Accelerator
             </p>
           </div>
         </div>
 
         {/* Live Supabase Login Card */}
-        <div className="rounded-2xl border border-line-soft bg-surface-elevated/95 p-6 sm:p-8 backdrop-blur-xl shadow-2xl">
+        <div className="rounded-xl border border-border bg-card p-6 sm:p-7 shadow-sm">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="inline-flex items-center gap-2 rounded-full border border-brand-emerald/30 bg-brand-emerald/10 px-3 py-1 text-[11px] font-semibold text-brand-emerald">
+            <div className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200/60 bg-emerald-50/60 dark:bg-emerald-950/30 dark:border-emerald-900/40 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
               <Server className="size-3" /> Supabase Production Auth
             </div>
           </div>
 
-          <h1 className="mt-4 font-display text-2xl font-bold text-foreground">
-            Sign in to your portal
-          </h1>
-          <p className="mt-1 text-xs text-copy-subtle leading-relaxed">
-            Sign in with the credentials provisioned by your partner institution or platform
-            administrator.
+          <h2 className="mt-4 text-lg font-semibold tracking-tight text-foreground">
+            Sign in to your account
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+            Enter the credentials provisioned by your institution or platform administrator.
           </p>
 
           {!isConfigured && (
-            <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-brand-rose/40 bg-brand-rose/10 p-3 text-xs text-brand-rose">
+            <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
               <AlertCircle className="size-4 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold">Backend Connection Required</p>
+                <p className="font-semibold">Backend Connection Required</p>
                 <p className="mt-0.5 text-[11px] opacity-90">
                   VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are not configured. Please
                   supply production environment variables.
@@ -113,10 +112,10 @@ function LoginPage() {
           )}
 
           {/* Supabase Sign In Form */}
-          <form onSubmit={handleSupabaseSubmit} className="mt-5 space-y-3.5">
+          <form onSubmit={handleSupabaseSubmit} className="mt-5 space-y-4">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-copy-subtle">
-                Email Address
+              <label className="mb-1.5 block text-xs font-medium text-foreground">
+                Institutional Email
               </label>
               <input
                 type="email"
@@ -124,24 +123,24 @@ function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="student@college.edu or admin@domain.com"
-                className="w-full rounded-xl border border-line-soft bg-surface-soft px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-brand-cyan/60"
+                className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-copy-subtle">Password</label>
+              <label className="mb-1.5 block text-xs font-medium text-foreground">Password</label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full rounded-xl border border-line-soft bg-surface-soft px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-brand-cyan/60"
+                className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 rounded-xl border border-brand-rose/40 bg-brand-rose/10 p-2.5 text-xs text-brand-rose">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive">
                 <AlertCircle className="size-4 shrink-0" /> {error}
               </div>
             )}
@@ -149,7 +148,7 @@ function LoginPage() {
             <button
               type="submit"
               disabled={loading || !isConfigured}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-3 text-sm font-bold text-surface-dark transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <RefreshCw className="size-4 animate-spin" />
@@ -161,8 +160,8 @@ function LoginPage() {
           </form>
 
           {/* Institutional Provisioning Notice */}
-          <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-line-soft bg-surface-soft/80 p-3 text-[11px] text-copy-subtle">
-            <Info className="size-4 shrink-0 text-brand-cyan mt-0.5" />
+          <div className="mt-5 flex items-start gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-[11px] text-muted-foreground leading-relaxed">
+            <Info className="size-4 shrink-0 text-primary mt-0.5" />
             <div>
               <span className="font-semibold text-foreground">Institutional Provisioning:</span>{" "}
               Student accounts are created via CSV roster uploads by college administrators.

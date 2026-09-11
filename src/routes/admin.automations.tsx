@@ -8,11 +8,8 @@ import {
   Clock,
   Play,
   RefreshCw,
-  CheckCircle2,
-  Zap,
-  Download,
-  Trash2,
   Activity,
+  Download,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/automations")({
@@ -132,30 +129,27 @@ function AutomationsPage() {
         <Stat
           label="Total Runs Logged"
           value={cronLogsList.length}
-          accent="var(--brand-purple)"
           hint="Session audit trail"
         />
         <Stat
           label="Pipeline Health"
           value="100%"
-          accent="var(--brand-emerald)"
           hint="Zero failures in 24h"
         />
         <Stat
           label="Next Broadcast Window"
           value="06:00 IST"
-          accent="var(--brand-cyan)"
           hint="Tomorrow morning"
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_440px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_440px]">
         {/* Pipelines List */}
         <Panel
           title="Scheduled Pipelines"
           subtitle="Trigger any automated background pipeline on demand"
           action={
-            <span className="flex items-center gap-1 text-[11px] font-semibold text-brand-emerald">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
               <Activity className="size-3.5 animate-pulse" /> Cron Service Healthy
             </span>
           }
@@ -166,28 +160,28 @@ function AutomationsPage() {
               return (
                 <div
                   key={j.id}
-                  className="flex flex-wrap items-center gap-3 rounded-xl border border-line-soft bg-surface-soft p-3.5 transition-all hover:border-brand-cyan/40"
+                  className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40"
                 >
-                  <span className="grid size-10 place-items-center rounded-xl bg-surface-dark shadow-sm">
-                    <Bot className="size-5 text-brand-cyan" />
+                  <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted/60 text-muted-foreground">
+                    <Bot className="size-4 text-primary" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-foreground">{j.name}</p>
-                      <span className="rounded bg-surface-elevated px-2 py-0.5 text-[10px] font-mono text-brand-cyan border border-line-soft">
+                      <p className="text-sm font-semibold text-foreground">{j.name}</p>
+                      <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground border border-border">
                         {j.target}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-copy-subtle leading-relaxed">{j.detail}</p>
+                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{j.detail}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-line-soft bg-surface-dark px-2.5 py-1 font-mono text-[11px] text-brand-amber">
+                  <div className="flex items-center gap-2.5">
+                    <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2.5 py-1 font-mono text-xs text-muted-foreground">
                       <Clock className="size-3" /> {j.cron}
                     </span>
                     <button
                       onClick={() => run(j)}
                       disabled={isRunning}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-3.5 py-2 text-xs font-bold text-surface-dark shadow-md transition-opacity hover:opacity-90 disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 disabled:opacity-50"
                     >
                       {isRunning ? (
                         <RefreshCw className="size-3.5 animate-spin" />
@@ -210,7 +204,7 @@ function AutomationsPage() {
           action={
             <button
               onClick={exportLogs}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-cyan hover:underline"
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
               <Download className="size-3" /> Export Logs
             </button>

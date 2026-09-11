@@ -324,38 +324,38 @@ function BatchesPage() {
   }, [liveRoster, rosterBatchId, rosterSearch]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Batch Management & Telegram Hub"
         subtitle="Manage batch sizing (100–300 constraint), batch renaming, Telegram channel webhooks, and morning synchronized broadcasts."
         action={
           <button
             onClick={() => setCreateModalOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2 text-xs font-bold text-surface-dark shadow-md"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
           >
-            <Plus className="size-4" /> Create New Batch
+            <Plus className="size-3.5" /> Create New Batch
           </button>
         }
       />
 
       <div className="grid gap-4 sm:grid-cols-4">
-        <Stat label="Total Cohorts" value={batchesWithCounts.length} hint="Placement Accelerator" />
+        <Stat label="Total Cohorts" value={batchesWithCounts.length} tone="brand" hint="Placement Accelerator" />
         <Stat
           label="Total Capacity"
           value={totalCapacity}
-          accent="var(--brand-purple)"
+          tone="purple"
           hint="Sum of batch allocations"
         />
         <Stat
           label="Enrolled Learners"
           value={totalEnrolled}
-          accent="var(--brand-emerald)"
+          tone="emerald"
           hint="Active student profiles"
         />
         <Stat
           label="Platform Fill Rate"
           value={`${Math.round((totalEnrolled / Math.max(totalCapacity, 1)) * 100)}%`}
-          accent="var(--brand-amber)"
+          tone="amber"
           hint="Cohort utilization"
         />
       </div>
@@ -363,19 +363,19 @@ function BatchesPage() {
       {/* Batch Search & Filter Bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-copy-subtle" />
+          <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search batches by name, department, size…"
-            className="w-full rounded-xl border border-line-soft bg-surface-soft pl-10 pr-9 py-2 text-xs text-foreground outline-none placeholder:text-copy-subtle focus:border-brand-cyan/60 transition-colors"
+            className="w-full rounded-lg border border-border bg-card pl-9 pr-8 py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs transition-colors"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-copy-subtle hover:text-foreground"
+              className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
               title="Clear search"
             >
               <X className="size-3.5" />
@@ -385,11 +385,11 @@ function BatchesPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5">
-            <Filter className="size-3.5 text-copy-subtle" />
+            <Filter className="size-3.5 text-muted-foreground" />
             <select
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
-              className="rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-medium text-foreground outline-none focus:border-brand-cyan/60"
+              className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
             >
               <option value="all">All Departments</option>
               {uniqueDepts.map((dept) => (
@@ -401,11 +401,11 @@ function BatchesPage() {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <SlidersHorizontal className="size-3.5 text-copy-subtle" />
+            <SlidersHorizontal className="size-3.5 text-muted-foreground" />
             <select
               value={utilizationFilter}
               onChange={(e) => setUtilizationFilter(e.target.value)}
-              className="rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-medium text-foreground outline-none focus:border-brand-cyan/60"
+              className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
             >
               <option value="all">All Capacities</option>
               <option value="high">High Fill (≥80%)</option>
@@ -422,7 +422,7 @@ function BatchesPage() {
                 setDeptFilter("all");
                 setUtilizationFilter("all");
               }}
-              className="inline-flex items-center gap-1 rounded-lg bg-surface-dark border border-line-soft px-2.5 py-1.5 text-xs font-semibold text-foreground hover:text-brand-rose transition-colors"
+              className="inline-flex items-center gap-1 rounded-lg bg-card border border-border px-2.5 py-1 text-xs font-semibold text-foreground hover:text-destructive transition-colors shadow-xs"
             >
               <X className="size-3" />
               <span>Clear</span>
@@ -438,15 +438,15 @@ function BatchesPage() {
       {/* Batch Cards Grid */}
       <div className="grid gap-4 lg:grid-cols-2">
         {filteredBatches.length === 0 ? (
-          <div className="col-span-full rounded-2xl border border-line-soft bg-surface-soft p-12 text-center space-y-3">
-            <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-surface-elevated border border-line-soft text-copy-subtle">
+          <div className="col-span-full rounded-xl border border-border bg-card p-12 text-center space-y-3 shadow-xs">
+            <div className="mx-auto grid size-12 place-items-center rounded-xl bg-muted border border-border text-muted-foreground">
               <Search className="size-6" />
             </div>
-            <h4 className="font-display text-base font-bold text-foreground">
+            <h4 className="text-base font-semibold text-foreground">
               No Placement Batches Found
             </h4>
-            <p className="text-xs text-copy-subtle max-w-md mx-auto">
-              No cohorts match your current search &ldquo;<span className="text-brand-cyan font-semibold">{searchQuery}</span>&rdquo;
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              No cohorts match your current search &ldquo;<span className="text-primary font-semibold">{searchQuery}</span>&rdquo;
               {deptFilter !== "all" ? ` in department ${deptFilter}` : ""}.
             </p>
             <button
@@ -456,7 +456,7 @@ function BatchesPage() {
                 setDeptFilter("all");
                 setUtilizationFilter("all");
               }}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-line-soft bg-surface-elevated px-4 py-2 text-xs font-semibold text-foreground hover:border-brand-cyan/60 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
             >
               <RefreshCw className="size-3.5" />
               <span>Reset Search &amp; Filters</span>
@@ -464,140 +464,141 @@ function BatchesPage() {
           </div>
         ) : (
           filteredBatches.map((b) => {
-          const fill = Math.round((b.enrolled / Math.max(b.capacity, 1)) * 100);
-          const isEditing = editingId === b.id;
+            const fill = Math.round((b.enrolled / Math.max(b.capacity, 1)) * 100);
+            const isEditing = editingId === b.id;
 
-          return (
-            <Panel
-              key={b.id}
-              title={
-                isEditing ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      className="rounded-lg border border-brand-cyan/60 bg-surface-dark px-2.5 py-1 text-sm font-bold text-foreground outline-none"
-                    />
+            return (
+              <Panel
+                key={b.id}
+                title={
+                  isEditing ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="rounded-md border border-primary bg-card px-2.5 py-1 text-sm font-semibold text-foreground outline-none shadow-xs"
+                      />
+                      <button
+                        onClick={() => handleSaveEdit(b.id)}
+                        className="text-emerald-600 dark:text-emerald-400 hover:opacity-80 p-1"
+                      >
+                        <Check className="size-4" />
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="text-muted-foreground hover:text-foreground p-1"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span>{b.name}</span>
+                      <button
+                        onClick={() => handleStartEdit(b)}
+                        className="text-muted-foreground hover:text-primary transition-colors p-1"
+                        title="Rename batch"
+                      >
+                        <Edit2 className="size-3.5" />
+                      </button>
+                    </div>
+                  )
+                }
+                subtitle={`${b.dept} · Active Placement Cohort`}
+                action={
+                  <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => handleSaveEdit(b.id)}
-                      className="text-brand-emerald hover:opacity-80"
+                      onClick={() => setRosterBatchId(b.id)}
+                      className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
                     >
-                      <Check className="size-4" />
+                      <Users className="size-3 text-primary" /> Roster
                     </button>
                     <button
-                      onClick={() => setEditingId(null)}
-                      className="text-copy-subtle hover:text-foreground"
+                      onClick={() => handleSyncBatch(b.id)}
+                      className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
                     >
-                      <X className="size-4" />
+                      <RefreshCw className="size-3 text-primary" /> Sync
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTargetBatch(b)}
+                      className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shadow-xs"
+                      title={`Delete batch ${b.name}`}
+                    >
+                      <Trash2 className="size-3" />
+                      <span className="hidden sm:inline">Delete</span>
                     </button>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span>{b.name}</span>
-                    <button
-                      onClick={() => handleStartEdit(b)}
-                      className="text-copy-subtle hover:text-brand-cyan transition-colors"
-                      title="Rename batch"
-                    >
-                      <Edit2 className="size-3.5" />
-                    </button>
-                  </div>
-                )
-              }
-              subtitle={`${b.dept} · Active Placement Cohort`}
-              action={
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => setRosterBatchId(b.id)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-[11px] font-semibold text-foreground hover:border-brand-purple/60 transition-colors"
-                  >
-                    <Users className="size-3" /> Roster
-                  </button>
-                  <button
-                    onClick={() => handleSyncBatch(b.id)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-[11px] font-bold text-brand-cyan hover:border-brand-cyan/60 transition-colors"
-                  >
-                    <RefreshCw className="size-3" /> Sync
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTargetBatch(b)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2 py-1 text-[11px] font-semibold text-copy-subtle hover:text-brand-rose hover:border-brand-rose/60 hover:bg-brand-rose/10 transition-colors"
-                    title={`Delete batch ${b.name}`}
-                  >
-                    <Trash2 className="size-3" />
-                    <span className="hidden sm:inline">Delete</span>
-                  </button>
+                }
+              >
+                <div className="mb-2 flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Capacity Utilization</span>
+                  <span className="font-mono text-foreground font-semibold">
+                    {b.enrolled} / {b.capacity} ({fill}%)
+                  </span>
                 </div>
-              }
-            >
-              <div className="mb-2 flex items-center justify-between text-xs">
-                <span className="text-copy-subtle">Capacity Utilization</span>
-                <span className="font-mono text-foreground font-semibold">
-                  {b.enrolled} / {b.capacity} ({fill}%)
-                </span>
-              </div>
-              <Meter
-                value={fill}
-                accent={fill >= 80 ? "var(--brand-emerald)" : "var(--brand-cyan)"}
-              />
+                <Meter
+                  value={fill}
+                  tone={fill >= 80 ? "emerald" : "brand"}
+                />
 
-              {/* Sizing Slider (100 - 300 constraint) */}
-              <div className="mt-4 space-y-3 rounded-xl border border-line-soft bg-surface-soft p-3.5">
-                <div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-copy-subtle">
-                      Batch Sizing Constraint (100–300):
-                    </span>
-                    <span className="font-mono font-bold text-brand-purple">
-                      {b.capacity} students
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={100}
-                    max={300}
-                    step={10}
-                    value={b.capacity}
-                    onChange={(e) => handleUpdateCapacity(b.id, Number(e.target.value))}
-                    className="mt-2 w-full accent-[var(--brand-purple)]"
-                  />
-                  <div className="flex justify-between text-[10px] text-copy-subtle mt-0.5 font-mono">
-                    <span>100 Min</span>
-                    <span>200 Optimum</span>
-                    <span>300 Max</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-line-soft/60 text-xs">
+                {/* Sizing Slider */}
+                <div className="mt-4 space-y-3 rounded-xl border border-border bg-muted/20 p-4">
                   <div>
-                    <span className="block font-semibold text-copy-subtle">Enrolled Learners</span>
-                    <div className="mt-1 w-full rounded-lg border border-line-soft bg-surface-dark px-2.5 py-1.5 font-mono text-xs text-foreground">
-                      {b.enrolled}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-muted-foreground">
+                        Batch Sizing Constraint (100–300):
+                      </span>
+                      <span className="font-mono font-bold text-primary">
+                        {b.capacity} students
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={100}
+                      max={300}
+                      step={10}
+                      value={b.capacity}
+                      onChange={(e) => handleUpdateCapacity(b.id, Number(e.target.value))}
+                      className="mt-2 w-full accent-primary"
+                    />
+                    <div className="flex justify-between text-[10px] text-muted-foreground mt-1 font-mono">
+                      <span>100 Min</span>
+                      <span>200 Optimum</span>
+                      <span>300 Max</span>
                     </div>
                   </div>
-                  <div>
-                    <span className="block font-semibold text-copy-subtle">Department Tag</span>
-                    <input
-                      type="text"
-                      value={b.dept}
-                      onChange={(e) => handleUpdateDept(b.id, e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-line-soft bg-surface-dark px-2.5 py-1.5 font-mono text-xs text-foreground outline-none focus:border-brand-cyan/60"
-                    />
+
+                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border text-xs">
+                    <div>
+                      <span className="block font-semibold text-muted-foreground">Enrolled Learners</span>
+                      <div className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-1.5 font-mono text-xs text-foreground font-semibold">
+                        {b.enrolled}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="block font-semibold text-muted-foreground">Department Tag</span>
+                      <input
+                        type="text"
+                        value={b.dept}
+                        onChange={(e) => handleUpdateDept(b.id, e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-1.5 font-mono text-xs text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-3 flex items-center justify-between text-[11px] text-copy-subtle">
-                <span className="flex items-center gap-1 text-brand-cyan">
-                  <Send className="size-3" /> t.me/stc-{b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
-                </span>
-                <span>Last Synced: {b.lastSync ?? "Pending daily cron"}</span>
-              </div>
-            </Panel>
-          );
-        }))}
+                <div className="mt-3.5 flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span className="flex items-center gap-1.5 text-primary font-medium">
+                    <Send className="size-3" /> t.me/stc-{b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
+                  </span>
+                  <span>Last Synced: {b.lastSync ?? "Pending daily cron"}</span>
+                </div>
+              </Panel>
+            );
+          })
+        )}
       </div>
 
       {/* Telegram Webhook & Broadcast Simulator */}
@@ -608,13 +609,13 @@ function BatchesPage() {
         >
           <div className="space-y-3.5">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-copy-subtle">
+              <label className="mb-1 block text-xs font-semibold text-muted-foreground">
                 Target Batch Channel
               </label>
               <select
                 value={broadcastTargetBatch}
                 onChange={(e) => setBroadcastTargetBatch(e.target.value)}
-                className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2.5 text-xs font-semibold text-foreground outline-none focus:border-brand-cyan/60"
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
               >
                 {batchesWithCounts.map((b) => (
                   <option key={b.id} value={b.id}>
@@ -625,7 +626,7 @@ function BatchesPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-copy-subtle">
+              <label className="mb-1 block text-xs font-semibold text-muted-foreground">
                 Broadcast Message Content
               </label>
               <textarea
@@ -633,19 +634,19 @@ function BatchesPage() {
                 onChange={(e) => setBroadcastMessage(e.target.value)}
                 rows={4}
                 placeholder="Enter message for the batch Telegram cohort…"
-                className="w-full rounded-xl border border-line-soft bg-surface-soft p-3 text-xs text-foreground outline-none focus:border-brand-cyan/60"
+                className="w-full rounded-lg border border-border bg-card p-3 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
               />
             </div>
 
             <button
               onClick={handleDispatchTelegram}
               disabled={isBroadcasting}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-5 py-2.5 text-xs font-bold text-surface-dark shadow-md transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs transition-opacity hover:bg-primary/90 disabled:opacity-50"
             >
               {isBroadcasting ? (
-                <RefreshCw className="size-4 animate-spin" />
+                <RefreshCw className="size-3.5 animate-spin" />
               ) : (
-                <Send className="size-4" />
+                <Send className="size-3.5" />
               )}
               {isBroadcasting ? "Pushing to Telegram Webhook…" : "Dispatch to Telegram Channel"}
             </button>
@@ -659,27 +660,27 @@ function BatchesPage() {
 
       {/* Create Batch Modal */}
       {createModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/70 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
           <form
             onSubmit={handleCreateBatch}
-            className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4"
+            className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4"
           >
-            <div className="flex items-center justify-between border-b border-line-soft pb-3">
-              <h3 className="font-display text-base font-bold text-foreground">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-base font-semibold text-foreground">
                 Create Placement Batch
               </h3>
               <button
                 type="button"
                 onClick={() => setCreateModalOpen(false)}
-                className="text-copy-subtle hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground p-1"
               >
                 <X className="size-5" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3.5 text-xs">
               <div>
-                <label className="mb-1 block font-semibold text-copy-subtle">
+                <label className="mb-1 block font-semibold text-muted-foreground">
                   Batch Name / Identifier
                 </label>
                 <input
@@ -688,18 +689,18 @@ function BatchesPage() {
                   value={newBatchName}
                   onChange={(e) => setNewBatchName(e.target.value)}
                   placeholder="BATCH-2026-ABC-CSE-01"
-                  className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 font-mono text-xs text-foreground outline-none focus:border-brand-cyan/60"
+                  className="w-full rounded-lg border border-border bg-card px-3 py-2 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block font-semibold text-copy-subtle">
+                <label className="mb-1 block font-semibold text-muted-foreground">
                   Academic Department
                 </label>
                 <select
                   value={newBatchDept}
                   onChange={(e) => setNewBatchDept(e.target.value)}
-                  className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-semibold text-foreground outline-none"
+                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                 >
                   <option value="CSE">Computer Science &amp; Engineering (CSE)</option>
                   <option value="IT">Information Technology (IT)</option>
@@ -710,9 +711,9 @@ function BatchesPage() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between font-semibold text-copy-subtle">
+                <div className="flex items-center justify-between font-semibold text-muted-foreground">
                   <span>Batch Capacity (100–300 max):</span>
-                  <span className="font-mono font-bold text-brand-cyan">{newBatchCapacity}</span>
+                  <span className="font-mono font-bold text-primary">{newBatchCapacity}</span>
                 </div>
                 <input
                   type="range"
@@ -721,22 +722,22 @@ function BatchesPage() {
                   step={10}
                   value={newBatchCapacity}
                   onChange={(e) => setNewBatchCapacity(Number(e.target.value))}
-                  className="mt-2 w-full accent-[var(--brand-cyan)]"
+                  className="mt-2 w-full accent-primary"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-line-soft">
+            <div className="flex justify-end gap-2.5 pt-3 border-t border-border">
               <button
                 type="button"
                 onClick={() => setCreateModalOpen(false)}
-                className="rounded-xl border border-line-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground"
+                className="rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2 text-xs font-bold text-surface-dark"
+                className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
               >
                 Create Batch
               </button>
@@ -747,14 +748,14 @@ function BatchesPage() {
 
       {/* Batch Roster Modal */}
       {rosterBatchId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/70 backdrop-blur-md">
-          <div className="w-full max-w-2xl rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-line-soft pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
-                <h3 className="font-display text-base font-bold text-foreground">
+                <h3 className="text-base font-semibold text-foreground">
                   Cohort Roster: {getBatchName(rosterBatchId)}
                 </h3>
-                <p className="text-xs text-copy-subtle mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Learners enrolled in this synchronized placement batch
                 </p>
               </div>
@@ -767,7 +768,7 @@ function BatchesPage() {
                       setDeleteTargetBatch(currentBatch);
                     }
                   }}
-                  className="inline-flex items-center gap-1 rounded-lg border border-brand-rose/40 bg-brand-rose/10 px-2.5 py-1 text-[11px] font-semibold text-brand-rose hover:bg-brand-rose/20 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors shadow-xs"
                   title="Delete this cohort batch"
                 >
                   <Trash2 className="size-3" />
@@ -775,7 +776,7 @@ function BatchesPage() {
                 </button>
                 <button
                   onClick={() => setRosterBatchId(null)}
-                  className="text-copy-subtle hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground p-1"
                 >
                   <X className="size-5" />
                 </button>
@@ -784,19 +785,19 @@ function BatchesPage() {
 
             {/* Roster Search Input */}
             <div className="relative">
-              <Search className="absolute left-3 top-2.5 size-3.5 text-copy-subtle" />
+              <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
               <input
                 type="text"
                 value={rosterSearch}
                 onChange={(e) => setRosterSearch(e.target.value)}
                 placeholder="Search learners by name, email, roll number, department…"
-                className="w-full rounded-xl border border-line-soft bg-surface-soft pl-9 pr-8 py-2 text-xs text-foreground outline-none placeholder:text-copy-subtle focus:border-brand-cyan/60 transition-colors"
+                className="w-full rounded-lg border border-border bg-card pl-9 pr-8 py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs transition-colors"
               />
               {rosterSearch && (
                 <button
                   type="button"
                   onClick={() => setRosterSearch("")}
-                  className="absolute right-2.5 top-2.5 text-copy-subtle hover:text-foreground"
+                  className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
                   title="Clear learner search"
                 >
                   <X className="size-3.5" />
@@ -809,11 +810,11 @@ function BatchesPage() {
                 rosterLearners.map((learner) => (
                   <div
                     key={learner.email}
-                    className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft p-3 text-xs"
+                    className="flex items-center justify-between rounded-lg border border-border bg-card p-3 text-xs shadow-xs"
                   >
                     <div>
-                      <p className="font-bold text-foreground">{learner.name}</p>
-                      <p className="font-mono text-copy-subtle text-[11px]">
+                      <p className="font-semibold text-foreground">{learner.name}</p>
+                      <p className="font-mono text-muted-foreground text-[11px]">
                         {learner.rollNo} · {learner.email}
                       </p>
                     </div>
@@ -822,13 +823,13 @@ function BatchesPage() {
                         {Array.from(new Set(learner.tracks || [])).map((t, idx) => (
                           <span
                             key={`${learner.email}-${t}-${idx}`}
-                            className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[10px] font-mono"
+                            className="rounded bg-muted border border-border px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground"
                           >
                             {t}
                           </span>
                         ))}
                       </div>
-                      <span className="font-mono text-brand-amber text-xs font-bold">
+                      <span className="font-mono text-amber-600 dark:text-amber-400 text-xs font-semibold">
                         🔥 {learner.streak}d
                       </span>
                       <button
@@ -843,11 +844,11 @@ function BatchesPage() {
                           });
                           setIsResetModalOpen(true);
                         }}
-                        className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-dark px-2 py-1 text-[11px] font-semibold text-copy-subtle hover:text-brand-purple hover:border-brand-purple/60 transition-colors ml-1"
+                        className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs ml-1"
                         title="Reset Student Password"
                       >
-                        <KeyRound className="size-3" />
-                        <span className="hidden sm:inline">Reset Pass</span>
+                        <KeyRound className="size-3 text-primary" />
+                        <span className="hidden sm:inline">Pass</span>
                       </button>
                       <button
                         onClick={() => {
@@ -858,7 +859,7 @@ function BatchesPage() {
                             batchId: learner.batchId,
                           });
                         }}
-                        className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-dark px-2 py-1 text-[11px] font-semibold text-copy-subtle hover:text-brand-rose hover:border-brand-rose/60 hover:bg-brand-rose/10 transition-colors ml-1"
+                        className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shadow-xs ml-1"
                         title="Delete Student from Cohort"
                       >
                         <Trash2 className="size-3" />
@@ -868,16 +869,16 @@ function BatchesPage() {
                   </div>
                 ))
               ) : (
-                <div className="py-8 text-center text-xs text-copy-subtle">
+                <div className="py-8 text-center text-xs text-muted-foreground">
                   No provisioned learners assigned to this batch yet.
                 </div>
               )}
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-line-soft">
+            <div className="flex justify-end pt-3 border-t border-border">
               <button
                 onClick={() => setRosterBatchId(null)}
-                className="rounded-xl border border-line-soft px-4 py-2 text-xs font-semibold text-foreground"
+                className="rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
               >
                 Close
               </button>
@@ -898,55 +899,55 @@ function BatchesPage() {
 
       {/* Delete Confirmation Modal */}
       {deleteTargetStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md">
-          <div className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 border-b border-line-soft pb-3">
-              <div className="grid size-10 place-items-center rounded-xl bg-brand-rose/15 text-brand-rose border border-brand-rose/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 border-b border-border pb-3">
+              <div className="grid size-10 place-items-center rounded-lg bg-destructive/10 text-destructive border border-destructive/20">
                 <AlertTriangle className="size-5" />
               </div>
               <div>
-                <h3 className="font-display text-base font-bold text-foreground">
+                <h3 className="text-base font-semibold text-foreground">
                   Remove Learner from Roster?
                 </h3>
-                <p className="text-xs text-copy-subtle">
+                <p className="text-xs text-muted-foreground">
                   This action permanently removes the student from this cohort
                 </p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2 text-xs">
+            <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Student Name:</span>
-                <span className="font-bold text-foreground">{deleteTargetStudent.name}</span>
+                <span className="text-muted-foreground font-medium">Student Name:</span>
+                <span className="font-semibold text-foreground">{deleteTargetStudent.name}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Email Address:</span>
-                <span className="font-mono text-copy-subtle">{deleteTargetStudent.email}</span>
+                <span className="text-muted-foreground font-medium">Email Address:</span>
+                <span className="font-mono text-muted-foreground">{deleteTargetStudent.email}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Roll Number:</span>
+                <span className="text-muted-foreground font-medium">Roll Number:</span>
                 <span className="font-mono font-semibold text-foreground">
                   {deleteTargetStudent.rollNo}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Cohort Batch:</span>
-                <span className="font-bold text-brand-purple">
+                <span className="text-muted-foreground font-medium">Cohort Batch:</span>
+                <span className="font-semibold text-foreground">
                   {getBatchName(deleteTargetStudent.batchId)}
                 </span>
               </div>
             </div>
 
-            <p className="text-xs text-copy-subtle leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               Removing this student will permanently delete their progress, revoke active portal
               access, update cohort batch headcount, and record the removal in the audit log.
             </p>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
               <button
                 type="button"
                 onClick={() => setDeleteTargetStudent(null)}
-                className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground hover:bg-surface-elevated transition-colors"
+                className="rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
               >
                 Cancel
               </button>
@@ -966,7 +967,7 @@ function BatchesPage() {
                     toast.error(res.error || "Failed to delete student from Supabase");
                   }
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 transition-colors shadow-xs"
               >
                 <Trash2 className="size-3.5" />
                 <span>Confirm Delete</span>
@@ -978,43 +979,43 @@ function BatchesPage() {
 
       {/* Batch Delete Confirmation Modal */}
       {deleteTargetBatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md">
-          <div className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 border-b border-line-soft pb-3">
-              <div className="grid size-10 place-items-center rounded-xl bg-brand-rose/15 text-brand-rose border border-brand-rose/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 border-b border-border pb-3">
+              <div className="grid size-10 place-items-center rounded-lg bg-destructive/10 text-destructive border border-destructive/20">
                 <Trash2 className="size-5" />
               </div>
               <div>
-                <h3 className="font-display text-base font-bold text-foreground">
+                <h3 className="text-base font-semibold text-foreground">
                   Delete Placement Batch?
                 </h3>
-                <p className="text-xs text-copy-subtle">
+                <p className="text-xs text-muted-foreground">
                   Permanently remove or archive this placement cohort
                 </p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2 text-xs">
+            <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Batch Name:</span>
-                <span className="font-bold text-foreground">{deleteTargetBatch.name}</span>
+                <span className="text-muted-foreground font-medium">Batch Name:</span>
+                <span className="font-semibold text-foreground">{deleteTargetBatch.name}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Department:</span>
-                <span className="font-semibold text-brand-cyan">{deleteTargetBatch.dept}</span>
+                <span className="text-muted-foreground font-medium">Department:</span>
+                <span className="font-semibold text-foreground">{deleteTargetBatch.dept}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Batch Capacity:</span>
+                <span className="text-muted-foreground font-medium">Batch Capacity:</span>
                 <span className="font-mono text-foreground">
                   {deleteTargetBatch.capacity} learners
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Enrolled Learners:</span>
+                <span className="text-muted-foreground font-medium">Enrolled Learners:</span>
                 <span
                   className={cn(
                     "font-bold font-mono",
-                    deleteTargetBatch.enrolled > 0 ? "text-brand-amber" : "text-brand-emerald",
+                    deleteTargetBatch.enrolled > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400",
                   )}
                 >
                   {deleteTargetBatch.enrolled} active
@@ -1023,7 +1024,7 @@ function BatchesPage() {
             </div>
 
             {deleteTargetBatch.enrolled > 0 ? (
-              <div className="rounded-xl border border-brand-amber/30 bg-brand-amber/10 p-3 text-xs text-brand-amber flex items-start gap-2">
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
                 <AlertTriangle className="size-4 shrink-0 mt-0.5" />
                 <span className="leading-relaxed">
                   <strong>Notice:</strong> This cohort currently has{" "}
@@ -1033,18 +1034,18 @@ function BatchesPage() {
                 </span>
               </div>
             ) : (
-              <p className="text-xs text-copy-subtle leading-relaxed">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 This cohort has no currently enrolled students. It will be removed from all active
                 listings.
               </p>
             )}
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
               <button
                 type="button"
                 disabled={isDeletingBatch}
                 onClick={() => setDeleteTargetBatch(null)}
-                className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground hover:bg-surface-elevated transition-colors disabled:opacity-50"
+                className="rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1052,7 +1053,7 @@ function BatchesPage() {
                 type="button"
                 disabled={isDeletingBatch}
                 onClick={handleDeleteBatch}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 transition-colors shadow-xs disabled:opacity-50"
               >
                 {isDeletingBatch ? (
                   <>

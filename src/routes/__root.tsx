@@ -80,19 +80,19 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     error?.message?.includes("Loading chunk");
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-dark px-4 text-foreground">
-      <div className="w-full max-w-lg rounded-2xl border border-line-soft bg-surface-elevated p-6 text-center shadow-2xl">
-        <h1 className="text-xl font-bold tracking-tight text-brand-rose">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
+      <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 text-center shadow-md">
+        <h1 className="text-xl font-bold tracking-tight text-foreground">
           {isChunkError ? "New Version Available" : "This page didn't load"}
         </h1>
-        <p className="mt-2 text-xs text-copy-subtle">
+        <p className="mt-2 text-xs text-muted-foreground">
           {isChunkError
             ? "A new update has been deployed to SantoGe Talent Cloud. Please reload to load the latest application assets."
             : error?.message || "An unexpected error occurred while rendering this page."}
         </p>
 
         {error?.stack && !isChunkError && (
-          <div className="mt-4 max-h-40 overflow-y-auto rounded-xl border border-line-soft bg-surface-dark p-3 text-left font-mono text-[10px] text-copy-subtle">
+          <div className="mt-4 max-h-40 overflow-y-auto rounded-lg border border-border bg-surface-dark p-3 text-left font-mono text-[10px] text-slate-200">
             <pre className="whitespace-pre-wrap">{error.stack}</pre>
           </div>
         )}
@@ -100,7 +100,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => window.location.reload()}
-            className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2 text-xs font-bold text-surface-dark transition-opacity hover:opacity-90"
+            className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Reload Application
           </button>
@@ -111,13 +111,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
                   router.invalidate();
                   reset();
                 }}
-                className="inline-flex items-center justify-center rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-foreground hover:bg-surface-elevated"
+                className="inline-flex items-center justify-center rounded-lg border border-border bg-card px-4 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors"
               >
                 Try again
               </button>
               <button
                 onClick={handleHardReset}
-                className="inline-flex items-center justify-center rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-4 py-2 text-xs font-bold text-brand-rose hover:bg-brand-rose/20"
+                className="inline-flex items-center justify-center rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors"
               >
                 Reset storage &amp; reload
               </button>
@@ -125,7 +125,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           )}
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-foreground hover:bg-surface-elevated"
+            className="inline-flex items-center justify-center rounded-lg border border-border bg-card px-4 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors"
           >
             Go home
           </a>

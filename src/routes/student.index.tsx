@@ -248,29 +248,25 @@ function TodayLearningPage() {
       />
 
       {/* KPI Overview Banner */}
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-4">
         <Stat
           label="Pending To-Do Days"
-          value={pendingCount === 0 ? "0 Days (Caught up!)" : `${pendingCount} Days Pending`}
-          accent={pendingCount === 0 ? "var(--brand-emerald)" : "var(--brand-rose)"}
-          hint={pendingCount === 0 ? "All days up to date" : "Needs completion to clear Dual Gate"}
+          value={pendingCount === 0 ? "0 Days" : `${pendingCount} Days`}
+          hint={pendingCount === 0 ? "All caught up" : "Action required"}
         />
         <Stat
           label="Completed Days"
-          value={`${finishedCount} / ${cohortDay} Days`}
-          accent="var(--brand-emerald)"
-          hint="Both Placement & Skill finished"
+          value={`${finishedCount} / ${cohortDay}`}
+          hint="Placement & Skill verified"
         />
         <Stat
           label="Primary Track"
           value={primaryTrack.name}
-          accent="var(--brand-cyan)"
-          hint="100% Dual Gate requirement"
+          hint="Assigned specialization"
         />
         <Stat
           label="Talent Score"
           value={`${talentScore}/1000`}
-          accent="var(--brand-purple)"
           hint={tier.desc}
         />
       </div>
@@ -279,28 +275,28 @@ function TodayLearningPage() {
       {/* SECTION 1: CHRONOLOGICAL DAY-BY-DAY TO-DO / BACKLOG TASK MATRIX */}
       {/* =================================================================== */}
       <Panel
-        title="Daily Learning & To-Do Backlog Matrix (Day 1 to Today)"
-        subtitle="Every day requires completing BOTH Placement Accelerator and Technical Skill. Any missed day shows as Pending / To-Do."
+        title="Daily Learning & To-Do Matrix"
+        subtitle="Every day requires completing both the Placement Accelerator drill and Technical Skill lab."
         action={
-          <div className="flex items-center gap-1.5 rounded-xl border border-line-soft bg-surface-dark p-1 text-xs">
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1 text-xs">
             <button
               onClick={() => setFilterMode("pending")}
               className={cn(
-                "rounded-lg px-2.5 py-1 font-bold transition-colors",
+                "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                 filterMode === "pending"
-                  ? "bg-brand-rose/20 text-brand-rose border border-brand-rose/40"
-                  : "text-copy-subtle hover:text-foreground",
+                  ? "bg-card text-foreground shadow-xs border border-border"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
-              Pending To-Dos ({pendingCount})
+              Pending ({pendingCount})
             </button>
             <button
               onClick={() => setFilterMode("all")}
               className={cn(
-                "rounded-lg px-2.5 py-1 font-bold transition-colors",
+                "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                 filterMode === "all"
-                  ? "bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/40"
-                  : "text-copy-subtle hover:text-foreground",
+                  ? "bg-card text-foreground shadow-xs border border-border"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               All Days ({daysList.length})
@@ -308,10 +304,10 @@ function TodayLearningPage() {
             <button
               onClick={() => setFilterMode("completed")}
               className={cn(
-                "rounded-lg px-2.5 py-1 font-bold transition-colors",
+                "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                 filterMode === "completed"
-                  ? "bg-brand-emerald/20 text-brand-emerald border border-brand-emerald/40"
-                  : "text-copy-subtle hover:text-foreground",
+                  ? "bg-card text-foreground shadow-xs border border-border"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               Finished ({finishedCount})
@@ -319,14 +315,14 @@ function TodayLearningPage() {
           </div>
         }
       >
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {filteredDays.length === 0 ? (
-            <div className="rounded-2xl border border-brand-emerald/40 bg-brand-emerald/5 p-6 text-center space-y-2">
-              <CheckCircle2 className="size-8 text-brand-emerald mx-auto" />
-              <h4 className="text-sm font-bold text-foreground">
-                Outstanding Job! Zero Pending Backlog
+            <div className="rounded-lg border border-dashed border-border bg-muted/20 p-8 text-center space-y-1.5">
+              <CheckCircle2 className="size-6 text-emerald-600 dark:text-emerald-400 mx-auto" />
+              <h4 className="text-sm font-semibold text-foreground">
+                Zero Pending Backlog
               </h4>
-              <p className="text-xs text-copy-subtle">
+              <p className="text-xs text-muted-foreground">
                 You have completed all daily placement accelerator drills and technical skill
                 sandbox labs up to Day {cohortDay}.
               </p>
@@ -339,46 +335,46 @@ function TodayLearningPage() {
                 <div
                   key={d.day}
                   className={cn(
-                    "flex flex-col lg:flex-row lg:items-center justify-between gap-4 rounded-2xl border p-4 transition-all text-xs bg-surface-soft/80",
+                    "flex flex-col lg:flex-row lg:items-center justify-between gap-3 rounded-lg border p-3.5 transition-all text-xs bg-card",
                     isSelected
-                      ? "border-brand-cyan/80 bg-brand-cyan/5 shadow-md ring-1 ring-brand-cyan/40"
+                      ? "border-primary ring-1 ring-primary/20 bg-primary/5 shadow-xs"
                       : d.isFullyFinished
-                        ? "border-line-soft opacity-85 hover:opacity-100"
-                        : "border-brand-rose/40 hover:border-brand-rose/70",
+                        ? "border-border hover:border-border/80"
+                        : "border-border hover:border-primary/40",
                   )}
                 >
                   {/* Day Label & Badge */}
-                  <div className="flex items-start sm:items-center gap-3 min-w-[200px]">
+                  <div className="flex items-center gap-3 min-w-[180px]">
                     <div
                       className={cn(
-                        "flex size-10 shrink-0 items-center justify-center rounded-xl font-mono text-xs font-bold border",
+                        "flex size-9 shrink-0 items-center justify-center rounded-md font-mono text-xs font-semibold border",
                         d.isFullyFinished
-                          ? "bg-brand-emerald/15 text-brand-emerald border-brand-emerald/40"
-                          : "bg-brand-rose/15 text-brand-rose border-brand-rose/40",
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40"
+                          : "bg-muted text-muted-foreground border-border",
                       )}
                     >
                       D{d.day}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-foreground text-sm">Day {d.day}</span>
-                        <span className="text-[10px] font-mono text-copy-subtle">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-foreground">Day {d.day}</span>
+                        <span className="text-[11px] text-muted-foreground">
                           ({d.dayOfWeek})
                         </span>
                         {d.isFriday && (
-                          <span className="rounded bg-brand-purple/20 px-1.5 py-0.5 text-[9px] font-mono font-bold text-brand-purple">
-                            Friday Sim
+                          <span className="rounded bg-muted px-1.5 py-0.2 text-[10px] font-medium text-muted-foreground">
+                            Capstone
                           </span>
                         )}
                       </div>
                       <div className="mt-0.5">
                         {d.isFullyFinished ? (
-                          <span className="inline-flex items-center gap-1 font-bold text-brand-emerald text-[11px]">
-                            <CheckCircle2 className="size-3.5" /> Finished &amp; Verified
+                          <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400 text-[11px]">
+                            <CheckCircle2 className="size-3" /> Completed
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 font-bold text-brand-rose text-[11px]">
-                            <AlertCircle className="size-3.5" /> Pending To-Do
+                          <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400 text-[11px]">
+                            <AlertCircle className="size-3" /> Action Required
                           </span>
                         )}
                       </div>
@@ -390,20 +386,20 @@ function TodayLearningPage() {
                     {/* Sub-Task 1: Placement Accelerator */}
                     <div
                       className={cn(
-                        "flex items-center justify-between rounded-xl border p-2.5",
+                        "flex items-center justify-between rounded-md border p-2.5",
                         d.isPlacementDone
-                          ? "border-line-soft bg-surface-dark/70"
-                          : "border-brand-purple/30 bg-brand-purple/5",
+                          ? "border-border bg-muted/20"
+                          : "border-border bg-card",
                       )}
                     >
                       <div className="min-w-0 pr-2">
                         <div className="flex items-center gap-1.5">
-                          <Timer className="size-3 text-brand-purple shrink-0" />
-                          <span className="font-semibold text-foreground truncate">
+                          <Timer className="size-3 text-muted-foreground shrink-0" />
+                          <span className="font-medium text-foreground truncate">
                             Placement 30m
                           </span>
                         </div>
-                        <p className="text-[10px] text-copy-subtle truncate mt-0.5">
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                           {d.placementTheme}
                         </p>
                       </div>
@@ -411,33 +407,33 @@ function TodayLearningPage() {
                       <button
                         onClick={() => handleSelectDayAndTab(d.day, "placement")}
                         className={cn(
-                          "shrink-0 rounded-lg px-2.5 py-1 font-mono text-[10px] font-bold transition-colors border",
+                          "shrink-0 rounded px-2 py-1 text-[11px] font-medium transition-colors border",
                           d.isPlacementDone
-                            ? "border-brand-emerald/40 bg-brand-emerald/10 text-brand-emerald"
-                            : "border-brand-purple/60 bg-brand-purple text-surface-dark hover:opacity-90",
+                            ? "border-border bg-muted text-muted-foreground"
+                            : "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
                         )}
                       >
-                        {d.isPlacementDone ? "Done ✓" : "To-Do →"}
+                        {d.isPlacementDone ? "Done ✓" : "Open →"}
                       </button>
                     </div>
 
                     {/* Sub-Task 2: Technical Skill */}
                     <div
                       className={cn(
-                        "flex items-center justify-between rounded-xl border p-2.5",
+                        "flex items-center justify-between rounded-md border p-2.5",
                         d.isTechDone
-                          ? "border-line-soft bg-surface-dark/70"
-                          : "border-brand-cyan/30 bg-brand-cyan/5",
+                          ? "border-border bg-muted/20"
+                          : "border-border bg-card",
                       )}
                     >
                       <div className="min-w-0 pr-2">
                         <div className="flex items-center gap-1.5">
-                          <Code2 className="size-3 text-brand-cyan shrink-0" />
-                          <span className="font-semibold text-foreground truncate">
+                          <Code2 className="size-3 text-muted-foreground shrink-0" />
+                          <span className="font-medium text-foreground truncate">
                             {primaryTrack.short} 30m
                           </span>
                         </div>
-                        <p className="text-[10px] text-copy-subtle truncate mt-0.5">
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                           {d.techTopic}
                         </p>
                       </div>
@@ -445,13 +441,13 @@ function TodayLearningPage() {
                       <button
                         onClick={() => handleSelectDayAndTab(d.day, "skills")}
                         className={cn(
-                          "shrink-0 rounded-lg px-2.5 py-1 font-mono text-[10px] font-bold transition-colors border",
+                          "shrink-0 rounded px-2 py-1 text-[11px] font-medium transition-colors border",
                           d.isTechDone
-                            ? "border-brand-emerald/40 bg-brand-emerald/10 text-brand-emerald"
-                            : "border-brand-cyan/60 bg-brand-cyan text-surface-dark hover:opacity-90",
+                            ? "border-border bg-muted text-muted-foreground"
+                            : "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
                         )}
                       >
-                        {d.isTechDone ? "Done ✓" : "To-Do →"}
+                        {d.isTechDone ? "Done ✓" : "Open →"}
                       </button>
                     </div>
                   </div>
@@ -466,12 +462,12 @@ function TodayLearningPage() {
       {/* SECTION 2: THE 2 EXERCISE TABS (SKILLS & PLACEMENT DRILLS) */}
       {/* =================================================================== */}
       <div id="daily-drill-workspace" className="space-y-4 pt-2">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
           <div className="flex items-center gap-2">
-            <span className="rounded-md bg-brand-cyan px-2 py-0.5 text-xs font-bold text-surface-dark">
+            <span className="rounded bg-primary/10 border border-primary/20 px-2 py-0.5 text-xs font-semibold text-primary">
               Day {selectedDayNum} Workspace
             </span>
-            <span className="text-xs text-copy-subtle font-medium">
+            <span className="text-xs text-muted-foreground font-medium">
               Executing exercises for Day {selectedDayNum} ({placementPlan.dayOfWeek})
             </span>
           </div>
@@ -481,27 +477,27 @@ function TodayLearningPage() {
             <button
               onClick={() => setActiveDrillTab("skills")}
               className={cn(
-                "flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all border",
+                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors border",
                 activeDrillTab === "skills"
-                  ? "border-brand-cyan/60 bg-brand-cyan text-surface-dark shadow-sm"
-                  : "border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
+                  ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted",
               )}
             >
-              <Code2 className="size-4" />
-              1. Technical Skill &amp; Sandbox Lab
+              <Code2 className="size-3.5" />
+              1. Technical Skill Lab
             </button>
 
             <button
               onClick={() => setActiveDrillTab("placement")}
               className={cn(
-                "flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all border",
+                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors border",
                 activeDrillTab === "placement"
-                  ? "border-brand-purple/60 bg-brand-purple text-surface-dark shadow-sm"
-                  : "border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
+                  ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted",
               )}
             >
-              <Timer className="size-4" />
-              2. Placement Accelerator Drill &amp; Voice Pitch
+              <Timer className="size-3.5" />
+              2. Placement Drill &amp; Pitch
             </button>
           </div>
         </div>
@@ -510,7 +506,7 @@ function TodayLearningPage() {
         {activeDrillTab === "skills" && (
           <Panel
             title={`Day ${selectedDayNum} Technical Practice · ${primaryTrack.name}`}
-            subtitle={`Week ${weekIdx + 1}: ${currentWeekPlan.theme} · 100% In-Browser Code & Lab Simulation`}
+            subtitle={`Week ${weekIdx + 1}: ${currentWeekPlan.theme} · In-Browser Code & Lab Simulation`}
             action={
               completedTechDays.includes(selectedDayNum) ? (
                 <Chip tone="emerald">Lab Verified ✓</Chip>
@@ -519,65 +515,64 @@ function TodayLearningPage() {
               )
             }
           >
-            <div className="space-y-6 text-xs">
+            <div className="space-y-4 text-xs">
               {/* 20m Concept Card */}
-              <div className="rounded-2xl border border-line-soft bg-surface-soft p-4 space-y-2">
+              <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-brand-cyan flex items-center gap-1.5 text-sm">
-                    <BookOpen className="size-4" /> 1. Concept Card (20 Mins)
+                  <span className="font-semibold text-foreground flex items-center gap-1.5 text-sm">
+                    <BookOpen className="size-4 text-primary" /> 1. Concept Card (20 Mins)
                   </span>
-                  <span className="rounded bg-surface-dark px-2 py-0.5 font-mono text-[10px] text-copy-subtle border border-line-soft">
+                  <span className="rounded bg-card px-2 py-0.5 font-mono text-[10px] text-muted-foreground border border-border">
                     Day {selectedDayNum}
                   </span>
                 </div>
-                <h4 className="text-sm font-bold text-foreground">{currentTechDay.topic}</h4>
-                <p className="text-copy-subtle leading-relaxed">{currentTechDay.practice}</p>
-                <div className="pt-2 border-t border-line-soft/60 flex items-center justify-between text-[11px] text-copy-subtle">
+                <h4 className="text-sm font-semibold text-foreground">{currentTechDay.topic}</h4>
+                <p className="text-muted-foreground leading-relaxed">{currentTechDay.practice}</p>
+                <div className="pt-2 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground">
                   <span>
                     Theme: <strong className="text-foreground">{currentWeekPlan.theme}</strong>
                   </span>
-                  <span className="font-mono text-brand-cyan">
+                  <span className="font-medium text-foreground">
                     Workplace Skill: {currentWeekPlan.workplaceSkill}
                   </span>
                 </div>
               </div>
 
               {/* 10m In-Browser Hands-on Sandbox */}
-              <div className="rounded-2xl border border-brand-cyan/30 bg-surface-soft p-5 space-y-4">
+              <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-brand-cyan flex items-center gap-1.5 text-sm">
-                    <Terminal className="size-4" /> 2. Hands-on Interactive Sandbox Simulation (10
-                    Mins)
+                  <span className="font-semibold text-foreground flex items-center gap-1.5 text-sm">
+                    <Terminal className="size-4 text-primary" /> 2. Hands-on Interactive Sandbox Simulation (10 Mins)
                   </span>
-                  <span className="font-mono text-xs font-bold text-brand-amber">+50 XP</span>
+                  <span className="font-mono text-xs font-semibold text-primary">+50 XP</span>
                 </div>
-                <p className="text-copy-subtle leading-relaxed">
+                <p className="text-muted-foreground leading-relaxed">
                   Execute the code test runner or runtime simulator for{" "}
                   <strong>{primaryTrack.name}</strong>. Solve today's practical challenge and submit
                   to complete your To-Do.
                 </p>
 
-                <div className="rounded-xl bg-surface-dark p-4 border border-line-soft font-mono text-xs text-copy-subtle space-y-1.5">
-                  <p className="text-foreground font-bold flex items-center gap-2">
-                    <Terminal className="size-3.5 text-brand-cyan" /> Simulator:{" "}
+                <div className="rounded-lg bg-surface-dark p-3.5 border border-border font-mono text-xs text-slate-300 space-y-1">
+                  <p className="text-slate-100 font-medium flex items-center gap-2">
+                    <Terminal className="size-3.5 text-primary" /> Simulator:{" "}
                     {primaryTrack.labTitle}
                   </p>
-                  <p className="text-[11px] text-copy-subtle">
+                  <p className="text-[11px] text-slate-400">
                     Virtual WebAssembly runner ready · Automated test validation on submit.
                   </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
                   <Link
                     to="/student/labs"
-                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-surface-elevated border border-line-soft py-3 text-xs font-bold text-brand-cyan hover:border-brand-cyan/60 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-card border border-border py-2.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
                   >
-                    <Terminal className="size-4" /> Open Full Terminal Simulator
+                    <Terminal className="size-4 text-muted-foreground" /> Open Full Terminal Simulator
                   </Link>
 
                   <button
                     onClick={handleCompleteTechnicalLab}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-brand-cyan py-3 text-xs font-bold text-surface-dark hover:opacity-90 transition-opacity shadow-sm"
+                    className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs cursor-pointer"
                   >
                     <Check className="size-4" /> Mark Day {selectedDayNum} Lab Completed (+50 XP)
                   </button>
@@ -600,27 +595,27 @@ function TodayLearningPage() {
               )
             }
           >
-            <div className="space-y-6 text-xs">
-              <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-4 text-xs">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {/* 10m English Lesson */}
-                <div className="rounded-2xl border border-brand-cyan/30 bg-surface-soft p-4 space-y-2">
+                <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-brand-cyan flex items-center gap-1.5 text-sm">
-                      <Video className="size-4" /> 1. 10m English Broadcast
+                    <span className="font-semibold text-foreground flex items-center gap-1.5 text-sm">
+                      <Video className="size-4 text-primary" /> 1. 10m English Broadcast
                     </span>
-                    <span className="text-[10px] font-mono text-copy-subtle">06:00 IST</span>
+                    <span className="text-[10px] font-mono text-muted-foreground">06:00 IST</span>
                   </div>
-                  <h4 className="text-xs font-bold text-foreground">
+                  <h4 className="text-xs font-semibold text-foreground">
                     {placementPlan.english.title}
                   </h4>
-                  <p className="text-copy-subtle leading-relaxed">
+                  <p className="text-muted-foreground leading-relaxed">
                     {placementPlan.english.instructorBrief}
                   </p>
                   <div className="flex flex-wrap gap-1 pt-1">
                     {placementPlan.english.keyVocabulary.map((v) => (
                       <span
                         key={v}
-                        className="rounded bg-surface-dark px-1.5 py-0.5 text-[10px] font-mono text-copy-subtle border border-line-soft"
+                        className="rounded bg-card px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground border border-border"
                       >
                         {v}
                       </span>
@@ -629,39 +624,39 @@ function TodayLearningPage() {
                 </div>
 
                 {/* 10m Aptitude Lesson */}
-                <div className="rounded-2xl border border-brand-purple/30 bg-surface-soft p-4 space-y-2">
+                <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-brand-purple flex items-center gap-1.5 text-sm">
-                      <Calculator className="size-4" /> 2. 10m Aptitude Drill
+                    <span className="font-semibold text-foreground flex items-center gap-1.5 text-sm">
+                      <Calculator className="size-4 text-primary" /> 2. 10m Aptitude Drill
                     </span>
-                    <span className="text-[10px] font-mono text-copy-subtle">06:00 IST</span>
+                    <span className="text-[10px] font-mono text-muted-foreground">06:00 IST</span>
                   </div>
-                  <h4 className="text-xs font-bold text-foreground">
+                  <h4 className="text-xs font-semibold text-foreground">
                     {placementPlan.aptitude.title}
                   </h4>
-                  <p className="text-copy-subtle leading-relaxed">
+                  <p className="text-muted-foreground leading-relaxed">
                     {placementPlan.aptitude.instructorBrief}
                   </p>
-                  <div className="rounded-lg bg-surface-dark p-2 text-[11px] font-mono text-brand-purple border border-line-soft">
+                  <div className="rounded-md bg-card p-2 text-[11px] font-mono text-foreground border border-border">
                     Rule: {placementPlan.aptitude.formulaShortcut}
                   </div>
                 </div>
               </div>
 
               {/* 10m Guided Practice & AI Voice Pitch */}
-              <div className="rounded-2xl border border-brand-emerald/30 bg-surface-soft p-5 space-y-4">
+              <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-brand-emerald flex items-center gap-1.5 text-sm">
-                    <FileCheck2 className="size-4" /> 3. In-App Practice MCQs &amp; 60s Voice Pitch
+                  <span className="font-semibold text-foreground flex items-center gap-1.5 text-sm">
+                    <FileCheck2 className="size-4 text-primary" /> 3. In-App Practice MCQs &amp; 60s Voice Pitch
                   </span>
-                  <span className="font-mono text-xs font-bold text-brand-amber">+25 XP</span>
+                  <span className="font-mono text-xs font-semibold text-primary">+25 XP</span>
                 </div>
 
                 {/* Sample MCQ */}
                 {placementPlan.practice.mcqs[0] && (
-                  <div className="rounded-xl bg-surface-dark p-4 border border-line-soft space-y-2.5">
-                    <p className="font-bold text-foreground text-xs">
-                      <span className="text-brand-cyan font-mono">Q1.</span>{" "}
+                  <div className="rounded-lg bg-card p-3.5 border border-border space-y-2">
+                    <p className="font-semibold text-foreground text-xs">
+                      <span className="text-primary font-mono">Q1.</span>{" "}
                       {placementPlan.practice.mcqs[0].q}
                     </p>
                     <div className="grid gap-1.5 sm:grid-cols-2">
@@ -676,12 +671,12 @@ function TodayLearningPage() {
                               if (isRight) toast.success("Correct answer!");
                             }}
                             className={cn(
-                              "rounded-lg border p-2 text-left text-xs transition-colors",
+                              "rounded-md border p-2 text-left text-xs transition-colors cursor-pointer",
                               isPicked
                                 ? isRight
-                                  ? "border-brand-emerald bg-brand-emerald/15 text-brand-emerald font-bold"
-                                  : "border-brand-rose bg-brand-rose/15 text-brand-rose"
-                                : "border-line-soft bg-surface-elevated text-copy-subtle hover:text-foreground",
+                                  ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold"
+                                  : "border-destructive/40 bg-destructive/10 text-destructive"
+                                : "border-border bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted",
                             )}
                           >
                             {opt}
@@ -693,23 +688,23 @@ function TodayLearningPage() {
                 )}
 
                 {/* 60s Voice Pitch Drill */}
-                <div className="rounded-xl bg-surface-dark p-4 border border-line-soft space-y-3">
+                <div className="rounded-lg bg-card p-3.5 border border-border space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-foreground">
+                    <span className="font-semibold text-foreground">
                       🎙️ 60-Second AI Voice Pitch Challenge:
                     </span>
-                    <span className="rounded bg-brand-purple/20 px-2 py-0.5 text-[10px] font-mono text-brand-purple font-bold">
+                    <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
                       STAR Speech Rubric
                     </span>
                   </div>
-                  <p className="text-copy-subtle text-xs leading-relaxed font-medium">
+                  <p className="text-muted-foreground text-xs leading-relaxed">
                     "{placementPlan.practice.voicePrompt.prompt}"
                   </p>
 
                   <button
                     onClick={handleRecordVoicePitch}
                     disabled={pitchLoading || pitchRecorded}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple py-3 text-xs font-bold text-surface-dark shadow-md hover:opacity-90 disabled:opacity-60 transition-opacity"
+                    className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 disabled:opacity-50 transition-colors cursor-pointer"
                   >
                     <Mic className="size-4" />
                     {pitchLoading

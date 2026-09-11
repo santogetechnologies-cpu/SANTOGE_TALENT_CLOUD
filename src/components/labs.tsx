@@ -49,12 +49,12 @@ function LabFrame({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-line-soft bg-surface-soft p-4">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-copy-subtle">
-          Concept card
+    <div className="space-y-3.5">
+      <div className="rounded-lg border border-border bg-muted/20 p-4">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Concept Card
         </p>
-        <p className="mt-1.5 text-sm text-foreground">{concept}</p>
+        <p className="mt-1 text-xs text-foreground leading-relaxed">{concept}</p>
       </div>
       {children(run, lines, () => setLines([]))}
       <div className="flex items-center gap-2">
@@ -73,7 +73,7 @@ function RunButton({ onClick, label = "Run" }: { onClick: () => void; label?: st
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2 text-xs font-bold text-surface-dark transition-opacity hover:opacity-90"
+      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs cursor-pointer"
     >
       <Play className="size-3.5" /> {label}
     </button>
@@ -84,7 +84,7 @@ function ResetButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
     >
       <RotateCcw className="size-3.5" /> Clear
     </button>
@@ -103,13 +103,13 @@ function TextField({
   placeholder?: string;
 }) {
   return (
-    <label className="block text-xs font-semibold text-copy-subtle">
+    <label className="block text-xs font-medium text-foreground">
       {label}
       <input
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1.5 w-full rounded-xl border border-line-soft bg-surface-elevated px-3 py-2 font-mono text-[12.5px] text-foreground outline-none focus:border-brand-cyan/60"
+        className="mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2 font-mono text-xs text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-colors"
       />
     </label>
   );
