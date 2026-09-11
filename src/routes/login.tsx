@@ -98,7 +98,7 @@ function InteractiveCharacters({ focusedField, mousePos }: InteractiveCharacters
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[220px] sm:h-[280px] lg:h-[310px] flex items-end justify-center select-none"
+      className="relative w-full h-[180px] sm:h-[210px] lg:h-[230px] flex items-end justify-center select-none"
     >
       <svg
         viewBox="0 0 380 320"
@@ -369,15 +369,15 @@ function LoginPage() {
   };
 
   return (
-    // Always Dark Mode container
-    <div className="dark min-h-screen w-full bg-[#080b13] text-slate-100 flex flex-col justify-between p-4 sm:p-6 lg:p-8 select-none relative overflow-x-hidden font-sans">
+    // Always Dark Mode container - fixed viewport height, zero vertical scroll
+    <div className="dark h-screen max-h-screen w-full bg-[#080b13] text-slate-100 flex flex-col justify-between p-3 sm:p-5 lg:p-6 select-none relative overflow-hidden font-sans">
       {/* Ambient background soft light accents */}
       <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-indigo-600/10 blur-[120px] pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-purple-600/10 blur-[120px] pointer-events-none" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-blue-600/5 blur-[140px] pointer-events-none" />
 
       {/* Top Header Bar */}
-      <header className="relative z-10 w-full max-w-5xl mx-auto flex items-center pb-3">
+      <header className="relative z-10 w-full max-w-5xl mx-auto flex items-center pb-2">
         {/* Brand identity */}
         <div className="flex items-center gap-3">
           <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-md shadow-indigo-600/20">
@@ -391,11 +391,11 @@ function LoginPage() {
       </header>
 
       {/* Main Master Split Card Container */}
-      <main className="relative z-10 flex-1 flex items-center justify-center py-4 sm:py-6">
-        <div className="w-full max-w-4xl lg:max-w-5xl rounded-3xl border border-slate-800/90 bg-[#0e1424]/90 backdrop-blur-xl shadow-2xl shadow-black/80 overflow-hidden grid lg:grid-cols-12 min-h-[560px] lg:min-h-[580px] transition-all duration-300">
+      <main className="relative z-10 flex-1 flex items-center justify-center py-1">
+        <div className="w-full max-w-4xl lg:max-w-5xl rounded-3xl border border-slate-800/90 bg-[#0e1424]/90 backdrop-blur-xl shadow-2xl shadow-black/80 overflow-hidden grid lg:grid-cols-12 transition-all duration-300">
           
           {/* Left Column: Visual Character Stage */}
-          <div className="lg:col-span-6 bg-gradient-to-b from-[#0b1020] via-[#0e162a] to-[#0a0f1d] p-6 sm:p-8 lg:p-10 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800/80 relative overflow-hidden">
+          <div className="lg:col-span-6 bg-gradient-to-b from-[#0b1020] via-[#0e162a] to-[#0a0f1d] p-5 sm:p-6 lg:p-7 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800/80 relative overflow-hidden">
             {/* Soft backdrop radial glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
 
@@ -410,7 +410,7 @@ function LoginPage() {
             </div>
 
             {/* Interactive Characters Stage */}
-            <div className="my-auto py-4 sm:py-6 flex items-center justify-center">
+            <div className="my-auto py-2 sm:py-4 flex items-center justify-center">
               <InteractiveCharacters
                 focusedField={focusedField}
                 isTyping={isTyping}
@@ -430,11 +430,11 @@ function LoginPage() {
           </div>
 
           {/* Right Column: Clean Login Form Area */}
-          <div className="lg:col-span-6 p-6 sm:p-10 lg:p-12 flex flex-col justify-center bg-[#0c1222]/95 relative">
-            <div className="w-full max-w-[360px] mx-auto space-y-6">
+          <div className="lg:col-span-6 p-5 sm:p-7 lg:p-8 flex flex-col justify-center bg-[#0c1222]/95 relative">
+            <div className="w-full max-w-[360px] mx-auto space-y-4 sm:space-y-5">
               
               {/* Form Title & Subtitle */}
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                   Welcome back!
                 </h1>
@@ -454,11 +454,11 @@ function LoginPage() {
               )}
 
               {/* Login Form */}
-              <form onSubmit={handleSupabaseSubmit} className="space-y-4">
+              <form onSubmit={handleSupabaseSubmit} className="space-y-3.5 sm:space-y-4">
                 
                 {/* Institutional Email Field */}
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-300">
+                  <label className="mb-1 block text-xs font-medium text-slate-300">
                     Institutional Email
                   </label>
                   <div className="relative">
@@ -477,14 +477,14 @@ function LoginPage() {
                         setTimeout(() => setIsTyping(false), 800);
                       }}
                       placeholder="student@college.edu or admin@domain.com"
-                      className="w-full h-11 sm:h-12 pl-10 pr-3.5 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
+                      className="w-full h-10 sm:h-11 pl-10 pr-3.5 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
                     />
                   </div>
                 </div>
 
                 {/* Password Field with Reveal Toggle */}
                 <div>
-                  <div className="mb-1.5 flex items-center justify-between">
+                  <div className="mb-1 flex items-center justify-between">
                     <label className="text-xs font-medium text-slate-300">Password</label>
                   </div>
                   <div className="relative">
@@ -502,7 +502,7 @@ function LoginPage() {
                         setTimeout(() => setIsTyping(false), 800);
                       }}
                       placeholder="••••••••••••"
-                      className="w-full h-11 sm:h-12 pl-10 pr-10 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
+                      className="w-full h-10 sm:h-11 pl-10 pr-10 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
                     />
                     <button
                       type="button"
@@ -521,7 +521,7 @@ function LoginPage() {
 
                 {/* Inline Error Message */}
                 {error && (
-                  <div className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-2.5 text-xs text-rose-300 animate-in fade-in">
+                  <div className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-2 text-xs text-rose-300 animate-in fade-in">
                     <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-400" />
                     <span className="leading-relaxed">{error}</span>
                   </div>
@@ -531,7 +531,7 @@ function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading || !isConfigured}
-                  className="group flex w-full h-11 sm:h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                  className="group flex w-full h-10 sm:h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
                 >
                   {loading ? (
                     <RefreshCw className="size-4 animate-spin" />
@@ -546,8 +546,8 @@ function LoginPage() {
               </form>
 
               {/* Supporting Institutional Provisioning Notice */}
-              <div className="pt-2 text-center text-xs text-slate-400">
-                <span className="inline-flex items-center gap-1.5">
+              <div className="pt-1 text-center text-xs text-slate-400">
+                <span className="inline-flex items-center gap-1.5 text-[11px]">
                   <ShieldCheck className="size-3.5 text-emerald-400 shrink-0" />
                   <span>Student accounts provisioned by institution administrators.</span>
                 </span>
