@@ -557,11 +557,6 @@ function LoginPage() {
         </div>
       </main>
 
-      {/* Subtle Footer */}
-      <footer className="relative z-10 w-full text-center text-xs text-slate-500 py-2">
-        <p>© {new Date().getFullYear()} SantoGe Technologies · SantoGe Talent Cloud (STC)</p>
-      </footer>
-
       <Toaster position="bottom-right" theme="dark" />
     </div>
   );
