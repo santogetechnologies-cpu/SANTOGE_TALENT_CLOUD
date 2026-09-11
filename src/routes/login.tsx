@@ -11,7 +11,7 @@ import {
   Sparkles,
   ArrowRight,
   ShieldCheck,
-  Activity,
+  Zap,
 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { useAppStore } from "@/lib/app-store";
@@ -37,15 +37,15 @@ export const Route = createFileRoute("/login")({
 });
 
 // ---------------------------------------------------------------------------
-// Premium 3D Cyber-Constellation & Digital Matrix Web Canvas Engine
+// Attraction-Level 3D Holographic Constellation & Cybernetic Vortex Canvas
 // ---------------------------------------------------------------------------
-function Premium3DWebBackground() {
+function Attraction3DWebBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d", { alpha: true });
+    const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) return;
 
     let animId: number;
@@ -59,35 +59,66 @@ function Premium3DWebBackground() {
     };
     window.addEventListener("resize", handleResize);
 
-    // Mouse tracking with smooth damping
+    // Mouse tracking & interactive physics attractor
     const mouse = {
       x: width / 2,
       y: height / 2,
       targetX: width / 2,
       targetY: height / 2,
+      vx: 0,
+      vy: 0,
       active: false,
-      radius: 240,
+      radius: 260,
     };
 
+    // Cursor spark trails
+    const sparks: { x: number; y: number; vx: number; vy: number; life: number; color: string; size: number }[] = [];
+
     const handleMouseMove = (e: MouseEvent) => {
+      mouse.vx = e.clientX - mouse.targetX;
+      mouse.vy = e.clientY - mouse.targetY;
       mouse.targetX = e.clientX;
       mouse.targetY = e.clientY;
       mouse.active = true;
+
+      // Emit interactive sparks on movement
+      if (Math.hypot(mouse.vx, mouse.vy) > 3 && sparks.length < 60) {
+        for (let s = 0; s < 2; s++) {
+          sparks.push({
+            x: e.clientX,
+            y: e.clientY,
+            vx: (Math.random() - 0.5) * 3 + mouse.vx * 0.15,
+            vy: (Math.random() - 0.5) * 3 + mouse.vy * 0.15,
+            life: 1.0,
+            color: Math.random() > 0.5 ? "#38bdf8" : "#818cf8",
+            size: Math.random() * 2 + 1,
+          });
+        }
+      }
     };
 
     const handleMouseLeave = () => {
       mouse.active = false;
     };
 
-    // Click shockwave ripple
-    const ripples: { x: number; y: number; r: number; maxR: number; alpha: number }[] = [];
+    // Click explosive shockwave
+    const shockwaves: { x: number; y: number; r: number; maxR: number; alpha: number; color: string }[] = [];
     const handleClick = (e: MouseEvent) => {
-      ripples.push({
+      shockwaves.push({
         x: e.clientX,
         y: e.clientY,
         r: 10,
+        maxR: Math.max(width, height) * 0.6,
+        alpha: 0.9,
+        color: "#38bdf8",
+      });
+      shockwaves.push({
+        x: e.clientX,
+        y: e.clientY,
+        r: 5,
         maxR: Math.max(width, height) * 0.45,
-        alpha: 0.8,
+        alpha: 0.7,
+        color: "#c084fc",
       });
     };
 
@@ -95,140 +126,235 @@ function Premium3DWebBackground() {
     window.addEventListener("mouseleave", handleMouseLeave);
     window.addEventListener("click", handleClick);
 
-    // 3D Particles
+    // 3D Nodes
     interface Node3D {
       x: number;
       y: number;
       z: number;
+      baseX: number;
+      baseY: number;
+      baseZ: number;
       vx: number;
       vy: number;
       vz: number;
       radius: number;
       color: string;
       glowColor: string;
-      twinkleSpeed: number;
-      twinkleOffset: number;
+      pulseSpeed: number;
+      pulseOffset: number;
     }
 
-    // Dynamic data signal pulse moving along web lines
+    // High-speed photon pulse along web lines
     interface WebPulse {
-      p1Index: number;
-      p2Index: number;
+      p1Idx: number;
+      p2Idx: number;
       progress: number;
       speed: number;
       color: string;
     }
 
-    const NODE_COUNT = Math.min(240, Math.max(140, Math.floor((width * height) / 4800)));
-    const FOV = 450;
-    const DEPTH = 700;
+    const NODE_COUNT = Math.min(260, Math.max(160, Math.floor((width * height) / 4500)));
+    const FOV = 480;
+    const DEPTH = 750;
     const nodes: Node3D[] = [];
     const pulses: WebPulse[] = [];
 
     const PALETTE = [
-      { core: "#38bdf8", glow: "rgba(56, 189, 248, 0.4)" }, // Cyan
-      { core: "#60a5fa", glow: "rgba(96, 165, 250, 0.4)" }, // Sky Blue
-      { core: "#818cf8", glow: "rgba(129, 140, 248, 0.4)" }, // Indigo
-      { core: "#a78bfa", glow: "rgba(167, 139, 250, 0.4)" }, // Violet
-      { core: "#34d399", glow: "rgba(52, 211, 153, 0.35)" }, // Emerald Accent
+      { core: "#00f0ff", glow: "rgba(0, 240, 255, 0.5)" }, // Electric Neon Cyan
+      { core: "#38bdf8", glow: "rgba(56, 189, 248, 0.45)" }, // Vivid Sky
+      { core: "#6366f1", glow: "rgba(99, 102, 241, 0.45)" }, // Indigo
+      { core: "#a855f7", glow: "rgba(168, 85, 247, 0.5)" }, // Purple
+      { core: "#ec4899", glow: "rgba(236, 72, 153, 0.4)" }, // Hot Pink Accent
+      { core: "#10b981", glow: "rgba(16, 185, 129, 0.4)" }, // Emerald Accent
     ];
 
     for (let i = 0; i < NODE_COUNT; i++) {
       const p = PALETTE[Math.floor(Math.random() * PALETTE.length)]!;
+      const x = (Math.random() - 0.5) * width * 1.8;
+      const y = (Math.random() - 0.5) * height * 1.8;
+      const z = Math.random() * DEPTH;
+
       nodes.push({
-        x: (Math.random() - 0.5) * width * 1.8,
-        y: (Math.random() - 0.5) * height * 1.8,
-        z: Math.random() * DEPTH,
-        vx: (Math.random() - 0.5) * 0.75,
-        vy: (Math.random() - 0.5) * 0.75,
+        x,
+        y,
+        z,
+        baseX: x,
+        baseY: y,
+        baseZ: z,
+        vx: (Math.random() - 0.5) * 0.8,
+        vy: (Math.random() - 0.5) * 0.8,
         vz: (Math.random() - 0.5) * 0.6,
-        radius: Math.random() * 2.2 + 1.2,
+        radius: Math.random() * 2.4 + 1.2,
         color: p.core,
         glowColor: p.glow,
-        twinkleSpeed: Math.random() * 0.03 + 0.015,
-        twinkleOffset: Math.random() * Math.PI * 2,
+        pulseSpeed: Math.random() * 0.04 + 0.02,
+        pulseOffset: Math.random() * Math.PI * 2,
       });
     }
+
+    // Horizon 3D wave grid lines
+    const GRID_COLS = 24;
+    const GRID_ROWS = 14;
 
     let rotY = 0;
     let rotX = 0;
     let time = 0;
 
     const render = () => {
-      time += 0.02;
+      time += 0.025;
 
-      // Deep cinematic space background with gradient nebulae
-      ctx.fillStyle = "#050816";
+      // 1. Ethereal trail persistence with dark void fill
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "rgba(4, 7, 20, 0.28)";
       ctx.fillRect(0, 0, width, height);
 
-      // Radial ambient lighting that follows mouse gently
-      const ambientGrad = ctx.createRadialGradient(
-        mouse.x,
-        mouse.y,
-        50,
-        mouse.x,
-        mouse.y,
-        Math.max(width, height) * 0.65,
+      // 2. Dual volumetric glowing auroras in background
+      const aurora1 = ctx.createRadialGradient(
+        width * 0.25 + Math.sin(time * 0.7) * 60,
+        height * 0.35 + Math.cos(time * 0.5) * 40,
+        40,
+        width * 0.25,
+        height * 0.35,
+        width * 0.55,
       );
-      ambientGrad.addColorStop(0, "rgba(29, 78, 216, 0.18)");
-      ambientGrad.addColorStop(0.4, "rgba(79, 70, 229, 0.10)");
-      ambientGrad.addColorStop(0.8, "rgba(15, 23, 42, 0.05)");
-      ambientGrad.addColorStop(1, "rgba(5, 8, 22, 0)");
-      ctx.fillStyle = ambientGrad;
+      aurora1.addColorStop(0, "rgba(14, 165, 233, 0.12)");
+      aurora1.addColorStop(0.5, "rgba(99, 102, 241, 0.06)");
+      aurora1.addColorStop(1, "rgba(4, 7, 20, 0)");
+      ctx.fillStyle = aurora1;
       ctx.fillRect(0, 0, width, height);
 
-      // Smooth mouse interpolation
+      const aurora2 = ctx.createRadialGradient(
+        width * 0.75 + Math.cos(time * 0.6) * 60,
+        height * 0.65 + Math.sin(time * 0.8) * 50,
+        40,
+        width * 0.75,
+        height * 0.65,
+        width * 0.55,
+      );
+      aurora2.addColorStop(0, "rgba(168, 85, 247, 0.12)");
+      aurora2.addColorStop(0.5, "rgba(59, 130, 246, 0.06)");
+      aurora2.addColorStop(1, "rgba(4, 7, 20, 0)");
+      ctx.fillStyle = aurora2;
+      ctx.fillRect(0, 0, width, height);
+
+      // Smooth mouse interpolation & gyro tilt
       mouse.x += (mouse.targetX - mouse.x) * 0.08;
       mouse.y += (mouse.targetY - mouse.y) * 0.08;
 
-      // 3D Camera tilt responding to cursor with gyro damping
-      const targetRotY = ((mouse.x - width / 2) / width) * 0.45;
-      const targetRotX = -((mouse.y - height / 2) / height) * 0.45;
-      rotY += (targetRotY - rotY) * 0.05;
-      rotX += (targetRotX - rotX) * 0.05;
+      const targetRotY = ((mouse.x - width / 2) / width) * 0.5;
+      const targetRotX = -((mouse.y - height / 2) / height) * 0.5;
+      rotY += (targetRotY - rotY) * 0.06;
+      rotX += (targetRotX - rotX) * 0.06;
 
       const cosY = Math.cos(rotY);
       const sinY = Math.sin(rotY);
       const cosX = Math.cos(rotX);
       const sinX = Math.sin(rotX);
 
-      // Render ripples
-      for (let rIdx = ripples.length - 1; rIdx >= 0; rIdx--) {
-        const rip = ripples[rIdx]!;
-        rip.r += 6;
-        rip.alpha *= 0.96;
-        ctx.strokeStyle = `rgba(56, 189, 248, ${rip.alpha * 0.5})`;
-        ctx.lineWidth = 1.5;
+      // 3. Render 3D Undulating Horizon Wave Grid
+      ctx.globalCompositeOperation = "lighter";
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.12)";
+      ctx.lineWidth = 1;
+
+      const gridStartX = -width * 0.8;
+      const gridEndX = width * 0.8;
+      const gridStepX = (gridEndX - gridStartX) / GRID_COLS;
+      const gridStartZ = 100;
+      const gridEndZ = 700;
+      const gridStepZ = (gridEndZ - gridStartZ) / GRID_ROWS;
+
+      for (let r = 0; r < GRID_ROWS; r++) {
+        const gz = gridStartZ + r * gridStepZ;
         ctx.beginPath();
-        ctx.arc(rip.x, rip.y, rip.r, 0, Math.PI * 2);
+        let started = false;
+
+        for (let c = 0; c <= GRID_COLS; c++) {
+          const gx = gridStartX + c * gridStepX;
+          const waveY =
+            height * 0.38 +
+            Math.sin(gx * 0.005 + time * 1.5) * 22 +
+            Math.cos(gz * 0.008 + time * 1.2) * 18;
+
+          // Project 3D grid vertex
+          const x1 = gx * cosY + gz * sinY;
+          const z1 = -gx * sinY + gz * cosY;
+          const y2 = waveY * cosX - z1 * sinX;
+          const z2 = waveY * sinX + z1 * cosX + 380;
+
+          if (z2 > 10) {
+            const scale = FOV / z2;
+            const px = width / 2 + x1 * scale;
+            const py = height / 2 + y2 * scale;
+
+            if (!started) {
+              ctx.moveTo(px, py);
+              started = true;
+            } else {
+              ctx.lineTo(px, py);
+            }
+          }
+        }
         ctx.stroke();
-        if (rip.alpha < 0.02 || rip.r > rip.maxR) {
-          ripples.splice(rIdx, 1);
+      }
+
+      // 4. Render shockwaves
+      for (let sIdx = shockwaves.length - 1; sIdx >= 0; sIdx--) {
+        const sw = shockwaves[sIdx]!;
+        sw.r += 9;
+        sw.alpha *= 0.95;
+        ctx.strokeStyle = sw.color;
+        ctx.globalAlpha = sw.alpha * 0.7;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(sw.x, sw.y, sw.r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        if (sw.alpha < 0.02 || sw.r > sw.maxR) {
+          shockwaves.splice(sIdx, 1);
         }
       }
 
-      // Projected array
+      // 5. Render cursor spark particles
+      for (let spIdx = sparks.length - 1; spIdx >= 0; spIdx--) {
+        const sp = sparks[spIdx]!;
+        sp.x += sp.vx;
+        sp.y += sp.vy;
+        sp.vx *= 0.94;
+        sp.vy *= 0.94;
+        sp.life -= 0.035;
+
+        if (sp.life > 0) {
+          ctx.fillStyle = sp.color;
+          ctx.globalAlpha = sp.life * 0.8;
+          ctx.beginPath();
+          ctx.arc(sp.x, sp.y, sp.size * sp.life, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          sparks.splice(spIdx, 1);
+        }
+      }
+
+      // 6. Project 3D Nodes
       const projected: {
         px: number;
         py: number;
         scale: number;
         node: Node3D;
         alpha: number;
-        index: number;
+        idx: number;
       }[] = [];
 
       const boundX = (width * 1.8) / 2;
       const boundY = (height * 1.8) / 2;
 
-      // 3D Matrix transform & projection
       for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i]!;
 
+        // Autonomous orbital drift
         n.x += n.vx;
         n.y += n.vy;
         n.z += n.vz;
 
-        // Gentle boundary wrapping
         if (n.x < -boundX) n.x = boundX;
         if (n.x > boundX) n.x = -boundX;
         if (n.y < -boundY) n.y = boundY;
@@ -236,155 +362,177 @@ function Premium3DWebBackground() {
         if (n.z < 0) n.z = DEPTH;
         if (n.z > DEPTH) n.z = 0;
 
-        // Push from ripples
-        for (const rip of ripples) {
-          const dx = n.x - (rip.x - width / 2);
-          const dy = n.y - (rip.y - height / 2);
-          const d = Math.sqrt(dx * dx + dy * dy);
-          if (Math.abs(d - rip.r) < 60) {
-            n.vx += (dx / (d || 1)) * 0.4;
-            n.vy += (dy / (d || 1)) * 0.4;
+        // Shockwave displacement
+        for (const sw of shockwaves) {
+          const dx = n.x - (sw.x - width / 2);
+          const dy = n.y - (sw.y - height / 2);
+          const d = Math.hypot(dx, dy);
+          if (Math.abs(d - sw.r) < 80) {
+            n.vx += (dx / (d || 1)) * 0.6;
+            n.vy += (dy / (d || 1)) * 0.6;
           }
         }
 
-        // 3D Euler Matrix Rotation
+        // 3D Matrix transform
         const x1 = n.x * cosY + n.z * sinY;
         const z1 = -n.x * sinY + n.z * cosY;
 
         const y2 = n.y * cosX - z1 * sinX;
-        const z2 = n.y * sinX + z1 * cosX + 380; // Camera distance
+        const z2 = n.y * sinX + z1 * cosX + 380;
 
         if (z2 > 10) {
           const scale = FOV / z2;
           const px = width / 2 + x1 * scale;
           const py = height / 2 + y2 * scale;
-          const alpha = Math.min(1, Math.max(0.12, (DEPTH - n.z) / DEPTH));
+          const alpha = Math.min(1, Math.max(0.15, (DEPTH - n.z) / DEPTH));
 
-          projected.push({ px, py, scale, node: n, alpha, index: i });
+          projected.push({ px, py, scale, node: n, alpha, idx: i });
         }
       }
 
-      // Connect 3D Web Lines
+      // 7. Render 3D Spider Web Filaments (Additive Laser Glow)
       const maxDistance = 135;
       for (let i = 0; i < projected.length; i++) {
         const p1 = projected[i]!;
 
-        // Check node-to-node connections
         for (let j = i + 1; j < projected.length; j++) {
           const p2 = projected[j]!;
           const dx = p1.px - p2.px;
           const dy = p1.py - p2.py;
-          const dist = Math.sqrt(dx * dx + dy * dy);
+          const dist = Math.hypot(dx, dy);
 
           if (dist < maxDistance) {
             const factor = 1 - dist / maxDistance;
-            const lineAlpha = factor * 0.45 * p1.alpha * p2.alpha;
+            const lineAlpha = factor * 0.5 * p1.alpha * p2.alpha;
 
-            // Gradient line between the two nodes
+            // Electric dual-color gradient filament
             const grad = ctx.createLinearGradient(p1.px, p1.py, p2.px, p2.py);
             grad.addColorStop(0, p1.node.color);
             grad.addColorStop(1, p2.node.color);
 
             ctx.strokeStyle = grad;
             ctx.globalAlpha = lineAlpha;
-            ctx.lineWidth = Math.max(0.4, factor * 1.5);
+            ctx.lineWidth = Math.max(0.5, factor * 1.8);
             ctx.beginPath();
             ctx.moveTo(p1.px, p1.py);
             ctx.lineTo(p2.px, p2.py);
             ctx.stroke();
 
-            // Randomly spawn animated light signal pulse along the line
-            if (Math.random() < 0.0003 && pulses.length < 35) {
+            // Spawn dynamic data pulses along lines
+            if (Math.random() < 0.0004 && pulses.length < 45) {
               pulses.push({
-                p1Index: i,
-                p2Index: j,
+                p1Idx: i,
+                p2Idx: j,
                 progress: 0,
-                speed: Math.random() * 0.025 + 0.015,
+                speed: Math.random() * 0.03 + 0.018,
                 color: p1.node.color,
               });
             }
           }
         }
 
-        // Draw Interactive Web Lines to Mouse Cursor
+        // 8. Magnetic Gravitational Attractor around Cursor
         if (mouse.active) {
           const mdx = p1.px - mouse.x;
           const mdy = p1.py - mouse.y;
-          const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+          const mdist = Math.hypot(mdx, mdy);
 
           if (mdist < mouse.radius) {
             const factor = 1 - mdist / mouse.radius;
-            const mouseAlpha = factor * 0.65 * p1.alpha;
+            const mouseAlpha = factor * 0.75 * p1.alpha;
 
-            ctx.strokeStyle = `rgba(56, 189, 248, ${mouseAlpha})`;
+            // Intense laser beam to mouse
+            const mGrad = ctx.createLinearGradient(p1.px, p1.py, mouse.x, mouse.y);
+            mGrad.addColorStop(0, p1.node.color);
+            mGrad.addColorStop(1, "#00f0ff");
+
+            ctx.strokeStyle = mGrad;
             ctx.globalAlpha = mouseAlpha;
-            ctx.lineWidth = factor * 2;
+            ctx.lineWidth = factor * 2.4;
             ctx.beginPath();
             ctx.moveTo(p1.px, p1.py);
             ctx.lineTo(mouse.x, mouse.y);
             ctx.stroke();
 
-            // Fluid elastic pull toward mouse
-            p1.node.x -= (mdx / mdist) * 0.5;
-            p1.node.y -= (mdy / mdist) * 0.5;
+            // Spiraling orbital vortex gravity towards cursor
+            const angle = Math.atan2(mdy, mdx) + Math.PI * 0.5;
+            p1.node.x -= (mdx / mdist) * 0.65 - Math.cos(angle) * 0.5;
+            p1.node.y -= (mdy / mdist) * 0.65 - Math.sin(angle) * 0.5;
           }
         }
       }
 
-      // Draw Animated Web Pulses (Packets moving across the 3D web)
+      // 9. Render Animated Traveling Data Photons (Pulses)
       for (let pIdx = pulses.length - 1; pIdx >= 0; pIdx--) {
         const pulse = pulses[pIdx]!;
         pulse.progress += pulse.speed;
 
-        const p1 = projected[pulse.p1Index];
-        const p2 = projected[pulse.p2Index];
+        const p1 = projected[pulse.p1Idx];
+        const p2 = projected[pulse.p2Idx];
 
         if (p1 && p2 && pulse.progress <= 1) {
           const px = p1.px + (p2.px - p1.px) * pulse.progress;
           const py = p1.py + (p2.py - p1.py) * pulse.progress;
 
+          // Blazing white photon core
           ctx.fillStyle = "#ffffff";
-          ctx.globalAlpha = 0.9;
+          ctx.globalAlpha = 0.95;
           ctx.beginPath();
-          ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+          ctx.arc(px, py, 2.2, 0, Math.PI * 2);
           ctx.fill();
 
+          // Outer glowing halo
           ctx.fillStyle = pulse.color;
-          ctx.globalAlpha = 0.4;
+          ctx.globalAlpha = 0.55;
           ctx.beginPath();
-          ctx.arc(px, py, 4, 0, Math.PI * 2);
+          ctx.arc(px, py, 5.5, 0, Math.PI * 2);
           ctx.fill();
         } else {
           pulses.splice(pIdx, 1);
         }
       }
 
-      // Draw 3D Nodes with Perspective Glow & Twinkle
+      // 10. Render 3D Luminous Nodes
       for (let i = 0; i < projected.length; i++) {
         const { px, py, scale, node, alpha } = projected[i]!;
-        const twinkle = Math.sin(time * node.twinkleSpeed * 10 + node.twinkleOffset) * 0.25 + 0.75;
-        const currentRadius = Math.max(1, node.radius * scale * 1.3);
-        const nodeAlpha = alpha * twinkle;
+        const pulse = Math.sin(time * node.pulseSpeed * 10 + node.pulseOffset) * 0.3 + 0.8;
+        const currentRadius = Math.max(1.2, node.radius * scale * 1.35 * pulse);
+        const nodeAlpha = alpha * pulse;
 
-        // Outer ambient glow
+        // Outer soft radiant halo
         ctx.fillStyle = node.glowColor;
-        ctx.globalAlpha = nodeAlpha * 0.35;
+        ctx.globalAlpha = nodeAlpha * 0.45;
         ctx.beginPath();
-        ctx.arc(px, py, currentRadius * 3.5, 0, Math.PI * 2);
+        ctx.arc(px, py, currentRadius * 3.8, 0, Math.PI * 2);
         ctx.fill();
 
-        // Inner glowing core
+        // Neon glowing body
         ctx.fillStyle = node.color;
-        ctx.globalAlpha = nodeAlpha;
+        ctx.globalAlpha = nodeAlpha * 0.9;
         ctx.beginPath();
         ctx.arc(px, py, currentRadius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Pinpoint highlight center
+        // Brilliant white-hot center core
         ctx.fillStyle = "#ffffff";
-        ctx.globalAlpha = nodeAlpha * 0.9;
+        ctx.globalAlpha = nodeAlpha;
         ctx.beginPath();
-        ctx.arc(px, py, currentRadius * 0.45, 0, Math.PI * 2);
+        ctx.arc(px, py, currentRadius * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Cursor interactive pulse beacon
+      if (mouse.active) {
+        ctx.strokeStyle = "rgba(0, 240, 255, 0.4)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, 16 + Math.sin(time * 5) * 4, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = "#00f0ff";
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, 3, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -406,7 +554,7 @@ function Premium3DWebBackground() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-auto -z-10 h-full w-full bg-[#050816]"
+      className="fixed inset-0 pointer-events-auto -z-10 h-full w-full bg-[#040714] cursor-crosshair"
     />
   );
 }
@@ -457,35 +605,36 @@ function LoginPage() {
 
   return (
     <div className="relative min-h-screen flex flex-col justify-center items-center px-4 py-12 overflow-hidden select-none">
-      {/* 3D Cyber-Constellation & Digital Matrix Web Engine */}
-      <Premium3DWebBackground />
+      {/* Attraction-Level 3D Constellation & Cybernetic Vortex Background */}
+      <Attraction3DWebBackground />
 
-      {/* Top Status Bar */}
+      {/* Top Status Indicators */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
-        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 backdrop-blur-md px-3.5 py-1.5 text-xs font-medium text-slate-300 shadow-md">
-          <span className="size-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-          <span>Interactive 3D Engine Live</span>
+        <div className="flex items-center gap-2 rounded-full border border-cyan-500/30 bg-slate-950/80 backdrop-blur-md px-3.5 py-1.5 text-xs font-semibold text-cyan-300 shadow-[0_0_20px_rgba(56,189,248,0.2)]">
+          <span className="size-2 rounded-full bg-cyan-400 animate-ping" />
+          <Zap className="size-3 text-cyan-400" />
+          <span>Interactive 3D Field Active</span>
         </div>
       </div>
 
-      {/* Central Login Card Container */}
+      {/* Central Login Holographic Console Container */}
       <div className="relative z-10 w-full max-w-sm space-y-6">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center">
-          <div className="relative flex size-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 text-white shadow-xl shadow-blue-500/30 mb-3 transition-transform hover:scale-105 duration-300 ring-1 ring-white/20">
-            <Hexagon className="size-7 stroke-[2.2]" />
-            <Sparkles className="absolute -top-1 -right-1 size-4 text-cyan-300 animate-pulse" />
+          <div className="relative flex size-15 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 text-white shadow-[0_0_35px_rgba(56,189,248,0.4)] mb-3 transition-transform hover:scale-110 duration-300 ring-2 ring-cyan-400/40">
+            <Hexagon className="size-8 stroke-[2.2]" />
+            <Sparkles className="absolute -top-1 -right-1 size-4.5 text-cyan-200 animate-pulse" />
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-white drop-shadow-md">
+          <h1 className="text-2xl font-black tracking-tight text-white drop-shadow-[0_2px_15px_rgba(255,255,255,0.2)]">
             SantoGe Talent Cloud
           </h1>
-          <p className="mt-1 text-xs font-medium text-slate-400">
+          <p className="mt-1 text-xs font-medium text-slate-300">
             Sign in to access your portal
           </p>
         </div>
 
-        {/* Glassmorphic Cyber Card */}
-        <div className="rounded-2xl border border-white/15 bg-slate-900/80 backdrop-blur-2xl p-6 sm:p-7 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
+        {/* Hologram Glassmorphic Card */}
+        <div className="rounded-2xl border border-cyan-500/30 bg-slate-950/85 backdrop-blur-2xl p-6 sm:p-7 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9),0_0_40px_-10px_rgba(56,189,248,0.25)] ring-1 ring-white/15">
           {!isConfigured && (
             <div className="mb-4 flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
               <AlertCircle className="size-4 shrink-0 mt-0.5" />
@@ -507,7 +656,7 @@ function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@college.edu or admin@domain.com"
-                className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3.5 py-2.5 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/25 focus:bg-slate-950"
+                className="w-full rounded-xl border border-white/15 bg-slate-900/80 px-3.5 py-2.5 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:bg-slate-900"
               />
             </div>
 
@@ -522,12 +671,12 @@ function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3.5 py-2.5 pr-10 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/25 focus:bg-slate-950"
+                  className="w-full rounded-xl border border-white/15 bg-slate-900/80 px-3.5 py-2.5 pr-10 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:bg-slate-900"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 p-1 transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
@@ -540,7 +689,7 @@ function LoginPage() {
             </div>
 
             {error && (
-              <div className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-300">
+              <div className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/15 p-2.5 text-xs text-rose-300">
                 <AlertCircle className="size-4 shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
@@ -549,7 +698,7 @@ function LoginPage() {
             <button
               type="submit"
               disabled={loading || !isConfigured}
-              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-cyan-500/30 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:via-blue-500 hover:to-indigo-500 py-2.5 text-sm font-bold text-white shadow-[0_0_25px_rgba(56,189,248,0.35)] transition-all hover:shadow-[0_0_35px_rgba(56,189,248,0.55)] active:scale-[0.99] disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <RefreshCw className="size-4 animate-spin" />
@@ -558,7 +707,7 @@ function LoginPage() {
               )}
               {loading ? "Authenticating..." : "Sign In to Portal"}
               {!loading && (
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
               )}
             </button>
           </form>
@@ -567,7 +716,7 @@ function LoginPage() {
         {/* Footer info */}
         <div className="flex items-center justify-center gap-2 text-center text-xs font-medium text-slate-400">
           <ShieldCheck className="size-3.5 text-emerald-400" />
-          <span>Institutional accounts provisioned by college administrators.</span>
+          <span>Move mouse or click to interact with 3D cyber-mesh.</span>
         </div>
       </div>
 
