@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Chip, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore, type CompletionRule } from "@/lib/app-store";
-import { Moon, RotateCcw, Sun, Shield, Server, Lock, CheckCircle2, RefreshCw } from "lucide-react";
+import { Moon, Sun, Shield, Server, RefreshCw } from "lucide-react";
 import { getSupabaseConfig, supabaseAuth, isSupabaseConfigured } from "@/lib/supabase";
 
 import { useLivePlatformSettings, updateLivePlatformSettings } from "@/lib/data";
@@ -41,9 +41,9 @@ function AdminSettingsPage() {
   const store = useAppStore();
   const { data: liveSettings } = useLivePlatformSettings(true);
 
-  const [threshold, setThreshold] = useState(450);
-  const [broadcast, setBroadcast] = useState("06:00");
-  const [maxTracks, setMaxTracks] = useState(3);
+  const [threshold] = useState(450);
+  const [broadcast] = useState("06:00");
+  const [maxTracks] = useState(3);
   const [completionRule, setCompletionRuleState] = useState<CompletionRule>("primary-plus-minimum");
   const [secondaryMin, setSecondaryMin] = useState(60);
 
@@ -106,13 +106,11 @@ function AdminSettingsPage() {
         <Stat
           label="Daily Broadcast Time"
           value={broadcast}
-          accent="var(--brand-amber)"
           hint="IST Morning Window"
         />
         <Stat
           label="Max Technical Tracks"
           value={maxTracks}
-          accent="var(--brand-purple)"
           hint="Per learner profile"
         />
       </div>
@@ -124,23 +122,23 @@ function AdminSettingsPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="mb-2 block text-xs font-semibold text-copy-subtle">
+            <label className="mb-2 block text-xs font-medium text-muted-foreground">
               Technical Completion Evaluation Mode
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => setCompletionRuleState("primary-plus-minimum")}
-                className={`rounded-xl border p-3.5 text-left transition-all ${
+                className={`rounded-lg border p-4 text-left transition-colors ${
                   completionRule === "primary-plus-minimum"
-                    ? "border-brand-cyan/60 bg-surface-soft shadow-md shadow-brand-cyan/5"
-                    : "border-line-soft bg-surface-dark/40 text-copy-subtle"
+                    ? "border-primary bg-primary/5 shadow-xs"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted/50"
                 }`}
               >
-                <p className="text-xs font-bold text-foreground">
+                <p className="text-xs font-semibold text-foreground">
                   Primary Track 100% + Secondary Threshold
                 </p>
-                <p className="mt-1 text-[11px] text-copy-subtle">
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
                   Learner must master Primary track (100%) and reach at least {secondaryMin}%
                   competency on secondary tracks.
                 </p>
@@ -149,14 +147,14 @@ function AdminSettingsPage() {
               <button
                 type="button"
                 onClick={() => setCompletionRuleState("all-tracks")}
-                className={`rounded-xl border p-3.5 text-left transition-all ${
+                className={`rounded-lg border p-4 text-left transition-colors ${
                   completionRule === "all-tracks"
-                    ? "border-brand-purple/60 bg-surface-soft shadow-md shadow-brand-purple/5"
-                    : "border-line-soft bg-surface-dark/40 text-copy-subtle"
+                    ? "border-primary bg-primary/5 shadow-xs"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted/50"
                 }`}
               >
-                <p className="text-xs font-bold text-foreground">All Selected Tracks (100%)</p>
-                <p className="mt-1 text-[11px] text-copy-subtle">
+                <p className="text-xs font-semibold text-foreground">All Selected Tracks (100%)</p>
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
                   Strict requirement: 100% competency across all chosen tracks (up to 3 tracks).
                 </p>
               </button>
@@ -164,12 +162,12 @@ function AdminSettingsPage() {
           </div>
 
           {completionRule === "primary-plus-minimum" && (
-            <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2">
+            <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-foreground">
+                <span className="font-medium text-foreground">
                   Secondary Track Minimum Competency Requirement:
                 </span>
-                <span className="font-mono font-bold text-brand-cyan">{secondaryMin}%</span>
+                <span className="font-mono font-bold text-primary">{secondaryMin}%</span>
               </div>
               <input
                 type="range"
@@ -178,35 +176,37 @@ function AdminSettingsPage() {
                 step={5}
                 value={secondaryMin}
                 onChange={(e) => setSecondaryMin(Number(e.target.value))}
-                className="w-full accent-[var(--brand-cyan)]"
+                className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
               />
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={saveGateRules}
-            className="rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2.5 text-xs font-bold text-surface-dark"
-          >
-            Save Dual Gate Rules
-          </button>
+          <div>
+            <button
+              type="button"
+              onClick={saveGateRules}
+              className="rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90"
+            >
+              Save Dual Gate Rules
+            </button>
+          </div>
         </div>
       </Panel>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Scoring Weights */}
         <Panel
           title="Talent Readiness Scoring Weights"
           subtitle="Weighted contribution to Readiness Index & Talent Score"
         >
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {WEIGHTS.map((w) => (
               <div
                 key={w.key}
-                className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft px-3 py-2.5"
+                className="flex items-center justify-between rounded-lg border border-border bg-card px-3.5 py-2.5"
               >
                 <span className="text-xs font-medium text-foreground">{w.label}</span>
-                <span className="font-mono text-xs font-bold text-brand-cyan">{w.value}%</span>
+                <span className="font-mono text-xs font-semibold text-primary">{w.value}%</span>
               </div>
             ))}
           </div>
@@ -226,18 +226,18 @@ function AdminSettingsPage() {
         >
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-copy-subtle">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 Authoritative Supabase Project URL
               </label>
-              <div className="rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs font-mono text-foreground">
+              <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs font-mono text-foreground select-all">
                 {sbConfig.url || "VITE_SUPABASE_URL not configured"}
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-copy-subtle">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 Public Client Key
               </label>
-              <div className="rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs font-mono text-copy-subtle">
+              <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs font-mono text-muted-foreground select-all">
                 {sbConfig.anonKey
                   ? `${sbConfig.anonKey.slice(0, 16)}••••••••••••`
                   : "VITE_SUPABASE_PUBLISHABLE_KEY not configured"}
@@ -248,18 +248,18 @@ function AdminSettingsPage() {
                 type="button"
                 onClick={testSupabase}
                 disabled={sbTesting || !isSupabaseConfigured()}
-                className="inline-flex items-center gap-2 rounded-xl bg-surface-elevated border border-line-soft px-3.5 py-2 text-xs font-bold text-foreground hover:border-brand-cyan/60 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-medium text-foreground hover:bg-muted shadow-xs transition-colors disabled:opacity-50"
               >
                 {sbTesting ? (
                   <RefreshCw className="size-3.5 animate-spin" />
                 ) : (
-                  <Server className="size-3.5 text-brand-cyan" />
+                  <Server className="size-3.5 text-primary" />
                 )}
                 Test Live Connection
               </button>
               {sbStatus && (
                 <span
-                  className={`text-xs font-semibold ${sbStatus.includes("Error") ? "text-brand-rose" : "text-brand-emerald"}`}
+                  className={`text-xs font-medium ${sbStatus.includes("Error") ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"}`}
                 >
                   {sbStatus}
                 </span>
@@ -274,17 +274,17 @@ function AdminSettingsPage() {
         <div className="grid gap-3 sm:grid-cols-2">
           <button
             onClick={store.toggleTheme}
-            className="flex items-center gap-2 rounded-xl border border-line-soft bg-surface-soft px-4 py-3 text-xs font-semibold text-foreground"
+            className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3 text-xs font-medium text-foreground hover:bg-muted transition-colors shadow-xs"
           >
             {store.theme === "dark" ? (
-              <Sun className="size-4 text-brand-amber" />
+              <Sun className="size-4 text-amber-500" />
             ) : (
-              <Moon className="size-4 text-brand-purple" />
+              <Moon className="size-4 text-muted-foreground" />
             )}
             Switch to {store.theme === "dark" ? "light" : "dark"} theme
           </button>
-          <div className="flex items-center gap-2 rounded-xl border border-line-soft bg-surface-soft px-4 py-3 text-xs text-copy-subtle">
-            <Shield className="size-4 text-brand-emerald" />
+          <div className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
+            <Shield className="size-4 text-emerald-600 dark:text-emerald-400" />
             <span>PostgreSQL RLS &amp; Supabase Auth Enforced</span>
           </div>
         </div>

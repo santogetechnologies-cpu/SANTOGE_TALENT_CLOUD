@@ -188,15 +188,15 @@ function ContentManagementPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Curriculum Content Management System (CMS)"
-        subtitle="Master authoring control: Manage 90-day Placement Accelerator lessons, daily practice questions, and 15 Technical Track syllabi across all 54 active cohorts."
+        subtitle="Master authoring control: Manage 90-day Placement Accelerator lessons, daily practice questions, and 15 Technical Track syllabi across active cohorts."
         action={
           <div className="flex items-center gap-2">
             <button
               onClick={handleBroadcastInstantPush}
-              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-3.5 py-2 text-xs font-bold text-surface-dark shadow-sm hover:opacity-90 transition-opacity"
+              className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-opacity"
             >
               <Send className="size-3.5" /> Push Telegram Broadcast (Simulator)
             </button>
@@ -207,52 +207,52 @@ function ContentManagementPage() {
 
       {/* KPI Stats */}
       <div className="grid gap-4 sm:grid-cols-4">
-        <Stat label="Total Curriculum Days" value="90 Days" hint="18 Weeks × 5 Working Days" />
+        <Stat label="Total Curriculum Days" value="90 Days" tone="brand" hint="18 Weeks × 5 Working Days" />
         <Stat
           label="Technical Specializations"
           value="15 Tracks"
-          accent="var(--brand-cyan)"
+          tone="cyan"
           hint="Individual self-paced tracks"
         />
         <Stat
           label="Active Cohorts Managed"
           value={`${batchesCount} Batches`}
-          accent="var(--brand-purple)"
+          tone="purple"
           hint="100–300 learners per batch"
         />
         <Stat
           label="Total Portfolio Projects"
           value="270 Projects"
-          accent="var(--brand-emerald)"
+          tone="emerald"
           hint="18 Friday Projects × 15 Tracks"
         />
       </div>
 
       {/* CMS Mode Switcher Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-line-soft/80 pb-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
         <button
           onClick={() => setCmsTab("placement-accelerator")}
           className={cn(
-            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all",
+            "flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all",
             cmsTab === "placement-accelerator"
-              ? "bg-brand-purple text-surface-dark shadow-sm"
-              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50",
           )}
         >
-          <Timer className="size-4" />
+          <Timer className="size-3.5" />
           Placement Accelerator CMS (90 Days / 10m + 10m + 10m)
         </button>
 
         <button
           onClick={() => setCmsTab("technical-tracks")}
           className={cn(
-            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all",
+            "flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all",
             cmsTab === "technical-tracks"
-              ? "bg-brand-cyan text-surface-dark shadow-sm"
-              : "border border-line-soft bg-surface-soft text-copy-subtle hover:text-foreground",
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50",
           )}
         >
-          <Code2 className="size-4" />
+          <Code2 className="size-3.5" />
           Technical Tracks &amp; Friday Projects CMS (15 Tracks)
         </button>
       </div>
@@ -261,14 +261,14 @@ function ContentManagementPage() {
       {cmsTab === "placement-accelerator" && (
         <div className="space-y-6">
           {/* Day Selector Ribbon */}
-          <div className="rounded-2xl border border-line-soft bg-surface-soft/60 p-4">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-foreground flex items-center gap-2">
-                <Calendar className="size-4 text-brand-purple" />
+              <span className="text-xs font-semibold text-foreground flex items-center gap-2">
+                <Calendar className="size-4 text-primary" />
                 Select Accelerator Day to Edit (Day {selectedPlacementDay} of 90 · Week{" "}
                 {currentAccDay.week} {currentAccDay.dayOfWeek})
               </span>
-              <span className="text-[11px] font-mono text-brand-amber font-semibold">
+              <span className="text-[11px] font-mono text-amber-600 dark:text-amber-400 font-semibold">
                 {selectedPlacementDay % 5 === 0
                   ? "⚡ Friday Assessment Day"
                   : "Standard Daily Routine"}
@@ -285,15 +285,15 @@ function ContentManagementPage() {
                     key={dayNum}
                     onClick={() => handlePlacementDaySelect(dayNum)}
                     className={cn(
-                      "flex flex-col items-center justify-center min-w-[52px] rounded-xl border p-2 text-center transition-all text-xs",
+                      "flex flex-col items-center justify-center min-w-[52px] rounded-lg border p-2 text-center transition-all text-xs",
                       isSelected
-                        ? "border-brand-purple bg-brand-purple/20 text-brand-purple font-bold shadow-md"
+                        ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
                         : isFriday
-                          ? "border-brand-purple/40 bg-brand-purple/5 text-copy-subtle hover:border-brand-purple"
-                          : "border-line-soft bg-surface-elevated/70 text-copy-subtle hover:text-foreground",
+                          ? "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"
+                          : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/30",
                     )}
                   >
-                    <span className="text-[9px] font-mono uppercase opacity-70">
+                    <span className="text-[9px] font-mono uppercase tracking-wider opacity-70">
                       {isFriday ? "Fri Test" : `W${Math.floor(i / 5) + 1}`}
                     </span>
                     <span className="font-mono text-xs font-bold mt-0.5">D{dayNum}</span>
@@ -311,14 +311,14 @@ function ContentManagementPage() {
               subtitle="Configure video title, concept brief, vocabulary chips, and timeline breakdown"
               action={<Chip tone="cyan">10 Mins Duration</Chip>}
             >
-              <div className="space-y-4 text-xs">
+              <div className="space-y-3.5 text-xs">
                 <div>
                   <label className="font-semibold text-foreground block mb-1">Lesson Title</label>
                   <input
                     type="text"
                     value={englishTitle}
                     onChange={(e) => setEnglishTitle(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs text-foreground focus:border-brand-cyan focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                   />
                 </div>
 
@@ -330,7 +330,7 @@ function ContentManagementPage() {
                     rows={3}
                     value={englishBrief}
                     onChange={(e) => setEnglishBrief(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs text-foreground focus:border-brand-cyan focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                   />
                 </div>
 
@@ -342,7 +342,7 @@ function ContentManagementPage() {
                     type="text"
                     value={englishVocab}
                     onChange={(e) => setEnglishVocab(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs text-foreground focus:border-brand-cyan focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                   />
                 </div>
 
@@ -354,7 +354,7 @@ function ContentManagementPage() {
                     type="text"
                     value={englishGrammar}
                     onChange={(e) => setEnglishGrammar(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs text-foreground focus:border-brand-cyan focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                   />
                 </div>
 
@@ -366,7 +366,7 @@ function ContentManagementPage() {
                     type="text"
                     value={englishTimeline}
                     onChange={(e) => setEnglishTimeline(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs font-mono text-copy-subtle focus:border-brand-cyan focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-mono text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                   />
                 </div>
               </div>
@@ -378,7 +378,7 @@ function ContentManagementPage() {
               subtitle="Configure math model, speed shortcut rules, and step-by-step solved demonstrations"
               action={<Chip tone="purple">10 Mins Duration</Chip>}
             >
-              <div className="space-y-4 text-xs">
+              <div className="space-y-3.5 text-xs">
                 <div>
                   <label className="font-semibold text-foreground block mb-1">
                     Aptitude Topic Title
@@ -387,7 +387,7 @@ function ContentManagementPage() {
                     type="text"
                     value={aptitudeTitle}
                     onChange={(e) => setAptitudeTitle(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs text-foreground focus:border-brand-purple focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                   />
                 </div>
 
@@ -399,7 +399,7 @@ function ContentManagementPage() {
                     rows={3}
                     value={aptitudeBrief}
                     onChange={(e) => setAptitudeBrief(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs text-foreground focus:border-brand-purple focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                   />
                 </div>
 
@@ -411,7 +411,7 @@ function ContentManagementPage() {
                     type="text"
                     value={aptitudeFormula}
                     onChange={(e) => setAptitudeFormula(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs font-mono text-brand-purple focus:border-brand-purple focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-mono text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none font-semibold"
                   />
                 </div>
 
@@ -423,7 +423,7 @@ function ContentManagementPage() {
                     rows={2}
                     value={aptitudeSolved}
                     onChange={(e) => setAptitudeSolved(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs font-mono text-copy-subtle focus:border-brand-purple focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-mono text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                   />
                 </div>
               </div>
@@ -437,7 +437,7 @@ function ContentManagementPage() {
             action={
               <button
                 onClick={handleSavePlacementContent}
-                className="flex items-center gap-1.5 rounded-xl bg-brand-emerald px-3.5 py-1.5 text-xs font-bold text-surface-dark hover:opacity-90 transition-opacity"
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-opacity"
               >
                 <Save className="size-3.5" /> Save Day {selectedPlacementDay} Content
               </button>
@@ -450,9 +450,9 @@ function ContentManagementPage() {
                   rows={3}
                   value={mcq1Question}
                   onChange={(e) => setMcq1Question(e.target.value)}
-                  className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs text-foreground focus:border-brand-cyan focus:outline-none"
+                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                 />
-                <p className="text-[11px] text-copy-subtle">
+                <p className="text-[11px] text-muted-foreground">
                   Options and explanations are automatically checked against the Placement Engine
                   validator.
                 </p>
@@ -466,9 +466,9 @@ function ContentManagementPage() {
                   rows={3}
                   value={voicePromptText}
                   onChange={(e) => setVoicePromptText(e.target.value)}
-                  className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs text-foreground focus:border-brand-cyan focus:outline-none"
+                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                 />
-                <p className="text-[11px] text-copy-subtle">
+                <p className="text-[11px] text-muted-foreground">
                   Target keywords will be extracted by the Speech Analysis engine during 60s pitch
                   grading.
                 </p>
@@ -483,14 +483,14 @@ function ContentManagementPage() {
         <div className="space-y-6">
           {/* Track Selector & Week Selector */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-line-soft bg-surface-soft p-4 space-y-2">
-              <label className="text-xs font-bold text-foreground block">
+            <div className="rounded-xl border border-border bg-card p-4 space-y-2 shadow-xs">
+              <label className="text-xs font-semibold text-foreground block">
                 Select Technical Track (1 of 15)
               </label>
               <select
                 value={selectedTrackId}
                 onChange={(e) => setSelectedTrackId(e.target.value as TrackId)}
-                className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs font-bold text-foreground focus:border-brand-cyan focus:outline-none"
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
               >
                 {TRACKS.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -500,14 +500,14 @@ function ContentManagementPage() {
               </select>
             </div>
 
-            <div className="rounded-2xl border border-line-soft bg-surface-soft p-4 space-y-2">
-              <label className="text-xs font-bold text-foreground block">
+            <div className="rounded-xl border border-border bg-card p-4 space-y-2 shadow-xs">
+              <label className="text-xs font-semibold text-foreground block">
                 Select Week (Week 1 to 18 = 90 Days)
               </label>
               <select
                 value={selectedWeekNum}
                 onChange={(e) => handleTrackWeekSelect(Number(e.target.value))}
-                className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs font-bold text-foreground focus:border-brand-cyan focus:outline-none"
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
               >
                 {Array.from({ length: 18 }, (_, i) => (
                   <option key={i + 1} value={i + 1}>
@@ -526,7 +526,7 @@ function ContentManagementPage() {
             action={
               <button
                 onClick={handleSaveTechnicalContent}
-                className="flex items-center gap-1.5 rounded-xl bg-brand-cyan px-3.5 py-1.5 text-xs font-bold text-surface-dark hover:opacity-90 transition-opacity"
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-opacity"
               >
                 <Save className="size-3.5" /> Save Week {selectedWeekNum} Content
               </button>
@@ -540,7 +540,7 @@ function ContentManagementPage() {
                     type="text"
                     value={weekTitle}
                     onChange={(e) => setWeekTitle(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs text-foreground focus:border-brand-cyan focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                   />
                 </div>
                 <div>
@@ -551,16 +551,16 @@ function ContentManagementPage() {
                     type="text"
                     value={weekTheme}
                     onChange={(e) => setWeekTheme(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-dark px-3 py-2 text-xs text-foreground focus:border-brand-cyan focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                   />
                 </div>
               </div>
 
-              <div className="border-t border-line-soft/80 pt-3" />
+              <div className="border-t border-border pt-3" />
 
-              <div className="rounded-xl border border-brand-cyan/30 bg-surface-dark p-4 space-y-3">
-                <p className="font-bold text-brand-cyan text-sm flex items-center gap-1.5">
-                  <Sparkles className="size-4" /> Friday Workplace Simulation Mini-Project (Day{" "}
+              <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+                <p className="font-semibold text-primary text-xs flex items-center gap-1.5 uppercase tracking-wider">
+                  <Sparkles className="size-3.5" /> Friday Workplace Simulation Mini-Project (Day{" "}
                   {(selectedWeekNum - 1) * 5 + 5})
                 </p>
 
@@ -573,7 +573,7 @@ function ContentManagementPage() {
                       type="text"
                       value={fridayProjectTitle}
                       onChange={(e) => setFridayProjectTitle(e.target.value)}
-                      className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground focus:border-brand-cyan focus:outline-none"
+                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                     />
                   </div>
                   <div>
@@ -584,7 +584,7 @@ function ContentManagementPage() {
                       type="text"
                       value={fridayDeliverable}
                       onChange={(e) => setFridayDeliverable(e.target.value)}
-                      className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground focus:border-brand-cyan focus:outline-none"
+                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                     />
                   </div>
                   <div>
@@ -595,7 +595,7 @@ function ContentManagementPage() {
                       type="text"
                       value={workplaceSkill}
                       onChange={(e) => setWorkplaceSkill(e.target.value)}
-                      className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground focus:border-brand-cyan focus:outline-none"
+                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs outline-none"
                     />
                   </div>
                 </div>
@@ -618,47 +618,47 @@ function ContentManagementPage() {
                   <div
                     key={t.id}
                     className={cn(
-                      "flex flex-col justify-between rounded-2xl border p-4 transition-all bg-surface-soft/80",
+                      "flex flex-col justify-between rounded-xl border p-4 transition-all bg-card shadow-xs",
                       isSelected
-                        ? "border-brand-cyan/60 bg-brand-cyan/5 shadow-md ring-1 ring-brand-cyan/30"
-                        : "border-line-soft hover:border-line-soft/80",
+                        ? "border-primary ring-1 ring-primary"
+                        : "border-border hover:border-border/80",
                     )}
                   >
                     <div>
                       <div className="flex items-center justify-between">
-                        <span className="rounded-md bg-surface-dark px-2 py-0.5 text-[10px] font-mono text-copy-subtle border border-line-soft">
+                        <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground border border-border">
                           Track {idx + 1} · {t.short}
                         </span>
-                        <span className="size-2.5 rounded-full" style={{ background: t.accent }} />
+                        <span className="size-2 rounded-full" style={{ background: t.accent }} />
                       </div>
 
-                      <h4 className="mt-2 text-sm font-bold text-foreground">{t.name}</h4>
-                      <p className="mt-1 text-xs text-copy-subtle line-clamp-2">{t.tagline}</p>
+                      <h4 className="mt-2.5 text-sm font-semibold text-foreground">{t.name}</h4>
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{t.tagline}</p>
 
-                      <div className="mt-3 space-y-1.5 text-[11px] text-copy-subtle">
+                      <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1.5">
-                          <Code2 className="size-3 text-brand-cyan" />
-                          <span className="font-mono text-foreground font-semibold">
+                          <Code2 className="size-3.5 text-primary" />
+                          <span className="font-mono text-foreground font-medium">
                             Lab: {t.labTitle}
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Layers className="size-3 text-brand-purple" />
+                          <Layers className="size-3.5 text-muted-foreground" />
                           <span>90 Days · 18 Friday Projects · Capstone</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-line-soft/60 space-y-2">
+                    <div className="mt-4 pt-3 border-t border-border space-y-2">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-[11px] text-copy-subtle">
+                        <span className="text-[11px] text-muted-foreground">
                           Average Learner Mastery
                         </span>
                         <span className="font-mono font-bold text-foreground">{pct}%</span>
                       </div>
-                      <Meter value={pct} accent={t.accent} />
+                      <Meter value={pct} tone="brand" />
 
-                      <div className="flex items-center gap-2 pt-1">
+                      <div className="flex items-center gap-2 pt-2">
                         <button
                           onClick={() => {
                             setSelectedTrackId(t.id);
@@ -667,10 +667,10 @@ function ContentManagementPage() {
                             window.scrollTo({ top: 300, behavior: "smooth" });
                           }}
                           className={cn(
-                            "flex-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border",
+                            "flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all border shadow-xs",
                             isSelected
-                              ? "border-brand-cyan/60 bg-brand-cyan text-surface-dark"
-                              : "border-line-soft bg-surface-elevated text-copy-subtle hover:text-foreground",
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted",
                           )}
                         >
                           {isSelected ? "Active in Editor" : "Edit Syllabus"}
@@ -679,7 +679,7 @@ function ContentManagementPage() {
                           href="/student/labs"
                           target="_blank"
                           rel="noreferrer"
-                          className="rounded-xl border border-line-soft bg-surface-elevated px-3 py-1.5 text-xs font-bold text-brand-cyan hover:border-brand-cyan/60"
+                          className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted shadow-xs transition-colors"
                         >
                           Test Lab
                         </a>

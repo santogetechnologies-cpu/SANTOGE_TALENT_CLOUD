@@ -248,55 +248,55 @@ export function AppShell({ portal }: { portal: Role }) {
     : SEARCH_ITEMS.slice(0, 8);
 
   return (
-    <div className="min-h-screen bg-background app-grid">
+    <div className="min-h-screen bg-background">
       <div className="flex min-h-screen">
         {/* Sidebar */}
         <aside
           className={cn(
-            "fixed z-40 flex h-screen w-[274px] flex-col border-r border-line-soft bg-surface-elevated/95 p-4 backdrop-blur-xl transition-transform lg:sticky lg:top-0 lg:translate-x-0",
+            "fixed z-40 flex h-screen w-[256px] flex-col border-r border-border bg-card p-4 transition-transform lg:sticky lg:top-0 lg:translate-x-0",
             open ? "translate-x-0" : "-translate-x-full",
           )}
         >
-          <div className="mb-5 flex items-center justify-between">
+          <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-brand-cyan to-brand-purple shadow-md">
-                <Hexagon className="size-5 text-surface-dark" />
+              <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground shadow-xs">
+                <Hexagon className="size-4.5" />
               </span>
               <div>
-                <p className="font-display text-sm font-bold leading-tight text-foreground">
+                <p className="text-sm font-bold tracking-tight text-foreground leading-tight">
                   SantoGe
                 </p>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-copy-subtle">
+                <p className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
                   Talent Cloud
                 </p>
               </div>
             </div>
             <button
-              className="lg:hidden"
+              className="lg:hidden text-muted-foreground hover:text-foreground"
               onClick={() => setOpen(false)}
               aria-label="Close navigation"
             >
-              <X className="size-5 text-copy-subtle" />
+              <X className="size-5" />
             </button>
           </div>
 
           {/* User Status Card */}
-          <div className="mb-4 rounded-xl border border-line-soft bg-surface-soft p-3">
+          <div className="mb-3 rounded-lg border border-border bg-muted/30 p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                 {portal === "student" ? (
-                  <GraduationCap className="size-4 text-brand-cyan" />
+                  <GraduationCap className="size-4 text-primary" />
                 ) : (
-                  <Shield className="size-4 text-brand-purple" />
+                  <Shield className="size-4 text-primary" />
                 )}
-                <span className="truncate max-w-[140px]">{label}</span>
+                <span className="truncate max-w-[130px]">{label}</span>
               </div>
-              <span className="rounded bg-surface-elevated px-1.5 py-0.5 text-[9px] font-bold uppercase text-brand-cyan">
+              <span className="rounded bg-card border border-border px-1.5 py-0.5 text-[9px] font-semibold uppercase text-muted-foreground">
                 {portal === "student" ? "Student" : "Admin"}
               </span>
             </div>
             {portal === "student" && (
-              <div className="mt-1.5 flex items-center justify-between text-[10px] text-copy-subtle">
+              <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
                 <span>
                   {liveProfileData?.profile?.roll_no || store.student?.rollNo || "2026-CSE"}
                 </span>
@@ -318,14 +318,14 @@ export function AppShell({ portal }: { portal: Role }) {
               {portal === "student" && (
                 <button
                   onClick={() => setCourseModalOpen(true)}
-                  className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-brand-cyan/40 bg-brand-cyan/10 px-2 py-1.5 text-[10px] font-bold text-brand-cyan transition-colors hover:bg-brand-cyan/20"
+                  className="flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-muted"
                 >
-                  <BookOpen className="size-3" /> Courses (1-3)
+                  <BookOpen className="size-3" /> Courses ({activeTracks.length})
                 </button>
               )}
               <button
                 onClick={signOut}
-                className="flex items-center justify-center gap-1 rounded-lg border border-line-soft px-2 py-1.5 text-[10px] font-semibold text-copy-subtle transition-colors hover:text-brand-rose"
+                className="flex items-center justify-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-destructive hover:border-destructive/30"
               >
                 <LogOut className="size-3" /> Exit
               </button>
@@ -333,13 +333,13 @@ export function AppShell({ portal }: { portal: Role }) {
           </div>
 
           {/* Nav List */}
-          <nav className="flex flex-1 flex-col gap-1 overflow-y-auto pr-1">
+          <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto pr-1">
             {nav.map((item, idx) => (
               <div key={item.to}>
                 {item.section && (
                   <p
                     className={cn(
-                      "px-3 text-[10px] font-bold uppercase tracking-wider text-copy-subtle/80",
+                      "px-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70",
                       idx > 0 ? "mt-3 mb-1" : "mb-1",
                     )}
                   >
@@ -350,59 +350,59 @@ export function AppShell({ portal }: { portal: Role }) {
                   to={item.to}
                   activeOptions={{ exact: item.to === "/student" || item.to === "/admin" }}
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-copy-subtle transition-colors hover:bg-surface-soft hover:text-foreground data-[status=active]:bg-surface-soft data-[status=active]:text-foreground data-[status=active]:shadow-[inset_2px_0_0_0_var(--brand-cyan)]"
+                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[status=active]:bg-primary/10 data-[status=active]:text-primary data-[status=active]:font-semibold"
                 >
-                  <item.icon className="size-4" />
-                  {item.label}
+                  <item.icon className="size-4 shrink-0" />
+                  <span>{item.label}</span>
                 </Link>
               </div>
             ))}
           </nav>
 
           {/* Bottom Talent Score Indicator */}
-          <div className="mt-3 rounded-xl border border-line-soft bg-surface-soft p-3">
+          <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-copy-subtle">
+              <p className="text-[11px] font-medium text-muted-foreground">
                 Talent Score
               </p>
-              <span className="font-mono text-xs font-bold text-brand-cyan">
+              <span className="font-mono text-xs font-bold text-foreground">
                 {talentScore}/1000
               </span>
             </div>
-            <div className="mt-1.5 flex items-center justify-between text-[10px] text-copy-subtle">
-              <span>Gate: {gateUnlocked ? "Unlocked 🔓" : "In Progress 🔒"}</span>
-              <span className="text-brand-purple">{eligibleCompanies} Companies</span>
+            <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+              <span>{gateUnlocked ? "Unlocked 🔓" : "In Progress 🔒"}</span>
+              <span className="font-medium text-foreground">{eligibleCompanies} Companies</span>
             </div>
           </div>
         </aside>
 
         {open && (
           <div
-            className="fixed inset-0 z-30 bg-brand-ink/50 lg:hidden"
+            className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-xs lg:hidden"
             onClick={() => setOpen(false)}
           />
         )}
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Top Header */}
-          <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line-soft bg-surface/80 px-4 py-2.5 backdrop-blur-xl sm:px-6">
+          <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-card/80 px-4 py-2.5 backdrop-blur-md sm:px-6">
             <button
-              className="lg:hidden"
+              className="lg:hidden text-muted-foreground hover:text-foreground"
               onClick={() => setOpen(true)}
               aria-label="Open navigation"
             >
-              <Menu className="size-5 text-foreground" />
+              <Menu className="size-5" />
             </button>
 
             {/* Global Search Button */}
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex items-center gap-2 rounded-xl border border-line-soft bg-surface-soft/80 px-3 py-1.5 text-xs text-copy-subtle transition-colors hover:border-brand-cyan/50 hover:text-foreground"
+              className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-muted hover:text-foreground"
             >
-              <Search className="size-3.5 text-copy-subtle" />
+              <Search className="size-3.5 text-muted-foreground" />
               <span className="hidden sm:inline">Search tracks, labs, batch tools, cron…</span>
               <span className="sm:hidden">Search…</span>
-              <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded bg-surface-elevated px-1.5 py-0.5 text-[10px] font-mono font-medium text-copy-subtle border border-line-soft">
+              <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded bg-card px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground border border-border">
                 <Command className="size-2.5 inline" /> K
               </kbd>
             </button>
@@ -411,17 +411,17 @@ export function AppShell({ portal }: { portal: Role }) {
             <div className="ml-auto flex items-center gap-2">
               {portal === "student" && (
                 <>
-                  <span className="hidden items-center gap-1.5 rounded-full border border-line-soft bg-surface-soft px-3 py-1.5 text-xs font-semibold text-brand-amber md:inline-flex">
+                  <span className="hidden items-center gap-1.5 rounded-md border border-amber-200/60 bg-amber-50/70 dark:bg-amber-950/30 dark:border-amber-900/40 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400 md:inline-flex">
                     <Flame className="size-3.5" /> Day {streak}
                   </span>
-                  <span className="hidden items-center gap-1.5 rounded-full border border-line-soft bg-surface-soft px-3 py-1.5 text-xs font-semibold text-brand-cyan sm:inline-flex">
+                  <span className="hidden items-center gap-1.5 rounded-md border border-blue-200/60 bg-blue-50/70 dark:bg-blue-950/30 dark:border-blue-900/40 px-2.5 py-1 text-xs font-medium text-blue-700 dark:text-blue-400 sm:inline-flex">
                     <Zap className="size-3.5" /> {xp} XP
                   </span>
                   <button
                     onClick={() => setCourseModalOpen(true)}
-                    className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-1.5 text-xs font-bold text-brand-cyan hover:bg-brand-cyan/20 transition-colors"
+                    className="hidden sm:inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
                   >
-                    <BookOpen className="size-3.5" /> Assigned Courses ({activeTracks.length})
+                    <BookOpen className="size-3.5 text-muted-foreground" /> Assigned Courses ({activeTracks.length})
                   </button>
                 </>
               )}
@@ -430,7 +430,7 @@ export function AppShell({ portal }: { portal: Role }) {
               <button
                 onClick={store.toggleTheme}
                 aria-label="Toggle theme"
-                className="grid size-9 place-items-center rounded-xl border border-line-soft bg-surface-soft text-foreground transition-colors hover:text-brand-cyan"
+                className="grid size-8 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:text-foreground hover:bg-muted"
               >
                 {store.theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
               </button>
@@ -446,27 +446,27 @@ export function AppShell({ portal }: { portal: Role }) {
 
       {/* ================= GLOBAL SEARCH MODAL ================= */}
       {searchOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4 bg-brand-ink/60 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-2xl border border-line-soft bg-surface-elevated shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 border-b border-line-soft px-4 py-3 bg-surface-soft">
-              <Search className="size-4 text-brand-cyan shrink-0" />
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="w-full max-w-xl rounded-xl border border-border bg-card shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 border-b border-border px-4 py-3 bg-card">
+              <Search className="size-4 text-muted-foreground shrink-0" />
               <input
                 type="text"
                 autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search 15 tracks, sandboxes, batch tools, cron, diagrams, ATS…"
-                className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-copy-subtle"
+                className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
               />
               <button
                 onClick={() => setSearchOpen(false)}
-                className="text-copy-subtle hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            <div className="max-h-[380px] overflow-y-auto p-2 space-y-1">
+            <div className="max-h-[380px] overflow-y-auto p-1.5 space-y-0.5">
               {filteredSearchResults.length > 0 ? (
                 filteredSearchResults.map((res, i) => (
                   <button
@@ -475,35 +475,35 @@ export function AppShell({ portal }: { portal: Role }) {
                       setSearchOpen(false);
                       void navigate({ to: res.to });
                     }}
-                    className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs transition-colors hover:bg-surface-soft group"
+                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition-colors hover:bg-muted group"
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="font-semibold text-foreground group-hover:text-brand-cyan">
+                        <p className="font-medium text-foreground group-hover:text-primary">
                           {res.title}
                         </p>
-                        <span className="rounded bg-surface-dark px-1.5 py-0.5 text-[9px] font-semibold text-copy-subtle">
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
                           {res.category}
                         </span>
                       </div>
-                      <p className="text-[11px] text-copy-subtle mt-0.5">{res.desc}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{res.desc}</p>
                     </div>
-                    <span className="text-[10px] font-mono text-copy-subtle group-hover:text-brand-cyan">
+                    <span className="text-[10px] font-mono text-muted-foreground group-hover:text-primary">
                       Jump →
                     </span>
                   </button>
                 ))
               ) : (
-                <div className="py-8 text-center text-xs text-copy-subtle">
+                <div className="py-8 text-center text-xs text-muted-foreground">
                   No matching tools or pages found for "{searchQuery}".
                 </div>
               )}
             </div>
 
-            <div className="border-t border-line-soft px-4 py-2 bg-surface-soft/80 flex items-center justify-between text-[10px] text-copy-subtle">
+            <div className="border-t border-border px-4 py-2 bg-muted/20 flex items-center justify-between text-[10px] text-muted-foreground">
               <span>
                 Press{" "}
-                <kbd className="font-mono bg-surface-elevated px-1 py-0.5 rounded border border-line-soft">
+                <kbd className="font-mono bg-card px-1 py-0.5 rounded border border-border">
                   ESC
                 </kbd>{" "}
                 to close
@@ -516,40 +516,40 @@ export function AppShell({ portal }: { portal: Role }) {
 
       {/* ================= ASSIGNED COURSES VIEW MODAL (Read-Only) ================= */}
       {courseModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/70 backdrop-blur-md">
-          <div className="w-full max-w-2xl rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-line-soft pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-lg space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <BookOpen className="size-4 text-brand-cyan" />
-                  <h3 className="font-display text-base font-bold text-foreground">
+                  <BookOpen className="size-4 text-primary" />
+                  <h3 className="text-base font-semibold text-foreground">
                     Assigned Technical Courses
                   </h3>
                 </div>
-                <p className="text-xs text-copy-subtle mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Technical specializations assigned by your Platform Admin. Course assignments are
                   managed centrally and cannot be changed by students.
                 </p>
               </div>
               <button
                 onClick={() => setCourseModalOpen(false)}
-                className="text-copy-subtle hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <X className="size-5" />
               </button>
             </div>
 
-            <div className="flex items-center justify-between rounded-xl border border-brand-cyan/30 bg-brand-cyan/10 p-3 text-xs">
-              <span className="font-semibold text-brand-cyan">
+            <div className="flex items-center justify-between rounded-lg border border-blue-200/60 bg-blue-50/50 dark:bg-blue-950/30 dark:border-blue-900/40 p-3 text-xs">
+              <span className="font-semibold text-blue-700 dark:text-blue-300">
                 Assigned Tracks: {activeTracks.length} Specialization{activeTracks.length !== 1 ? "s" : ""}
               </span>
-              <span className="text-[11px] font-semibold text-brand-emerald">
+              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                 ✓ Admin Assigned
               </span>
             </div>
 
             {activeTracks.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-line-soft p-6 text-center text-xs text-copy-subtle">
+              <div className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
                 No technical courses currently assigned. Please contact your institution administrator.
               </div>
             ) : (
@@ -560,30 +560,30 @@ export function AppShell({ portal }: { portal: Role }) {
                   return (
                     <div
                       key={t.id}
-                      className="flex items-start justify-between rounded-xl border border-brand-cyan/40 bg-surface-soft p-3.5 text-left shadow-sm"
+                      className="flex items-start justify-between rounded-lg border border-border bg-muted/20 p-3.5 text-left"
                     >
                       <div className="min-w-0 pr-2">
                         <div className="flex items-center gap-2">
                           <span className="size-2 rounded-full" style={{ background: t.accent }} />
-                          <p className="text-xs font-bold text-foreground">{t.name}</p>
+                          <p className="text-xs font-semibold text-foreground">{t.name}</p>
                         </div>
-                        <p className="mt-1 text-[11px] text-copy-subtle line-clamp-1">{t.tagline}</p>
-                        <p className="mt-1 font-mono text-[10px] text-brand-cyan">
+                        <p className="mt-1 text-[11px] text-muted-foreground line-clamp-1">{t.tagline}</p>
+                        <p className="mt-1 font-mono text-[10px] text-primary">
                           Lab: {t.labTitle}
                         </p>
                       </div>
                       <div className="shrink-0 flex flex-col items-end gap-1">
                         <span
                           className={cn(
-                            "rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                            "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
                             isPrimary
-                              ? "bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/40"
-                              : "bg-surface-elevated text-copy-subtle border border-line-soft",
+                              ? "bg-primary/10 text-primary border border-primary/20"
+                              : "bg-muted text-muted-foreground border border-border",
                           )}
                         >
                           {isPrimary ? "Primary" : `Track #${idx + 1}`}
                         </span>
-                        <span className="text-[9px] font-semibold text-brand-emerald">
+                        <span className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400">
                           Admin Assigned
                         </span>
                       </div>
@@ -593,10 +593,10 @@ export function AppShell({ portal }: { portal: Role }) {
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
               <button
                 onClick={() => setCourseModalOpen(false)}
-                className="rounded-xl bg-surface-soft border border-line-soft px-5 py-2 text-xs font-bold text-foreground hover:bg-surface-elevated transition-colors"
+                className="rounded-lg bg-card border border-border px-4 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors"
               >
                 Close
               </button>
@@ -611,5 +611,5 @@ export function AppShell({ portal }: { portal: Role }) {
 }
 
 export function ShellFallback({ children }: { children: ReactNode }) {
-  return <div className="p-6 text-sm text-copy-subtle">{children}</div>;
+  return <div className="p-6 text-sm text-muted-foreground">{children}</div>;
 }

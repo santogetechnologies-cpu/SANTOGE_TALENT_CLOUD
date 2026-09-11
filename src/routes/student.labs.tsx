@@ -91,29 +91,29 @@ function LabsPage() {
       />
 
       {activeTracks.length === 0 ? (
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-8 text-center">
-          <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400">
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-8 text-center shadow-xs">
+          <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
             <Lock className="size-6" />
           </div>
-          <h3 className="text-base font-bold text-amber-200">No Technical Tracks Assigned Yet</h3>
-          <p className="mx-auto mt-1 max-w-md text-xs text-copy-subtle">
+          <h3 className="text-sm font-semibold text-foreground">No Technical Tracks Assigned Yet</h3>
+          <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground leading-relaxed">
             Course access is strictly provisioned by Admin. Once your administrator assigns your 1 to 3 technical courses, your interactive sandbox engines will be unlocked automatically.
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
           <Panel
             title="Assigned Labs"
             subtitle={`${activeTracks.length} course${activeTracks.length > 1 ? "s" : ""} provisioned`}
           >
             {activeTracks.length > 3 && (
-              <label className="mb-3 flex items-center gap-2 rounded-xl border border-line-soft bg-surface-soft px-3 py-2">
-                <Search className="size-4 text-copy-subtle" />
+              <label className="mb-3 flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+                <Search className="size-4 text-muted-foreground" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search assigned tracks…"
-                  className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-copy-subtle"
+                  className="w-full bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
                 />
               </label>
             )}
@@ -126,38 +126,38 @@ function LabsPage() {
                     void navigate({ to: "/student/labs", search: { track: t.id } as any });
                   }}
                   className={cn(
-                    "w-full rounded-xl border px-3 py-2.5 text-left transition-colors",
+                    "w-full rounded-lg border px-3 py-2.5 text-left transition-colors",
                     selected === t.id
-                      ? "border-brand-cyan/60 bg-surface-soft"
-                      : "border-line-soft bg-transparent hover:bg-surface-soft",
+                      ? "border-primary bg-primary/5 shadow-xs"
+                      : "border-border bg-card hover:bg-muted/50",
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-semibold text-foreground">{t.short}</p>
-                      <span className="rounded bg-brand-cyan/10 px-1 py-0.2 text-[9px] font-semibold text-brand-cyan">
+                      <p className="text-xs font-semibold text-foreground">{t.short}</p>
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground border border-border">
                         {idx === 0 ? "Course 1" : idx === 1 ? "Course 2" : "Course 3"}
                       </span>
                     </div>
                     <span className="size-2 rounded-full" style={{ background: t.accent }} />
                   </div>
-                  <p className="mt-0.5 text-[11px] text-copy-subtle">{t.labTitle}</p>
+                  <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{t.labTitle}</p>
                 </button>
               ))}
               {filtered.length === 0 && (
-                <p className="px-1 py-4 text-xs text-copy-subtle">No assigned tracks match "{query}".</p>
+                <p className="px-1 py-4 text-xs text-muted-foreground">No assigned tracks match "{query}".</p>
               )}
             </div>
           </Panel>
 
           <div className="min-w-0">
             {showAccessDenied ? (
-              <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 p-8 text-center">
-                <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-rose-500/20 text-rose-400">
+              <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-8 text-center shadow-xs">
+                <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
                   <ShieldAlert className="size-6" />
                 </div>
-                <h3 className="text-base font-bold text-rose-200">Access Denied: Unassigned Course Lab</h3>
-                <p className="mx-auto mt-1 max-w-md text-xs text-rose-300/80">
+                <h3 className="text-sm font-semibold text-foreground">Access Denied: Unassigned Course Lab</h3>
+                <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground leading-relaxed">
                   This technical sandbox lab belongs to a course that is not assigned to your profile. Students are strictly restricted to Admin-provisioned technical courses.
                 </p>
                 <div className="mt-4 flex justify-center">
@@ -168,7 +168,7 @@ function LabsPage() {
                         void navigate({ to: "/student/labs" });
                       }
                     }}
-                    className="inline-flex items-center gap-2 rounded-xl bg-brand-cyan px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-brand-cyan/90"
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90"
                   >
                     Switch to {activeTracks[0] ? trackById(activeTracks[0])?.short : "Assigned Course"}
                     <ArrowRight className="size-3.5" />
@@ -178,7 +178,7 @@ function LabsPage() {
             ) : Lab ? (
               <Lab />
             ) : (
-              <div className="rounded-2xl border border-line-soft bg-surface-soft p-8 text-center text-xs text-copy-subtle">
+              <div className="rounded-xl border border-border bg-card p-8 text-center text-xs text-muted-foreground shadow-xs">
                 Select an assigned lab from the sidebar to open the sandbox engine.
               </div>
             )}

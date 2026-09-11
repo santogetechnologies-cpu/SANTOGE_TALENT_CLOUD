@@ -322,14 +322,14 @@ function AdminAnalytics() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header with Dynamic Institution Selector */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Executive Platform Analytics
           </h1>
-          <p className="text-xs text-copy-subtle">
+          <p className="text-xs text-muted-foreground mt-0.5">
             Real-time cohort readiness, throughput, bulk placement conversion, and recruiter partner
             drives.
           </p>
@@ -337,7 +337,7 @@ function AdminAnalytics() {
 
         {/* Institution Selector */}
         <div className="flex items-center gap-2">
-          <Building2 className="size-4 text-brand-cyan shrink-0" />
+          <Building2 className="size-4 text-primary shrink-0" />
           <select
             value={selectedInst}
             onChange={(e) => {
@@ -345,10 +345,10 @@ function AdminAnalytics() {
               const name = institutions.find((i) => i.id === e.target.value)?.name ?? "Institution";
               toast.info(`Filtering dashboard for ${name}`);
             }}
-            className="rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-brand-cyan/60"
+            className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
           >
             {institutions.map((inst) => (
-              <option key={inst.id} value={inst.id} className="bg-surface-dark text-foreground">
+              <option key={inst.id} value={inst.id} className="bg-card text-foreground">
                 {inst.name}
               </option>
             ))}
@@ -356,11 +356,12 @@ function AdminAnalytics() {
         </div>
       </div>
 
-      {/* High-Level Platform KPIs — 100% Computed Backend Data */}
+      {/* High-Level Platform KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
           label="Total Enrolled Learners"
           value={totalEnrolled.toLocaleString()}
+          tone="brand"
           hint={
             selectedInst === "all"
               ? institutions.length > 1
@@ -372,19 +373,19 @@ function AdminAnalytics() {
         <Stat
           label="Active Cohort Batches"
           value={totalBatches}
-          accent="var(--brand-purple)"
+          tone="purple"
           hint="100–300 learners per batch"
         />
         <Stat
           label="Avg Cohort Readiness"
           value={`${avgReadiness}%`}
-          accent="var(--brand-cyan)"
+          tone="cyan"
           hint="Composite readiness index"
         />
         <Stat
           label="Marketplace Ready Learners"
           value={(liveAnalytics?.marketplaceReadyCount ?? 0).toLocaleString()}
-          accent="var(--brand-emerald)"
+          tone="emerald"
           hint={`${marketplacePercent}% direct offer qualified`}
         />
       </div>
@@ -397,16 +398,16 @@ function AdminAnalytics() {
           className="flex flex-col items-center justify-center p-6"
         >
           <Gauge value={Math.min(1000, avgReadiness * 10)} label="Platform Index" />
-          <div className="mt-4 flex flex-wrap justify-center gap-2 text-center text-[11px] text-copy-subtle">
-            <span className="rounded-full bg-brand-emerald/10 border border-brand-emerald/30 px-2.5 py-0.5 text-brand-emerald font-semibold">
+          <div className="mt-4 flex flex-wrap justify-center gap-2 text-center text-[11px]">
+            <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-emerald-600 dark:text-emerald-400 font-semibold">
               {activeBatches.length > 0
                 ? `${Math.round((activeBatches.filter((b) => b.lastSync !== null).length / activeBatches.length) * 100) || 100}% Telegram Sync`
                 : "100% Telegram Sync"}
             </span>
-            <span className="rounded-full bg-brand-cyan/10 border border-brand-cyan/30 px-2.5 py-0.5 text-brand-cyan font-semibold">
+            <span className="rounded-full bg-primary/10 border border-primary/30 px-2.5 py-0.5 text-primary font-semibold">
               {TRACKS.length} Technical Tracks
             </span>
-            <span className="rounded-full bg-brand-purple/10 border border-brand-purple/30 px-2.5 py-0.5 text-brand-purple font-semibold">
+            <span className="rounded-full bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-0.5 text-indigo-600 dark:text-indigo-400 font-semibold">
               {marketplacePercent}% Offer Ready
             </span>
           </div>
@@ -419,23 +420,23 @@ function AdminAnalytics() {
         >
           <div className="space-y-3.5">
             {cohortFunnel.length === 0 ? (
-              <div className="rounded-xl border border-line-soft bg-surface-soft p-6 text-center text-xs text-copy-subtle">
+              <div className="rounded-xl border border-border bg-muted/20 p-6 text-center text-xs text-muted-foreground">
                 No cohort conversion data available. Onboard student learners to visualize the
                 6-stage placement funnel.
               </div>
             ) : (
               cohortFunnel.map((f) => (
                 <div key={f.label}>
-                  <div className="mb-1 flex items-center justify-between text-xs">
+                  <div className="mb-1.5 flex items-center justify-between text-xs">
                     <span className="font-semibold text-foreground">{f.label}</span>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-copy-subtle text-[11px]">
+                      <span className="font-mono text-muted-foreground text-[11px]">
                         {f.count.toLocaleString()} learners
                       </span>
                       <span className="font-mono font-bold text-foreground">{f.pct}%</span>
                     </div>
                   </div>
-                  <Meter value={f.pct} accent={f.color} />
+                  <Meter value={f.pct} tone="brand" />
                 </div>
               ))
             )}
@@ -456,12 +457,12 @@ function AdminAnalytics() {
               return (
                 <div
                   key={b.id}
-                  className="rounded-xl border border-line-soft bg-surface-soft p-3.5"
+                  className="rounded-xl border border-border bg-card p-4 shadow-xs"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <p className="text-sm font-bold text-foreground">{b.name}</p>
-                      <p className="text-[11px] text-copy-subtle">
+                      <p className="text-sm font-semibold text-foreground">{b.name}</p>
+                      <p className="text-xs text-muted-foreground">
                         {b.dept} · Capacity: {b.capacity} (Max 300)
                       </p>
                     </div>
@@ -474,22 +475,22 @@ function AdminAnalytics() {
                           queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] });
                           toast.success(`Batch ${b.name} synchronized with Telegram webhook`);
                         }}
-                        className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-dark px-2 py-1 text-[10px] font-semibold text-copy-subtle hover:text-brand-cyan hover:border-brand-cyan/50 transition-colors"
+                        className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         title="Trigger Batch Telegram Sync"
                       >
-                        <RefreshCw className="size-2.5" />
+                        <RefreshCw className="size-3" />
                         <span>Sync</span>
                       </button>
                     </div>
                   </div>
-                  <div className="mt-2.5">
-                    <Meter value={fill} accent="var(--brand-purple)" />
+                  <div className="mt-3">
+                    <Meter value={fill} tone="brand" />
                   </div>
-                  <div className="mt-2 flex items-center justify-between text-[10px] text-copy-subtle">
+                  <div className="mt-2.5 flex items-center justify-between text-[11px] text-muted-foreground">
                     <span>
                       {b.enrolled} / {b.capacity} learners enrolled
                     </span>
-                    <span className="text-brand-cyan font-mono">
+                    <span className="text-primary font-mono font-medium">
                       {b.lastSync
                         ? `Synced: ${b.lastSync}`
                         : `Telegram: t.me/stc-${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
@@ -501,7 +502,7 @@ function AdminAnalytics() {
           </div>
         </Panel>
 
-        {/* Recruiter Hiring Drives — Persistent & Interactive */}
+        {/* Recruiter Hiring Drives */}
         <Panel
           title="Active Recruiter Hiring Drives"
           subtitle="Enterprise talent partner shortlists & requisition matching"
@@ -510,9 +511,9 @@ function AdminAnalytics() {
               <button
                 type="button"
                 onClick={() => setIsNewDriveModalOpen(true)}
-                className="inline-flex items-center gap-1 rounded-lg border border-brand-emerald/40 bg-brand-emerald/10 px-2.5 py-1 text-[11px] font-semibold text-brand-emerald hover:bg-brand-emerald/20 transition-colors"
+                className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
               >
-                <Plus className="size-3" />
+                <Plus className="size-3.5 text-primary" />
                 <span>Add Drive</span>
               </button>
               <Chip tone="emerald">{activeDrives.length} Drives</Chip>
@@ -521,11 +522,11 @@ function AdminAnalytics() {
         >
           <div className="space-y-2.5">
             {activeDrives.length === 0 ? (
-              <div className="rounded-xl border border-line-soft bg-surface-soft p-6 text-center text-xs text-copy-subtle">
-                <Briefcase className="mx-auto size-7 text-copy-subtle/50 mb-2" />
+              <div className="rounded-xl border border-border bg-muted/20 p-6 text-center text-xs text-muted-foreground">
+                <Briefcase className="mx-auto size-7 text-muted-foreground/60 mb-2" />
                 <p className="font-semibold text-foreground">No active partner requisitions</p>
-                <p className="text-[11px] text-copy-subtle mt-0.5">
-                  Click &apos;Add Drive&apos; above to create and manage enterprise hiring drives.
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Click 'Add Drive' above to create and manage enterprise hiring drives.
                 </p>
               </div>
             ) : (
@@ -539,41 +540,41 @@ function AdminAnalytics() {
                     key={d.id}
                     onClick={() => setSelectedDriveId(isSelected ? null : d.id)}
                     className={cn(
-                      "flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3 transition-all cursor-pointer",
+                      "flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3.5 transition-all cursor-pointer bg-card shadow-xs",
                       isSelected
-                        ? "border-brand-cyan bg-brand-cyan/10 shadow-md shadow-brand-cyan/5 ring-1 ring-brand-cyan/40"
-                        : "border-line-soft bg-surface-soft hover:border-line-soft/80 hover:bg-surface-soft/80",
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "border-border hover:border-border/80 hover:bg-muted/30",
                     )}
                     title="Click to filter Student Roster by this requisition"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-xs font-bold text-foreground">{d.company}</p>
-                        <span className="rounded bg-brand-emerald/10 border border-brand-emerald/30 px-1.5 py-0.5 text-[9px] font-semibold text-brand-emerald">
+                        <p className="text-xs font-semibold text-foreground">{d.company}</p>
+                        <span className="rounded bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-600 dark:text-emerald-400">
                           {d.status}
                         </span>
                         {isSelected && (
-                          <span className="rounded bg-brand-cyan/20 border border-brand-cyan/40 px-1.5 py-0.5 text-[9px] font-bold text-brand-cyan">
+                          <span className="rounded bg-primary/20 border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary">
                             Active Filter
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-copy-subtle">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {d.roles} · {d.ctc}
                       </p>
                     </div>
                     <div className="flex items-center gap-3 text-right">
                       <div>
-                        <p className="font-mono text-xs font-bold text-brand-cyan">
+                        <p className="font-mono text-xs font-bold text-primary">
                           {d.openSlots} Openings
                         </p>
-                        <p className="text-[10px] text-copy-subtle">
+                        <p className="text-[10px] text-muted-foreground">
                           Min Talent Score: {d.minScore}
                         </p>
                       </div>
-                      <div className="rounded-lg bg-surface-dark border border-line-soft px-2.5 py-1 text-center">
-                        <p className="font-mono text-xs font-bold text-brand-emerald">{eligible}</p>
-                        <p className="text-[9px] text-copy-subtle">Eligible</p>
+                      <div className="rounded-lg bg-muted/60 border border-border px-2.5 py-1 text-center">
+                        <p className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">{eligible}</p>
+                        <p className="text-[9px] text-muted-foreground font-medium">Eligible</p>
                       </div>
                     </div>
                   </div>
@@ -598,20 +599,19 @@ function AdminAnalytics() {
                 }
                 setIsAddStudentModalOpen(true);
               }}
-
-              className="inline-flex items-center gap-1.5 rounded-xl border border-brand-purple/40 bg-brand-purple/10 px-3 py-1.5 text-xs font-semibold text-brand-purple hover:bg-brand-purple/20 transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
             >
               <Plus className="size-3.5" />
               <span>+ Add Student</span>
             </button>
-            <Chip tone="purple">{filteredStudents.length} Students Shown</Chip>
+            <Chip tone="purple">{filteredStudents.length} Students</Chip>
           </div>
         }
       >
         {/* Active Hiring Drive Filter Banner */}
         {selectedDrive && (
-          <div className="mb-4 flex items-center justify-between rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 p-3 text-xs">
-            <div className="flex items-center gap-2 text-brand-cyan font-medium">
+          <div className="mb-4 flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs">
+            <div className="flex items-center gap-2 text-primary font-medium">
               <Briefcase className="size-4 shrink-0" />
               <span>
                 Filtered by requisition:{" "}
@@ -623,9 +623,9 @@ function AdminAnalytics() {
             <button
               type="button"
               onClick={() => setSelectedDriveId(null)}
-              className="inline-flex items-center gap-1 rounded-lg bg-surface-dark border border-line-soft px-2.5 py-1 text-[11px] font-semibold text-foreground hover:text-brand-rose transition-colors"
+              className="inline-flex items-center gap-1 rounded-md bg-card border border-border px-2.5 py-1 text-xs font-semibold text-foreground hover:text-destructive transition-colors shadow-xs"
             >
-              <X className="size-3" />
+              <X className="size-3.5" />
               <span>Clear Filter</span>
             </button>
           </div>
@@ -634,23 +634,23 @@ function AdminAnalytics() {
         {/* Filters */}
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-2.5 size-3.5 text-copy-subtle" />
+            <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, roll no, batch, email, dept…"
-              className="w-full rounded-xl border border-line-soft bg-surface-soft pl-9 pr-3 py-2 text-xs text-foreground outline-none placeholder:text-copy-subtle focus:border-brand-cyan/60"
+              className="w-full rounded-lg border border-border bg-card pl-9 pr-3 py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
             />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5">
-              <Filter className="size-3.5 text-copy-subtle" />
+              <Filter className="size-3.5 text-muted-foreground" />
               <select
                 value={trackFilter}
                 onChange={(e) => setTrackFilter(e.target.value)}
-                className="rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-medium text-foreground outline-none focus:border-brand-cyan/60"
+                className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
               >
                 <option value="all">All Technical Tracks</option>
                 {TRACKS.map((t) => (
@@ -662,11 +662,11 @@ function AdminAnalytics() {
             </div>
 
             <div className="flex items-center gap-1.5">
-              <SlidersHorizontal className="size-3.5 text-copy-subtle" />
+              <SlidersHorizontal className="size-3.5 text-muted-foreground" />
               <select
                 value={tierFilter}
                 onChange={(e) => setTierFilter(e.target.value as typeof tierFilter)}
-                className="rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-medium text-foreground outline-none focus:border-brand-cyan/60"
+                className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
               >
                 <option value="all">All Status Tiers</option>
                 <option value="marketplace">Marketplace Ready (700+)</option>
@@ -678,45 +678,45 @@ function AdminAnalytics() {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-line-soft text-copy-subtle">
+            <thead className="border-b border-border bg-muted/40 text-muted-foreground">
               <tr>
-                <th className="py-2.5 pr-4 font-semibold">Student Learner</th>
-                <th className="py-2.5 pr-4 font-semibold">Roll No &amp; Dept</th>
-                <th className="py-2.5 pr-4 font-semibold">Placement Batch</th>
-                <th className="py-2.5 pr-4 font-semibold">Assigned Technical Tracks (1-3)</th>
-                <th className="py-2.5 pr-4 font-semibold">Talent Score</th>
-                <th className="py-2.5 pr-4 font-semibold">Status</th>
-                <th className="py-2.5 font-semibold text-right">Action</th>
+                <th className="py-2.5 px-3.5 font-semibold">Student Learner</th>
+                <th className="py-2.5 px-3.5 font-semibold">Roll No &amp; Dept</th>
+                <th className="py-2.5 px-3.5 font-semibold">Placement Batch</th>
+                <th className="py-2.5 px-3.5 font-semibold">Assigned Tracks</th>
+                <th className="py-2.5 px-3.5 font-semibold">Talent Score</th>
+                <th className="py-2.5 px-3.5 font-semibold">Status</th>
+                <th className="py-2.5 px-3.5 font-semibold text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line-soft/60 text-foreground">
+            <tbody className="divide-y divide-border text-foreground">
               {filteredStudents.map((s) => (
-                <tr key={s.email} className="hover:bg-surface-soft/60 transition-colors">
-                  <td className="py-3 pr-4">
-                    <p className="font-bold text-foreground">{s.name}</p>
-                    <p className="text-[11px] font-mono text-copy-subtle">{s.email}</p>
+                <tr key={s.email} className="hover:bg-muted/30 transition-colors">
+                  <td className="py-3 px-3.5">
+                    <p className="font-semibold text-foreground">{s.name}</p>
+                    <p className="text-[11px] font-mono text-muted-foreground">{s.email}</p>
                   </td>
-                  <td className="py-3 pr-4">
+                  <td className="py-3 px-3.5">
                     <p className="font-mono font-medium">{s.rollNo}</p>
-                    <p className="text-[11px] text-copy-subtle">
+                    <p className="text-[11px] text-muted-foreground">
                       {s.dept} · {s.college}
                     </p>
                   </td>
-                  <td className="py-3 pr-4">
-                    <span className="rounded-md border border-line-soft bg-surface-soft px-2 py-0.5 text-[11px] font-semibold text-brand-purple">
+                  <td className="py-3 px-3.5">
+                    <span className="rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground">
                       {s.batchName || getBatchName(s.batchId)}
                     </span>
                   </td>
-                  <td className="py-3 pr-4">
+                  <td className="py-3 px-3.5">
                     <div className="flex flex-wrap gap-1">
                       {Array.from(new Set(s.tracks || [])).map((tid, idx) => {
                         const track = trackById(tid);
                         return (
                           <span
                             key={`${s.email}-${tid}-${idx}`}
-                            className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-line-soft bg-surface-dark"
+                            className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-border bg-muted/30 text-muted-foreground"
                           >
                             {track.short}
                           </span>
@@ -724,25 +724,25 @@ function AdminAnalytics() {
                       })}
                     </div>
                   </td>
-                  <td className="py-3 pr-4 font-mono font-bold text-brand-cyan">
+                  <td className="py-3 px-3.5 font-mono font-bold text-primary">
                     {s.talentScore}/1000
                   </td>
-                  <td className="py-3 pr-4">
+                  <td className="py-3 px-3.5">
                     {s.talentScore >= 700 ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-emerald">
-                        <CheckCircle2 className="size-3" /> Marketplace Ready
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="size-3" /> Marketplace
                       </span>
                     ) : s.talentScore >= 450 ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-cyan">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
                         <Sparkles className="size-3" /> ATS Unlocked
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-amber">
-                        <AlertCircle className="size-3" /> Phase 1 Learning
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                        <AlertCircle className="size-3" /> Phase 1
                       </span>
                     )}
                   </td>
-                  <td className="py-3 text-right">
+                  <td className="py-3 px-3.5 text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       <button
                         onClick={() => {
@@ -756,15 +756,15 @@ function AdminAnalytics() {
                           });
                           setIsResetModalOpen(true);
                         }}
-                        className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2 py-1 text-[11px] font-semibold text-copy-subtle hover:text-brand-purple hover:border-brand-purple/60 transition-colors"
+                        className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
                         title="Reset Student Password"
                       >
                         <KeyRound className="size-3" />
-                        <span className="hidden sm:inline">Reset Pass</span>
+                        <span className="hidden sm:inline">Pass</span>
                       </button>
                       <button
                         onClick={() => setSelectedStudentEmail(s.email)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-[11px] font-semibold text-foreground hover:border-brand-cyan/60"
+                        className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
                       >
                         <Eye className="size-3" /> Details
                       </button>
@@ -777,7 +777,7 @@ function AdminAnalytics() {
                             batchId: s.batchName || getBatchName(s.batchId),
                           });
                         }}
-                        className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2 py-1 text-[11px] font-semibold text-copy-subtle hover:text-brand-rose hover:border-brand-rose/60 hover:bg-brand-rose/10 transition-colors"
+                        className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shadow-xs"
                         title="Delete Student from Cohort"
                       >
                         <Trash2 className="size-3" />
@@ -789,14 +789,14 @@ function AdminAnalytics() {
               ))}
               {filteredStudents.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-xs text-copy-subtle">
-                    <GraduationCap className="mx-auto size-8 text-copy-subtle/50 mb-2" />
+                  <td colSpan={7} className="py-12 text-center text-xs text-muted-foreground">
+                    <GraduationCap className="mx-auto size-8 text-muted-foreground/50 mb-2" />
                     <p className="font-semibold text-foreground">
                       {totalEnrolled === 0
                         ? "No students have been enrolled or provisioned yet"
                         : "No learners match the specified search or filter criteria"}
                     </p>
-                    <p className="text-[11px] text-copy-subtle mt-1 max-w-sm mx-auto">
+                    <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
                       {totalEnrolled === 0
                         ? "Use '+ Add Student' above or import a cohort roster in Bulk CSV Provisioning to activate learners."
                         : "Try adjusting your search query, technical track filter, or status tier filter."}
@@ -811,42 +811,42 @@ function AdminAnalytics() {
 
       {/* Student Details Modal (Learner Profile Audit) */}
       {activeModalStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-line-soft pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
-                <GraduationCap className="size-5 text-brand-cyan" />
-                <h3 className="font-display text-base font-bold text-foreground">
+                <GraduationCap className="size-5 text-primary" />
+                <h3 className="text-base font-semibold text-foreground">
                   Learner Profile Audit
                 </h3>
               </div>
               <button
                 onClick={() => setSelectedStudentEmail(null)}
-                className="text-copy-subtle hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground p-1"
               >
-                ✕
+                <X className="size-5" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3 rounded-xl border border-line-soft bg-surface-soft p-3">
+            <div className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-muted/20 p-3.5">
                 <div>
-                  <p className="text-copy-subtle">Student Name</p>
-                  <p className="font-bold text-foreground mt-0.5">{activeModalStudent.name}</p>
+                  <p className="text-muted-foreground">Student Name</p>
+                  <p className="font-semibold text-foreground mt-0.5">{activeModalStudent.name}</p>
                 </div>
                 <div>
-                  <p className="text-copy-subtle">Roll Number</p>
-                  <p className="font-mono font-bold text-foreground mt-0.5">
+                  <p className="text-muted-foreground">Roll Number</p>
+                  <p className="font-mono font-semibold text-foreground mt-0.5">
                     {activeModalStudent.rollNo}
                   </p>
                 </div>
                 <div>
-                  <p className="text-copy-subtle">Email Address</p>
-                  <p className="font-mono text-copy-subtle mt-0.5">{activeModalStudent.email}</p>
+                  <p className="text-muted-foreground">Email Address</p>
+                  <p className="font-mono text-muted-foreground mt-0.5">{activeModalStudent.email}</p>
                 </div>
                 <div>
-                  <p className="text-copy-subtle">Placement Batch</p>
-                  <p className="text-brand-purple font-bold mt-0.5">
+                  <p className="text-muted-foreground">Placement Batch</p>
+                  <p className="text-foreground font-semibold mt-0.5">
                     {activeModalStudent.batchName || getBatchName(activeModalStudent.batchId)}
                   </p>
                 </div>
@@ -860,7 +860,7 @@ function AdminAnalytics() {
                   {Array.from(new Set(activeModalStudent.tracks || [])).map((t, idx) => (
                     <span
                       key={`${activeModalStudent.email}-${t}-${idx}`}
-                      className="rounded-lg border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-1 text-xs font-semibold text-brand-cyan"
+                      className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
                     >
                       {trackById(t).name}
                     </span>
@@ -869,80 +869,80 @@ function AdminAnalytics() {
               </div>
 
               {/* T·C·A·E·R·M Readiness Dimensions Audit Breakdown */}
-              <div className="rounded-xl border border-line-soft bg-surface-soft p-3 space-y-2.5">
-                <div className="flex items-center justify-between border-b border-line-soft pb-1.5">
+              <div className="rounded-xl border border-border bg-card p-3.5 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between border-b border-border pb-2">
                   <span className="font-semibold text-foreground">
                     T·C·A·E·R·M Composite Breakdown
                   </span>
-                  <span className="font-mono font-bold text-brand-cyan">
+                  <span className="font-mono font-bold text-primary">
                     {activeModalStudent.talentScore} / 1000
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="grid grid-cols-2 gap-2.5 text-[11px]">
                   <div>
-                    <div className="flex justify-between text-copy-subtle mb-0.5">
+                    <div className="flex justify-between text-muted-foreground mb-1">
                       <span>Technical (25%):</span>
                       <span className="font-mono font-bold text-foreground">
                         {modalReadiness.T}%
                       </span>
                     </div>
-                    <Meter value={modalReadiness.T} accent="var(--brand-cyan)" />
+                    <Meter value={modalReadiness.T} tone="brand" />
                   </div>
                   <div>
-                    <div className="flex justify-between text-copy-subtle mb-0.5">
+                    <div className="flex justify-between text-muted-foreground mb-1">
                       <span>Placement (20%):</span>
                       <span className="font-mono font-bold text-foreground">
                         {modalReadiness.C}%
                       </span>
                     </div>
-                    <Meter value={modalReadiness.C} accent="var(--brand-purple)" />
+                    <Meter value={modalReadiness.C} tone="brand" />
                   </div>
                   <div>
-                    <div className="flex justify-between text-copy-subtle mb-0.5">
+                    <div className="flex justify-between text-muted-foreground mb-1">
                       <span>Aptitude (15%):</span>
                       <span className="font-mono font-bold text-foreground">
                         {modalReadiness.A}%
                       </span>
                     </div>
-                    <Meter value={modalReadiness.A} accent="var(--brand-amber)" />
+                    <Meter value={modalReadiness.A} tone="brand" />
                   </div>
                   <div>
-                    <div className="flex justify-between text-copy-subtle mb-0.5">
+                    <div className="flex justify-between text-muted-foreground mb-1">
                       <span>English (15%):</span>
                       <span className="font-mono font-bold text-foreground">
                         {modalReadiness.E}%
                       </span>
                     </div>
-                    <Meter value={modalReadiness.E} accent="var(--brand-emerald)" />
+                    <Meter value={modalReadiness.E} tone="brand" />
                   </div>
                   <div>
-                    <div className="flex justify-between text-copy-subtle mb-0.5">
+                    <div className="flex justify-between text-muted-foreground mb-1">
                       <span>Resume (15%):</span>
                       <span className="font-mono font-bold text-foreground">
                         {modalReadiness.R}%
                       </span>
                     </div>
-                    <Meter value={modalReadiness.R} accent="var(--brand-rose)" />
+                    <Meter value={modalReadiness.R} tone="brand" />
                   </div>
                   <div>
-                    <div className="flex justify-between text-copy-subtle mb-0.5">
+                    <div className="flex justify-between text-muted-foreground mb-1">
                       <span>Mock / Soft (10%):</span>
                       <span className="font-mono font-bold text-foreground">
                         {modalReadiness.M}%
                       </span>
                     </div>
-                    <Meter value={modalReadiness.M} accent="#10b981" />
+                    <Meter value={modalReadiness.M} tone="brand" />
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-copy-subtle text-[11px] pt-1 border-t border-line-soft/60">
+                <div className="flex items-center justify-between text-muted-foreground text-[11px] pt-2 border-t border-border">
                   <span>Placement Day: Day {activeModalStudent.placementDay}/90</span>
                   <span>Talent Score: {activeModalStudent.talentScore}/1000</span>
                   <span
                     className={
                       activeModalStudent.gateCleared
-                        ? "text-brand-emerald font-bold"
-                        : "text-brand-amber"
+                        ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                        : "text-amber-600 dark:text-amber-400 font-medium"
                     }
                   >
                     {activeModalStudent.gateCleared ? "Dual Gate Cleared 🔓" : "Phase 1 Active 🔒"}
@@ -951,7 +951,7 @@ function AdminAnalytics() {
               </div>
             </div>
 
-            <div className="flex justify-between items-center gap-2 pt-2 border-t border-line-soft">
+            <div className="flex justify-between items-center gap-2 pt-3 border-t border-border">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -964,7 +964,7 @@ function AdminAnalytics() {
                         activeModalStudent.batchName || getBatchName(activeModalStudent.batchId),
                     });
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-3 py-2 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors"
                 >
                   <Trash2 className="size-3.5" />
                   <span>Delete</span>
@@ -983,9 +983,9 @@ function AdminAnalytics() {
                     });
                     setIsResetModalOpen(true);
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-brand-purple/40 bg-brand-purple/10 px-3 py-2 text-xs font-semibold text-brand-purple hover:bg-brand-purple/20 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
                 >
-                  <KeyRound className="size-3.5" />
+                  <KeyRound className="size-3.5 text-primary" />
                   <span>Reset Pass</span>
                 </button>
               </div>
@@ -993,7 +993,7 @@ function AdminAnalytics() {
                 onClick={() => {
                   store.recalculateStudentScore(activeModalStudent.email);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2 text-xs font-bold text-surface-dark shadow-md hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
               >
                 <Sparkles className="size-3.5" />
                 <span>Trigger Recalculation</span>
@@ -1015,55 +1015,55 @@ function AdminAnalytics() {
 
       {/* Delete Confirmation Modal */}
       {deleteTargetStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md">
-          <div className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 border-b border-line-soft pb-3">
-              <div className="grid size-10 place-items-center rounded-xl bg-brand-rose/15 text-brand-rose border border-brand-rose/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 border-b border-border pb-3">
+              <div className="grid size-10 place-items-center rounded-lg bg-destructive/10 text-destructive border border-destructive/20">
                 <AlertTriangle className="size-5" />
               </div>
               <div>
-                <h3 className="font-display text-base font-bold text-foreground">
+                <h3 className="text-base font-semibold text-foreground">
                   Remove Learner from Roster?
                 </h3>
-                <p className="text-xs text-copy-subtle">
+                <p className="text-xs text-muted-foreground">
                   This action permanently removes the student from this cohort
                 </p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2 text-xs">
+            <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Student Name:</span>
-                <span className="font-bold text-foreground">{deleteTargetStudent.name}</span>
+                <span className="text-muted-foreground font-medium">Student Name:</span>
+                <span className="font-semibold text-foreground">{deleteTargetStudent.name}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Email Address:</span>
-                <span className="font-mono text-copy-subtle">{deleteTargetStudent.email}</span>
+                <span className="text-muted-foreground font-medium">Email Address:</span>
+                <span className="font-mono text-muted-foreground">{deleteTargetStudent.email}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Roll Number:</span>
+                <span className="text-muted-foreground font-medium">Roll Number:</span>
                 <span className="font-mono font-semibold text-foreground">
                   {deleteTargetStudent.rollNo}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Cohort Batch:</span>
-                <span className="font-bold text-brand-purple">
+                <span className="text-muted-foreground font-medium">Cohort Batch:</span>
+                <span className="font-semibold text-foreground">
                   {getBatchName(deleteTargetStudent.batchId)}
                 </span>
               </div>
             </div>
 
-            <p className="text-xs text-copy-subtle leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               Removing this student will permanently delete their progress, revoke active portal
               access, update cohort batch headcount, and record the removal in the audit log.
             </p>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
               <button
                 type="button"
                 onClick={() => setDeleteTargetStudent(null)}
-                className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground hover:bg-surface-elevated transition-colors"
+                className="rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
               >
                 Cancel
               </button>
@@ -1091,7 +1091,7 @@ function AdminAnalytics() {
                   }
                   setDeleteTargetStudent(null);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 transition-colors shadow-xs"
               >
                 <Trash2 className="size-3.5" />
                 <span>Confirm Delete</span>
@@ -1103,21 +1103,21 @@ function AdminAnalytics() {
 
       {/* New Enterprise Hiring Drive Requisition Modal */}
       {isNewDriveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md">
-          <div className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-line-soft pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
-                <Briefcase className="size-5 text-brand-emerald" />
-                <h3 className="font-display text-base font-bold text-foreground">
+                <Briefcase className="size-5 text-primary" />
+                <h3 className="text-base font-semibold text-foreground">
                   New Enterprise Hiring Requisition
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsNewDriveModalOpen(false)}
-                className="text-copy-subtle hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground p-1"
               >
-                ✕
+                <X className="size-5" />
               </button>
             </div>
 
@@ -1132,7 +1132,7 @@ function AdminAnalytics() {
                   value={newCompany}
                   onChange={(e) => setNewCompany(e.target.value)}
                   placeholder="e.g. Amazon Web Services, Oracle, Microsoft IDC"
-                  className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-emerald/60"
+                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                 />
               </div>
 
@@ -1144,7 +1144,7 @@ function AdminAnalytics() {
                   value={newRoles}
                   onChange={(e) => setNewRoles(e.target.value)}
                   placeholder="e.g. Cloud Solutions Engineer, Full Stack Associate"
-                  className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-emerald/60"
+                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                 />
               </div>
 
@@ -1158,7 +1158,7 @@ function AdminAnalytics() {
                     value={newCtc}
                     onChange={(e) => setNewCtc(e.target.value)}
                     placeholder="₹8.0 - ₹11.0 LPA"
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-emerald/60"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   />
                 </div>
                 <div>
@@ -1171,7 +1171,7 @@ function AdminAnalytics() {
                     max={950}
                     value={newMinScore}
                     onChange={(e) => setNewMinScore(Number(e.target.value))}
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-emerald/60"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   />
                 </div>
               </div>
@@ -1185,7 +1185,7 @@ function AdminAnalytics() {
                     max={500}
                     value={newSlots}
                     onChange={(e) => setNewSlots(Number(e.target.value))}
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-emerald/60"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   />
                 </div>
                 <div>
@@ -1195,7 +1195,7 @@ function AdminAnalytics() {
                   <select
                     value={newStatus}
                     onChange={(e) => setNewStatus(e.target.value as HiringDrive["status"])}
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-emerald/60"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   >
                     <option value="Active Drive">Active Drive</option>
                     <option value="Shortlisting">Shortlisting</option>
@@ -1204,17 +1204,17 @@ function AdminAnalytics() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setIsNewDriveModalOpen(false)}
-                  className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground transition-colors"
+                  className="rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-brand-emerald px-4 py-2 text-xs font-bold text-surface-dark hover:bg-brand-emerald/90 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
                 >
                   <Plus className="size-3.5" />
                   <span>Create Requisition</span>
@@ -1227,18 +1227,18 @@ function AdminAnalytics() {
 
       {/* Add New Student Learner Modal */}
       {isAddStudentModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md overflow-y-auto">
-          <div className="w-full max-w-lg rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 my-8">
-            <div className="flex items-center justify-between border-b border-line-soft pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="grid size-9 place-items-center rounded-xl bg-brand-purple/15 text-brand-purple border border-brand-purple/30">
+                <div className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary border border-primary/20">
                   <GraduationCap className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-display text-base font-bold text-foreground">
+                  <h3 className="text-base font-semibold text-foreground">
                     Add New Student Learner
                   </h3>
-                  <p className="text-[11px] text-copy-subtle">
+                  <p className="text-xs text-muted-foreground">
                     Creates instant portal credentials, cohort sync, and technical track assignment.
                   </p>
                 </div>
@@ -1246,9 +1246,9 @@ function AdminAnalytics() {
               <button
                 type="button"
                 onClick={() => setIsAddStudentModalOpen(false)}
-                className="text-copy-subtle hover:text-foreground text-sm"
+                className="text-muted-foreground hover:text-foreground p-1"
               >
-                ✕
+                <X className="size-5" />
               </button>
             </div>
 
@@ -1256,7 +1256,7 @@ function AdminAnalytics() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-foreground mb-1">
-                    Student Full Name <span className="text-brand-rose">*</span>
+                    Student Full Name <span className="text-destructive">*</span>
                   </label>
                   <input
                     type="text"
@@ -1264,12 +1264,12 @@ function AdminAnalytics() {
                     value={newStudentName}
                     onChange={(e) => setNewStudentName(e.target.value)}
                     placeholder="e.g. Arun Kumar"
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   />
                 </div>
                 <div>
                   <label className="block font-semibold text-foreground mb-1">
-                    Student Login Email <span className="text-brand-rose">*</span>
+                    Student Login Email <span className="text-destructive">*</span>
                   </label>
                   <input
                     type="email"
@@ -1277,7 +1277,7 @@ function AdminAnalytics() {
                     value={newStudentEmail}
                     onChange={(e) => setNewStudentEmail(e.target.value)}
                     placeholder="e.g. arun@college.edu"
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60 font-mono"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs font-mono"
                   />
                 </div>
               </div>
@@ -1285,7 +1285,7 @@ function AdminAnalytics() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-foreground mb-1">
-                    Login Password <span className="text-brand-rose">*</span>
+                    Login Password <span className="text-destructive">*</span>
                   </label>
                   <input
                     type="text"
@@ -1293,9 +1293,9 @@ function AdminAnalytics() {
                     value={newStudentPassword}
                     onChange={(e) => setNewStudentPassword(e.target.value)}
                     placeholder="Temp@1234"
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60 font-mono"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs font-mono"
                   />
-                  <span className="text-[10px] text-copy-subtle mt-0.5 block">
+                  <span className="text-[11px] text-muted-foreground mt-0.5 block">
                     Learner uses this password to log in
                   </span>
                 </div>
@@ -1308,7 +1308,7 @@ function AdminAnalytics() {
                     value={newStudentRollNo}
                     onChange={(e) => setNewStudentRollNo(e.target.value)}
                     placeholder="e.g. 22CS099"
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60 font-mono"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs font-mono"
                   />
                 </div>
               </div>
@@ -1319,7 +1319,7 @@ function AdminAnalytics() {
                   <select
                     value={newStudentDept}
                     onChange={(e) => setNewStudentDept(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   >
                     <option value="CSE">CSE (Computer Science)</option>
                     <option value="IT">IT (Information Technology)</option>
@@ -1331,12 +1331,12 @@ function AdminAnalytics() {
                 </div>
                 <div>
                   <label className="block font-semibold text-foreground mb-1">
-                    Placement Accelerator Cohort <span className="text-brand-rose">*</span>
+                    Placement Accelerator Cohort <span className="text-destructive">*</span>
                   </label>
                   <select
                     value={newStudentBatchId || availableBatches[0]?.id || ""}
                     onChange={(e) => setNewStudentBatchId(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   >
                     {availableBatches.map((b) => {
                       const enrolled = b.enrolled_count ?? 0;
@@ -1359,7 +1359,7 @@ function AdminAnalytics() {
                   value={newStudentCollege}
                   onChange={(e) => setNewStudentCollege(e.target.value)}
                   placeholder="e.g. PSG College of Technology"
-                  className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60"
+                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                 />
               </div>
 
@@ -1369,9 +1369,9 @@ function AdminAnalytics() {
                   <label className="font-semibold text-foreground">
                     Assign Technical Learning Tracks ({newStudentTracks.length}/3 selected)
                   </label>
-                  <span className="text-[10px] text-copy-subtle">Choose 1 to 3 tracks</span>
+                  <span className="text-[11px] text-muted-foreground">Choose 1 to 3 tracks</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-40 overflow-y-auto p-1.5 rounded-xl border border-line-soft bg-surface-soft">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-40 overflow-y-auto p-2 rounded-xl border border-border bg-muted/20">
                   {TRACKS.map((track) => {
                     const isSelected = newStudentTracks.includes(track.id);
                     return (
@@ -1380,14 +1380,14 @@ function AdminAnalytics() {
                         key={track.id}
                         onClick={() => toggleNewStudentTrack(track.id)}
                         className={cn(
-                          "flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-left text-[11px] transition-all",
+                          "flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs transition-all shadow-xs",
                           isSelected
-                            ? "border-brand-purple bg-brand-purple/20 text-foreground font-semibold shadow-sm"
-                            : "border-line-soft bg-surface-dark/60 text-copy-subtle hover:border-line-soft/80 hover:text-foreground",
+                            ? "border-primary bg-primary/10 text-primary font-semibold"
+                            : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-border/80",
                         )}
                       >
                         <span
-                          className="size-2 rounded-full"
+                          className="size-2 rounded-full shrink-0"
                           style={{ backgroundColor: track.accent }}
                         />
                         <span className="truncate">{track.name}</span>
@@ -1397,26 +1397,26 @@ function AdminAnalytics() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-brand-emerald/30 bg-brand-emerald/10 p-2.5 text-[11px] text-brand-emerald flex items-center gap-2">
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-2.5">
                 <CheckCircle2 className="size-4 shrink-0" />
                 <span>
                   Adding this student enables immediate login at{" "}
-                  <strong className="text-foreground">/login</strong>. Credentials are automatically
-                  synced with local store authentication.
+                  <strong className="text-foreground font-semibold">/login</strong>. Credentials are automatically
+                  synced with authentication.
                 </span>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setIsAddStudentModalOpen(false)}
-                  className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground transition-colors"
+                  className="rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-purple to-brand-cyan px-4 py-2 text-xs font-bold text-surface-dark hover:opacity-95 shadow-lg shadow-brand-purple/20 transition-opacity"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
                 >
                   <Plus className="size-3.5" />
                   <span>Register & Enable Login</span>

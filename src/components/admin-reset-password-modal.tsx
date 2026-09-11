@@ -136,24 +136,24 @@ export function AdminResetPasswordModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-start justify-between border-b border-line-soft pb-3.5">
+        <div className="flex items-start justify-between border-b border-border pb-3.5">
           <div className="flex items-center gap-2.5">
-            <span className="grid size-9 place-items-center rounded-xl bg-brand-purple/15 text-brand-purple border border-brand-purple/30">
+            <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary border border-primary/20">
               <KeyRound className="size-4" />
             </span>
             <div>
-              <h3 className="font-display text-base font-bold text-foreground">
+              <h3 className="text-base font-semibold text-foreground">
                 Reset Student Password
               </h3>
-              <p className="text-xs text-copy-subtle">Platform Super Admin Security Control</p>
+              <p className="text-xs text-muted-foreground">Platform Super Admin Security Control</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-copy-subtle hover:bg-surface-soft hover:text-foreground transition-colors"
+            className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <X className="size-5" />
           </button>
@@ -162,49 +162,49 @@ export function AdminResetPasswordModal({
         {successInfo ? (
           /* ================= SUCCESS STATE ================= */
           <div className="space-y-4 py-2">
-            <div className="rounded-xl border border-brand-emerald/40 bg-brand-emerald/10 p-4 text-xs space-y-2">
-              <div className="flex items-center gap-2 font-bold text-brand-emerald">
+            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-xs space-y-2">
+              <div className="flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-400">
                 <ShieldCheck className="size-4" />
                 <span>Password Successfully Updated</span>
               </div>
-              <p className="text-copy-subtle">
+              <p className="text-muted-foreground">
                 The student can immediately log in with these new credentials via the portal.
               </p>
             </div>
 
-            <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2.5">
+            <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
               <div>
-                <span className="text-[11px] font-semibold text-copy-subtle block">
+                <span className="text-[11px] font-semibold text-muted-foreground block">
                   Student Email
                 </span>
-                <span className="font-mono text-xs font-bold text-foreground">
+                <span className="font-mono text-xs font-semibold text-foreground">
                   {successInfo.email}
                 </span>
               </div>
               <div>
-                <span className="text-[11px] font-semibold text-copy-subtle block">
+                <span className="text-[11px] font-semibold text-muted-foreground block">
                   New Password
                 </span>
-                <span className="font-mono text-sm font-bold text-brand-cyan">
+                <span className="font-mono text-sm font-bold text-primary">
                   {successInfo.password}
                 </span>
               </div>
               {successInfo.supabaseMsg && (
-                <div className="pt-2 border-t border-line-soft text-[11px] text-copy-subtle flex items-center gap-1.5">
-                  <Mail className="size-3 text-brand-purple" />
+                <div className="pt-2 border-t border-border text-xs text-muted-foreground flex items-center gap-1.5">
+                  <Mail className="size-3.5 text-primary" />
                   <span>{successInfo.supabaseMsg}</span>
                 </div>
               )}
             </div>
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2.5 pt-2">
               <button
                 type="button"
                 onClick={handleCopy}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-line-soft bg-surface-soft px-4 py-2.5 text-xs font-bold text-foreground hover:border-brand-cyan/60 transition-colors"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
               >
                 {copied ? (
-                  <Check className="size-3.5 text-brand-emerald" />
+                  <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                 ) : (
                   <Copy className="size-3.5" />
                 )}
@@ -213,7 +213,7 @@ export function AdminResetPasswordModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-5 py-2.5 text-xs font-bold text-surface-dark shadow-md hover:opacity-90"
+                className="inline-flex items-center justify-center rounded-lg bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
               >
                 Done
               </button>
@@ -224,30 +224,30 @@ export function AdminResetPasswordModal({
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Student Info Card (if selected) */}
             {matchedStudent ? (
-              <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2 text-xs">
+              <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground flex items-center gap-1.5">
-                    <GraduationCap className="size-3.5 text-brand-cyan" />
+                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                    <GraduationCap className="size-3.5 text-primary" />
                     {matchedStudent.name || "Student Learner"}
                   </span>
                   {matchedStudent.rollNo && (
-                    <span className="font-mono text-[10px] rounded bg-surface-dark px-1.5 py-0.5 border border-line-soft text-copy-subtle">
+                    <span className="font-mono text-[10px] rounded bg-muted px-2 py-0.5 border border-border text-muted-foreground font-medium">
                       {matchedStudent.rollNo}
                     </span>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-[11px] text-copy-subtle">
+                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                   <div>
-                    <span className="block text-[10px] uppercase tracking-wider font-semibold">
+                    <span className="block text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
                       Email
                     </span>
-                    <span className="font-mono text-foreground">{matchedStudent.email}</span>
+                    <span className="font-mono text-foreground font-medium">{matchedStudent.email}</span>
                   </div>
                   <div>
-                    <span className="block text-[10px] uppercase tracking-wider font-semibold">
+                    <span className="block text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
                       Cohort Batch
                     </span>
-                    <span className="text-brand-purple font-semibold">
+                    <span className="text-foreground font-semibold">
                       {getBatchName(matchedStudent.batchId, "Default")}
                     </span>
                   </div>
@@ -255,7 +255,7 @@ export function AdminResetPasswordModal({
               </div>
             ) : (
               <div>
-                <label className="mb-1 block text-xs font-semibold text-copy-subtle">
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
                   Select or Enter Student Email
                 </label>
                 <input
@@ -264,7 +264,7 @@ export function AdminResetPasswordModal({
                   placeholder="ajay@santoge.dev or student@college.edu"
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
-                  className="w-full rounded-xl border border-line-soft bg-surface-soft px-3.5 py-2.5 text-xs font-mono text-foreground outline-none focus:border-brand-cyan/60"
+                  className="w-full rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                 />
               </div>
             )}
@@ -272,13 +272,13 @@ export function AdminResetPasswordModal({
             {/* New Password Input */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-copy-subtle">
+                <label className="text-xs font-semibold text-muted-foreground">
                   New Temporary or Permanent Password
                 </label>
                 <button
                   type="button"
                   onClick={handleGenerate}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-cyan hover:underline"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
                 >
                   <Sparkles className="size-3" /> Generate Random
                 </button>
@@ -292,12 +292,12 @@ export function AdminResetPasswordModal({
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Enter new password (min 6 chars)"
-                  className="w-full rounded-xl border border-line-soft bg-surface-soft px-3.5 py-2.5 pr-10 text-xs font-mono text-foreground outline-none focus:border-brand-cyan/60"
+                  className="w-full rounded-lg border border-border bg-card px-3.5 py-2 pr-10 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-copy-subtle hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
@@ -306,19 +306,19 @@ export function AdminResetPasswordModal({
 
             {/* Supabase Recovery Email Option */}
             {hasSupabase && (
-              <label className="flex items-start gap-2.5 rounded-xl border border-line-soft bg-surface-soft/60 p-3 cursor-pointer hover:bg-surface-soft transition-colors">
+              <label className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/20 p-3 cursor-pointer hover:bg-muted/40 transition-colors">
                 <input
                   type="checkbox"
                   checked={sendSupabaseEmail}
                   onChange={(e) => setSendSupabaseEmail(e.target.checked)}
-                  className="mt-0.5 rounded border-line-soft accent-[var(--brand-purple)]"
+                  className="mt-0.5 rounded border-border accent-primary"
                 />
                 <div className="text-xs">
                   <p className="font-semibold text-foreground flex items-center gap-1">
-                    <Mail className="size-3 text-brand-purple" />
+                    <Mail className="size-3.5 text-primary" />
                     Dispatch Supabase Recovery Email
                   </p>
-                  <p className="text-[11px] text-copy-subtle mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Sends a password reset link to the learner's institutional inbox via Supabase
                     Auth.
                   </p>
@@ -327,20 +327,20 @@ export function AdminResetPasswordModal({
             )}
 
             {/* Modal Actions */}
-            <div className="flex justify-end gap-2 pt-2 border-t border-line-soft">
+            <div className="flex justify-end gap-2.5 pt-3 border-t border-border">
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl border border-line-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground transition-colors"
+                className="rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2 text-xs font-bold text-surface-dark shadow-md hover:opacity-90 disabled:opacity-50 transition-opacity"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 disabled:opacity-50 transition-opacity"
               >
-                {isSubmitting && <RefreshCw className="size-3 animate-spin" />}
+                {isSubmitting && <RefreshCw className="size-3.5 animate-spin" />}
                 Confirm Password Reset
               </button>
             </div>

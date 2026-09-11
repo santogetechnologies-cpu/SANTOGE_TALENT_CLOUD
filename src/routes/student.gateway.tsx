@@ -18,6 +18,17 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useLiveHiringDrives,
+  useLiveStudentProfile,
+  useLiveStudentProgress,
+  useLivePlatformSettings,
+  updateLiveReadiness,
+  completeLiveMock,
+  issueLiveCertificate,
+} from "@/lib/data";
+import { trackProgress } from "@/lib/curriculum";
 
 export const Route = createFileRoute("/student/gateway")({
   head: () => ({
@@ -58,18 +69,6 @@ interface RecruiterItem {
   role: string;
   package: string;
 }
-
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  useLiveHiringDrives,
-  useLiveStudentProfile,
-  useLiveStudentProgress,
-  useLivePlatformSettings,
-  updateLiveReadiness,
-  completeLiveMock,
-  issueLiveCertificate,
-} from "@/lib/data";
-import { trackProgress } from "@/lib/curriculum";
 
 function GatewayPage() {
   const store = useAppStore();
@@ -202,7 +201,7 @@ function GatewayPage() {
   ).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Dual Completion Gate & Phase 2"
         subtitle="STC evaluates two independent systems: your individual technical courses + batch placement accelerator."
@@ -218,25 +217,25 @@ function GatewayPage() {
         <Stat
           label="Dual Gate Status"
           value={dualGatePassed ? "UNLOCKED" : "LOCKED"}
-          accent={dualGatePassed ? "var(--brand-emerald)" : "var(--brand-amber)"}
+          tone={dualGatePassed ? "emerald" : "amber"}
           hint={dualGatePassed ? "Phase 2 Active" : "Satisfy both gates"}
         />
         <Stat
           label="Talent Score"
           value={`${talentScore}/1000`}
-          accent="var(--brand-cyan)"
+          tone="cyan"
           hint="Composite readiness"
         />
         <Stat
           label="ATS Coverage"
           value={`${atsScore}%`}
-          accent="var(--brand-purple)"
+          tone="purple"
           hint={`${found.length}/${KEYWORDS.length} keywords`}
         />
         <Stat
           label="Matched Openings"
           value={eligibleCompaniesCount}
-          accent="var(--brand-emerald)"
+          tone="emerald"
           hint="Recruiter marketplace"
         />
       </div>
@@ -248,13 +247,13 @@ function GatewayPage() {
       >
         <div className="grid gap-4 lg:grid-cols-2">
           {/* Gate 1: Technical Mastery */}
-          <div className="rounded-xl border border-line-soft bg-surface-soft p-4 space-y-3">
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-xs">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-bold text-foreground flex items-center gap-2">
+              <p className="text-sm font-semibold text-foreground flex items-center gap-2">
                 {allTechPassed ? (
-                  <CheckCircle2 className="size-4 text-brand-emerald" />
+                  <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
                 ) : (
-                  <Lock className="size-4 text-brand-amber" />
+                  <Lock className="size-4 text-amber-500" />
                 )}
                 1. Technical Competency Gate
               </p>
@@ -262,7 +261,7 @@ function GatewayPage() {
                 {allTechPassed ? "Passed" : "Incomplete"}
               </Chip>
             </div>
-            <p className="text-xs text-copy-subtle">
+            <p className="text-xs text-muted-foreground">
               Rule:{" "}
               {completionRule === "all-tracks"
                 ? "All selected tracks ≥ 100%"
@@ -273,38 +272,38 @@ function GatewayPage() {
               {activeTrackDetails.map((t) => (
                 <div
                   key={t.id}
-                  className="rounded-lg border border-line-soft/80 bg-surface-dark/60 p-2.5"
+                  className="rounded-lg border border-border bg-muted/20 p-3"
                 >
-                  <div className="flex items-center justify-between text-xs mb-1">
+                  <div className="flex items-center justify-between text-xs mb-1.5">
                     <span className="font-semibold text-foreground">
                       {t.name}{" "}
                       {t.isPrimary && (
-                        <span className="text-[10px] text-brand-cyan">(Primary)</span>
+                        <span className="text-[10px] text-primary font-medium">(Primary)</span>
                       )}
                     </span>
                     <span
                       className={cn(
-                        "font-mono text-[11px]",
-                        t.passed ? "text-brand-emerald" : "text-brand-amber",
+                        "font-mono text-xs font-semibold",
+                        t.passed ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400",
                       )}
                     >
                       {t.pct}% / {t.required}% req
                     </span>
                   </div>
-                  <Meter value={t.pct} accent={t.accent} />
+                  <Meter value={t.pct} tone={t.passed ? "emerald" : "brand"} />
                 </div>
               ))}
             </div>
           </div>
 
           {/* Gate 2: Placement Accelerator */}
-          <div className="rounded-xl border border-line-soft bg-surface-soft p-4 space-y-3">
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-xs">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-bold text-foreground flex items-center gap-2">
+              <p className="text-sm font-semibold text-foreground flex items-center gap-2">
                 {placementPassed ? (
-                  <CheckCircle2 className="size-4 text-brand-emerald" />
+                  <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
                 ) : (
-                  <Lock className="size-4 text-brand-amber" />
+                  <Lock className="size-4 text-amber-500" />
                 )}
                 2. Placement Accelerator Gate
               </p>
@@ -312,37 +311,37 @@ function GatewayPage() {
                 {placementPassed ? "Passed" : "Incomplete"}
               </Chip>
             </div>
-            <p className="text-xs text-copy-subtle">
+            <p className="text-xs text-muted-foreground">
               Rule: 90/90 days batch cohort attendance + Day 90 Final Assessment ≥ 60%
             </p>
 
             <div className="space-y-2.5 pt-1">
-              <div className="rounded-lg border border-line-soft/80 bg-surface-dark/60 p-2.5">
-                <div className="flex items-center justify-between text-xs mb-1">
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className="font-semibold text-foreground">Cohort Attendance</span>
-                  <span className="font-mono text-[11px] text-brand-cyan">
+                  <span className="font-mono text-xs font-semibold text-primary">
                     {attendance.length} / 90 Days
                   </span>
                 </div>
                 <Meter
                   value={Math.round((attendance.length / 90) * 100)}
-                  accent="var(--brand-purple)"
+                  tone="brand"
                 />
               </div>
 
-              <div className="rounded-lg border border-line-soft/80 bg-surface-dark/60 p-2.5">
-                <div className="flex items-center justify-between text-xs mb-1">
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className="font-semibold text-foreground">Day 90 Final Assessment</span>
                   <span
                     className={cn(
-                      "font-mono text-[11px]",
-                      (assessments["90"] ?? 0) >= 60 ? "text-brand-emerald" : "text-copy-subtle",
+                      "font-mono text-xs font-semibold",
+                      (assessments["90"] ?? 0) >= 60 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
                     )}
                   >
                     {assessments["90"] ? `${assessments["90"]}% (Req ≥ 60%)` : "Pending Day 90"}
                   </span>
                 </div>
-                <Meter value={assessments["90"] ?? 0} accent="var(--brand-emerald)" />
+                <Meter value={assessments["90"] ?? 0} tone="emerald" />
               </div>
             </div>
           </div>
@@ -356,17 +355,18 @@ function GatewayPage() {
           <textarea
             value={resume}
             onChange={(e) => setResume(e.target.value)}
-            rows={10}
-            className="w-full rounded-xl border border-line-soft bg-surface-dark p-3 font-mono text-xs text-foreground outline-none focus:border-brand-cyan/60"
+            rows={8}
+            placeholder="Paste your resume Markdown or plain text here to evaluate keyword matching against standard ATS filters..."
+            className="w-full rounded-lg border border-border bg-card p-3 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
           />
           <div className="mt-3 flex items-center justify-between">
             <button
               onClick={scan}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2 text-xs font-bold text-surface-dark"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
             >
               <ScanLine className="size-4" /> Run ATS Sweep
             </button>
-            <span className="font-mono text-xs text-brand-cyan">Score: {atsScore}%</span>
+            <span className="font-mono text-xs font-semibold text-primary">Score: {atsScore}%</span>
           </div>
           <div className="mt-3">
             <Console lines={log} empty="Run an ATS scan to see parser results." />
@@ -378,8 +378,8 @@ function GatewayPage() {
           <Panel title="AI Mock Interviews" subtitle="Technical & behavioral readiness">
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-copy-subtle">Simulate Interview Score:</span>
-                <span className="font-mono font-bold text-brand-purple">{mockScore}%</span>
+                <span className="text-muted-foreground">Simulate Interview Score:</span>
+                <span className="font-mono font-bold text-primary">{mockScore}%</span>
               </div>
               <input
                 type="range"
@@ -387,13 +387,13 @@ function GatewayPage() {
                 max={100}
                 value={mockScore}
                 onChange={(e) => setMockScore(Number(e.target.value))}
-                className="w-full accent-[var(--brand-purple)]"
+                className="w-full accent-primary"
               />
               <button
                 onClick={handleMock}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-line-soft bg-surface-soft py-2.5 text-xs font-bold text-foreground hover:border-brand-purple/60"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card py-2.5 text-xs font-semibold text-foreground hover:bg-muted/50 transition-colors shadow-xs"
               >
-                <Mic className="size-4 text-brand-purple" /> Complete Mock Drill (+60 XP)
+                <Mic className="size-4 text-primary" /> Complete Mock Drill (+60 XP)
               </button>
             </div>
           </Panel>
@@ -406,22 +406,22 @@ function GatewayPage() {
                 return (
                   <div
                     key={id}
-                    className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft p-3"
+                    className="flex items-center justify-between rounded-lg border border-border bg-card p-3 shadow-xs"
                   >
                     <div>
-                      <p className="text-xs font-bold text-foreground">{t.name}</p>
-                      <p className="text-[10px] text-copy-subtle">Verified Competency Credential</p>
+                      <p className="text-xs font-semibold text-foreground">{t.name}</p>
+                      <p className="text-[10px] text-muted-foreground">Verified Competency Credential</p>
                     </div>
                     {isIssued ? (
-                      <span className="flex items-center gap-1 text-[11px] font-bold text-brand-emerald">
+                      <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                         <CheckCircle2 className="size-3.5" /> Certified
                       </span>
                     ) : (
                       <button
                         onClick={() => handleIssueCert(t.name)}
-                        className="rounded-lg bg-surface-elevated border border-line-soft px-3 py-1 text-[11px] font-bold text-brand-cyan hover:border-brand-cyan/60"
+                        className="rounded-md bg-muted/60 border border-border px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
                       >
-                        <Award className="inline size-3 mr-1" /> Issue
+                        <Award className="inline size-3.5 mr-1 text-primary" /> Issue
                       </button>
                     )}
                   </div>
@@ -439,12 +439,12 @@ function GatewayPage() {
         action={<Chip tone="emerald">{recruitersList.length} Requisitions Active</Chip>}
       >
         {recruitersList.length === 0 ? (
-          <div className="rounded-xl border border-line-soft bg-surface-soft/40 p-8 text-center">
-            <Building2 className="mx-auto size-8 text-copy-muted/50 mb-2" />
+          <div className="rounded-xl border border-border bg-muted/10 p-8 text-center">
+            <Building2 className="mx-auto size-8 text-muted-foreground/60 mb-2" />
             <p className="text-sm font-semibold text-foreground">
               No active recruiting requisitions available
             </p>
-            <p className="mt-1 text-xs text-copy-subtle">
+            <p className="mt-1 text-xs text-muted-foreground">
               Company drives and requisition criteria will appear here once published by the
               recruitment team.
             </p>
@@ -458,37 +458,37 @@ function GatewayPage() {
                 <div
                   key={r.company}
                   className={cn(
-                    "rounded-xl border p-3.5 transition-all",
+                    "rounded-xl border p-4 transition-all bg-card shadow-xs",
                     isEligible
-                      ? "border-brand-emerald/50 bg-brand-emerald/5 shadow-md shadow-brand-emerald/5"
-                      : "border-line-soft bg-surface-soft opacity-80",
+                      ? "border-emerald-500/40 bg-emerald-500/5"
+                      : "border-border opacity-80",
                   )}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                      <Building2 className="size-3.5 text-brand-cyan" /> {r.company}
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                      <Building2 className="size-3.5 text-primary" /> {r.company}
                     </span>
-                    <span className="font-mono text-xs font-bold text-brand-emerald">
+                    <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
                       {r.package}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs font-semibold text-copy-subtle">{r.role}</p>
-                  <div className="mt-2.5 flex items-center justify-between text-[11px]">
-                    <span className="rounded bg-surface-elevated px-1.5 py-0.5 font-mono text-[10px] text-copy-subtle">
+                  <p className="mt-1.5 text-xs text-muted-foreground font-medium">{r.role}</p>
+                  <div className="mt-3 flex items-center justify-between text-[11px]">
+                    <span className="rounded-md bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground border border-border font-medium">
                       {track?.short || r.track}
                     </span>
-                    <span className="font-mono text-copy-subtle">Req: {r.minScore}+</span>
+                    <span className="font-mono text-muted-foreground">Req: {r.minScore}+</span>
                   </div>
-                  <div className="mt-3 border-t border-line-soft/60 pt-2 flex items-center justify-between text-[11px]">
+                  <div className="mt-3 border-t border-border pt-2 flex items-center justify-between text-xs">
                     <span
                       className={cn(
                         "font-semibold",
-                        isEligible ? "text-brand-emerald" : "text-brand-amber",
+                        isEligible ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400",
                       )}
                     >
                       {isEligible ? "✓ Matched & Forwarded" : "Requires higher score"}
                     </span>
-                    {isEligible && <Sparkles className="size-3 text-brand-emerald" />}
+                    {isEligible && <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
                   </div>
                 </div>
               );

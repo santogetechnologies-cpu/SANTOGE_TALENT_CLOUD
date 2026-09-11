@@ -5,6 +5,14 @@ import { useAppStore } from "@/lib/app-store";
 import { TRACKS } from "@/lib/tracks";
 import { Crown, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  useLiveStudentProfile,
+  useLiveStudentProgress,
+  useLiveLeaderboard,
+  useBatchLookup,
+} from "@/lib/data";
+import { trackProgress } from "@/lib/curriculum";
+import type { TrackId } from "@/lib/tracks";
 
 export const Route = createFileRoute("/student/leaderboard")({
   head: () => ({
@@ -24,15 +32,6 @@ export const Route = createFileRoute("/student/leaderboard")({
   }),
   component: LeaderboardPage,
 });
-
-import {
-  useLiveStudentProfile,
-  useLiveStudentProgress,
-  useLiveLeaderboard,
-  useBatchLookup,
-} from "@/lib/data";
-import { trackProgress } from "@/lib/curriculum";
-import type { TrackId } from "@/lib/tracks";
 
 function LeaderboardPage() {
   const store = useAppStore();
@@ -81,7 +80,7 @@ function LeaderboardPage() {
   const myRank = liveRank > 0 ? liveRank : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Batch Leaderboard"
         subtitle="Leaderboards belong to the Placement Accelerator cohort — never to unrelated technical tracks."
@@ -89,17 +88,17 @@ function LeaderboardPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Your rank" value={myRank > 0 ? `#${myRank}` : "—"} hint="Talent Score Rank" />
+        <Stat label="Your rank" value={myRank > 0 ? `#${myRank}` : "—"} tone="brand" hint="Talent Score Rank" />
         <Stat
           label="Cohort size"
           value={rows.length}
-          accent="var(--brand-purple)"
+          tone="purple"
           hint="Active enrolled learners in batch"
         />
         <Stat
           label="Days attended"
           value={attendanceCount}
-          accent="var(--brand-emerald)"
+          tone="emerald"
           hint="Out of 90"
         />
       </div>
@@ -109,11 +108,11 @@ function LeaderboardPage() {
         subtitle="Live Supabase ranking based on authoritative composite Talent Score (0–1000)"
       >
         {liveLeaderboardQuery.isLoading ? (
-          <div className="rounded-xl border border-line-soft bg-surface-soft p-6 text-center text-xs text-copy-subtle">
+          <div className="rounded-xl border border-border bg-muted/20 p-8 text-center text-xs text-muted-foreground">
             Loading batch rankings from Supabase…
           </div>
         ) : liveLeaderboardQuery.isError ? (
-          <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-6 text-center text-xs text-rose-400">
+          <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-8 text-center text-xs text-destructive">
             Unable to load cohort leaderboard.
           </div>
         ) : rows && rows.length > 0 ? (
@@ -124,22 +123,28 @@ function LeaderboardPage() {
                 <li
                   key={r.studentId || r.name}
                   className={cn(
-                    "flex items-center gap-3 rounded-xl border px-3 py-2.5",
-                    isMe ? "border-brand-cyan/60 bg-surface-soft" : "border-line-soft",
+                    "flex items-center gap-3.5 rounded-lg border px-3.5 py-2.5 text-xs shadow-xs transition-colors",
+                    isMe
+                      ? "border-primary/40 bg-primary/5 text-foreground"
+                      : "border-border bg-card text-muted-foreground",
                   )}
                 >
-                  <span className="w-6 font-mono text-xs text-copy-subtle">{i + 1}</span>
-                  {i === 0 && <Crown className="size-3.5 text-brand-amber" />}
-                  <span className="text-sm text-foreground font-medium">
+                  <span className="w-6 font-mono font-semibold text-muted-foreground text-center">{i + 1}</span>
+                  {i === 0 ? (
+                    <Crown className="size-4 text-amber-500 shrink-0" />
+                  ) : (
+                    <span className="size-4 shrink-0" />
+                  )}
+                  <span className="text-xs font-semibold text-foreground flex-1">
                     {r.name}
-                    {isMe ? " (you)" : ""}
+                    {isMe ? <span className="ml-1.5 text-[11px] font-medium text-primary">(You)</span> : ""}
                   </span>
-                  <div className="ml-auto flex w-48 items-center gap-2">
+                  <div className="flex w-48 items-center gap-2.5">
                     <Meter
                       value={Math.min(100, Math.round((r.talentScore / 1000) * 100))}
-                      accent="var(--brand-cyan)"
+                      tone="brand"
                     />
-                    <span className="w-16 text-right font-mono text-[11px] text-brand-cyan font-bold">
+                    <span className="w-16 text-right font-mono text-xs text-primary font-bold">
                       {r.talentScore} pts
                     </span>
                   </div>
@@ -148,7 +153,7 @@ function LeaderboardPage() {
             })}
           </ol>
         ) : (
-          <div className="rounded-xl border border-line-soft bg-surface-soft p-6 text-center text-xs text-copy-subtle">
+          <div className="rounded-xl border border-border bg-muted/20 p-8 text-center text-xs text-muted-foreground">
             No learners enrolled in this batch yet.
           </div>
         )}
@@ -158,22 +163,22 @@ function LeaderboardPage() {
         title="Technical analytics (separate)"
         subtitle="Course-specific performance, not a batch ranking"
       >
-        <p className="mb-3 flex items-start gap-2 text-xs text-copy-subtle">
-          <Info className="mt-0.5 size-3.5 shrink-0 text-brand-cyan" />
+        <p className="mb-4 flex items-start gap-2 text-xs text-muted-foreground">
+          <Info className="mt-0.5 size-4 shrink-0 text-primary" />
           MERN, SAP FICO and Medical Coding are never ranked against each other. Technical progress
           is measured per course through skill mastery, practical completion and competency
           evidence.
         </p>
-        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {activeTracks.map((id) => {
             const t = TRACKS.find((x) => x.id === id)!;
             const pct = getTrackPct(id);
             return (
-              <div key={id} className="rounded-xl border border-line-soft bg-surface-soft p-3">
+              <div key={id} className="rounded-xl border border-border bg-card p-4 shadow-xs">
                 <p className="text-sm font-semibold text-foreground">{t?.name || id}</p>
-                <p className="mt-1 text-[11px] text-copy-subtle">Your competency progress</p>
-                <div className="mt-2">
-                  <Meter value={pct} accent={t?.accent} />
+                <p className="mt-1 text-xs text-muted-foreground">Your competency progress</p>
+                <div className="mt-3">
+                  <Meter value={pct} tone="brand" />
                 </div>
               </div>
             );

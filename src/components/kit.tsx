@@ -15,16 +15,16 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={cn("glass-card rounded-2xl p-5", className)}>
+    <section className={cn("rounded-xl border border-border bg-card p-5 shadow-xs transition-colors", className)}>
       {(title || action) && (
         <header className="mb-4 flex items-start justify-between gap-3">
           <div>
             {title && (
-              <h2 className="font-display text-base font-700 tracking-tight text-foreground">
+              <h2 className="text-sm sm:text-base font-semibold tracking-tight text-foreground">
                 {title}
               </h2>
             )}
-            {subtitle && <p className="mt-1 text-xs text-copy-subtle">{subtitle}</p>}
+            {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
           </div>
           {action}
         </header>
@@ -46,10 +46,10 @@ export function PageHeader({
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
           {title}
         </h1>
-        <p className="mt-1.5 max-w-2xl text-sm text-copy-subtle">{subtitle}</p>
+        <p className="mt-1 max-w-2xl text-xs sm:text-sm text-muted-foreground">{subtitle}</p>
       </div>
       {action}
     </div>
@@ -60,32 +60,63 @@ export function Stat({
   label,
   value,
   hint,
-  accent = "var(--brand-cyan)",
+  accent,
+  tone,
 }: {
   label: string;
   value: ReactNode;
   hint?: string;
   accent?: string;
+  tone?: string;
 }) {
   return (
-    <div className="glass-card rounded-2xl p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-copy-subtle">
+    <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
+      <p className="text-xs font-medium text-muted-foreground">
         {label}
       </p>
-      <p className="mt-2 font-display text-2xl font-bold text-foreground" style={{ color: accent }}>
+      <p
+        className={cn(
+          "mt-2 text-2xl font-bold tracking-tight text-foreground",
+          tone === "cyan" && "text-sky-600 dark:text-sky-400",
+          tone === "purple" && "text-violet-600 dark:text-violet-400",
+          tone === "emerald" && "text-emerald-600 dark:text-emerald-400",
+          tone === "amber" && "text-amber-600 dark:text-amber-400",
+          tone === "rose" && "text-rose-600 dark:text-rose-400",
+        )}
+        style={accent ? { color: accent } : undefined}
+      >
         {value}
       </p>
-      {hint && <p className="mt-1 text-xs text-copy-subtle">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }
 
-export function Meter({ value, accent = "var(--brand-cyan)" }: { value: number; accent?: string }) {
+export function Meter({
+  value,
+  accent,
+  tone,
+}: {
+  value: number;
+  accent?: string;
+  tone?: string;
+}) {
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-surface-soft">
+    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
       <div
-        className="h-full rounded-full transition-all duration-500"
-        style={{ width: `${Math.min(100, Math.max(0, value))}%`, background: accent }}
+        className={cn(
+          "h-full rounded-full transition-all duration-500",
+          !accent && !tone && "bg-primary",
+          tone === "cyan" && "bg-sky-500",
+          tone === "purple" && "bg-violet-500",
+          tone === "emerald" && "bg-emerald-500",
+          tone === "amber" && "bg-amber-500",
+          tone === "rose" && "bg-rose-500",
+        )}
+        style={{
+          width: `${Math.min(100, Math.max(0, value))}%`,
+          ...(accent ? { background: accent } : {}),
+        }}
       />
     </div>
   );
@@ -105,32 +136,26 @@ export function Gauge({
   const circumference = Math.PI * radius;
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox="0 0 160 96" className="w-48">
+      <svg viewBox="0 0 160 96" className="w-44">
         <path
           d={`M 18 88 A ${radius} ${radius} 0 0 1 142 88`}
           fill="none"
-          strokeWidth="12"
-          stroke="var(--surface-soft)"
+          strokeWidth="10"
+          stroke="var(--muted)"
           strokeLinecap="round"
         />
         <path
           d={`M 18 88 A ${radius} ${radius} 0 0 1 142 88`}
           fill="none"
-          strokeWidth="12"
-          stroke="url(#gaugeGrad)"
+          strokeWidth="10"
+          stroke="var(--brand-blue)"
           strokeLinecap="round"
           strokeDasharray={`${circumference * pct} ${circumference}`}
           className="transition-all duration-700"
         />
-        <defs>
-          <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="var(--brand-cyan)" />
-            <stop offset="100%" stopColor="var(--brand-purple)" />
-          </linearGradient>
-        </defs>
       </svg>
-      <p className="-mt-6 font-display text-3xl font-bold text-foreground">{Math.round(value)}</p>
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-copy-subtle">
+      <p className="-mt-6 text-2xl font-bold tracking-tight text-foreground">{Math.round(value)}</p>
+      <p className="text-[11px] font-medium text-muted-foreground mt-0.5">
         {label}
       </p>
     </div>
@@ -145,17 +170,17 @@ export function Chip({
   tone?: "cyan" | "purple" | "emerald" | "amber" | "rose" | "muted";
 }) {
   const map: Record<string, string> = {
-    cyan: "text-brand-cyan",
-    purple: "text-brand-purple",
-    emerald: "text-brand-emerald",
-    amber: "text-brand-amber",
-    rose: "text-brand-rose",
-    muted: "text-copy-subtle",
+    cyan: "bg-blue-50 text-blue-700 border-blue-200/60 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/40",
+    purple: "bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40",
+    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40",
+    amber: "bg-amber-50 text-amber-700 border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40",
+    rose: "bg-rose-50 text-rose-700 border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/40",
+    muted: "bg-muted text-muted-foreground border-border",
   };
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-line-soft bg-surface-soft px-2.5 py-1 text-[11px] font-semibold",
+        "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium",
         map[tone],
       )}
     >
@@ -172,8 +197,8 @@ export function Console({
   empty?: string;
 }) {
   return (
-    <pre className="terminal-grid max-h-64 overflow-auto rounded-xl border border-line-soft p-4 font-mono text-[12px] leading-relaxed text-brand-cyan">
-      {lines.length === 0 ? <span className="text-copy-subtle">{empty}</span> : lines.join("\n")}
+    <pre className="terminal-grid max-h-64 overflow-auto rounded-lg border border-border bg-surface-dark p-3.5 font-mono text-[12px] leading-relaxed text-slate-200">
+      {lines.length === 0 ? <span className="text-muted-foreground">{empty}</span> : lines.join("\n")}
     </pre>
   );
 }
@@ -193,7 +218,7 @@ export function CodeEditor({
       rows={rows}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full resize-y rounded-xl border border-line-soft bg-surface-dark p-4 font-mono text-[12.5px] leading-relaxed text-brand-cyan outline-none focus:border-brand-cyan/60"
+      className="w-full resize-y rounded-lg border border-border bg-surface-dark p-3.5 font-mono text-[12.5px] leading-relaxed text-slate-100 outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20"
     />
   );
 }

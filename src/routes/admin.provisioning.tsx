@@ -161,17 +161,17 @@ function parseLogLine(raw: string) {
 }
 
 const TAG_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  ready: { bg: "bg-brand-cyan/15 border-brand-cyan/30 text-brand-cyan", text: "text-brand-cyan", label: "READY" },
-  policy: { bg: "bg-brand-purple/15 border-brand-purple/30 text-brand-purple", text: "text-copy-subtle", label: "POLICY" },
-  batch: { bg: "bg-brand-cyan/15 border-brand-cyan/30 text-brand-cyan", text: "text-foreground", label: "BATCH" },
-  provisioned: { bg: "bg-brand-emerald/15 border-brand-emerald/30 text-brand-emerald", text: "text-foreground", label: "PROVISIONED" },
-  auth: { bg: "bg-brand-purple/15 border-brand-purple/30 text-brand-purple", text: "text-brand-purple", label: "AUTH" },
-  complete: { bg: "bg-brand-emerald/20 border-brand-emerald/40 text-brand-emerald", text: "text-brand-emerald font-semibold", label: "COMPLETE" },
-  warning: { bg: "bg-brand-amber/15 border-brand-amber/30 text-brand-amber", text: "text-brand-amber", label: "WARNING" },
-  alert: { bg: "bg-brand-amber/15 border-brand-amber/30 text-brand-amber", text: "text-brand-amber", label: "ALERT" },
-  error: { bg: "bg-brand-rose/15 border-brand-rose/30 text-brand-rose", text: "text-brand-rose font-medium", label: "ERROR" },
-  cleared: { bg: "bg-brand-rose/15 border-brand-rose/30 text-brand-rose", text: "text-brand-rose", label: "CLEARED" },
-  refresh: { bg: "bg-brand-cyan/15 border-brand-cyan/30 text-brand-cyan", text: "text-copy-subtle", label: "REFRESH" },
+  ready: { bg: "bg-primary/10 border-primary/20 text-primary", text: "text-primary", label: "READY" },
+  policy: { bg: "bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400", text: "text-muted-foreground", label: "POLICY" },
+  batch: { bg: "bg-primary/10 border-primary/20 text-primary", text: "text-foreground", label: "BATCH" },
+  provisioned: { bg: "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400", text: "text-foreground", label: "PROVISIONED" },
+  auth: { bg: "bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400", text: "text-indigo-600 dark:text-indigo-400", label: "AUTH" },
+  complete: { bg: "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-400", text: "text-emerald-700 dark:text-emerald-400 font-semibold", label: "COMPLETE" },
+  warning: { bg: "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400", text: "text-amber-700 dark:text-amber-400", label: "WARNING" },
+  alert: { bg: "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400", text: "text-amber-700 dark:text-amber-400", label: "ALERT" },
+  error: { bg: "bg-destructive/10 border-destructive/20 text-destructive", text: "text-destructive font-medium", label: "ERROR" },
+  cleared: { bg: "bg-destructive/10 border-destructive/20 text-destructive", text: "text-destructive", label: "CLEARED" },
+  refresh: { bg: "bg-primary/10 border-primary/20 text-primary", text: "text-muted-foreground", label: "REFRESH" },
 };
 
 function ProvisioningPage() {
@@ -245,7 +245,6 @@ function ProvisioningPage() {
       }
     };
     reader.readAsText(file);
-    // Reset file input value to allow re-uploading same file
     e.target.value = "";
   };
 
@@ -332,7 +331,6 @@ function ProvisioningPage() {
     const seenEmails = new Set<string>();
 
     lines.slice(1).forEach((line, i) => {
-      // Split by comma respecting basic quotes
       const cells = line.split(",").map((c) => c.replace(/^["']|["']$/g, "").trim());
       const rowMap: Record<string, string> = {};
       normalizedHeaders.forEach((nh, idx) => {
@@ -359,7 +357,6 @@ function ProvisioningPage() {
       const college = rowMap["college"] || "";
       const password = rowMap["password"] || "Temp@1234";
 
-      // Track course assignments: strict validation, never default missing course to mern
       const c1Val = normalizeCourse(rowMap["course_1"]);
       if (!c1Val.ok) {
         out.push(`[error] Row ${i + 2}: course_1 has invalid course code "${rowMap["course_1"]}" for "${email}"`);
@@ -380,7 +377,6 @@ function ProvisioningPage() {
       let c2 = c2Val.trackId || "";
       let c3 = c3Val.trackId || "";
 
-      // Ensure de-duplicated tracks per student
       if (c2 && c2 === c1) c2 = "";
       if (c3 && (c3 === c1 || c3 === c2)) c3 = "";
 
@@ -391,7 +387,6 @@ function ProvisioningPage() {
         return;
       }
 
-      // Track batch sizes
       if (batchId) {
         batchCounts[batchId] = (batchCounts[batchId] || 0) + 1;
       }
@@ -416,7 +411,6 @@ function ProvisioningPage() {
       out.push(`[provisioned] ${studentName} (${rollNo}) → ${displayBatch} [${coursesStr}]`);
     });
 
-    // Check batch sizing rule: 100-300 students per batch
     Object.entries(batchCounts).forEach(([bid, count]) => {
       if (count > 300) {
         out.push(
@@ -742,7 +736,7 @@ function ProvisioningPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Stage 0: Bulk CSV Provisioning & Institutional Onboarding"
         subtitle="Onboard college cohorts (100–300 learners) from CSV with validation, track assignment, and instant student portal logins."
@@ -750,7 +744,7 @@ function ProvisioningPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setIsSingleAddModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-brand-purple/40 bg-brand-purple/10 px-3 py-1.5 text-xs font-semibold text-brand-purple hover:bg-brand-purple/20 transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
             >
               <Plus className="size-3.5" />
               <span>+ Add Single Learner</span>
@@ -760,12 +754,12 @@ function ProvisioningPage() {
                 setResetTargetStudent(null);
                 setIsResetModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-line-soft bg-surface-elevated px-3 py-1.5 text-xs font-semibold text-foreground hover:border-brand-purple/60 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
             >
-              <KeyRound className="size-3.5 text-brand-purple" />
+              <KeyRound className="size-3.5 text-primary" />
               <span>Reset Learner Password</span>
             </button>
-            <Chip tone="purple">{provisionedList.length} accounts created</Chip>
+            <Chip tone="purple">{provisionedList.length} accounts</Chip>
           </div>
         }
       />
@@ -774,29 +768,30 @@ function ProvisioningPage() {
         <Stat
           label="Total Provisioned"
           value={provisionedList.length}
+          tone="brand"
           hint="Active portal logins"
         />
         <Stat
           label="Required CSV Headers"
           value="10 Columns"
-          accent="var(--brand-purple)"
+          tone="purple"
           hint="Flexible schema normalizer"
         />
         <Stat
           label="Active Batches"
           value={batchesList.length}
-          accent="var(--brand-emerald)"
+          tone="emerald"
           hint="100–300 learners/cohort"
         />
         <Stat
           label="Pre-assigned Tracks"
           value="15 Available"
-          accent="var(--brand-amber)"
+          tone="amber"
           hint="Max 3 per learner"
         />
       </div>
 
-      {/* CSV Input & Log Section — Symmetrical IDE Workbench */}
+      {/* CSV Input & Log Section */}
       <div className="grid gap-5 lg:grid-cols-2 items-stretch">
         {/* Left: CSV Editor Panel */}
         <Panel
@@ -808,25 +803,25 @@ function ProvisioningPage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-xs font-semibold text-foreground hover:border-brand-purple/50 hover:bg-brand-purple/10 hover:text-brand-purple transition-all"
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-all shadow-xs"
                 title="Upload CSV from computer"
               >
-                <Upload className="size-3.5" />
+                <Upload className="size-3.5 text-primary" />
                 <span>Upload</span>
               </button>
               <button
                 type="button"
                 onClick={downloadTemplate}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-xs font-semibold text-foreground hover:border-brand-cyan/50 hover:bg-brand-cyan/10 hover:text-brand-cyan transition-all"
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-all shadow-xs"
                 title="Download standard 10-column CSV template"
               >
-                <Download className="size-3.5" />
+                <Download className="size-3.5 text-primary" />
                 <span>Template</span>
               </button>
               <button
                 type="button"
                 onClick={resetToTemplate}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-xs font-semibold text-copy-subtle hover:text-foreground hover:bg-surface-elevated transition-all"
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-all shadow-xs"
                 title="Reset textarea to default template"
               >
                 <RefreshCw className="size-3.5" />
@@ -851,26 +846,26 @@ function ProvisioningPage() {
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
             className={cn(
-              "relative flex flex-col flex-1 rounded-xl border transition-colors overflow-hidden",
+              "relative flex flex-col flex-1 rounded-lg border transition-colors overflow-hidden bg-muted/20",
               isDragging
-                ? "border-brand-cyan bg-brand-cyan/10 shadow-lg shadow-brand-cyan/10"
-                : "border-line-soft bg-surface-dark",
+                ? "border-primary bg-primary/5 ring-1 ring-primary"
+                : "border-border",
             )}
           >
             {/* Terminal Window Header Bar */}
-            <div className="flex items-center justify-between border-b border-line-soft bg-surface-elevated/70 px-3.5 py-2 text-xs">
+            <div className="flex items-center justify-between border-b border-border bg-muted/50 px-3.5 py-2 text-xs">
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full bg-brand-rose/80" />
-                  <span className="size-2.5 rounded-full bg-brand-amber/80" />
-                  <span className="size-2.5 rounded-full bg-brand-emerald/80" />
+                  <span className="size-2 rounded-full bg-rose-500/70" />
+                  <span className="size-2 rounded-full bg-amber-500/70" />
+                  <span className="size-2 rounded-full bg-emerald-500/70" />
                 </div>
-                <span className="font-mono text-[11px] font-medium text-copy-subtle ml-1">
+                <span className="font-mono text-[11px] font-medium text-muted-foreground ml-1">
                   student-provisioning.csv
                 </span>
               </div>
-              <div className="flex items-center gap-2 font-mono text-[10px] text-copy-subtle">
-                <span className="rounded bg-surface-soft px-1.5 py-0.5 font-semibold text-brand-purple">
+              <div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+                <span className="rounded bg-muted px-1.5 py-0.5 font-semibold text-primary border border-border">
                   10 Columns
                 </span>
                 <span>
@@ -886,26 +881,26 @@ function ProvisioningPage() {
               onChange={(e) => setCsv(e.target.value)}
               wrap="off"
               placeholder="Paste comma-separated student rows here or drag & drop a .csv file…"
-              className="h-[360px] flex-1 w-full resize-none bg-transparent p-3.5 font-mono text-[11.5px] leading-relaxed text-foreground outline-none whitespace-pre overflow-x-auto overflow-y-auto selection:bg-brand-cyan/20"
+              className="h-[340px] flex-1 w-full resize-none bg-transparent p-3.5 font-mono text-xs leading-relaxed text-foreground outline-none whitespace-pre overflow-x-auto overflow-y-auto"
             />
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-1">
+          <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 pt-1">
             <div className="flex items-center gap-2">
               <button
                 onClick={processCsv}
                 disabled={isProcessing || !csv.trim()}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple px-4 py-2.5 text-xs font-bold text-surface-dark shadow-md hover:opacity-95 transition-opacity disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-opacity disabled:opacity-50"
               >
                 {isProcessing ? (
-                  <RefreshCw className="size-4 animate-spin" />
+                  <RefreshCw className="size-3.5 animate-spin" />
                 ) : (
-                  <Upload className="size-4" />
+                  <Upload className="size-3.5" />
                 )}
                 <span>{isProcessing ? "Processing Rows…" : "Run Provisioning & Issue Logins"}</span>
               </button>
-              <span className="text-[11px] font-mono text-copy-subtle hidden sm:inline">
-                {csvRowCount > 0 ? `${csvRowCount} student records ready` : "No rows"}
+              <span className="text-[11px] font-mono text-muted-foreground hidden sm:inline">
+                {csvRowCount > 0 ? `${csvRowCount} records ready` : "No rows"}
               </span>
             </div>
 
@@ -913,9 +908,9 @@ function ProvisioningPage() {
               {provisionedList.length > 0 && (
                 <button
                   onClick={exportProvisioned}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-semibold text-foreground hover:border-brand-cyan/60 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
                 >
-                  <Download className="size-3.5" />
+                  <Download className="size-3.5 text-primary" />
                   <span>Export CSV</span>
                 </button>
               )}
@@ -923,11 +918,11 @@ function ProvisioningPage() {
                 type="button"
                 onClick={handleClearCsvText}
                 disabled={!csv}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-3 py-2 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
                 title="Clear student-provisioning.csv text"
               >
                 <Trash2 className="size-3.5" />
-                <span>Clear All</span>
+                <span>Clear Editor</span>
               </button>
             </div>
           </div>
@@ -940,23 +935,23 @@ function ProvisioningPage() {
           subtitle="Real-time validation, track assignments, and batch capacity audits"
           action={
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-0.5 text-[11px] font-semibold text-brand-cyan">
-                <span className="size-1.5 rounded-full bg-brand-cyan animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                <span className="size-1.5 rounded-full bg-primary animate-pulse" />
                 <span>Live Console</span>
               </span>
               <button
                 type="button"
                 onClick={handleCopyLog}
                 disabled={log.length === 0}
-                className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-soft px-2.5 py-1 text-xs font-semibold text-copy-subtle hover:text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
                 title="Copy console logs to clipboard"
               >
                 {isLogCopied ? (
-                  <Check className="size-3.5 text-brand-emerald" />
+                  <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                 ) : (
                   <Copy className="size-3.5" />
                 )}
-                <span>{isLogCopied ? "Copied" : "Copy Log"}</span>
+                <span>{isLogCopied ? "Copied" : "Copy"}</span>
               </button>
               <button
                 type="button"
@@ -965,30 +960,30 @@ function ProvisioningPage() {
                   toast.info("Cleared console logs");
                 }}
                 disabled={log.length === 0}
-                className="inline-flex items-center gap-1 rounded-lg border border-brand-rose/30 bg-brand-rose/10 px-2.5 py-1 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
                 title="Clear console output"
               >
                 <Trash2 className="size-3.5" />
-                <span>Clear Console</span>
+                <span>Clear</span>
               </button>
             </div>
           }
         >
-          <div className="relative flex flex-col flex-1 rounded-xl border border-line-soft bg-surface-dark overflow-hidden">
+          <div className="relative flex flex-col flex-1 rounded-lg border border-border bg-muted/20 overflow-hidden">
             {/* Terminal Window Header Bar */}
-            <div className="flex items-center justify-between border-b border-line-soft bg-surface-elevated/70 px-3.5 py-2 text-xs">
+            <div className="flex items-center justify-between border-b border-border bg-muted/50 px-3.5 py-2 text-xs">
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full bg-brand-rose/80" />
-                  <span className="size-2.5 rounded-full bg-brand-amber/80" />
-                  <span className="size-2.5 rounded-full bg-brand-emerald/80" />
+                  <span className="size-2 rounded-full bg-rose-500/70" />
+                  <span className="size-2 rounded-full bg-amber-500/70" />
+                  <span className="size-2 rounded-full bg-emerald-500/70" />
                 </div>
-                <span className="font-mono text-[11px] font-medium text-copy-subtle ml-1">
+                <span className="font-mono text-[11px] font-medium text-muted-foreground ml-1">
                   provisioning-audit.log
                 </span>
               </div>
-              <div className="flex items-center gap-2 font-mono text-[10px] text-copy-subtle">
-                <span className="rounded bg-surface-soft px-1.5 py-0.5 font-semibold text-brand-cyan">
+              <div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+                <span className="rounded bg-muted px-1.5 py-0.5 font-semibold text-primary border border-border">
                   Live Stdout
                 </span>
                 <span>
@@ -998,15 +993,15 @@ function ProvisioningPage() {
             </div>
 
             {/* Terminal Body */}
-            <div className="h-[360px] flex-1 overflow-y-auto overflow-x-auto p-3.5 font-mono text-[11.5px] leading-relaxed space-y-1.5 bg-brand-ink/40">
+            <div className="h-[340px] flex-1 overflow-y-auto overflow-x-auto p-3.5 font-mono text-xs leading-relaxed space-y-1.5">
               {log.length === 0 ? (
                 <div className="grid h-full place-items-center text-center p-6">
                   <div>
-                    <div className="mx-auto mb-2 grid size-10 place-items-center rounded-xl bg-surface-soft text-copy-subtle">
+                    <div className="mx-auto mb-2 grid size-10 place-items-center rounded-lg bg-card border border-border text-muted-foreground">
                       <Terminal className="size-5" />
                     </div>
                     <p className="text-xs font-semibold text-foreground">Console Ready</p>
-                    <p className="mt-1 max-w-xs text-[11px] text-copy-subtle">
+                    <p className="mt-1 max-w-xs text-xs text-muted-foreground">
                       Awaiting provisioning execution. Paste or upload CSV on the left and click
                       &quot;Run Provisioning & Issue Logins&quot; to inspect line-by-line validation,
                       track mappings, and batch audits.
@@ -1021,16 +1016,16 @@ function ProvisioningPage() {
                   return (
                     <div
                       key={idx}
-                      className="flex items-start gap-2 group hover:bg-surface-soft/40 px-1.5 py-0.5 rounded transition-colors"
+                      className="flex items-start gap-2 group hover:bg-muted/40 px-1.5 py-0.5 rounded transition-colors"
                     >
-                      <span className="select-none text-[10px] text-copy-subtle/50 font-mono w-5 text-right flex-shrink-0 pt-0.5">
+                      <span className="select-none text-[10px] text-muted-foreground/60 font-mono w-5 text-right shrink-0 pt-0.5">
                         {idx + 1}
                       </span>
                       {style ? (
                         <div className="flex items-baseline gap-2 flex-wrap min-w-0">
                           <span
                             className={cn(
-                              "inline-flex items-center rounded border px-1.5 py-0.2 text-[9.5px] font-bold uppercase tracking-wider flex-shrink-0",
+                              "inline-flex items-center rounded border px-1.5 py-0.2 text-[9.5px] font-bold uppercase tracking-wider shrink-0",
                               style.bg,
                             )}
                           >
@@ -1039,7 +1034,7 @@ function ProvisioningPage() {
                           <span className={cn("break-all", style.text)}>{text}</span>
                         </div>
                       ) : (
-                        <span className="text-brand-cyan/90 break-all pl-1">{line}</span>
+                        <span className="text-foreground break-all pl-1">{line}</span>
                       )}
                     </div>
                   );
@@ -1049,15 +1044,15 @@ function ProvisioningPage() {
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-1">
-            <div className="flex items-center gap-2 text-xs text-copy-subtle">
-              <span className="size-2 rounded-full bg-brand-emerald animate-pulse" />
+          <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="font-mono text-[11px]">Audit Engine Active</span>
-              <span className="text-line-soft">•</span>
-              <span className="font-mono text-[11px] text-copy-subtle">0–1000 TS Gates</span>
+              <span>•</span>
+              <span className="font-mono text-[11px]">0–1000 TS Gates</span>
             </div>
 
-            <div className="flex items-center gap-2 font-mono text-[11px] text-copy-subtle">
+            <div className="flex items-center gap-2 font-mono text-[11px]">
               <span>{log.length} {log.length === 1 ? "event recorded" : "events recorded"}</span>
             </div>
           </div>
@@ -1069,18 +1064,18 @@ function ProvisioningPage() {
         title="15 Specialized Technical Course Tracks Reference"
         subtitle="Valid course codes for CSV columns (course_1, course_2, course_3). Map up to 3 per student."
       >
-        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5 text-xs">
+        <div className="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-5 text-xs">
           {TRACKS.map((t) => (
             <div
               key={t.id}
-              className="rounded-xl border border-line-soft bg-surface-soft p-2.5 hover:border-line-soft/80 transition-colors"
+              className="rounded-lg border border-border bg-card p-3 shadow-xs hover:border-primary/40 transition-colors"
             >
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-mono text-xs font-bold text-brand-cyan">{t.id}</span>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-mono text-xs font-bold text-primary">{t.id}</span>
                 <span className="size-2 rounded-full" style={{ backgroundColor: t.accent }} />
               </div>
               <p className="font-semibold text-foreground truncate">{t.name}</p>
-              <p className="text-[10px] text-copy-subtle truncate mt-0.5">{t.tagline}</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">{t.tagline}</p>
             </div>
           ))}
         </div>
@@ -1102,11 +1097,11 @@ function ProvisioningPage() {
                   setClearMode(isFiltered ? "filtered" : "all");
                   setIsClearAllModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1 rounded-xl border border-brand-rose/40 bg-brand-rose/10 px-2.5 py-1 text-xs font-semibold text-brand-rose hover:bg-brand-rose/20 transition-colors"
+                className="inline-flex items-center gap-1 rounded-lg border border-destructive/40 bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors shadow-xs"
                 title="Delete provisioned student accounts from database"
               >
-                <Trash2 className="size-3" />
-                <span>Delete All Accounts</span>
+                <Trash2 className="size-3.5" />
+                <span>Delete All</span>
               </button>
             </div>
           }
@@ -1114,13 +1109,13 @@ function ProvisioningPage() {
           {/* Table Search & Filter Bar */}
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-2.5 size-3.5 text-copy-subtle" />
+              <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search name, email, roll no, college, batch…"
-                className="w-full rounded-xl border border-line-soft bg-surface-soft pl-9 pr-3 py-2 text-xs text-foreground outline-none focus:border-brand-cyan/60"
+                className="w-full rounded-lg border border-border bg-card pl-9 pr-3 py-1.5 text-xs text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
               />
             </div>
 
@@ -1128,7 +1123,7 @@ function ProvisioningPage() {
               <select
                 value={selectedBatchFilter}
                 onChange={(e) => setSelectedBatchFilter(e.target.value)}
-                className="rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-brand-cyan/60"
+                className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
               >
                 <option value="all">All Batches ({batchesList.length})</option>
                 {batchesList.map((b) => (
@@ -1141,7 +1136,7 @@ function ProvisioningPage() {
               <select
                 value={selectedTrackFilter}
                 onChange={(e) => setSelectedTrackFilter(e.target.value)}
-                className="rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-brand-cyan/60"
+                className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
               >
                 <option value="all">All Tracks (15)</option>
                 {TRACKS.map((t) => (
@@ -1159,7 +1154,7 @@ function ProvisioningPage() {
                     setSelectedBatchFilter("all");
                     setSelectedTrackFilter("all");
                   }}
-                  className="rounded-xl border border-line-soft bg-surface-dark px-2.5 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground"
+                  className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground shadow-xs"
                 >
                   Clear Filters
                 </button>
@@ -1167,44 +1162,44 @@ function ProvisioningPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-left text-xs">
-              <thead className="text-copy-subtle border-b border-line-soft">
+              <thead className="text-muted-foreground bg-muted/40 border-b border-border">
                 <tr>
-                  <th className="py-2.5 pr-4 font-semibold">Learner Name</th>
-                  <th className="py-2.5 pr-4 font-semibold">Email</th>
-                  <th className="py-2.5 pr-4 font-semibold">Roll No & Dept</th>
-                  <th className="py-2.5 pr-4 font-semibold">Institution / College</th>
-                  <th className="py-2.5 pr-4 font-semibold">Batch Cohort</th>
-                  <th className="py-2.5 pr-4 font-semibold">Assigned Tracks</th>
-                  <th className="py-2.5 font-semibold text-right">Credentials & Actions</th>
+                  <th className="py-2.5 px-3.5 font-semibold">Learner Name</th>
+                  <th className="py-2.5 px-3.5 font-semibold">Email</th>
+                  <th className="py-2.5 px-3.5 font-semibold">Roll No & Dept</th>
+                  <th className="py-2.5 px-3.5 font-semibold">Institution</th>
+                  <th className="py-2.5 px-3.5 font-semibold">Batch Cohort</th>
+                  <th className="py-2.5 px-3.5 font-semibold">Assigned Tracks</th>
+                  <th className="py-2.5 px-3.5 font-semibold text-right">Credentials & Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line-soft/60 text-foreground">
+              <tbody className="divide-y divide-border text-foreground">
                 {filteredProvisioned.slice(0, 50).map((p, idx) => (
                   <tr
                     key={`${p.email}-${idx}`}
-                    className="hover:bg-surface-soft/60 transition-colors"
+                    className="hover:bg-muted/30 transition-colors"
                   >
-                    <td className="py-2.5 pr-4">
-                      <p className="font-bold text-foreground">{p.student_name}</p>
-                      <span className="inline-flex items-center gap-1 text-[10px] text-brand-emerald">
-                        <CheckCircle2 className="size-2.5" /> Active & Login Ready
+                    <td className="py-2.5 px-3.5">
+                      <p className="font-semibold text-foreground">{p.student_name}</p>
+                      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        <CheckCircle2 className="size-2.5" /> Login Ready
                       </span>
                     </td>
-                    <td className="py-2.5 pr-4 font-mono text-copy-subtle">{p.email}</td>
-                    <td className="py-2.5 pr-4">
+                    <td className="py-2.5 px-3.5 font-mono text-muted-foreground">{p.email}</td>
+                    <td className="py-2.5 px-3.5">
                       <span className="font-mono">{p.roll_no}</span> · {p.dept}
                     </td>
-                    <td className="py-2.5 pr-4 text-copy-subtle">{p.college || "—"}</td>
-                    <td className="py-2.5 pr-4">
-                      <span className="rounded bg-surface-soft border border-line-soft px-2 py-0.5 text-[11px] text-brand-purple font-semibold">
+                    <td className="py-2.5 px-3.5 text-muted-foreground">{p.college || "—"}</td>
+                    <td className="py-2.5 px-3.5">
+                      <span className="rounded bg-muted border border-border px-2 py-0.5 text-[11px] text-foreground font-medium">
                         {p.batch_id
                           ? batchNameById.get(p.batch_id) || "Unknown Batch"
                           : "Not Assigned"}
                       </span>
                     </td>
-                    <td className="py-2.5 pr-4">
+                    <td className="py-2.5 px-3.5">
                       <div className="flex flex-wrap gap-1">
                         {Array.from(new Set([p.course_1, p.course_2, p.course_3].filter(Boolean)))
                           .length > 0 ? (
@@ -1213,27 +1208,27 @@ function ProvisioningPage() {
                           ).map((c, cIdx) => (
                             <span
                               key={`${p.email}-${c}-${cIdx}`}
-                              className="rounded bg-surface-dark border border-line-soft px-1.5 py-0.5 text-[10px] font-mono text-foreground"
+                              className="rounded bg-muted/40 border border-border px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground"
                             >
                               {trackById(c as TrackId).short || c}
                             </span>
                           ))
                         ) : (
-                          <span className="text-[10px] text-copy-subtle italic">Not Assigned</span>
+                          <span className="text-[10px] text-muted-foreground italic">Not Assigned</span>
                         )}
                       </div>
                     </td>
-                    <td className="py-2.5 text-right font-mono">
+                    <td className="py-2.5 px-3.5 text-right font-mono">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => copyCredentials(p.email, p.password)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-dark px-2 py-1 text-[11px] font-semibold text-copy-subtle hover:text-brand-cyan hover:border-brand-cyan/60 transition-colors"
+                          className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
                           title="Copy login email and password"
                         >
                           {copiedEmail === p.email ? (
                             <>
-                              <Check className="size-3 text-brand-emerald" />
-                              <span className="text-brand-emerald">Copied</span>
+                              <Check className="size-3 text-emerald-600 dark:text-emerald-400" />
+                              <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
                             </>
                           ) : (
                             <>
@@ -1256,11 +1251,11 @@ function ProvisioningPage() {
                             });
                             setIsResetModalOpen(true);
                           }}
-                          className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-dark px-2 py-1 text-[11px] font-semibold text-copy-subtle hover:text-brand-purple hover:border-brand-purple/60 transition-colors"
+                          className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
                           title="Reset Student Password"
                         >
-                          <KeyRound className="size-3" />
-                          <span>Reset</span>
+                          <KeyRound className="size-3 text-primary" />
+                          <span>Pass</span>
                         </button>
                         <button
                           onClick={() => {
@@ -1271,7 +1266,7 @@ function ProvisioningPage() {
                               batchId: p.batch_id,
                             });
                           }}
-                          className="inline-flex items-center gap-1 rounded-lg border border-line-soft bg-surface-dark px-2 py-1 text-[11px] font-semibold text-copy-subtle hover:text-brand-rose hover:border-brand-rose/60 hover:bg-brand-rose/10 transition-colors"
+                          className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shadow-xs"
                           title="Delete Student from System"
                         >
                           <Trash2 className="size-3" />
@@ -1289,18 +1284,18 @@ function ProvisioningPage() {
 
       {/* Single Add Student Modal */}
       {isSingleAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md overflow-y-auto">
-          <div className="w-full max-w-lg rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 my-8">
-            <div className="flex items-center justify-between border-b border-line-soft pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="grid size-9 place-items-center rounded-xl bg-brand-purple/15 text-brand-purple border border-brand-purple/30">
+                <div className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary border border-primary/20">
                   <Plus className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-display text-base font-bold text-foreground">
+                  <h3 className="text-base font-semibold text-foreground">
                     Add Single Learner
                   </h3>
-                  <p className="text-[11px] text-copy-subtle">
+                  <p className="text-xs text-muted-foreground">
                     Creates instant portal credentials, cohort sync, and technical track assignment.
                   </p>
                 </div>
@@ -1308,9 +1303,9 @@ function ProvisioningPage() {
               <button
                 type="button"
                 onClick={() => setIsSingleAddModalOpen(false)}
-                className="text-copy-subtle hover:text-foreground text-sm"
+                className="text-muted-foreground hover:text-foreground p-1"
               >
-                ✕
+                <X className="size-5" />
               </button>
             </div>
 
@@ -1318,7 +1313,7 @@ function ProvisioningPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-foreground mb-1">
-                    Student Full Name <span className="text-brand-rose">*</span>
+                    Student Full Name <span className="text-destructive">*</span>
                   </label>
                   <input
                     type="text"
@@ -1326,12 +1321,12 @@ function ProvisioningPage() {
                     value={singleName}
                     onChange={(e) => setSingleName(e.target.value)}
                     placeholder="e.g. Arun Kumar"
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   />
                 </div>
                 <div>
                   <label className="block font-semibold text-foreground mb-1">
-                    Student Login Email <span className="text-brand-rose">*</span>
+                    Student Login Email <span className="text-destructive">*</span>
                   </label>
                   <input
                     type="email"
@@ -1339,7 +1334,7 @@ function ProvisioningPage() {
                     value={singleEmail}
                     onChange={(e) => setSingleEmail(e.target.value)}
                     placeholder="e.g. arun@college.edu"
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60 font-mono"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs font-mono"
                   />
                 </div>
               </div>
@@ -1347,7 +1342,7 @@ function ProvisioningPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-foreground mb-1">
-                    Login Password <span className="text-brand-rose">*</span>
+                    Login Password <span className="text-destructive">*</span>
                   </label>
                   <input
                     type="text"
@@ -1355,9 +1350,9 @@ function ProvisioningPage() {
                     value={singlePassword}
                     onChange={(e) => setSinglePassword(e.target.value)}
                     placeholder="Temp@1234"
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60 font-mono"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs font-mono"
                   />
-                  <span className="text-[10px] text-copy-subtle mt-0.5 block">
+                  <span className="text-[11px] text-muted-foreground mt-0.5 block">
                     Learner uses this password to log in
                   </span>
                 </div>
@@ -1370,7 +1365,7 @@ function ProvisioningPage() {
                     value={singleRollNo}
                     onChange={(e) => setSingleRollNo(e.target.value)}
                     placeholder="e.g. 22CS099"
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60 font-mono"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs font-mono"
                   />
                 </div>
               </div>
@@ -1381,7 +1376,7 @@ function ProvisioningPage() {
                   <select
                     value={singleDept}
                     onChange={(e) => setSingleDept(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   >
                     <option value="CSE">CSE (Computer Science)</option>
                     <option value="IT">IT (Information Technology)</option>
@@ -1393,12 +1388,12 @@ function ProvisioningPage() {
                 </div>
                 <div>
                   <label className="block font-semibold text-foreground mb-1">
-                    Placement Accelerator Cohort <span className="text-brand-rose">*</span>
+                    Placement Accelerator Cohort <span className="text-destructive">*</span>
                   </label>
                   <select
                     value={singleBatchId || (batchesList[0]?.id ?? "")}
                     onChange={(e) => setSingleBatchId(e.target.value)}
-                    className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   >
                     {batchesList.map((b) => (
                       <option key={b.id} value={b.id}>
@@ -1418,7 +1413,7 @@ function ProvisioningPage() {
                   value={singleCollege}
                   onChange={(e) => setSingleCollege(e.target.value)}
                   placeholder="e.g. PSG College of Technology"
-                  className="w-full rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-xs text-foreground outline-none focus:border-brand-purple/60"
+                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                 />
               </div>
 
@@ -1428,9 +1423,9 @@ function ProvisioningPage() {
                   <label className="font-semibold text-foreground">
                     Assign Technical Learning Tracks ({singleTracks.length}/3 selected)
                   </label>
-                  <span className="text-[10px] text-copy-subtle">Choose 1 to 3 tracks</span>
+                  <span className="text-[11px] text-muted-foreground">Choose 1 to 3 tracks</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-40 overflow-y-auto p-1.5 rounded-xl border border-line-soft bg-surface-soft">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-40 overflow-y-auto p-2 rounded-xl border border-border bg-muted/20">
                   {TRACKS.map((track) => {
                     const isSelected = singleTracks.includes(track.id);
                     return (
@@ -1439,14 +1434,14 @@ function ProvisioningPage() {
                         key={track.id}
                         onClick={() => toggleSingleTrack(track.id)}
                         className={cn(
-                          "flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-left text-[11px] transition-all",
+                          "flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs transition-all shadow-xs",
                           isSelected
-                            ? "border-brand-purple bg-brand-purple/20 text-foreground font-semibold shadow-sm"
-                            : "border-line-soft bg-surface-dark/60 text-copy-subtle hover:border-line-soft/80 hover:text-foreground",
+                            ? "border-primary bg-primary/10 text-primary font-semibold"
+                            : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-border/80",
                         )}
                       >
                         <span
-                          className="size-2 rounded-full"
+                          className="size-2 rounded-full shrink-0"
                           style={{ backgroundColor: track.accent }}
                         />
                         <span className="truncate">{track.name}</span>
@@ -1456,22 +1451,22 @@ function ProvisioningPage() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-brand-emerald/30 bg-brand-emerald/10 p-2.5 text-[11px] text-brand-emerald flex items-center gap-2">
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-2.5">
                 <CheckCircle2 className="size-4 shrink-0" />
                 <span>Immediate login is activated at /login with provided credentials.</span>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setIsSingleAddModalOpen(false)}
-                  className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground transition-colors"
+                  className="rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-purple to-brand-cyan px-4 py-2 text-xs font-bold text-surface-dark hover:opacity-95 shadow-lg shadow-brand-purple/20 transition-opacity"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
                 >
                   <Plus className="size-3.5" />
                   <span>Provision Learner</span>
@@ -1494,40 +1489,40 @@ function ProvisioningPage() {
 
       {/* Delete Confirmation Modal */}
       {deleteTargetStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md">
-          <div className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 border-b border-line-soft pb-3">
-              <div className="grid size-10 place-items-center rounded-xl bg-brand-rose/15 text-brand-rose border border-brand-rose/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 border-b border-border pb-3">
+              <div className="grid size-10 place-items-center rounded-lg bg-destructive/10 text-destructive border border-destructive/20">
                 <AlertTriangle className="size-5" />
               </div>
               <div>
-                <h3 className="font-display text-base font-bold text-foreground">
+                <h3 className="text-base font-semibold text-foreground">
                   Remove Provisioned Learner?
                 </h3>
-                <p className="text-xs text-copy-subtle">
+                <p className="text-xs text-muted-foreground">
                   This action permanently deletes the student account
                 </p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-2 text-xs">
+            <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Student Name:</span>
-                <span className="font-bold text-foreground">{deleteTargetStudent.name}</span>
+                <span className="text-muted-foreground font-medium">Student Name:</span>
+                <span className="font-semibold text-foreground">{deleteTargetStudent.name}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Email Address:</span>
-                <span className="font-mono text-copy-subtle">{deleteTargetStudent.email}</span>
+                <span className="text-muted-foreground font-medium">Email Address:</span>
+                <span className="font-mono text-muted-foreground">{deleteTargetStudent.email}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Roll Number:</span>
+                <span className="text-muted-foreground font-medium">Roll Number:</span>
                 <span className="font-mono font-semibold text-foreground">
                   {deleteTargetStudent.rollNo}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-copy-subtle font-medium">Cohort Batch:</span>
-                <span className="font-bold text-brand-purple">
+                <span className="text-muted-foreground font-medium">Cohort Batch:</span>
+                <span className="font-semibold text-foreground">
                   {deleteTargetStudent.batchId
                     ? batchNameById.get(deleteTargetStudent.batchId) || "Unknown Batch"
                     : "Not Assigned"}
@@ -1535,16 +1530,16 @@ function ProvisioningPage() {
               </div>
             </div>
 
-            <p className="text-xs text-copy-subtle leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               Removing this student will permanently revoke credentials, update cohort batch
               headcount, and record the removal in the audit trail.
             </p>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
               <button
                 type="button"
                 onClick={() => setDeleteTargetStudent(null)}
-                className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground hover:bg-surface-elevated transition-colors"
+                className="rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
               >
                 Cancel
               </button>
@@ -1565,7 +1560,7 @@ function ProvisioningPage() {
                     toast.error(res.error || "Failed to delete student from Supabase");
                   }
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 transition-colors shadow-xs"
               >
                 <Trash2 className="size-3.5" />
                 <span>Confirm Delete</span>
@@ -1577,37 +1572,37 @@ function ProvisioningPage() {
 
       {/* Clear All Provisioned Confirmation Modal */}
       {isClearAllModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-ink/75 backdrop-blur-md">
-          <div className="w-full max-w-md rounded-2xl border border-line-soft bg-surface-elevated p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-line-soft pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-3">
-                <div className="grid size-10 place-items-center rounded-xl bg-brand-rose/15 text-brand-rose border border-brand-rose/30">
+                <div className="grid size-10 place-items-center rounded-lg bg-destructive/10 text-destructive border border-destructive/20">
                   <AlertTriangle className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-display text-base font-bold text-foreground">
+                  <h3 className="text-base font-semibold text-foreground">
                     Clear Provisioned Accounts
                   </h3>
-                  <p className="text-xs text-copy-subtle">Irreversible Account Removal</p>
+                  <p className="text-xs text-muted-foreground">Irreversible Account Removal</p>
                 </div>
               </div>
               <button
                 type="button"
                 disabled={isClearingAll}
                 onClick={() => setIsClearAllModalOpen(false)}
-                className="rounded-lg p-1.5 text-copy-subtle hover:bg-surface-soft hover:text-foreground transition-colors disabled:opacity-50"
+                className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
               >
-                <X className="size-4" />
+                <X className="size-5" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs text-copy-subtle">
+            <div className="space-y-3 text-xs text-muted-foreground">
               <p className="leading-relaxed">
                 You are about to remove student accounts from the active directory. Their credentials will be deactivated and batch headcounts updated.
               </p>
 
               {isFiltered ? (
-                <div className="space-y-2 rounded-xl border border-line-soft bg-surface-soft p-3">
+                <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-3.5">
                   <div className="font-semibold text-foreground">Select removal scope:</div>
                   <label className="flex items-center gap-2.5 cursor-pointer">
                     <input
@@ -1615,11 +1610,11 @@ function ProvisioningPage() {
                       name="clearScope"
                       checked={clearMode === "filtered"}
                       onChange={() => setClearMode("filtered")}
-                      className="accent-brand-rose"
+                      className="accent-destructive"
                       disabled={isClearingAll}
                     />
                     <span className="text-foreground font-medium">
-                      Filtered learners only (<span className="text-brand-rose font-bold">{filteredProvisioned.length}</span> students)
+                      Filtered learners only (<span className="text-destructive font-bold">{filteredProvisioned.length}</span> students)
                     </span>
                   </label>
                   <label className="flex items-center gap-2.5 cursor-pointer">
@@ -1628,40 +1623,40 @@ function ProvisioningPage() {
                       name="clearScope"
                       checked={clearMode === "all"}
                       onChange={() => setClearMode("all")}
-                      className="accent-brand-rose"
+                      className="accent-destructive"
                       disabled={isClearingAll}
                     />
                     <span>
-                      All active provisioned learners (<span className="font-semibold">{provisionedList.length}</span> total)
+                      All active provisioned learners (<span className="font-semibold text-foreground">{provisionedList.length}</span> total)
                     </span>
                   </label>
                 </div>
               ) : (
-                <div className="rounded-xl border border-brand-rose/20 bg-brand-rose/5 p-3 flex items-center justify-between">
+                <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 flex items-center justify-between">
                   <span className="font-medium text-foreground">Total Accounts to Remove:</span>
-                  <span className="font-mono text-sm font-bold text-brand-rose">
+                  <span className="font-mono text-sm font-bold text-destructive">
                     {provisionedList.length} Learners
                   </span>
                 </div>
               )}
 
-              <div className="rounded-xl border border-line-soft bg-surface-soft/60 p-3 space-y-1">
+              <div className="rounded-xl border border-border bg-card p-3.5 space-y-1 shadow-xs">
                 <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                  <ShieldCheck className="size-3.5 text-brand-cyan" />
+                  <ShieldCheck className="size-4 text-primary" />
                   <span>Audit & System Safety</span>
                 </div>
-                <p className="text-[11px] leading-normal text-copy-subtle">
+                <p className="text-[11px] leading-normal text-muted-foreground">
                   Student profiles are soft-deleted to maintain foreign-key consistency and audit trails. Cohort enrollments and executive analytics will recalculate immediately.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-soft">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
               <button
                 type="button"
                 disabled={isClearingAll}
                 onClick={() => setIsClearAllModalOpen(false)}
-                className="rounded-xl border border-line-soft bg-surface-soft px-4 py-2 text-xs font-semibold text-copy-subtle hover:text-foreground hover:bg-surface-elevated transition-colors disabled:opacity-50"
+                className="rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1669,7 +1664,7 @@ function ProvisioningPage() {
                 type="button"
                 disabled={isClearingAll || targetCountToClear === 0}
                 onClick={handleClearAll}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-rose px-4 py-2 text-xs font-bold text-white hover:bg-brand-rose/90 shadow-lg shadow-brand-rose/20 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 transition-colors shadow-xs disabled:opacity-50"
               >
                 {isClearingAll ? (
                   <>

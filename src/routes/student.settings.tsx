@@ -20,6 +20,14 @@ import {
   Info,
   CheckCircle2,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useLiveStudentProfile,
+  useLiveStudentProgress,
+  useLivePlatformSettings,
+  updateLiveReadiness,
+  useBatchLookup,
+} from "@/lib/data";
 
 export const Route = createFileRoute("/student/settings")({
   head: () => ({
@@ -68,15 +76,6 @@ const PILLARS = [
     desc: "Assessed via STAR structured technical mock drills",
   },
 ] as const;
-
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  useLiveStudentProfile,
-  useLiveStudentProgress,
-  useLivePlatformSettings,
-  updateLiveReadiness,
-  useBatchLookup,
-} from "@/lib/data";
 
 function SettingsPage() {
   const store = useAppStore();
@@ -137,7 +136,7 @@ function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Settings & Assigned Courses"
         subtitle="Review your Admin-assigned technical specializations, cohort batch identity, and workspace preferences."
@@ -148,25 +147,25 @@ function SettingsPage() {
         <Stat
           label="Talent Score"
           value={`${talentScore}/1000`}
-          accent="var(--brand-cyan)"
+          tone="brand"
           hint="Composite readiness"
         />
         <Stat
           label="Assigned Courses"
           value={`${activeTracks.length} / 3`}
-          accent="var(--brand-purple)"
+          tone="purple"
           hint="Admin assigned"
         />
         <Stat
           label="Verified Labs"
           value={completedLabs.length}
-          accent="var(--brand-emerald)"
+          tone="emerald"
           hint="Passed sandbox drills"
         />
         <Stat
           label="Theme Mode"
           value={store.theme === "dark" ? "Dark Theme" : "Light Theme"}
-          accent="var(--brand-amber)"
+          tone="amber"
           hint="UI Appearance"
         />
       </div>
@@ -177,30 +176,30 @@ function SettingsPage() {
         subtitle="Batch-synchronized placement details provisioned by Platform Super Admin"
       >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-1">
-            <span className="text-[11px] font-semibold text-copy-subtle flex items-center gap-1.5">
-              <User className="size-3.5 text-brand-cyan" /> Full Name
+          <div className="rounded-xl border border-border bg-card p-4 space-y-1.5 shadow-xs">
+            <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <User className="size-4 text-primary" /> Full Name
             </span>
-            <p className="text-sm font-bold text-foreground">{studentName}</p>
-            <p className="text-xs text-copy-subtle font-mono">{studentEmail}</p>
+            <p className="text-sm font-semibold text-foreground">{studentName}</p>
+            <p className="text-xs text-muted-foreground font-mono">{studentEmail}</p>
           </div>
 
-          <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-1">
-            <span className="text-[11px] font-semibold text-copy-subtle flex items-center gap-1.5">
-              <GraduationCap className="size-3.5 text-brand-purple" /> Institution & Roll No
+          <div className="rounded-xl border border-border bg-card p-4 space-y-1.5 shadow-xs">
+            <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <GraduationCap className="size-4 text-primary" /> Institution & Roll No
             </span>
-            <p className="text-sm font-bold text-foreground">{studentCollege}</p>
-            <p className="text-xs text-copy-subtle font-mono">
+            <p className="text-sm font-semibold text-foreground">{studentCollege}</p>
+            <p className="text-xs text-muted-foreground font-mono">
               {studentRollNo} · {studentDept}
             </p>
           </div>
 
-          <div className="rounded-xl border border-line-soft bg-surface-soft p-3.5 space-y-1">
-            <span className="text-[11px] font-semibold text-copy-subtle flex items-center gap-1.5">
-              <Shield className="size-3.5 text-brand-emerald" /> Placement Accelerator Batch
+          <div className="rounded-xl border border-border bg-card p-4 space-y-1.5 shadow-xs">
+            <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Shield className="size-4 text-emerald-600 dark:text-emerald-400" /> Placement Accelerator Batch
             </span>
-            <p className="text-sm font-bold text-foreground">{getBatchName(studentBatchId)}</p>
-            <p className="text-xs text-brand-emerald font-semibold">
+            <p className="text-sm font-semibold text-foreground">{getBatchName(studentBatchId)}</p>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
               Day {placementDay} of 90 · Synchronized Cohort
             </p>
           </div>
@@ -213,21 +212,21 @@ function SettingsPage() {
         subtitle="Technical courses assigned by your Platform Admin. Course assignments are managed centrally and cannot be changed by students."
         action={<Chip tone="emerald">Admin Assigned</Chip>}
       >
-        <div className="mb-3 rounded-xl border border-brand-cyan/20 bg-brand-cyan/5 p-3 text-xs text-copy-subtle flex items-center gap-2">
-          <Info className="size-4 text-brand-cyan shrink-0" />
+        <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-xs text-muted-foreground flex items-center gap-2.5">
+          <Info className="size-4 text-primary shrink-0" />
           <span>
-            <strong>Dual Gate Rule:</strong> Primary track requires 100% completion; secondary
+            <strong className="text-foreground">Dual Gate Rule:</strong> Primary track requires 100% completion; secondary
             tracks require ≥ {secondaryMinimum}% completion before Phase 2 marketplace unlocks.
           </span>
         </div>
 
         {activeTracks.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-line-soft bg-surface-soft/40 p-8 text-center text-xs text-copy-subtle">
+          <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center text-xs text-muted-foreground">
             No technical courses currently assigned. Course assignments are provisioned centrally by
             your institution administrator.
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
             {activeTracks.map((trackId, index) => {
               const t = trackById(trackId);
               const isPrimary = index === 0;
@@ -235,7 +234,7 @@ function SettingsPage() {
               return (
                 <div
                   key={t.id}
-                  className="relative rounded-xl border border-brand-cyan/50 bg-surface-elevated p-4 transition-all flex flex-col justify-between shadow-sm"
+                  className="relative rounded-xl border border-border bg-card p-4 transition-all flex flex-col justify-between shadow-xs hover:border-primary/40"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2">
@@ -244,22 +243,22 @@ function SettingsPage() {
                           className="size-2.5 rounded-full shrink-0"
                           style={{ background: t.accent }}
                         />
-                        <p className="text-sm font-bold text-foreground">{t.name}</p>
+                        <p className="text-sm font-semibold text-foreground">{t.name}</p>
                       </div>
                       <Chip tone={isPrimary ? "cyan" : "purple"}>
                         {isPrimary ? "Primary (100%)" : `Track #${index + 1}`}
                       </Chip>
                     </div>
-                    <p className="mt-1 text-xs text-copy-subtle">{t.tagline}</p>
-                    <p className="mt-2 text-[11px] font-mono text-copy-subtle/80">
+                    <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{t.tagline}</p>
+                    <p className="mt-2.5 text-xs font-mono text-muted-foreground">
                       Lab: <span className="text-foreground font-semibold">{t.labTitle}</span>
                     </p>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-line-soft/60 flex items-center justify-between">
-                    <span className="text-[11px] font-mono text-copy-subtle">{t.short}</span>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-emerald">
-                      <CheckCircle2 className="size-3.5" /> Assigned by Platform Admin
+                  <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
+                    <span className="text-xs font-mono text-muted-foreground font-medium">{t.short}</span>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="size-3.5" /> Assigned
                     </span>
                   </div>
                 </div>
@@ -277,13 +276,13 @@ function SettingsPage() {
         >
           <div className="space-y-4">
             {PILLARS.map((p) => (
-              <div key={p.key} className="space-y-1">
+              <div key={p.key} className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <div>
                     <span className="font-semibold text-foreground">{p.label}</span>
-                    <span className="ml-1.5 text-[10px] text-copy-subtle">({p.desc})</span>
+                    <span className="ml-1.5 text-[11px] text-muted-foreground">({p.desc})</span>
                   </div>
-                  <span className="font-mono font-bold text-brand-cyan">{readiness[p.key]}%</span>
+                  <span className="font-mono font-bold text-primary">{readiness[p.key]}%</span>
                 </div>
                 <input
                   type="range"
@@ -300,7 +299,7 @@ function SettingsPage() {
                     }
                     store.setReadiness({ [p.key]: val });
                   }}
-                  className="w-full accent-[var(--brand-cyan)]"
+                  className="w-full accent-primary"
                 />
               </div>
             ))}
@@ -314,10 +313,10 @@ function SettingsPage() {
             subtitle="Configure daily 06:00 Placement Accelerator alerts"
           >
             <div className="space-y-3">
-              <label className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft p-3 text-xs cursor-pointer">
+              <label className="flex items-center justify-between rounded-xl border border-border bg-card p-3.5 text-xs cursor-pointer shadow-xs hover:bg-muted/30 transition-colors">
                 <div>
                   <p className="font-semibold text-foreground">Telegram Channel Daily Broadcast</p>
-                  <p className="text-copy-subtle">
+                  <p className="text-muted-foreground">
                     Receive 10m English + 10m Aptitude videos every morning at 06:00
                   </p>
                 </div>
@@ -325,28 +324,28 @@ function SettingsPage() {
                   type="checkbox"
                   checked={telegramNotifs}
                   onChange={(e) => setTelegramNotifs(e.target.checked)}
-                  className="size-4 accent-[var(--brand-cyan)]"
+                  className="size-4 accent-primary rounded"
                 />
               </label>
 
-              <label className="flex items-center justify-between rounded-xl border border-line-soft bg-surface-soft p-3 text-xs cursor-pointer">
+              <label className="flex items-center justify-between rounded-xl border border-border bg-card p-3.5 text-xs cursor-pointer shadow-xs hover:bg-muted/30 transition-colors">
                 <div>
                   <p className="font-semibold text-foreground">In-App Morning Reminder</p>
-                  <p className="text-copy-subtle">Alert when the 10m Guided Practice unlocks</p>
+                  <p className="text-muted-foreground">Alert when the 10m Guided Practice unlocks</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={morningReminder}
                   onChange={(e) => setMorningReminder(e.target.checked)}
-                  className="size-4 accent-[var(--brand-cyan)]"
+                  className="size-4 accent-primary rounded"
                 />
               </label>
 
               <button
                 onClick={sendTestBroadcast}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-line-soft bg-surface-soft py-2.5 text-xs font-bold text-brand-cyan hover:border-brand-cyan/60"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card py-2.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
               >
-                <Send className="size-3.5" /> Send Test Telegram Notification
+                <Send className="size-3.5 text-primary" /> Send Test Telegram Notification
               </button>
             </div>
           </Panel>
@@ -356,17 +355,17 @@ function SettingsPage() {
             <div className="space-y-3">
               <button
                 onClick={store.toggleTheme}
-                className="flex w-full items-center justify-between rounded-xl border border-line-soft bg-surface-soft px-4 py-3 text-xs font-semibold text-foreground hover:border-brand-purple/60"
+                className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shadow-xs"
               >
                 <span className="flex items-center gap-2">
                   {store.theme === "dark" ? (
-                    <Sun className="size-4 text-brand-amber" />
+                    <Sun className="size-4 text-amber-500" />
                   ) : (
-                    <Moon className="size-4 text-brand-purple" />
+                    <Moon className="size-4 text-indigo-500" />
                   )}
                   Switch to {store.theme === "dark" ? "Light" : "Dark"} Theme
                 </span>
-                <span className="font-mono text-[11px] text-copy-subtle">
+                <span className="font-mono text-xs text-muted-foreground">
                   Currently: {store.theme.toUpperCase()}
                 </span>
               </button>
