@@ -8,11 +8,11 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
-  Sun,
-  Moon,
   Sparkles,
   ArrowRight,
   ShieldCheck,
+  Mail,
+  Lock,
 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { useAppStore } from "@/lib/app-store";
@@ -98,14 +98,21 @@ function InteractiveCharacters({ focusedField, mousePos }: InteractiveCharacters
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[280px] sm:h-[340px] flex items-end justify-center select-none"
+      className="relative w-full h-[220px] sm:h-[280px] lg:h-[310px] flex items-end justify-center select-none"
     >
       <svg
         viewBox="0 0 380 320"
-        className="w-full h-full max-w-[340px] drop-shadow-md overflow-visible transition-transform duration-300"
+        className="w-full h-full max-w-[340px] drop-shadow-2xl overflow-visible transition-transform duration-300"
       >
-        {/* Soft Shadow Underneath */}
-        <ellipse cx="190" cy="305" rx="140" ry="12" fill="currentColor" className="text-slate-300/40 dark:text-slate-950/60" />
+        {/* Soft Ambient Shadow Underneath */}
+        <ellipse
+          cx="190"
+          cy="305"
+          rx="140"
+          ry="12"
+          fill="#020617"
+          opacity="0.85"
+        />
 
         {/* 1. TALL VIOLET / INDIGO PILL CHARACTER (Back Center) */}
         <g
@@ -135,8 +142,8 @@ function InteractiveCharacters({ focusedField, mousePos }: InteractiveCharacters
               <path d="M 132 138 Q 140 144 148 138" />
               <path d="M 157 138 Q 165 144 173 138" />
               {/* Cute Blushing Cheeks */}
-              <circle cx="127" cy="148" r="6" fill="#f43f5e" opacity="0.6" stroke="none" />
-              <circle cx="178" cy="148" r="6" fill="#f43f5e" opacity="0.6" stroke="none" />
+              <circle cx="127" cy="148" r="6" fill="#f43f5e" opacity="0.65" stroke="none" />
+              <circle cx="178" cy="148" r="6" fill="#f43f5e" opacity="0.65" stroke="none" />
             </g>
           ) : (
             // Open Tracking Eyes
@@ -193,8 +200,8 @@ function InteractiveCharacters({ focusedField, mousePos }: InteractiveCharacters
             <g className="stroke-white stroke-[3] stroke-linecap-round fill-none">
               <path d="M 190 180 Q 196 186 202 180" />
               <path d="M 208 180 Q 214 186 220 180" />
-              <circle cx="186" cy="188" r="5" fill="#be185d" opacity="0.5" stroke="none" />
-              <circle cx="224" cy="188" r="5" fill="#be185d" opacity="0.5" stroke="none" />
+              <circle cx="186" cy="188" r="5" fill="#be185d" opacity="0.55" stroke="none" />
+              <circle cx="224" cy="188" r="5" fill="#be185d" opacity="0.55" stroke="none" />
             </g>
           ) : (
             <g>
@@ -304,7 +311,7 @@ function InteractiveCharacters({ focusedField, mousePos }: InteractiveCharacters
 }
 
 // ---------------------------------------------------------------------------
-// Login Page Component (Clean Master Split Layout)
+// Login Page Component (Guaranteed Dark Mode & Master Split Layout)
 // ---------------------------------------------------------------------------
 function LoginPage() {
   const store = useAppStore();
@@ -362,50 +369,56 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-100/90 dark:bg-slate-950 flex flex-col justify-between p-4 sm:p-6 lg:p-10 transition-colors duration-300 select-none">
-      {/* Top Bar with SantoGe Brand and Theme Toggle */}
-      <header className="w-full max-w-5xl mx-auto flex items-center justify-between pb-3">
-        <div className="flex items-center gap-2.5">
-          <span className="grid size-8 place-items-center rounded-xl bg-primary text-primary-foreground shadow-xs">
-            <Hexagon className="size-4.5 stroke-[2.2]" />
+    // Always Dark Mode container
+    <div className="dark min-h-screen w-full bg-[#080b13] text-slate-100 flex flex-col justify-between p-4 sm:p-6 lg:p-8 select-none relative overflow-x-hidden font-sans">
+      {/* Ambient background soft light accents */}
+      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-indigo-600/10 blur-[120px] pointer-events-none" />
+      <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-purple-600/10 blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-blue-600/5 blur-[140px] pointer-events-none" />
+
+      {/* Top Header Bar */}
+      <header className="relative z-10 w-full max-w-5xl mx-auto flex items-center justify-between pb-3">
+        {/* Brand identity */}
+        <div className="flex items-center gap-3">
+          <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-md shadow-indigo-600/20">
+            <Hexagon className="size-5 stroke-[2.2]" />
           </span>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold tracking-tight text-foreground">SantoGe</span>
-            <span className="text-sm font-medium text-muted-foreground">Talent Cloud</span>
+            <span className="text-base font-bold tracking-tight text-white">SantoGe</span>
+            <span className="text-sm font-medium text-slate-400">Talent Cloud</span>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={store.toggleTheme}
-          aria-label="Toggle theme"
-          className="grid size-9 place-items-center rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
-        >
-          {store.theme === "dark" ? (
-            <Sun className="size-4 text-amber-500" />
-          ) : (
-            <Moon className="size-4" />
-          )}
-        </button>
+        {/* Portal Status Badge (Always Dark Mode) */}
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-800 bg-slate-900/80 backdrop-blur-md text-xs font-medium text-slate-300 shadow-xs">
+          <span className="size-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+          <span className="hidden sm:inline">Placement Accelerator</span>
+          <span className="text-slate-500 hidden sm:inline">·</span>
+          <span>Portal Access</span>
+        </div>
       </header>
 
-      {/* Main Master Card (Split Composed Layout inspired by Reference) */}
-      <main className="flex-1 flex items-center justify-center py-2">
-        <div className="w-full max-w-4xl rounded-3xl border border-border/80 bg-card shadow-2xl shadow-slate-200/50 dark:shadow-none overflow-hidden grid lg:grid-cols-12 transition-all duration-300">
-          {/* Left Visual Area (Interactive Character Stage) */}
-          <div className="lg:col-span-6 bg-slate-50/80 dark:bg-slate-900/40 p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/60 relative overflow-hidden">
-            {/* Subtle background circles */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-primary/5 blur-3xl pointer-events-none" />
+      {/* Main Master Split Card Container */}
+      <main className="relative z-10 flex-1 flex items-center justify-center py-4 sm:py-6">
+        <div className="w-full max-w-4xl lg:max-w-5xl rounded-3xl border border-slate-800/90 bg-[#0e1424]/90 backdrop-blur-xl shadow-2xl shadow-black/80 overflow-hidden grid lg:grid-cols-12 min-h-[560px] lg:min-h-[580px] transition-all duration-300">
+          
+          {/* Left Column: Visual Character Stage */}
+          <div className="lg:col-span-6 bg-gradient-to-b from-[#0b1020] via-[#0e162a] to-[#0a0f1d] p-6 sm:p-8 lg:p-10 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800/80 relative overflow-hidden">
+            {/* Soft backdrop radial glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
 
-            {/* Top Badge */}
-            <div className="relative z-10 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary">
-                <Sparkles className="size-3.5" /> Placement Accelerator
+            {/* Top Stage Header */}
+            <div className="relative z-10 flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-300">
+                <Sparkles className="size-3.5 text-indigo-400" /> Placement Accelerator
+              </span>
+              <span className="text-[11px] font-mono font-medium text-slate-400 tracking-wider">
+                90-DAY COHORT
               </span>
             </div>
 
             {/* Interactive Characters Stage */}
-            <div className="my-auto py-6">
+            <div className="my-auto py-4 sm:py-6 flex items-center justify-center">
               <InteractiveCharacters
                 focusedField={focusedField}
                 isTyping={isTyping}
@@ -413,30 +426,35 @@ function LoginPage() {
               />
             </div>
 
-            {/* Bottom Caption */}
-            <div className="relative z-10 text-center text-xs text-muted-foreground leading-relaxed">
-              <p className="font-medium text-foreground">Synchronized 90-Day Placement Cohorts</p>
-              <p className="text-[11px] mt-0.5">15 Technical Specializations · 100% Interactive Sandboxes</p>
+            {/* Bottom Stage Footer */}
+            <div className="relative z-10 text-center space-y-1">
+              <p className="text-xs font-semibold text-slate-200 tracking-wide">
+                Synchronized Placement Cohorts
+              </p>
+              <p className="text-[11px] text-slate-400">
+                15 Technical Specializations · Evidence-Based Mastery
+              </p>
             </div>
           </div>
 
-          {/* Right Form Area */}
-          <div className="lg:col-span-6 p-6 sm:p-10 lg:p-12 flex flex-col justify-center bg-card">
-            <div className="w-full max-w-sm mx-auto space-y-6">
-              {/* Form Header */}
+          {/* Right Column: Clean Login Form Area */}
+          <div className="lg:col-span-6 p-6 sm:p-10 lg:p-12 flex flex-col justify-center bg-[#0c1222]/95 relative">
+            <div className="w-full max-w-[360px] mx-auto space-y-6">
+              
+              {/* Form Title & Subtitle */}
               <div className="space-y-1.5">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                   Welcome back!
                 </h1>
-                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
                   Sign in to continue to your Talent Cloud account.
                 </p>
               </div>
 
-              {/* Backend Configuration Notice if not configured */}
+              {/* Supabase backend warning if unconfigured */}
               {!isConfigured && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive animate-in fade-in">
-                  <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-950/40 p-3 text-xs text-rose-300 animate-in fade-in">
+                  <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-400" />
                   <p>
                     Supabase backend is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env
                   </p>
@@ -445,38 +463,45 @@ function LoginPage() {
 
               {/* Login Form */}
               <form onSubmit={handleSupabaseSubmit} className="space-y-4">
-                {/* Email Field */}
+                
+                {/* Institutional Email Field */}
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                  <label className="mb-1.5 block text-xs font-medium text-slate-300">
                     Institutional Email
                   </label>
-                  <input
-                    type="email"
-                    required
-                    autoFocus
-                    value={email}
-                    onFocus={() => setFocusedField("email")}
-                    onBlur={() => setFocusedField(null)}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setIsTyping(true);
-                      setTimeout(() => setIsTyping(false), 800);
-                    }}
-                    placeholder="student@college.edu or admin@domain.com"
-                    className="w-full h-11 rounded-xl border border-border bg-background px-3.5 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  />
+                  <div className="relative">
+                    <Mail className="size-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="email"
+                      required
+                      autoFocus
+                      value={email}
+                      autoComplete="email"
+                      onFocus={() => setFocusedField("email")}
+                      onBlur={() => setFocusedField(null)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setIsTyping(true);
+                        setTimeout(() => setIsTyping(false), 800);
+                      }}
+                      placeholder="student@college.edu or admin@domain.com"
+                      className="w-full h-11 sm:h-12 pl-10 pr-3.5 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
+                    />
+                  </div>
                 </div>
 
-                {/* Password Field */}
+                {/* Password Field with Reveal Toggle */}
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
-                    <label className="text-xs font-semibold text-foreground">Password</label>
+                    <label className="text-xs font-medium text-slate-300">Password</label>
                   </div>
                   <div className="relative">
+                    <Lock className="size-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type={showPassword ? "text" : "password"}
                       required
                       value={password}
+                      autoComplete="current-password"
                       onFocus={() => setFocusedField("password")}
                       onBlur={() => setFocusedField(null)}
                       onChange={(e) => {
@@ -485,12 +510,12 @@ function LoginPage() {
                         setTimeout(() => setIsTyping(false), 800);
                       }}
                       placeholder="••••••••••••"
-                      className="w-full h-11 rounded-xl border border-border bg-background px-3.5 pr-10 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      className="w-full h-11 sm:h-12 pl-10 pr-10 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded-md transition-colors cursor-pointer"
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? (
@@ -504,8 +529,8 @@ function LoginPage() {
 
                 {/* Inline Error Message */}
                 {error && (
-                  <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive animate-in fade-in">
-                    <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-2.5 text-xs text-rose-300 animate-in fade-in">
+                    <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-400" />
                     <span className="leading-relaxed">{error}</span>
                   </div>
                 )}
@@ -514,7 +539,7 @@ function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading || !isConfigured}
-                  className="group flex w-full h-11 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md disabled:opacity-50 cursor-pointer"
+                  className="group flex w-full h-11 sm:h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
                 >
                   {loading ? (
                     <RefreshCw className="size-4 animate-spin" />
@@ -528,11 +553,11 @@ function LoginPage() {
                 </button>
               </form>
 
-              {/* Supporting Institutional Notice */}
-              <div className="pt-2 text-center text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1">
-                  <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Student accounts are provisioned directly by institution administrators.</span>
+              {/* Supporting Institutional Provisioning Notice */}
+              <div className="pt-2 text-center text-xs text-slate-400">
+                <span className="inline-flex items-center gap-1.5">
+                  <ShieldCheck className="size-3.5 text-emerald-400 shrink-0" />
+                  <span>Student accounts provisioned by institution administrators.</span>
                 </span>
               </div>
             </div>
@@ -541,11 +566,11 @@ function LoginPage() {
       </main>
 
       {/* Subtle Footer */}
-      <footer className="w-full text-center text-xs text-muted-foreground pt-3">
+      <footer className="relative z-10 w-full text-center text-xs text-slate-500 py-2">
         <p>© {new Date().getFullYear()} SantoGe Technologies · SantoGe Talent Cloud (STC)</p>
       </footer>
 
-      <Toaster position="bottom-right" />
+      <Toaster position="bottom-right" theme="dark" />
     </div>
   );
 }
