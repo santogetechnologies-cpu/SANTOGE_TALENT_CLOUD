@@ -18,6 +18,7 @@ import { Route as AdminArchitectureRouteImport } from './routes/admin.architectu
 import { Route as AdminAutomationsRouteImport } from './routes/admin.automations'
 import { Route as AdminBatchesRouteImport } from './routes/admin.batches'
 import { Route as AdminContentRouteImport } from './routes/admin.content'
+import { Route as AdminDrivesRouteImport } from './routes/admin.drives'
 import { Route as AdminProvisioningRouteImport } from './routes/admin.provisioning'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as StudentIndexRouteImport } from './routes/student.index'
@@ -73,6 +74,11 @@ const AdminBatchesRoute = AdminBatchesRouteImport.update({
 const AdminContentRoute = AdminContentRouteImport.update({
   id: '/content',
   path: '/content',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDrivesRoute = AdminDrivesRouteImport.update({
+  id: '/drives',
+  path: '/drives',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminProvisioningRoute = AdminProvisioningRouteImport.update({
@@ -140,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/admin/automations': typeof AdminAutomationsRoute
   '/admin/batches': typeof AdminBatchesRoute
   '/admin/content': typeof AdminContentRoute
+  '/admin/drives': typeof AdminDrivesRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/student/accelerator': typeof StudentAcceleratorRoute
@@ -160,6 +167,7 @@ export interface FileRoutesByTo {
   '/admin/automations': typeof AdminAutomationsRoute
   '/admin/batches': typeof AdminBatchesRoute
   '/admin/content': typeof AdminContentRoute
+  '/admin/drives': typeof AdminDrivesRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/student/accelerator': typeof StudentAcceleratorRoute
@@ -183,6 +191,7 @@ export interface FileRoutesById {
   '/admin/automations': typeof AdminAutomationsRoute
   '/admin/batches': typeof AdminBatchesRoute
   '/admin/content': typeof AdminContentRoute
+  '/admin/drives': typeof AdminDrivesRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/student/accelerator': typeof StudentAcceleratorRoute
@@ -207,6 +216,7 @@ export interface FileRouteTypes {
     | '/admin/automations'
     | '/admin/batches'
     | '/admin/content'
+    | '/admin/drives'
     | '/admin/provisioning'
     | '/admin/settings'
     | '/student/accelerator'
@@ -227,6 +237,7 @@ export interface FileRouteTypes {
     | '/admin/automations'
     | '/admin/batches'
     | '/admin/content'
+    | '/admin/drives'
     | '/admin/provisioning'
     | '/admin/settings'
     | '/student/accelerator'
@@ -249,6 +260,7 @@ export interface FileRouteTypes {
     | '/admin/automations'
     | '/admin/batches'
     | '/admin/content'
+    | '/admin/drives'
     | '/admin/provisioning'
     | '/admin/settings'
     | '/student/accelerator'
@@ -333,6 +345,13 @@ declare module '@tanstack/react-router' {
       path: '/content'
       fullPath: '/admin/content'
       preLoaderRoute: typeof AdminContentRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/drives': {
+      id: '/admin/drives'
+      path: '/drives'
+      fullPath: '/admin/drives'
+      preLoaderRoute: typeof AdminDrivesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/provisioning': {
@@ -420,6 +439,7 @@ interface AdminRouteChildren {
   AdminAutomationsRoute: typeof AdminAutomationsRoute
   AdminBatchesRoute: typeof AdminBatchesRoute
   AdminContentRoute: typeof AdminContentRoute
+  AdminDrivesRoute: typeof AdminDrivesRoute
   AdminProvisioningRoute: typeof AdminProvisioningRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -430,6 +450,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAutomationsRoute: AdminAutomationsRoute,
   AdminBatchesRoute: AdminBatchesRoute,
   AdminContentRoute: AdminContentRoute,
+  AdminDrivesRoute: AdminDrivesRoute,
   AdminProvisioningRoute: AdminProvisioningRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminIndexRoute: AdminIndexRoute,
