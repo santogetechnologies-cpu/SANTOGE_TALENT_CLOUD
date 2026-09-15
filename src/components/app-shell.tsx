@@ -28,6 +28,7 @@ import {
   Check,
   Command,
   BookOpen,
+  Briefcase,
 } from "lucide-react";
 import { useAppStore, type Role } from "@/lib/app-store";
 import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
@@ -51,6 +52,7 @@ const STUDENT_NAV: NavItem[] = [
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin", label: "Executive Analytics", icon: BarChart3 },
+  { to: "/admin/drives", label: "Recruiter Hiring Drives", icon: Briefcase },
   { to: "/admin/content", label: "Curriculum CMS", icon: BookOpen },
   { to: "/admin/provisioning", label: "Bulk CSV Provisioning", icon: FolderUp },
   { to: "/admin/batches", label: "Batch & Telegram Hub", icon: Users },
@@ -97,6 +99,12 @@ const SEARCH_ITEMS: SearchResult[] = [
     category: "Placement Tools" as const,
     to: "/student/gateway",
     desc: "ATS Resume Scanner, AI Mock Interviews, Certifications & Marketplace",
+  },
+  {
+    title: "Recruiter Hiring Drives & Requisitions",
+    category: "Platform Admin" as const,
+    to: "/admin/drives",
+    desc: "Manage enterprise partner hiring drives, minimum talent scores, and candidate shortlists",
   },
   {
     title: "Curriculum Content Management System (CMS)",

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Chip, Gauge, Meter, PageHeader, Panel, Stat } from "@/components/kit";
@@ -846,6 +846,12 @@ function AdminAnalytics() {
           subtitle="Enterprise talent partner shortlists & requisition matching"
           action={
             <div className="flex items-center gap-2">
+              <Link
+                to="/admin/drives"
+                className="inline-flex items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors shadow-xs"
+              >
+                <span>Drives Hub →</span>
+              </Link>
               <button
                 type="button"
                 onClick={() => setIsNewDriveModalOpen(true)}
