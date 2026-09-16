@@ -568,32 +568,53 @@ export function AppShell({ portal }: { portal: Role }) {
                   return (
                     <div
                       key={t.id}
-                      className="flex items-start justify-between rounded-lg border border-border bg-muted/20 p-3.5 text-left"
+                      className="flex flex-col justify-between rounded-lg border border-border bg-muted/20 p-3.5 text-left gap-3"
                     >
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-2">
-                          <span className="size-2 rounded-full" style={{ background: t.accent }} />
-                          <p className="text-xs font-semibold text-foreground">{t.name}</p>
+                      <div className="flex items-start justify-between">
+                        <div className="min-w-0 pr-2">
+                          <div className="flex items-center gap-2">
+                            <span className="size-2 rounded-full shrink-0" style={{ background: t.accent }} />
+                            <p className="text-xs font-semibold text-foreground">{t.name}</p>
+                          </div>
+                          <p className="mt-1 text-[11px] text-muted-foreground line-clamp-1">{t.tagline}</p>
+                          <p className="mt-1 font-mono text-[10px] text-primary">
+                            Lab: {t.labTitle}
+                          </p>
                         </div>
-                        <p className="mt-1 text-[11px] text-muted-foreground line-clamp-1">{t.tagline}</p>
-                        <p className="mt-1 font-mono text-[10px] text-primary">
-                          Lab: {t.labTitle}
-                        </p>
+                        <div className="shrink-0 flex flex-col items-end gap-1">
+                          <span
+                            className={cn(
+                              "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                              isPrimary
+                                ? "bg-primary/10 text-primary border border-primary/20"
+                                : "bg-muted text-muted-foreground border border-border",
+                            )}
+                          >
+                            {isPrimary ? "Primary" : `Track #${idx + 1}`}
+                          </span>
+                          <span className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400">
+                            Admin Assigned
+                          </span>
+                        </div>
                       </div>
-                      <div className="shrink-0 flex flex-col items-end gap-1">
-                        <span
-                          className={cn(
-                            "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-                            isPrimary
-                              ? "bg-primary/10 text-primary border border-primary/20"
-                              : "bg-muted text-muted-foreground border border-border",
-                          )}
+
+                      <div className="flex items-center gap-2 pt-2 border-t border-border/60">
+                        <Link
+                          to="/student"
+                          search={{ track: t.id }}
+                          onClick={() => setCourseModalOpen(false)}
+                          className="flex-1 text-center rounded-md bg-primary py-1.5 px-2 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-2xs"
                         >
-                          {isPrimary ? "Primary" : `Track #${idx + 1}`}
-                        </span>
-                        <span className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400">
-                          Admin Assigned
-                        </span>
+                          Study Today →
+                        </Link>
+                        <Link
+                          to="/student/technical"
+                          search={{ track: t.id }}
+                          onClick={() => setCourseModalOpen(false)}
+                          className="flex-1 text-center rounded-md border border-border bg-card py-1.5 px-2 text-[11px] font-medium text-foreground hover:bg-muted transition-colors"
+                        >
+                          90-Day Syllabus
+                        </Link>
                       </div>
                     </div>
                   );

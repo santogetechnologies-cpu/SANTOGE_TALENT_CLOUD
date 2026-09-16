@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useLocation } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import {
   completeLivePlacementDay,
   completeLiveTechnicalDay,
   completeLiveDailyStep,
+  isStudentTrackAssigned,
 } from "@/lib/data";
 import { DailyHomeScreen } from "@/components/daily-journey/DailyHomeScreen";
 import { DailyJourneyRunner } from "@/components/daily-journey/DailyJourneyRunner";
@@ -91,10 +92,35 @@ function TodayLearningPage() {
     [liveProgressData?.completedTechDays, store.completedTechDays],
   );
 
-  // Primary active technical track
-  const primaryTrackId: TrackId = activeTracks[0] ?? "mern";
-  const primaryTrack = trackById(primaryTrackId);
-  const technicalSyllabus = useMemo(() => getTrackSyllabus(primaryTrackId), [primaryTrackId]);
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const requestedTrack = searchParams.get("track") as TrackId | null;
+
+  const [selectedTrackOverride, setSelectedTrackOverride] = useState<TrackId | null>(null);
+
+  // Active technical track (verified against student's assigned tracks)
+  const selectedTrackId: TrackId = useMemo(() => {
+    if (selectedTrackOverride && isStudentTrackAssigned(activeTracks, selectedTrackOverride)) {
+      return selectedTrackOverride;
+    }
+    if (requestedTrack && isStudentTrackAssigned(activeTracks, requestedTrack)) {
+      return requestedTrack;
+    }
+    return activeTracks[0] ?? "mern";
+  }, [selectedTrackOverride, requestedTrack, activeTracks]);
+
+  const primaryTrack = trackById(selectedTrackId);
+  const technicalSyllabus = useMemo(() => getTrackSyllabus(selectedTrackId), [selectedTrackId]);
+
+  const handleSelectTrack = (trackId: TrackId) => {
+    if (isStudentTrackAssigned(activeTracks, trackId)) {
+      setSelectedTrackOverride(trackId);
+      const url = new URL(window.location.href);
+      url.searchParams.set("track", trackId);
+      window.history.replaceState({}, "", url.toString());
+      toast.info(`Switched active course to ${trackById(trackId).name}`);
+    }
+  };
 
   // Today's Syllabus Data
   const placementPlan: AcceleratorDay = useMemo(
@@ -147,7 +173,7 @@ function TodayLearningPage() {
     return (
       <DailyJourneyRunner
         dayNum={cohortDay}
-        trackId={primaryTrackId}
+        trackId={selectedTrackId}
         trackName={primaryTrack.name}
         trackShort={primaryTrack.short}
         labTitle={primaryTrack.labTitle}
@@ -180,6 +206,8 @@ function TodayLearningPage() {
       isPlacementDone={isPlacementDone}
       streak={streak}
       talentScore={talentScore}
+      assignedTracks={activeTracks}
+      onSelectTrack={handleSelectTrack}
       onStartJourney={() => setIsJourneyActive(true)}
     />
   );
