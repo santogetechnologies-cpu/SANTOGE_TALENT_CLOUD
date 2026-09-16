@@ -39,8 +39,8 @@ import { toast } from "sonner";
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; section?: string };
 
 const STUDENT_NAV: NavItem[] = [
-  { to: "/student", label: "Today's Learning & Drills", icon: LayoutDashboard },
-  { to: "/student/technical", label: "90-Day Tracks & Portfolio", icon: Code2 },
+  { to: "/student", label: "Today", icon: LayoutDashboard },
+  { to: "/student/technical", label: "90-Day Journey", icon: Code2 },
   {
     to: "/student/gateway",
     label: "Career Gateway (Phase 2)",
