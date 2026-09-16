@@ -16,9 +16,10 @@ import {
   ChevronRight,
   HelpCircle,
   Calendar,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { TrackId, Track } from "@/lib/tracks";
+import { trackById, type TrackId, type Track } from "@/lib/tracks";
 import type { AcceleratorDay } from "@/lib/placement-accelerator-data";
 import { getScoreTier } from "@/routes/student.index";
 
@@ -35,6 +36,8 @@ interface DailyHomeScreenProps {
   streak: number;
   talentScore: number;
   onStartJourney: () => void;
+  assignedTracks?: TrackId[] | undefined;
+  onSelectTrack?: ((trackId: TrackId) => void) | undefined;
 }
 
 export function DailyHomeScreen({
@@ -50,6 +53,8 @@ export function DailyHomeScreen({
   streak,
   talentScore,
   onStartJourney,
+  assignedTracks,
+  onSelectTrack,
 }: DailyHomeScreenProps) {
   // Compute greeting from local time
   const greeting = useMemo(() => {
@@ -95,6 +100,52 @@ export function DailyHomeScreen({
           </div>
         </div>
       </div>
+
+      {/* Course Switcher: If multiple courses are assigned */}
+      {assignedTracks && assignedTracks.length > 1 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3.5 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <BookOpen className="size-4" />
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold text-foreground">
+                Assigned Technical Specializations ({assignedTracks.length})
+              </h4>
+              <p className="text-[11px] text-muted-foreground">
+                Select which specialization to study &amp; practice today:
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            {assignedTracks.map((tId) => {
+              const trk = trackById(tId);
+              const isActive = tId === primaryTrack.id;
+              return (
+                <button
+                  key={tId}
+                  type="button"
+                  onClick={() => onSelectTrack && onSelectTrack(tId)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-xs ring-1 ring-primary"
+                      : "border border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-muted/60",
+                  )}
+                >
+                  <span
+                    className={cn("size-2 rounded-full", isActive ? "bg-white" : "")}
+                    style={!isActive ? { background: trk.accent } : undefined}
+                  />
+                  <span>{trk.name}</span>
+                  {isActive && <span className="font-mono text-[10px] opacity-90">✓ Active</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Main Focus Card: The 20-Minute Daily Journey */}
       <div className="journey-card relative overflow-hidden p-6 sm:p-8">
