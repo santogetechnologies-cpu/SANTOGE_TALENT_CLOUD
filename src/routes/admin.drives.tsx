@@ -75,8 +75,8 @@ function AdminHiringDrivesPage() {
   const [newCompany, setNewCompany] = useState("");
   const [newRoles, setNewRoles] = useState("");
   const [newCtc, setNewCtc] = useState("₹8.0 - ₹11.5 LPA");
-  const [newMinScore, setNewMinScore] = useState(650);
-  const [newSlots, setNewSlots] = useState(50);
+  const [newMinScore, setNewMinScore] = useState<string | number>(650);
+  const [newSlots, setNewSlots] = useState<string | number>(50);
   const [newStatus, setNewStatus] = useState<HiringDrive["status"]>("Active Drive");
 
   // Modal states: Edit
@@ -194,12 +194,21 @@ function AdminHiringDrivesPage() {
       return;
     }
 
+    const parsedSlots = Number(newSlots);
+    if (!newSlots || isNaN(parsedSlots) || parsedSlots <= 0) {
+      toast.error("Please enter a valid number of open slots (at least 1)");
+      return;
+    }
+
+    const parsedMinScore = Number(newMinScore);
+    const minScore = isNaN(parsedMinScore) || parsedMinScore < 0 ? 650 : parsedMinScore;
+
     const res = await createLiveHiringDrive({
       company: newCompany.trim(),
       roles: newRoles.trim(),
       ctc: newCtc.trim() || "₹8.0 - ₹10.0 LPA",
-      minScore: Number(newMinScore) || 650,
-      openSlots: Number(newSlots) || 50,
+      minScore,
+      openSlots: parsedSlots,
       status: newStatus,
     });
 
@@ -225,12 +234,21 @@ function AdminHiringDrivesPage() {
     e.preventDefault();
     if (!editingDrive) return;
 
+    const parsedSlots = Number(editingDrive.openSlots);
+    if (!editingDrive.openSlots || isNaN(parsedSlots) || parsedSlots <= 0) {
+      toast.error("Please enter a valid number of open slots (at least 1)");
+      return;
+    }
+
+    const parsedMinScore = Number(editingDrive.minScore);
+    const minScore = isNaN(parsedMinScore) || parsedMinScore < 0 ? 650 : parsedMinScore;
+
     const res = await updateLiveHiringDrive(editingDrive.id, {
       company: editingDrive.company,
       roles: editingDrive.roles,
       ctc: editingDrive.ctc,
-      minScore: Number(editingDrive.minScore),
-      openSlots: Number(editingDrive.openSlots),
+      minScore,
+      openSlots: parsedSlots,
       status: editingDrive.status,
     });
 
@@ -803,10 +821,13 @@ function AdminHiringDrivesPage() {
                   </label>
                   <input
                     type="number"
-                    min={400}
-                    max={950}
+                    min={0}
+                    max={1000}
+                    placeholder="e.g. 650"
                     value={newMinScore}
-                    onChange={(e) => setNewMinScore(Number(e.target.value))}
+                    onChange={(e) =>
+                      setNewMinScore(e.target.value === "" ? "" : Number(e.target.value))
+                    }
                     className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   />
                 </div>
@@ -818,9 +839,12 @@ function AdminHiringDrivesPage() {
                   <input
                     type="number"
                     min={1}
-                    max={500}
+                    max={5000}
+                    placeholder="e.g. 50"
                     value={newSlots}
-                    onChange={(e) => setNewSlots(Number(e.target.value))}
+                    onChange={(e) =>
+                      setNewSlots(e.target.value === "" ? "" : Number(e.target.value))
+                    }
                     className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   />
                 </div>
@@ -931,11 +955,15 @@ function AdminHiringDrivesPage() {
                   </label>
                   <input
                     type="number"
-                    min={400}
-                    max={950}
-                    value={editingDrive.minScore}
+                    min={0}
+                    max={1000}
+                    placeholder="e.g. 650"
+                    value={editingDrive.minScore ?? ""}
                     onChange={(e) =>
-                      setEditingDrive({ ...editingDrive, minScore: Number(e.target.value) })
+                      setEditingDrive({
+                        ...editingDrive,
+                        minScore: e.target.value === "" ? ("" as any) : Number(e.target.value),
+                      })
                     }
                     className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   />
@@ -948,10 +976,14 @@ function AdminHiringDrivesPage() {
                   <input
                     type="number"
                     min={1}
-                    max={500}
-                    value={editingDrive.openSlots}
+                    max={5000}
+                    placeholder="e.g. 50"
+                    value={editingDrive.openSlots ?? ""}
                     onChange={(e) =>
-                      setEditingDrive({ ...editingDrive, openSlots: Number(e.target.value) })
+                      setEditingDrive({
+                        ...editingDrive,
+                        openSlots: e.target.value === "" ? ("" as any) : Number(e.target.value),
+                      })
                     }
                     className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   />
