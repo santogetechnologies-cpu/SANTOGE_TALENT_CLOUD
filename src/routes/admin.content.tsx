@@ -87,7 +87,7 @@ function ContentManagementPage() {
   const [voicePromptText, setVoicePromptText] = useState(currentAccDay.practice.voicePrompt.prompt);
 
   // Technical Tracks CMS states
-  const [selectedTrackId, setSelectedTrackId] = useState<TrackId>("mern");
+  const [selectedTrackId, setSelectedTrackId] = useState<TrackId>("java");
   const [selectedWeekNum, setSelectedWeekNum] = useState<number>(1);
   const trackSyllabus = useMemo(() => getTrackSyllabus(selectedTrackId), [selectedTrackId]);
   const activeWeek = trackSyllabus.weeks[selectedWeekNum - 1] || trackSyllabus.weeks[0]!;
@@ -182,8 +182,8 @@ function ContentManagementPage() {
   };
 
   const handleBroadcastInstantPush = () => {
-    toast.success(`Simulated Broadcast Dispatched for Day ${selectedPlacementDay}!`, {
-      description: `Simulated Telegram webhook payload generated for @SantoGeTalentBot (Production bot token not configured).`,
+    toast.info(`Broadcast Staged for Day ${selectedPlacementDay}`, {
+      description: `Delivery channel standby: Telegram bot token (@SantoGeTalentBot) pending backend configuration.`,
     });
   };
 
@@ -191,7 +191,7 @@ function ContentManagementPage() {
     <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Curriculum Content Management System (CMS)"
-        subtitle="Master authoring control: Manage 90-day Placement Accelerator lessons, daily practice questions, and 15 Technical Track syllabi across active cohorts."
+        subtitle="Master authoring control: Manage 90-day Placement Accelerator lessons, daily practice questions, and specialized Technical Track syllabi across active cohorts."
         action={
           <div className="flex items-center gap-2">
             <button
@@ -210,7 +210,7 @@ function ContentManagementPage() {
         <Stat label="Total Curriculum Days" value="90 Days" tone="brand" hint="18 Weeks × 5 Working Days" />
         <Stat
           label="Technical Specializations"
-          value="15 Tracks"
+          value={`${TRACKS.length} Tracks`}
           tone="cyan"
           hint="Individual self-paced tracks"
         />
@@ -222,9 +222,9 @@ function ContentManagementPage() {
         />
         <Stat
           label="Total Portfolio Projects"
-          value="270 Projects"
+          value={`${TRACKS.length * 18} Projects`}
           tone="emerald"
-          hint="18 Friday Projects × 15 Tracks"
+          hint={`18 Friday Projects × ${TRACKS.length} Tracks`}
         />
       </div>
 

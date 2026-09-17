@@ -172,7 +172,7 @@ function BatchPage() {
           </div>
           <p className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
             <Megaphone className="mt-0.5 size-3.5 shrink-0 text-amber-500" />
-            Technical courses have no Telegram group — MERN, Cloud or AI/ML learning stays inside
+            Technical courses have no Telegram group — Java FS, Data Science or AI/ML learning stays inside
             your own technical journey.
           </p>
           <p className="mt-2 text-[11px] text-muted-foreground font-mono">Last sync: {lastSync}</p>

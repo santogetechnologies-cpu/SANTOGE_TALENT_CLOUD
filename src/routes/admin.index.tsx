@@ -105,7 +105,7 @@ function AdminAnalytics() {
   const [newStudentDept, setNewStudentDept] = useState("CSE");
   const [newStudentBatchId, setNewStudentBatchId] = useState("");
   const [newStudentCollege, setNewStudentCollege] = useState("");
-  const [newStudentTracks, setNewStudentTracks] = useState<TrackId[]>(["mern"]);
+  const [newStudentTracks, setNewStudentTracks] = useState<TrackId[]>(["java"]);
 
   const readinessOf = (b: { enrolled: number; capacity: number }) =>
     Math.round((b.enrolled / Math.max(b.capacity, 1)) * 100);
@@ -268,7 +268,7 @@ function AdminAnalytics() {
     if (selectedFunnelStage !== null) {
       if (selectedFunnelStage === 2) list = list.filter((s) => s.placementDay >= 2);
       else if (selectedFunnelStage === 3) list = list.filter((s) => s.talentScore >= 500);
-      else if (selectedFunnelStage === 4) list = list.filter((s) => s.placementDay >= 30 || s.gateCleared);
+      else if (selectedFunnelStage === 4) list = list.filter((s) => s.gateCleared);
       else if (selectedFunnelStage === 5) list = list.filter((s) => s.talentScore >= 600);
       else if (selectedFunnelStage === 6) list = list.filter((s) => s.talentScore >= 700);
     }
@@ -363,7 +363,7 @@ function AdminAnalytics() {
         queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
         queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
       ]);
-      toast.success(`Synchronized all ${activeBatches.length} cohort batches with Telegram webhook`);
+      toast.success(`Synchronized sync timestamp for all ${activeBatches.length} cohort batches`);
     } catch {
       toast.error("Failed to sync some batches");
     } finally {
@@ -811,7 +811,7 @@ function AdminAnalytics() {
                           e.stopPropagation();
                           await updateLiveBatch(b.id, { last_sync_at: new Date().toISOString() });
                           queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] });
-                          toast.success(`Batch ${b.name} synchronized with Telegram webhook`);
+                          toast.success(`Batch ${b.name} synchronized successfully`);
                         }}
                         className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         title="Trigger Batch Telegram Sync"

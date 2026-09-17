@@ -41,7 +41,7 @@ export type PortfolioItem = {
 };
 
 export type TrackSyllabus = {
-  trackId: TrackId;
+  trackId: TrackId | string;
   trackName: string;
   targetRole: string;
   careerProgression: string[];
@@ -2038,7 +2038,6 @@ export const MERN_SYLLABUS: TrackSyllabus = {
    ========================================================================== */
 export function getTrackSyllabus(trackId: TrackId): TrackSyllabus {
   if (trackId === "medical") return MEDICAL_CODING_SYLLABUS;
-  if (trackId === "mern") return MERN_SYLLABUS;
   return generateTrackSyllabus(trackId);
 }
 
@@ -2052,26 +2051,20 @@ export function generateTrackSyllabus(trackId: TrackId): TrackSyllabus {
     s: string;
     d: string[];
   };
-  const CONFIGS: Record<
-    TrackId,
-    {
-      name: string;
-      role: string;
-      progression: string[];
-      pitch: string;
-      phases: [string, string, string, string, string];
-      skills: string[];
-      curriculum?: CurriculumWeek[];
-    }
+  const CONFIGS: Partial<
+    Record<
+      string,
+      {
+        name: string;
+        role: string;
+        progression: string[];
+        pitch: string;
+        phases: [string, string, string, string, string];
+        skills: string[];
+        curriculum?: CurriculumWeek[];
+      }
+    >
   > = {
-    mern: {
-      name: "",
-      role: "",
-      progression: [],
-      pitch: "",
-      phases: ["", "", "", "", ""],
-      skills: [],
-    },
     medical: {
       name: "",
       role: "",
@@ -3516,7 +3509,24 @@ export function generateTrackSyllabus(trackId: TrackId): TrackSyllabus {
     },
   };
 
-  const cfg = CONFIGS[trackId] || CONFIGS["java"];
+  const fallbackConfig: {
+    name: string;
+    role: string;
+    progression: string[];
+    pitch: string;
+    phases: [string, string, string, string, string];
+    skills: string[];
+    curriculum?: CurriculumWeek[];
+  } = {
+    name: "Technical Track",
+    role: "Technical Specialist",
+    progression: ["Junior Specialist", "Mid Specialist", "Senior Specialist", "Lead Architect", "Principal"],
+    pitch: "I specialize in enterprise software engineering, data systems, and production operations.",
+    phases: ["Foundations", "Intermediate Competency", "Advanced Systems", "AI Integration", "Production & Capstone"],
+    skills: ["Architecture", "Engineering", "Testing", "Deployment"],
+  };
+
+  const cfg = CONFIGS[trackId] || CONFIGS["java"] || fallbackConfig;
   const tname = cfg.name || "Technical Track";
 
   const genericCurriculum = [
@@ -3774,9 +3784,9 @@ export function generateTrackSyllabus(trackId: TrackId): TrackSyllabus {
     },
   ];
 
-  const curr = cfg.curriculum || genericCurriculum;
+  const curr: CurriculumWeek[] = cfg.curriculum || genericCurriculum;
 
-  const weeks: WeekPlan[] = curr.map((c, wIdx) => {
+  const weeks: WeekPlan[] = curr.map((c: CurriculumWeek, wIdx: number) => {
     const wNum = wIdx + 1;
     const startDay = wIdx * 5 + 1;
 

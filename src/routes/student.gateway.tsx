@@ -25,8 +25,6 @@ import {
   useLiveStudentProgress,
   useLivePlatformSettings,
   updateLiveReadiness,
-  completeLiveMock,
-  issueLiveCertificate,
 } from "@/lib/data";
 import { trackProgress } from "@/lib/curriculum";
 
@@ -107,7 +105,7 @@ function GatewayPage() {
     if (liveHiringDrives && liveHiringDrives.length > 0) {
       return liveHiringDrives.map((d) => ({
         company: d.company,
-        track: (activeTracks[0] || "mern") as TrackId,
+        track: (activeTracks[0] || "java") as TrackId,
         minScore: d.minScore,
         role: d.roles,
         package: d.ctc,
@@ -153,8 +151,8 @@ function GatewayPage() {
   };
 
   const handleMock = async () => {
+    await store.completeMock("ai-interview-01", mockScore);
     if (liveStudentId) {
-      await completeLiveMock(liveStudentId, "ai-interview-01", mockScore);
       queryClient.invalidateQueries({
         queryKey: ["live", "student-progress", liveStudentId],
       });
@@ -162,14 +160,12 @@ function GatewayPage() {
         queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
       });
     }
-    store.completeMock("ai-interview-01", mockScore);
-    toast.success(`Mock interview scored (${mockScore}%) · Pillar M updated!`);
   };
 
   const handleIssueCert = async (trackName: string) => {
     const label = `SantoGe Certified · ${trackName}`;
+    await store.issueCertificate(label);
     if (liveStudentId) {
-      await issueLiveCertificate(liveStudentId, label);
       queryClient.invalidateQueries({
         queryKey: ["live", "student-progress", liveStudentId],
       });
@@ -177,8 +173,6 @@ function GatewayPage() {
         queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
       });
     }
-    store.issueCertificate(label);
-    toast.success(`Certificate issued: ${label}`);
   };
 
   // Dual gate calculations
@@ -373,12 +367,12 @@ function GatewayPage() {
           </div>
         </Panel>
 
-        {/* AI Mock Interviews & Certifications */}
+        {/* Mock Interview Evaluation & Certifications */}
         <div className="space-y-4">
-          <Panel title="AI Mock Interviews" subtitle="Technical & behavioral readiness">
+          <Panel title="Mock Interview Evaluation" subtitle="Technical & behavioral readiness scoring">
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Simulate Interview Score:</span>
+                <span className="text-muted-foreground">Self-Evaluation / Mock Score:</span>
                 <span className="font-mono font-bold text-primary">{mockScore}%</span>
               </div>
               <input
@@ -393,7 +387,7 @@ function GatewayPage() {
                 onClick={handleMock}
                 className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card py-2.5 text-xs font-semibold text-foreground hover:bg-muted/50 transition-colors shadow-xs"
               >
-                <Mic className="size-4 text-primary" /> Complete Mock Drill (+60 XP)
+                <Mic className="size-4 text-primary" /> Complete Mock Drill (+50 XP)
               </button>
             </div>
           </Panel>

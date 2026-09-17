@@ -51,7 +51,7 @@ function LabsPage() {
     if (searchTrack && activeTracks.includes(searchTrack)) {
       return searchTrack;
     }
-    return activeTracks[0] ?? ("mern" as TrackId);
+    return activeTracks[0] ?? ("java" as TrackId);
   });
   const [query, setQuery] = useState("");
 

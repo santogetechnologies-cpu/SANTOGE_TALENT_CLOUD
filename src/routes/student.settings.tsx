@@ -7,7 +7,6 @@ import { TRACKS, DOMAINS, trackById } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 import {
   Check,
-  Moon,
   RotateCcw,
   Sun,
   User,
@@ -132,7 +131,7 @@ function SettingsPage() {
   const [morningReminder, setMorningReminder] = useState(true);
 
   const sendTestBroadcast = () => {
-    toast.success("Telegram test broadcast simulated: '06:00 Daily Placement Accelerator ready!'");
+    toast.info("Telegram notifications are delivered via your cohort channel (external bot token pending configuration)");
   };
 
   return (
@@ -164,9 +163,9 @@ function SettingsPage() {
         />
         <Stat
           label="Theme Mode"
-          value={store.theme === "dark" ? "Dark Theme" : "Light Theme"}
+          value="Light Theme"
           tone="amber"
-          hint="UI Appearance"
+          hint="Standard workspace theme"
         />
       </div>
 
@@ -353,22 +352,15 @@ function SettingsPage() {
           {/* Workspace Appearance */}
           <Panel title="Workspace & Theme" subtitle="Appearance customization">
             <div className="space-y-3">
-              <button
-                onClick={store.toggleTheme}
-                className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shadow-xs"
-              >
+              <div className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-xs font-semibold text-foreground shadow-xs">
                 <span className="flex items-center gap-2">
-                  {store.theme === "dark" ? (
-                    <Sun className="size-4 text-amber-500" />
-                  ) : (
-                    <Moon className="size-4 text-indigo-500" />
-                  )}
-                  Switch to {store.theme === "dark" ? "Light" : "Dark"} Theme
+                  <Sun className="size-4 text-amber-500" />
+                  Light Theme (Standard)
                 </span>
                 <span className="font-mono text-xs text-muted-foreground">
-                  Currently: {store.theme.toUpperCase()}
+                  ACTIVE
                 </span>
-              </button>
+              </div>
             </div>
           </Panel>
         </div>

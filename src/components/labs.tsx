@@ -12,7 +12,7 @@ function LabFrame({
   concept,
   children,
 }: {
-  id: TrackId;
+  id: TrackId | string;
   concept: string;
   children: (run: (lines: string[]) => void, lines: string[], reset: () => void) => React.ReactNode;
 }) {
@@ -30,9 +30,9 @@ function LabFrame({
   );
 
   const [lines, setLines] = useState<string[]>([]);
-  const track = TRACKS.find((t) => t.id === id)!;
+  const track = TRACKS.find((t) => t.id === id) || TRACKS[0]!;
   const completedLabs = liveProgressData?.completedLabs || store.completedLabs;
-  const done = completedLabs.includes(id);
+  const done = completedLabs.includes(id as any);
 
   const run = async (out: string[]) => {
     setLines(out);
@@ -1143,19 +1143,10 @@ function BiLab() {
 }
 
 export const LAB_COMPONENTS: Record<TrackId, () => React.ReactElement> = {
-  mern: MernLab,
   java: JavaLab,
   aiml: AiLab,
   datascience: DataLab,
-  cloud: CloudLab,
-  cyber: CyberLab,
-  sre: SreLab,
-  uiux: UiuxLab,
-  qa: QaLab,
-  mobile: MobileLab,
   medical: MedicalLab,
   marketing: MarketingLab,
   sap: SapLab,
-  hr: HrLab,
-  bianalytics: BiLab,
 };

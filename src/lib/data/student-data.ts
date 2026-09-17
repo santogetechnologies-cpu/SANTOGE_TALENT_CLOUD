@@ -117,24 +117,25 @@ export async function fetchLiveStudentProfile(
   let profileData = initialProfileData;
 
   if (!profileData && email) {
-    const normalizedEmail = email.trim().toLowerCase();
-    const { data: byEmailData } = await supabase
-      .from("student_profiles")
-      .select(
-        "id,auth_user_id,institution_id,batch_id,name,email,roll_no,dept,college,status,xp,streak,placement_day,talent_score,readiness_t,readiness_c,readiness_a,readiness_e,readiness_r,readiness_m,created_at,updated_at",
-      )
-      .eq("email", normalizedEmail)
-      .eq("status", "active")
-      .maybeSingle();
-
-    if (byEmailData) {
-      profileData = byEmailData;
-      if (byEmailData.auth_user_id !== authUserId) {
-        await supabase
+    // Attempt secure RPC claim in case profile was pre-provisioned without auth_user_id
+    try {
+      const { data: claimRes } = await supabase.rpc("claim_student_profile");
+      if (claimRes && (claimRes as { ok?: boolean }).ok) {
+        const { data: claimedData } = await supabase
           .from("student_profiles")
-          .update({ auth_user_id: authUserId, updated_at: new Date().toISOString() })
-          .eq("id", byEmailData.id);
+          .select(
+            "id,auth_user_id,institution_id,batch_id,name,email,roll_no,dept,college,status,xp,streak,placement_day,talent_score,readiness_t,readiness_c,readiness_a,readiness_e,readiness_r,readiness_m,created_at,updated_at",
+          )
+          .eq("auth_user_id", authUserId)
+          .eq("status", "active")
+          .maybeSingle();
+
+        if (claimedData) {
+          profileData = claimedData;
+        }
       }
+    } catch {
+      // Ignore RPC claim errors and proceed safely without client-side privilege escalation
     }
   }
 
@@ -269,10 +270,47 @@ export async function fetchLiveStudentProgress(studentId: string): Promise<{
 // Atomic Live Mutations (Direct Authoritative Supabase RPC)
 // ---------------------------------------------------------------------------
 
+export type StudentMutationResult = {
+  ok: boolean;
+  xp?: number;
+  talent_score?: number;
+  placement_day?: number;
+  day?: number;
+  skill_id?: string;
+  lab_id?: string;
+  step?: string;
+  label?: string;
+  error?: string;
+};
+
+export type LiveDualGateStatus = {
+  ok: boolean;
+  student_id: string;
+  placement_day: number;
+  placement_attendance_count: number;
+  placement_complete: boolean;
+  technical_complete: boolean;
+  gate_unlocked: boolean;
+  completion_rule: string;
+  secondary_minimum: number;
+  tracks: Array<{
+    track_id: string;
+    track_name: string;
+    position: number;
+    completed_skills: number;
+    total_skills: number;
+    pct: number;
+    required: number;
+    passed: boolean;
+    is_primary: boolean;
+  }>;
+  error?: string;
+};
+
 export async function completeLivePlacementDay(
   studentId: string,
   day: number,
-): Promise<{ ok: boolean; placement_day?: number; xp?: number; error?: string }> {
+): Promise<StudentMutationResult> {
   const supabase = getSupabaseClient();
 
   const { data, error } = await supabase.rpc("complete_student_placement_day", {
@@ -284,15 +322,17 @@ export async function completeLivePlacementDay(
     return { ok: false, error: error.message };
   }
 
-  const res = data as { ok?: boolean; placement_day?: number; xp?: number; error?: string } | null;
+  const res = data as { ok?: boolean; placement_day?: number; xp?: number; talent_score?: number; error?: string } | null;
   if (res && res.ok === false) {
     return { ok: false, error: res.error || "Failed to complete placement day" };
   }
 
   return {
     ok: true,
+    day,
     ...(res?.placement_day !== undefined ? { placement_day: res.placement_day } : {}),
     ...(res?.xp !== undefined ? { xp: res.xp } : {}),
+    ...(res?.talent_score !== undefined ? { talent_score: res.talent_score } : {}),
   };
 }
 
@@ -300,7 +340,7 @@ export async function completeLiveSkill(
   studentId: string,
   skillId: string,
   trackId: string,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<StudentMutationResult> {
   const supabase = getSupabaseClient();
 
   const { data, error } = await supabase.rpc("complete_student_skill", {
@@ -313,41 +353,52 @@ export async function completeLiveSkill(
     return { ok: false, error: error.message };
   }
 
-  const res = data as { ok?: boolean; error?: string } | null;
+  const res = data as { ok?: boolean; xp?: number; talent_score?: number; error?: string } | null;
   if (res && res.ok === false) {
     return { ok: false, error: res.error || "Failed to complete skill" };
   }
 
-  return { ok: true };
+  return {
+    ok: true,
+    skill_id: skillId,
+    ...(res?.xp !== undefined ? { xp: res.xp } : {}),
+    ...(res?.talent_score !== undefined ? { talent_score: res.talent_score } : {}),
+  };
 }
 
 export async function completeLiveTechnicalDay(
   studentId: string,
   day: number,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<StudentMutationResult> {
   const supabase = getSupabaseClient();
 
-  const { error } = await supabase.from("student_technical_days").upsert(
-    {
-      student_id: studentId,
-      day,
-      completed_at: new Date().toISOString(),
-    },
-    { onConflict: "student_id,day" },
-  );
+  const { data, error } = await supabase.rpc("complete_student_technical_day", {
+    p_student_id: studentId,
+    p_day: day,
+  });
 
   if (error) {
     return { ok: false, error: error.message };
   }
 
-  return { ok: true };
+  const res = data as { ok?: boolean; day?: number; xp?: number; talent_score?: number; error?: string } | null;
+  if (res && res.ok === false) {
+    return { ok: false, error: res.error || "Failed to complete technical day" };
+  }
+
+  return {
+    ok: true,
+    day,
+    ...(res?.xp !== undefined ? { xp: res.xp } : {}),
+    ...(res?.talent_score !== undefined ? { talent_score: res.talent_score } : {}),
+  };
 }
 
 export async function completeLiveLab(
   studentId: string,
   labId: string,
   label: string,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<StudentMutationResult> {
   const supabase = getSupabaseClient();
 
   const { data, error } = await supabase.rpc("complete_student_lab", {
@@ -360,18 +411,23 @@ export async function completeLiveLab(
     return { ok: false, error: error.message };
   }
 
-  const res = data as { ok?: boolean; error?: string } | null;
+  const res = data as { ok?: boolean; xp?: number; talent_score?: number; error?: string } | null;
   if (res && res.ok === false) {
     return { ok: false, error: res.error || "Failed to complete lab" };
   }
 
-  return { ok: true };
+  return {
+    ok: true,
+    lab_id: labId,
+    ...(res?.xp !== undefined ? { xp: res.xp } : {}),
+    ...(res?.talent_score !== undefined ? { talent_score: res.talent_score } : {}),
+  };
 }
 
 export async function completeLiveDailyStep(
   studentId: string,
   step: "english" | "aptitude" | "practice",
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<StudentMutationResult> {
   const supabase = getSupabaseClient();
 
   const { data, error } = await supabase.rpc("complete_student_daily_step", {
@@ -383,19 +439,24 @@ export async function completeLiveDailyStep(
     return { ok: false, error: error.message };
   }
 
-  const res = data as { ok?: boolean; error?: string } | null;
+  const res = data as { ok?: boolean; step?: string; xp?: number; talent_score?: number; error?: string } | null;
   if (res && res.ok === false) {
     return { ok: false, error: res.error || "Failed to complete daily step" };
   }
 
-  return { ok: true };
+  return {
+    ok: true,
+    step,
+    ...(res?.xp !== undefined ? { xp: res.xp } : {}),
+    ...(res?.talent_score !== undefined ? { talent_score: res.talent_score } : {}),
+  };
 }
 
 export async function submitLiveAssessment(
   studentId: string,
   day: number,
   score: number,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<StudentMutationResult> {
   const supabase = getSupabaseClient();
 
   const { data, error } = await supabase.rpc("submit_student_assessment", {
@@ -408,12 +469,17 @@ export async function submitLiveAssessment(
     return { ok: false, error: error.message };
   }
 
-  const res = data as { ok?: boolean; error?: string } | null;
+  const res = data as { ok?: boolean; day?: number; score?: number; xp?: number; talent_score?: number; error?: string } | null;
   if (res && res.ok === false) {
     return { ok: false, error: res.error || "Failed to submit assessment" };
   }
 
-  return { ok: true };
+  return {
+    ok: true,
+    day,
+    ...(res?.xp !== undefined ? { xp: res.xp } : {}),
+    ...(res?.talent_score !== undefined ? { talent_score: res.talent_score } : {}),
+  };
 }
 
 export async function completeLiveMock(
@@ -421,7 +487,7 @@ export async function completeLiveMock(
   mockId: string,
   score: number,
   feedback: string = "",
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<StudentMutationResult> {
   const supabase = getSupabaseClient();
 
   const { data, error } = await supabase.rpc("complete_student_mock", {
@@ -435,18 +501,22 @@ export async function completeLiveMock(
     return { ok: false, error: error.message };
   }
 
-  const res = data as { ok?: boolean; error?: string } | null;
+  const res = data as { ok?: boolean; mock_id?: string; score?: number; xp?: number; talent_score?: number; error?: string } | null;
   if (res && res.ok === false) {
     return { ok: false, error: res.error || "Failed to complete mock interview" };
   }
 
-  return { ok: true };
+  return {
+    ok: true,
+    ...(res?.xp !== undefined ? { xp: res.xp } : {}),
+    ...(res?.talent_score !== undefined ? { talent_score: res.talent_score } : {}),
+  };
 }
 
 export async function issueLiveCertificate(
   studentId: string,
   label: string,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<StudentMutationResult> {
   const supabase = getSupabaseClient();
 
   const { data, error } = await supabase.rpc("issue_student_certificate", {
@@ -458,12 +528,32 @@ export async function issueLiveCertificate(
     return { ok: false, error: error.message };
   }
 
-  const res = data as { ok?: boolean; error?: string } | null;
+  const res = data as { ok?: boolean; label?: string; xp?: number; talent_score?: number; error?: string } | null;
   if (res && res.ok === false) {
     return { ok: false, error: res.error || "Failed to issue certificate" };
   }
 
-  return { ok: true };
+  return {
+    ok: true,
+    label,
+    ...(res?.xp !== undefined ? { xp: res.xp } : {}),
+    ...(res?.talent_score !== undefined ? { talent_score: res.talent_score } : {}),
+  };
+}
+
+export async function fetchLiveStudentCompletionGate(
+  studentId: string,
+): Promise<LiveDualGateStatus | null> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc("get_student_completion_gate", {
+    p_student_id: studentId,
+  });
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data as LiveDualGateStatus;
 }
 
 /**

@@ -10,10 +10,8 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  Moon,
   Settings2,
   Shield,
-  Sun,
   Target,
   Terminal,
   Timer,
@@ -171,10 +169,7 @@ export function AppShell({ portal }: { portal: Role }) {
       ? (liveProfileData?.profile?.talent_score ?? store.talentScore)
       : store.talentScore;
 
-  const gateUnlocked =
-    portal === "student"
-      ? (liveProfileData?.profile?.placement_day ?? 1) >= 30
-      : store.gateUnlocked;
+  const gateUnlocked = store.gateUnlocked;
 
   const eligibleCompanies =
     portal === "student"
@@ -434,14 +429,7 @@ export function AppShell({ portal }: { portal: Role }) {
                 </>
               )}
 
-              {/* Theme Toggle */}
-              <button
-                onClick={store.toggleTheme}
-                aria-label="Toggle theme"
-                className="grid size-8 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:text-foreground hover:bg-muted"
-              >
-                {store.theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-              </button>
+
             </div>
           </header>
 

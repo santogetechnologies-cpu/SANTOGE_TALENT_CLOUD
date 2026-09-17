@@ -631,9 +631,9 @@ function ArchitecturePage() {
                 time: "06:15 IST",
                 cron: "15 6 * * *",
                 title: "Technical Sandbox Containers Warmer",
-                desc: "Pre-warms WebAssembly modules and in-browser runtimes for all 15 technical disciplines.",
+                desc: "Pre-warms WebAssembly modules and in-browser runtimes for all technical disciplines.",
                 impact:
-                  "Sub-second lab load times for MERN, Java, AI/ML, Cloud, and Medical Coding sandboxes.",
+                  "Sub-second lab load times for Java, AI/ML, Data Science, and Medical Coding sandboxes.",
               },
               {
                 time: "Every 15m",
