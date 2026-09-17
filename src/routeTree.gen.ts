@@ -20,6 +20,7 @@ import { Route as AdminBatchesRouteImport } from './routes/admin.batches'
 import { Route as AdminContentRouteImport } from './routes/admin.content'
 import { Route as AdminDrivesRouteImport } from './routes/admin.drives'
 import { Route as AdminProvisioningRouteImport } from './routes/admin.provisioning'
+import { Route as AdminRosterRouteImport } from './routes/admin.roster'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as StudentIndexRouteImport } from './routes/student.index'
 import { Route as StudentAcceleratorRouteImport } from './routes/student.accelerator'
@@ -86,6 +87,11 @@ const AdminProvisioningRoute = AdminProvisioningRouteImport.update({
   path: '/provisioning',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminRosterRoute = AdminRosterRouteImport.update({
+  id: '/roster',
+  path: '/roster',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -148,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/admin/content': typeof AdminContentRoute
   '/admin/drives': typeof AdminDrivesRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
+  '/admin/roster': typeof AdminRosterRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/student/accelerator': typeof StudentAcceleratorRoute
   '/student/batch': typeof StudentBatchRoute
@@ -169,6 +176,7 @@ export interface FileRoutesByTo {
   '/admin/content': typeof AdminContentRoute
   '/admin/drives': typeof AdminDrivesRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
+  '/admin/roster': typeof AdminRosterRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/student/accelerator': typeof StudentAcceleratorRoute
   '/student/batch': typeof StudentBatchRoute
@@ -193,6 +201,7 @@ export interface FileRoutesById {
   '/admin/content': typeof AdminContentRoute
   '/admin/drives': typeof AdminDrivesRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
+  '/admin/roster': typeof AdminRosterRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/student/accelerator': typeof StudentAcceleratorRoute
   '/student/batch': typeof StudentBatchRoute
@@ -218,6 +227,7 @@ export interface FileRouteTypes {
     | '/admin/content'
     | '/admin/drives'
     | '/admin/provisioning'
+    | '/admin/roster'
     | '/admin/settings'
     | '/student/accelerator'
     | '/student/batch'
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/admin/content'
     | '/admin/drives'
     | '/admin/provisioning'
+    | '/admin/roster'
     | '/admin/settings'
     | '/student/accelerator'
     | '/student/batch'
@@ -262,6 +273,7 @@ export interface FileRouteTypes {
     | '/admin/content'
     | '/admin/drives'
     | '/admin/provisioning'
+    | '/admin/roster'
     | '/admin/settings'
     | '/student/accelerator'
     | '/student/batch'
@@ -361,6 +373,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProvisioningRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/roster': {
+      id: '/admin/roster'
+      path: '/roster'
+      fullPath: '/admin/roster'
+      preLoaderRoute: typeof AdminRosterRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
@@ -441,6 +460,7 @@ interface AdminRouteChildren {
   AdminContentRoute: typeof AdminContentRoute
   AdminDrivesRoute: typeof AdminDrivesRoute
   AdminProvisioningRoute: typeof AdminProvisioningRoute
+  AdminRosterRoute: typeof AdminRosterRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -452,6 +472,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminContentRoute: AdminContentRoute,
   AdminDrivesRoute: AdminDrivesRoute,
   AdminProvisioningRoute: AdminProvisioningRoute,
+  AdminRosterRoute: AdminRosterRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
