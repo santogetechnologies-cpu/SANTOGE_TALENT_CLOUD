@@ -64,7 +64,6 @@ function BatchesPage() {
   const [editName, setEditName] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newBatchName, setNewBatchName] = useState("BATCH-2026-PSG-CSE-02");
-  const [newBatchDept, setNewBatchDept] = useState("CSE");
   const [newBatchCapacity, setNewBatchCapacity] = useState(250);
 
   // Live Queries
@@ -189,7 +188,7 @@ function BatchesPage() {
 
     const res = await createLiveBatch({
       name: newBatchName.trim(),
-      dept: newBatchDept,
+      dept: "All",
       capacity: newBatchCapacity,
     });
     if (res.ok) {
@@ -693,22 +692,6 @@ function BatchesPage() {
                 />
               </div>
 
-              <div>
-                <label className="mb-1 block font-semibold text-muted-foreground">
-                  Academic Department
-                </label>
-                <select
-                  value={newBatchDept}
-                  onChange={(e) => setNewBatchDept(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
-                >
-                  <option value="CSE">Computer Science &amp; Engineering (CSE)</option>
-                  <option value="IT">Information Technology (IT)</option>
-                  <option value="ECE">Electronics &amp; Communication (ECE)</option>
-                  <option value="MECH">Mechanical / Robotics</option>
-                  <option value="ALL">Interdisciplinary / Combined</option>
-                </select>
-              </div>
 
               <div>
                 <div className="flex items-center justify-between font-semibold text-muted-foreground">
