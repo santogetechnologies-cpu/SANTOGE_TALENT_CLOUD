@@ -276,7 +276,7 @@ export async function fetchLiveAdminAnalytics(
   const stage1 = totalEnrolled;
   const stage2 = students.filter((s) => s.placement_day >= 2).length;
   const stage3 = students.filter((s) => s.talent_score >= 500).length;
-  const stage4 = students.filter((s) => s.placement_day >= 30).length;
+  const stage4 = students.filter((s) => (s.placement_day ?? 1) >= 90 && (s.readiness_t ?? 0) >= 80).length;
   const stage5 = students.filter((s) => s.talent_score >= 600).length;
   const stage6 = marketplaceReadyCount;
 
@@ -495,7 +495,7 @@ export async function fetchLiveStudentRoster(options?: {
       R: s.readiness_r ?? 0,
       M: s.readiness_m ?? 0,
     },
-    gateCleared: (s.placement_day ?? 1) >= 30,
+    gateCleared: (s.placement_day ?? 1) >= 90 && (s.readiness_t ?? 0) >= 80,
   }));
 
   return { items, totalCount: count || items.length };
@@ -991,3 +991,25 @@ export async function updateLivePlatformSettings(
 
   return { ok: true };
 }
+
+/**
+ * Trigger authoritative database recalculation of Talent Scores across all active students.
+ */
+export async function triggerLiveTalentScoreRecalculation(): Promise<{
+  ok: boolean;
+  recalculated_count?: number;
+  error?: string;
+}> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc("recalculate_all_talent_scores");
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  const res = data as { ok?: boolean; recalculated_count?: number; error?: string } | null;
+  return {
+    ok: Boolean(res?.ok),
+    ...(res?.recalculated_count !== undefined ? { recalculated_count: res.recalculated_count } : {}),
+    ...(res?.error !== undefined ? { error: res.error } : {}),
+  };
+}
+

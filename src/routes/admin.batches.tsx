@@ -85,8 +85,8 @@ function BatchesPage() {
   );
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [broadcastLogs, setBroadcastLogs] = useState<string[]>([
-    "[bot] Telegram Bot Webhook connected: @SantoGeTalentBot",
-    "[status] Broadcast channels ready for scheduled daily drops",
+    "[bot] Telegram Bot Webhook: Integration Standby (@SantoGeTalentBot)",
+    "[status] Production bot token not configured in backend environment",
   ]);
 
   // Batch Roster View state
@@ -172,7 +172,7 @@ function BatchesPage() {
     const res = await updateLiveBatch(id, { last_sync_at: new Date().toISOString() });
     if (res.ok) {
       queryClient.invalidateQueries({ queryKey: ["live", "batches"] });
-      toast.success("Batch synchronized with Telegram webhook");
+      toast.success("Batch timestamp synchronized successfully");
     }
   };
 
@@ -238,7 +238,7 @@ function BatchesPage() {
     ).length;
 
     setBroadcastLogs((prev) => [
-      `[tx] Dispatching webhook simulation to Telegram channel: t.me/stc-${broadcastTargetBatch.toLowerCase()}`,
+      `[tx] Broadcast payload queued for batch: t.me/stc-${broadcastTargetBatch.toLowerCase()} (${learnerCount} registered learners)`,
       `[tx] Payload: "${broadcastMessage.slice(0, 60)}…"`,
       ...prev,
     ]);
@@ -254,11 +254,11 @@ function BatchesPage() {
     setTimeout(() => {
       setIsBroadcasting(false);
       setBroadcastLogs((prev) => [
-        `[simulated] Broadcast payload validated for ${learnerCount} active devices via @SantoGeTalentBot simulator (200 OK)`,
+        `[standby] Webhook dispatch held: Telegram Bot Token not configured in backend environment`,
         ...prev,
       ]);
-      toast.success(`Simulated broadcast dispatched to ${broadcastTargetBatch}!`);
-    }, 1200);
+      toast.info(`Broadcast message queued for ${broadcastTargetBatch}. Live Telegram bot integration pending configuration.`);
+    }, 600);
   };
 
   // Dynamic department list for filtering

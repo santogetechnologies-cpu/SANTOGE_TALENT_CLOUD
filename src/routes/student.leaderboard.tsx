@@ -165,7 +165,7 @@ function LeaderboardPage() {
       >
         <p className="mb-4 flex items-start gap-2 text-xs text-muted-foreground">
           <Info className="mt-0.5 size-4 shrink-0 text-primary" />
-          MERN, SAP FICO and Medical Coding are never ranked against each other. Technical progress
+          Java Full Stack, SAP FICO and Medical Coding are never ranked against each other. Technical progress
           is measured per course through skill mastery, practical completion and competency
           evidence.
         </p>

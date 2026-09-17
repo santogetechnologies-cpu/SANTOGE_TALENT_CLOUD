@@ -76,60 +76,38 @@ const HEADERS = [
 
 /** Production standard CSV template with realistic entries and valid tracks */
 const TEMPLATE = `${HEADERS.join(",")}
-Ajay Kumar,ajay@college.edu,Temp@1234,22CS014,CSE,mern,datascience,cloud,BATCH-2026-ABC-CSE-01,PSG College of Technology
-Kiran Sundaram,kiran@college.edu,Temp@1234,22CS015,CSE,aiml,datascience,cloud,BATCH-2026-ABC-CSE-01,PSG College of Technology
-Sneha Iyer,sneha@college.edu,Temp@1234,22EC016,ECE,aiml,java,cyber,BATCH-2026-ABC-CSE-01,PSG College of Technology
-Arun Raj,arun@college.edu,Temp@1234,22CS017,CSE,cloud,sre,cyber,BATCH-2026-ABC-CSE-01,PSG College of Technology
-Priya Sharma,priya@college.edu,Temp@1234,22IT073,IT,java,datascience,qa,BATCH-2026-ABC-IT-02,National Institute of Technology
-Manoj Varadhan,manoj@college.edu,Temp@1234,22CS018,CSE,mern,cloud,uiux,BATCH-2026-ABC-CSE-01,PSG College of Technology
-Deepa Krishnan,deepa@college.edu,Temp@1234,22EC045,ECE,aiml,datascience,mobile,BATCH-2026-XYZ-ECE-01,Anna University College of Engineering
-Siddharth N,sid@college.edu,Temp@1234,22IT088,IT,cloud,cyber,sre,BATCH-2026-ABC-IT-02,National Institute of Technology
-Ananya Ramesh,ananya@college.edu,Temp@1234,22CS102,CSE,mern,java,qa,BATCH-2026-ABC-CSE-01,PSG College of Technology
-Girish Patel,girish@college.edu,Temp@1234,22AI034,AIDS,aiml,datascience,bianalytics,BATCH-2026-ABC-CSE-01,PSG College of Technology`;
+Ajay Kumar,ajay@college.edu,Temp@1234,22CS014,CSE,java,datascience,aiml,BATCH-2026-ABC-CSE-01,PSG College of Technology
+Kiran Sundaram,kiran@college.edu,Temp@1234,22CS015,CSE,aiml,datascience,java,BATCH-2026-ABC-CSE-01,PSG College of Technology
+Sneha Iyer,sneha@college.edu,Temp@1234,22EC016,ECE,aiml,java,datascience,BATCH-2026-ABC-CSE-01,PSG College of Technology
+Arun Raj,arun@college.edu,Temp@1234,22CS017,CSE,java,aiml,datascience,BATCH-2026-ABC-CSE-01,PSG College of Technology
+Priya Sharma,priya@college.edu,Temp@1234,22IT073,IT,java,datascience,marketing,BATCH-2026-ABC-IT-02,National Institute of Technology
+Manoj Varadhan,manoj@college.edu,Temp@1234,22CS018,CSE,java,datascience,sap,BATCH-2026-ABC-CSE-01,PSG College of Technology
+Deepa Krishnan,deepa@college.edu,Temp@1234,22EC045,ECE,aiml,datascience,medical,BATCH-2026-XYZ-ECE-01,Anna University College of Engineering
+Siddharth N,sid@college.edu,Temp@1234,22IT088,IT,java,datascience,aiml,BATCH-2026-ABC-IT-02,National Institute of Technology
+Ananya Ramesh,ananya@college.edu,Temp@1234,22CS102,CSE,java,marketing,sap,BATCH-2026-ABC-CSE-01,PSG College of Technology
+Girish Patel,girish@college.edu,Temp@1234,22AI034,AIDS,aiml,datascience,java,BATCH-2026-ABC-CSE-01,PSG College of Technology`;
 
 /** Common course alias normalizer to ensure valid TrackId */
 const COURSE_ALIASES: Record<string, TrackId> = {
-  mern: "mern",
-  fullstack: "mern",
-  react: "mern",
-  node: "mern",
   java: "java",
   spring: "java",
+  fullstack: "java",
   aiml: "aiml",
   ai: "aiml",
   ml: "aiml",
+  genai: "aiml",
   datascience: "datascience",
   data: "datascience",
   python: "datascience",
-  cloud: "cloud",
-  devops: "cloud",
-  aws: "cloud",
-  azure: "cloud",
-  cyber: "cyber",
-  security: "cyber",
-  cybersecurity: "cyber",
-  sre: "sre",
-  uiux: "uiux",
-  design: "uiux",
-  figma: "uiux",
-  qa: "qa",
-  testing: "qa",
-  automation: "qa",
-  mobile: "mobile",
-  flutter: "mobile",
-  reactnative: "mobile",
-  android: "mobile",
+  analytics: "datascience",
   medical: "medical",
   healthcare: "medical",
+  medcoding: "medical",
   marketing: "marketing",
   digitalmarketing: "marketing",
   sap: "sap",
   fico: "sap",
-  hr: "hr",
-  payroll: "hr",
-  bianalytics: "bianalytics",
-  bi: "bianalytics",
-  powerbi: "bianalytics",
+  sapfico: "sap",
 };
 
 /** Normalizes flexible column header titles */
@@ -229,7 +207,7 @@ function ProvisioningPage() {
   const [singleDept, setSingleDept] = useState("CSE");
   const [singleBatchId, setSingleBatchId] = useState("");
   const [singleCollege, setSingleCollege] = useState("");
-  const [singleTracks, setSingleTracks] = useState<TrackId[]>(["mern"]);
+  const [singleTracks, setSingleTracks] = useState<TrackId[]>(["java"]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 

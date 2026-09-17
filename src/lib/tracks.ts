@@ -1,19 +1,10 @@
 export type TrackId =
-  | "mern"
   | "java"
   | "aiml"
   | "datascience"
-  | "cloud"
-  | "cyber"
-  | "sre"
-  | "uiux"
-  | "qa"
-  | "mobile"
   | "medical"
   | "marketing"
-  | "sap"
-  | "hr"
-  | "bianalytics";
+  | "sap";
 
 export type Domain = {
   id: string;
@@ -21,9 +12,8 @@ export type Domain = {
 };
 
 export const DOMAINS: Domain[] = [
-  { id: "fullstack", label: "Full Stack & Mobile" },
+  { id: "fullstack", label: "Full Stack Development" },
   { id: "ai_data", label: "AI, Data & Analytics" },
-  { id: "cloud_sec", label: "Cloud, Security & DevOps" },
   { id: "enterprise", label: "Enterprise & Business" },
 ];
 
@@ -38,15 +28,6 @@ export type Track = {
 };
 
 export const TRACKS: Track[] = [
-  {
-    id: "mern",
-    name: "MERN Stack Development",
-    short: "MERN",
-    tagline: "React, Node, Express, MongoDB",
-    labTitle: "REST API Test Runner",
-    accent: "var(--brand-cyan)",
-    domain: "fullstack",
-  },
   {
     id: "java",
     name: "Java Full Stack",
@@ -75,60 +56,6 @@ export const TRACKS: Track[] = [
     domain: "ai_data",
   },
   {
-    id: "cloud",
-    name: "Cloud & DevOps (AWS)",
-    short: "Cloud",
-    tagline: "Terraform, EC2, IAM",
-    labTitle: "Terraform Apply Console",
-    accent: "var(--brand-blue)",
-    domain: "cloud_sec",
-  },
-  {
-    id: "cyber",
-    name: "Cybersecurity",
-    short: "Cyber",
-    tagline: "Recon, hardening, firewalls",
-    labTitle: "Nmap Port Scanner",
-    accent: "var(--brand-rose)",
-    domain: "cloud_sec",
-  },
-  {
-    id: "sre",
-    name: "DevOps & SRE",
-    short: "SRE",
-    tagline: "Kubernetes, scaling, SLOs",
-    labTitle: "Kubernetes Scaling Terminal",
-    accent: "var(--brand-cyan)",
-    domain: "cloud_sec",
-  },
-  {
-    id: "uiux",
-    name: "UI / UX Design",
-    short: "UI/UX",
-    tagline: "Design systems, accessibility",
-    labTitle: "Viewport + WCAG Checker",
-    accent: "var(--brand-purple)",
-    domain: "fullstack",
-  },
-  {
-    id: "qa",
-    name: "QA Automation",
-    short: "QA",
-    tagline: "Cypress, regression suites",
-    labTitle: "Cypress Suite Runner",
-    accent: "var(--brand-emerald)",
-    domain: "fullstack",
-  },
-  {
-    id: "mobile",
-    name: "Mobile App Development",
-    short: "Mobile",
-    tagline: "React Native, push, hot reload",
-    labTitle: "Device Mock + Push",
-    accent: "var(--brand-blue)",
-    domain: "fullstack",
-  },
-  {
     id: "medical",
     name: "Medical Coding",
     short: "Med Coding",
@@ -154,24 +81,6 @@ export const TRACKS: Track[] = [
     labTitle: "SAP GL Document Poster",
     accent: "var(--brand-blue)",
     domain: "enterprise",
-  },
-  {
-    id: "hr",
-    name: "HR & Payroll",
-    short: "HR",
-    tagline: "CTC structuring, statutory",
-    labTitle: "CTC Salary Calculator",
-    accent: "var(--brand-emerald)",
-    domain: "enterprise",
-  },
-  {
-    id: "bianalytics",
-    name: "Business Analytics",
-    short: "BI",
-    tagline: "Excel, Power BI, DAX",
-    labTitle: "DAX Formula Evaluator",
-    accent: "var(--brand-purple)",
-    domain: "ai_data",
   },
 ];
 

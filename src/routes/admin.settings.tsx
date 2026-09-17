@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Chip, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore, type CompletionRule } from "@/lib/app-store";
-import { Moon, Sun, Shield, Server, RefreshCw } from "lucide-react";
+import { Sun, Shield, Server, RefreshCw } from "lucide-react";
 import { getSupabaseConfig, supabaseAuth, isSupabaseConfigured } from "@/lib/supabase";
 
 import { useLivePlatformSettings, updateLivePlatformSettings } from "@/lib/data";
@@ -272,17 +272,10 @@ function AdminSettingsPage() {
       {/* Appearance */}
       <Panel title="Platform Appearance & Controls" subtitle="Workspace environment controls">
         <div className="grid gap-3 sm:grid-cols-2">
-          <button
-            onClick={store.toggleTheme}
-            className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3 text-xs font-medium text-foreground hover:bg-muted transition-colors shadow-xs"
-          >
-            {store.theme === "dark" ? (
-              <Sun className="size-4 text-amber-500" />
-            ) : (
-              <Moon className="size-4 text-muted-foreground" />
-            )}
-            Switch to {store.theme === "dark" ? "light" : "dark"} theme
-          </button>
+          <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-4 py-3 text-xs font-medium text-foreground shadow-xs">
+            <Sun className="size-4 text-amber-500" />
+            <span>Platform Theme: Light Mode (Standard)</span>
+          </div>
           <div className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
             <Shield className="size-4 text-emerald-600 dark:text-emerald-400" />
             <span>PostgreSQL RLS &amp; Supabase Auth Enforced</span>

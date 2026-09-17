@@ -78,27 +78,42 @@ function AutomationsPage() {
   const store = useAppStore();
   const [runningJob, setRunningJob] = useState<string | null>(null);
 
-  const run = (job: (typeof JOBS)[number]) => {
+  const run = async (job: (typeof JOBS)[number]) => {
     setRunningJob(job.id);
-    store.pushCronLog({
-      stage: job.id,
-      message: `Triggered manually by Super Admin for ${job.target}`,
-      status: "running",
-    });
 
-    setTimeout(() => {
-      setRunningJob(null);
-      if (job.id === "score") {
-        store.recalculateAllScores();
-      } else {
+    if (job.id === "score") {
+      store.pushCronLog({
+        stage: job.id,
+        message: `Triggered manually by Super Admin: executing database recalculation across student portfolios...`,
+        status: "running",
+      });
+      try {
+        await store.recalculateAllScores();
         store.pushCronLog({
           stage: job.id,
-          message: `Pipeline execution complete: 100% success rate across ${job.target}`,
+          message: `Talent score recalculation completed successfully via database RPC`,
           status: "ok",
         });
+        toast.success("Talent score recalculation completed");
+      } catch (err: any) {
+        store.pushCronLog({
+          stage: job.id,
+          message: `Talent score recalculation failed: ${err?.message || "Unknown error"}`,
+          status: "failed",
+        });
+        toast.error("Talent score recalculation failed");
+      } finally {
+        setRunningJob(null);
       }
-      toast.success(`${job.name} finished successfully`);
-    }, 1400);
+    } else {
+      store.pushCronLog({
+        stage: job.id,
+        message: `Standby: External worker daemon not configured for ${job.target}`,
+        status: "idle",
+      });
+      setRunningJob(null);
+      toast.info(`${job.name}: Pending external worker daemon integration (standby)`);
+    }
   };
 
   const cronLogsList = store.cronLogs || [];
@@ -125,21 +140,21 @@ function AutomationsPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-4">
-        <Stat label="Scheduled Cron Jobs" value={JOBS.length} hint="Active daemon routines" />
+        <Stat label="Scheduled Cron Jobs" value={JOBS.length} hint="Configured routines" />
         <Stat
           label="Total Runs Logged"
           value={cronLogsList.length}
           hint="Session audit trail"
         />
         <Stat
-          label="Pipeline Health"
-          value="100%"
-          hint="Zero failures in 24h"
+          label="Pipeline Status"
+          value="Standby"
+          hint="RPC ready · Daemons standby"
         />
         <Stat
           label="Next Broadcast Window"
           value="06:00 IST"
-          hint="Tomorrow morning"
+          hint="Scheduled morning slot"
         />
       </div>
 
@@ -149,8 +164,8 @@ function AutomationsPage() {
           title="Scheduled Pipelines"
           subtitle="Trigger any automated background pipeline on demand"
           action={
-            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-              <Activity className="size-3.5 animate-pulse" /> Cron Service Healthy
+            <span className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+              <Activity className="size-3.5" /> Database RPC Ready · Daemons Standby
             </span>
           }
         >

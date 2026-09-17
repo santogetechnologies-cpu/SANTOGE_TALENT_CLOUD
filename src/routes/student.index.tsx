@@ -9,9 +9,6 @@ import { getTrackSyllabus } from "@/lib/syllabus-data";
 import {
   useLiveStudentProfile,
   useLiveStudentProgress,
-  completeLivePlacementDay,
-  completeLiveTechnicalDay,
-  completeLiveDailyStep,
   isStudentTrackAssigned,
 } from "@/lib/data";
 import { DailyHomeScreen } from "@/components/daily-journey/DailyHomeScreen";
@@ -106,7 +103,7 @@ function TodayLearningPage() {
     if (requestedTrack && isStudentTrackAssigned(activeTracks, requestedTrack)) {
       return requestedTrack;
     }
-    return activeTracks[0] ?? "mern";
+    return activeTracks[0] ?? "java";
   }, [selectedTrackOverride, requestedTrack, activeTracks]);
 
   const primaryTrack = trackById(selectedTrackId);
@@ -136,8 +133,8 @@ function TodayLearningPage() {
   const isPlacementDone = attendance.includes(cohortDay);
 
   const handleCompleteTechnicalLab = async () => {
+    await store.completeTechDay(cohortDay);
     if (liveStudentId) {
-      await completeLiveTechnicalDay(liveStudentId, cohortDay);
       queryClient.invalidateQueries({
         queryKey: ["live", "student-progress", liveStudentId],
       });
@@ -145,16 +142,12 @@ function TodayLearningPage() {
         queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
       });
     }
-    store.completeTechDay(cohortDay);
-    toast.success(`Day ${cohortDay} ${primaryTrack.name} Lab verified (+50 XP)!`, {
-      description: "Technical exercise passed automated tests.",
-    });
   };
 
   const handleRecordVoicePitch = async () => {
+    await store.completeDailyStep("practice");
+    await store.completePlacementDay(cohortDay);
     if (liveStudentId) {
-      await completeLiveDailyStep(liveStudentId, "practice");
-      await completeLivePlacementDay(liveStudentId, cohortDay);
       queryClient.invalidateQueries({
         queryKey: ["live", "student-progress", liveStudentId],
       });
@@ -162,11 +155,6 @@ function TodayLearningPage() {
         queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
       });
     }
-    store.setDailyStep("practice", true);
-    store.completePlacementDay(cohortDay);
-    toast.success(`Day ${cohortDay} Placement Accelerator verified (+25 XP)!`, {
-      description: "Voice pitch STAR score recorded · Attendance logged.",
-    });
   };
 
   if (isJourneyActive) {

@@ -92,7 +92,7 @@ function TechnicalPage() {
   const searchParams = new URLSearchParams(location.search);
   const requestedTrackFromUrl = searchParams.get("track");
 
-  const [open, setOpen] = useState<TrackId>(tracks[0] ?? "mern");
+  const [open, setOpen] = useState<TrackId>(tracks[0] ?? "java");
   const [syllabusViewTab, setSyllabusViewTab] = useState<
     "90days" | "simulations" | "portfolio" | "capstone"
   >("90days");
@@ -115,7 +115,7 @@ function TechnicalPage() {
       ? (requestedTrackFromUrl as TrackId)
       : isStudentTrackAssigned(tracks, open)
         ? open
-        : (tracks[0] ?? "mern");
+        : (tracks[0] ?? "java");
 
   const track = trackById(currentTrackId);
   const syllabus = useMemo(() => getTrackSyllabus(track.id), [track.id]);

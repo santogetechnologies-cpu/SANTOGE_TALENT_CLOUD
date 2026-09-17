@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
-import type { TrackId } from "./tracks";
+import { TRACKS, type TrackId } from "./tracks";
 import { trackProgress as trackPct } from "./curriculum";
 import type { Session } from "@supabase/supabase-js";
 import {
@@ -50,6 +50,7 @@ import {
   createLiveContentItem,
   updateLiveContentItem,
   deleteLiveContentItem,
+  triggerLiveTalentScoreRecalculation,
   type DbStudentProfile,
 } from "./data";
 
@@ -132,7 +133,7 @@ export type CronLog = {
   time: string;
   stage: string;
   message: string;
-  status: "ok" | "running" | "queued";
+  status: "ok" | "running" | "queued" | "failed" | "idle";
 };
 
 export type StudentInfo = {
@@ -161,12 +162,16 @@ export const sanitizeTracks = (tracks?: (TrackId | string)[]): TrackId[] => {
     for (const t of tracks) {
       if (t && typeof t === "string") {
         const trimmed = t.trim() as TrackId;
-        if (trimmed && !seen.has(trimmed)) {
+        if (trimmed && !seen.has(trimmed) && TRACKS.some((tr) => tr.id === trimmed)) {
           seen.add(trimmed);
           validTracks.push(trimmed);
         }
       }
     }
+  }
+
+  if (validTracks.length === 0) {
+    validTracks.push("java");
   }
 
   return validTracks.slice(0, 3);
@@ -249,17 +254,17 @@ type AppStoreContextValue = AppStoreState & {
   toggleTheme: () => void;
   setReadiness: (patch: Partial<ReadinessInputs>) => void;
   setActiveTracks: (tracks: TrackId[]) => void;
-  setDailyStep: (key: "english" | "aptitude" | "practice", val: boolean) => void;
-  completeDailyStep: (key: "english" | "aptitude" | "practice") => void;
-  completeSkill: (trackId: TrackId, skillId: string, name: string) => void;
-  completePlacementDay: (day: number) => void;
-  completeTechDay: (day: number) => void;
-  completeLab: (labId: string) => void;
-  submitAssessment: (day: number, score: number) => void;
-  completeMock: (id: string, score: number) => void;
-  issueCertificate: (label: string) => void;
-  recalculateAllScores: () => void;
-  recalculateStudentScore: (emailOrId?: string) => void;
+  setDailyStep: (key: "english" | "aptitude" | "practice", val: boolean) => Promise<void> | void;
+  completeDailyStep: (key: "english" | "aptitude" | "practice") => Promise<void> | void;
+  completeSkill: (trackId: TrackId, skillId: string, name: string) => Promise<void> | void;
+  completePlacementDay: (day: number) => Promise<void> | void;
+  completeTechDay: (day: number) => Promise<void> | void;
+  completeLab: (labId: string) => Promise<void> | void;
+  submitAssessment: (day: number, score: number) => Promise<void> | void;
+  completeMock: (id: string, score: number) => Promise<void> | void;
+  issueCertificate: (label: string) => Promise<void> | void;
+  recalculateAllScores: () => Promise<void> | void;
+  recalculateStudentScore: (emailOrId?: string) => Promise<void> | void;
   resetProgress: () => void;
   setCompletionRule: (rule: CompletionRule, secondaryMinimum?: number) => void;
   resetStudentPassword: (
@@ -277,18 +282,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [cronLogs, setCronLogs] = useState<CronLog[]>([]);
 
   const [state, setState] = useState<AppStoreState>(() => {
-    let savedTheme: "dark" | "light" = "dark";
     if (typeof window !== "undefined") {
       try {
-        const t = localStorage.getItem(THEME_STORAGE_KEY);
-        if (t === "dark" || t === "light") savedTheme = t;
+        localStorage.setItem(THEME_STORAGE_KEY, "light");
       } catch {
         /* ignore */
       }
     }
     return {
       role: "student",
-      theme: savedTheme,
+      theme: "light",
       sessionEmail: null,
       authProvider: "supabase",
       supabaseSession: null,
@@ -300,13 +303,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     };
   });
 
-  // Apply theme to DOM
+  // Enforce white (light) mode permanently across DOM
   useEffect(() => {
     if (typeof document !== "undefined") {
-      const root = document.documentElement;
-      root.classList.toggle("dark", state.theme === "dark");
+      document.documentElement.classList.remove("dark");
     }
-  }, [state.theme]);
+  }, []);
 
   // Supabase Auth session listener & boot initialization
   useEffect(() => {
@@ -479,15 +481,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setState((s) => {
-      const nextTheme = s.theme === "dark" ? "light" : "dark";
-      try {
-        localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-      } catch {
-        /* ignore */
-      }
-      return { ...s, theme: nextTheme };
-    });
+    // White mode is permanently enforced
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.remove("dark");
+    }
   }, []);
 
   const setRole = useCallback((r: Role) => {
@@ -710,147 +707,368 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const setDailyStep = useCallback((key: "english" | "aptitude" | "practice", val: boolean) => {
-    setState((s) => {
-      const nextDaily = { ...s.profile.daily, [key]: val };
-      const nextProfile = { ...s.profile, daily: nextDaily };
-      if (s.liveStudentId && val) {
-        void completeLiveDailyStep(s.liveStudentId, key);
+  const setDailyStep = useCallback(
+    async (key: "english" | "aptitude" | "practice", val: boolean) => {
+      if (!val) {
+        setState((s) => ({
+          ...s,
+          profile: { ...s.profile, daily: { ...s.profile.daily, [key]: false } },
+        }));
+        return;
       }
-      return { ...s, profile: nextProfile };
-    });
-  }, []);
+
+      if (state.liveStudentId) {
+        const res = await completeLiveDailyStep(state.liveStudentId, key);
+        if (!res.ok) {
+          toast.error(res.error || `Failed to complete ${key} daily step`);
+          return;
+        }
+        setState((s) => ({
+          ...s,
+          profile: {
+            ...s.profile,
+            daily: { ...s.profile.daily, [key]: true },
+            xp: res.xp !== undefined ? res.xp : s.profile.xp,
+            talentScore: res.talent_score !== undefined ? res.talent_score : s.profile.talentScore,
+          },
+        }));
+      } else {
+        setState((s) => ({
+          ...s,
+          profile: { ...s.profile, daily: { ...s.profile.daily, [key]: true } },
+        }));
+      }
+    },
+    [state.liveStudentId],
+  );
 
   const completeDailyStep = useCallback(
-    (key: "english" | "aptitude" | "practice") => {
-      setDailyStep(key, true);
+    async (key: "english" | "aptitude" | "practice") => {
+      await setDailyStep(key, true);
     },
     [setDailyStep],
   );
 
-  const completeSkill = useCallback((trackId: TrackId, skillId: string, name: string) => {
-    setState((s) => {
-      if (s.profile.skills.includes(skillId)) return s;
-      const nextSkills = [...s.profile.skills, skillId];
-      const nextXp = s.profile.xp + 25;
-      const nextProfile = { ...s.profile, skills: nextSkills, xp: nextXp };
+  const completeSkill = useCallback(
+    async (trackId: TrackId, skillId: string, name: string) => {
+      if (state.profile.skills.includes(skillId)) return;
 
-      if (s.liveStudentId) {
-        void completeLiveSkill(s.liveStudentId, skillId, trackId);
+      if (state.liveStudentId) {
+        const res = await completeLiveSkill(state.liveStudentId, skillId, trackId);
+        if (!res.ok) {
+          toast.error(res.error || `Failed to verify skill: ${name}`);
+          return;
+        }
+        setState((s) => {
+          const nextSkills = s.profile.skills.includes(skillId)
+            ? s.profile.skills
+            : [...s.profile.skills, skillId];
+          const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
+          const nextTalentScore =
+            res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+          return {
+            ...s,
+            profile: {
+              ...s.profile,
+              skills: nextSkills,
+              xp: nextXp,
+              talentScore: nextTalentScore,
+            },
+          };
+        });
+        toast.success(`Skill Mastered: ${name} (+30 XP)`);
+      } else {
+        setState((s) => ({
+          ...s,
+          profile: {
+            ...s.profile,
+            skills: [...s.profile.skills, skillId],
+            xp: s.profile.xp + 30,
+          },
+        }));
+        toast.success(`Skill Mastered: ${name} (+30 XP)`);
       }
+    },
+    [state.liveStudentId, state.profile.skills],
+  );
 
-      toast.success(`Skill Mastered: ${name} (+25 XP)`);
-      return { ...s, profile: nextProfile };
-    });
-  }, []);
-
-  const completePlacementDay = useCallback((day: number) => {
-    setState((s) => {
-      const nextAtt = s.profile.attendance.includes(day)
-        ? s.profile.attendance
-        : [...s.profile.attendance, day];
-      const nextDay = Math.min(day + 1, 90);
-      const nextXp = s.profile.xp + 50;
-      const nextProfile = {
-        ...s.profile,
-        attendance: nextAtt,
-        placementDay: nextDay,
-        xp: nextXp,
-      };
-
-      if (s.liveStudentId) {
-        void completeLivePlacementDay(s.liveStudentId, day);
+  const completePlacementDay = useCallback(
+    async (day: number) => {
+      if (state.liveStudentId) {
+        const res = await completeLivePlacementDay(state.liveStudentId, day);
+        if (!res.ok) {
+          toast.error(res.error || `Failed to complete placement day ${day}`);
+          return;
+        }
+        setState((s) => {
+          const nextAtt = s.profile.attendance.includes(day)
+            ? s.profile.attendance
+            : [...s.profile.attendance, day];
+          const nextDay = res.placement_day ?? Math.min(day + 1, 90);
+          const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
+          const nextTalentScore =
+            res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+          return {
+            ...s,
+            profile: {
+              ...s.profile,
+              attendance: nextAtt,
+              placementDay: nextDay,
+              xp: nextXp,
+              talentScore: nextTalentScore,
+            },
+          };
+        });
+        toast.success(`Placement Day ${day} completed! (+20 XP)`);
+      } else {
+        setState((s) => {
+          const nextAtt = s.profile.attendance.includes(day)
+            ? s.profile.attendance
+            : [...s.profile.attendance, day];
+          return {
+            ...s,
+            profile: {
+              ...s.profile,
+              attendance: nextAtt,
+              placementDay: Math.min(day + 1, 90),
+              xp: s.profile.xp + 20,
+            },
+          };
+        });
+        toast.success(`Placement Day ${day} completed! (+20 XP)`);
       }
+    },
+    [state.liveStudentId],
+  );
 
-      toast.success(`Placement Day ${day} completed! (+50 XP)`);
-      return { ...s, profile: nextProfile };
-    });
-  }, []);
+  const completeTechDay = useCallback(
+    async (day: number) => {
+      if (state.profile.completedTechDays.includes(day)) return;
 
-  const completeTechDay = useCallback((day: number) => {
-    setState((s) => {
-      if (s.profile.completedTechDays.includes(day)) return s;
-      const nextTechDays = [...s.profile.completedTechDays, day];
-      const nextXp = s.profile.xp + 50;
-      const nextProfile = { ...s.profile, completedTechDays: nextTechDays, xp: nextXp };
-
-      if (s.liveStudentId) {
-        void completeLiveTechnicalDay(s.liveStudentId, day);
+      if (state.liveStudentId) {
+        const res = await completeLiveTechnicalDay(state.liveStudentId, day);
+        if (!res.ok) {
+          toast.error(res.error || `Failed to verify technical day ${day}`);
+          return;
+        }
+        setState((s) => {
+          const nextTechDays = s.profile.completedTechDays.includes(day)
+            ? s.profile.completedTechDays
+            : [...s.profile.completedTechDays, day];
+          const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
+          const nextTalentScore =
+            res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+          return {
+            ...s,
+            profile: {
+              ...s.profile,
+              completedTechDays: nextTechDays,
+              xp: nextXp,
+              talentScore: nextTalentScore,
+            },
+          };
+        });
+        toast.success(`Technical Day ${day} verified! (+50 XP)`);
+      } else {
+        setState((s) => ({
+          ...s,
+          profile: {
+            ...s.profile,
+            completedTechDays: [...s.profile.completedTechDays, day],
+            xp: s.profile.xp + 50,
+          },
+        }));
+        toast.success(`Technical Day ${day} verified! (+50 XP)`);
       }
+    },
+    [state.liveStudentId, state.profile.completedTechDays],
+  );
 
-      toast.success(`Technical Day ${day} verified! (+50 XP)`);
-      return { ...s, profile: nextProfile };
-    });
-  }, []);
+  const completeLab = useCallback(
+    async (labId: string) => {
+      if (state.profile.completedLabs.includes(labId)) return;
 
-  const completeLab = useCallback((labId: string) => {
-    setState((s) => {
-      if (s.profile.completedLabs.includes(labId)) return s;
-      const nextLabs = [...s.profile.completedLabs, labId];
-      const nextXp = s.profile.xp + 50;
-      const nextProfile = { ...s.profile, completedLabs: nextLabs, xp: nextXp };
-
-      if (s.liveStudentId) {
-        void completeLiveLab(s.liveStudentId, labId, labId);
+      if (state.liveStudentId) {
+        const res = await completeLiveLab(state.liveStudentId, labId, labId);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to complete lab challenge");
+          return;
+        }
+        setState((s) => {
+          const nextLabs = s.profile.completedLabs.includes(labId)
+            ? s.profile.completedLabs
+            : [...s.profile.completedLabs, labId];
+          const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
+          const nextTalentScore =
+            res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+          return {
+            ...s,
+            profile: {
+              ...s.profile,
+              completedLabs: nextLabs,
+              xp: nextXp,
+              talentScore: nextTalentScore,
+            },
+          };
+        });
+        toast.success(`Lab Challenge Passed (+50 XP)`);
+      } else {
+        setState((s) => ({
+          ...s,
+          profile: {
+            ...s.profile,
+            completedLabs: [...s.profile.completedLabs, labId],
+            xp: s.profile.xp + 50,
+          },
+        }));
+        toast.success(`Lab Challenge Passed (+50 XP)`);
       }
+    },
+    [state.liveStudentId, state.profile.completedLabs],
+  );
 
-      toast.success(`Lab Challenge Passed (+50 XP)`);
-      return { ...s, profile: nextProfile };
-    });
-  }, []);
-
-  const recalculateAllScores = useCallback(() => {
-    toast.success("Talent scores recalculation triggered");
-  }, []);
-
-  const recalculateStudentScore = useCallback((_emailOrId?: string) => {
-    toast.success("Student talent score recalculation triggered");
-  }, []);
-
-  const submitAssessment = useCallback((day: number, score: number) => {
-    setState((s) => {
-      const nextAss = { ...s.profile.assessments, [String(day)]: score };
-      const nextXp = s.profile.xp + 100;
-      const nextProfile = { ...s.profile, assessments: nextAss, xp: nextXp };
-
-      if (s.liveStudentId) {
-        void submitLiveAssessment(s.liveStudentId, day, score);
+  const recalculateAllScores = useCallback(async () => {
+    try {
+      const res = await triggerLiveTalentScoreRecalculation();
+      if (res.ok) {
+        toast.success(
+          `Talent scores recalculated authoritatively across ${res.recalculated_count ?? "all"} active learners`,
+        );
+      } else {
+        toast.error(res.error || "Failed to recalculate talent scores");
       }
-
-      toast.success(`Day ${day} Assessment Submitted: ${score}% (+100 XP)`);
-      return { ...s, profile: nextProfile };
-    });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error recalculating talent scores");
+    }
   }, []);
 
-  const completeMock = useCallback((id: string, score: number) => {
-    setState((s) => {
-      const nextMocks = { ...s.profile.mocks, [id]: score };
-      const nextXp = s.profile.xp + 100;
-      const nextProfile = { ...s.profile, mocks: nextMocks, xp: nextXp };
+  const recalculateStudentScore = useCallback(
+    async (_emailOrId?: string) => {
+      await recalculateAllScores();
+    },
+    [recalculateAllScores],
+  );
 
-      if (s.liveStudentId) {
-        void completeLiveMock(s.liveStudentId, id, score);
+  const submitAssessment = useCallback(
+    async (day: number, score: number) => {
+      if (state.liveStudentId) {
+        const res = await submitLiveAssessment(state.liveStudentId, day, score);
+        if (!res.ok) {
+          toast.error(res.error || `Failed to submit day ${day} assessment`);
+          return;
+        }
+        setState((s) => {
+          const nextAss = { ...s.profile.assessments, [String(day)]: score };
+          const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
+          const nextTalentScore =
+            res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+          return {
+            ...s,
+            profile: {
+              ...s.profile,
+              assessments: nextAss,
+              xp: nextXp,
+              talentScore: nextTalentScore,
+            },
+          };
+        });
+        toast.success(`Day ${day} Assessment Submitted: ${score}% (+40 XP)`);
+      } else {
+        setState((s) => ({
+          ...s,
+          profile: {
+            ...s.profile,
+            assessments: { ...s.profile.assessments, [String(day)]: score },
+            xp: s.profile.xp + 40,
+          },
+        }));
+        toast.success(`Day ${day} Assessment Submitted: ${score}% (+40 XP)`);
       }
+    },
+    [state.liveStudentId],
+  );
 
-      toast.success(`AI Mock Interview Recorded: ${score}% (+100 XP)`);
-      return { ...s, profile: nextProfile };
-    });
-  }, []);
-
-  const issueCertificate = useCallback((label: string) => {
-    setState((s) => {
-      if (s.profile.certifications.includes(label)) return s;
-      const nextCerts = [...s.profile.certifications, label];
-      const nextProfile = { ...s.profile, certifications: nextCerts };
-
-      if (s.liveStudentId) {
-        void issueLiveCertificate(s.liveStudentId, label);
+  const completeMock = useCallback(
+    async (id: string, score: number) => {
+      if (state.liveStudentId) {
+        const res = await completeLiveMock(state.liveStudentId, id, score);
+        if (!res.ok) {
+          toast.error(res.error || "Failed to record mock interview");
+          return;
+        }
+        setState((s) => {
+          const nextMocks = { ...s.profile.mocks, [id]: score };
+          const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
+          const nextTalentScore =
+            res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+          return {
+            ...s,
+            profile: {
+              ...s.profile,
+              mocks: nextMocks,
+              xp: nextXp,
+              talentScore: nextTalentScore,
+            },
+          };
+        });
+        toast.success(`Mock Interview Recorded: ${score}% (+50 XP)`);
+      } else {
+        setState((s) => ({
+          ...s,
+          profile: {
+            ...s.profile,
+            mocks: { ...s.profile.mocks, [id]: score },
+            xp: s.profile.xp + 50,
+          },
+        }));
+        toast.success(`Mock Interview Recorded: ${score}% (+50 XP)`);
       }
+    },
+    [state.liveStudentId],
+  );
 
-      toast.success(`Certification Issued: ${label}`);
-      return { ...s, profile: nextProfile };
-    });
-  }, []);
+  const issueCertificate = useCallback(
+    async (label: string) => {
+      if (state.profile.certifications.includes(label)) return;
+
+      if (state.liveStudentId) {
+        const res = await issueLiveCertificate(state.liveStudentId, label);
+        if (!res.ok) {
+          toast.error(res.error || `Failed to issue certificate: ${label}`);
+          return;
+        }
+        setState((s) => {
+          const nextCerts = s.profile.certifications.includes(label)
+            ? s.profile.certifications
+            : [...s.profile.certifications, label];
+          const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
+          const nextTalentScore =
+            res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+          return {
+            ...s,
+            profile: {
+              ...s.profile,
+              certifications: nextCerts,
+              xp: nextXp,
+              talentScore: nextTalentScore,
+            },
+          };
+        });
+        toast.success(`Certification Issued: ${label} (+100 XP)`);
+      } else {
+        setState((s) => ({
+          ...s,
+          profile: {
+            ...s.profile,
+            certifications: [...s.profile.certifications, label],
+            xp: s.profile.xp + 100,
+          },
+        }));
+        toast.success(`Certification Issued: ${label} (+100 XP)`);
+      }
+    },
+    [state.liveStudentId, state.profile.certifications],
+  );
 
   const resetProgress = useCallback(() => {
     setState((s) => ({
@@ -903,7 +1121,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return 1;
   }, [talentScore]);
 
-  const phase1Complete = profile.placementDay >= 30;
+  const placementComplete = profile.placementDay >= 90;
   const technicalComplete = useMemo(() => {
     if (profile.activeTracks.length === 0) return false;
     if (state.completionRule === "all-tracks") {
@@ -915,8 +1133,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return primaryOk && restOk;
   }, [profile.activeTracks, state.completionRule, state.secondaryMinimum, trackPercent]);
 
-  const placementComplete = profile.placementDay >= 90;
-  const gateUnlocked = phase1Complete;
+  const phase1Complete = placementComplete;
+  const gateUnlocked = placementComplete && technicalComplete;
 
   const value: AppStoreContextValue = {
     ready,
