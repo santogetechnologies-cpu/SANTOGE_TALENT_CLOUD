@@ -302,78 +302,122 @@ aside a.hover\:bg-muted:hover {
 }
 
 /* ==========================================================================
- * Platform Admin Pista Green (Pistachio) Sidebar Architecture
+ * Platform Admin Dark Blue (Midnight Navy) Sidebar Architecture
  * ========================================================================== */
 aside.sidebar-admin,
 aside[data-portal="admin"] {
-  background: linear-gradient(180deg, #edf7ee 0%, #e1f2e4 55%, #d8ebd9 100%) !important;
-  backdrop-filter: blur(24px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
-  border-right: 1px solid rgba(162, 212, 171, 0.85) !important;
-  box-shadow: 4px 0 24px -4px rgba(38, 82, 45, 0.08) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.18) 0%, transparent 65%),
+    linear-gradient(180deg, #0b1329 0%, #0f1c3a 50%, #080f20 100%) !important;
+  backdrop-filter: blur(24px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(200%) !important;
+  border-right: 1px solid rgba(59, 130, 246, 0.2) !important;
+  box-shadow: 6px 0 32px -4px rgba(2, 6, 23, 0.35) !important;
 }
 
 aside.sidebar-admin .border-border,
 aside[data-portal="admin"] .border-border {
-  border-color: rgba(162, 212, 171, 0.65) !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
 }
 
-/* User status card & info boxes inside pista green sidebar */
+/* User status card & info boxes inside dark blue sidebar */
 aside.sidebar-admin .bg-muted\/30,
 aside[data-portal="admin"] .bg-muted\/30 {
-  background-color: rgba(255, 255, 255, 0.75) !important;
-  border: 1px solid rgba(162, 212, 171, 0.65) !important;
-  box-shadow: 0 1px 3px 0 rgba(38, 82, 45, 0.04) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25) !important;
 }
 
 aside.sidebar-admin .bg-card,
 aside[data-portal="admin"] .bg-card {
-  background-color: rgba(255, 255, 255, 0.88) !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Admin Brand & Status Header */
 aside.sidebar-admin span.bg-primary,
 aside[data-portal="admin"] span.bg-primary {
-  background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%) !important;
-  box-shadow: 0 3px 10px rgba(46, 125, 50, 0.35) !important;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45) !important;
+  color: #ffffff !important;
+}
+
+aside.sidebar-admin p.text-foreground,
+aside[data-portal="admin"] p.text-foreground {
+  color: #ffffff !important;
+}
+
+aside.sidebar-admin p.text-muted-foreground,
+aside[data-portal="admin"] p.text-muted-foreground {
+  color: #60a5fa !important;
+}
+
+aside.sidebar-admin .text-foreground,
+aside[data-portal="admin"] .text-foreground {
+  color: #f8fafc !important;
+}
+
+aside.sidebar-admin .text-muted-foreground,
+aside[data-portal="admin"] .text-muted-foreground {
+  color: #94a3b8 !important;
 }
 
 aside.sidebar-admin .text-primary,
 aside[data-portal="admin"] .text-primary {
-  color: #2e7d32 !important;
+  color: #60a5fa !important;
+}
+
+/* Admin badge inside user status card */
+aside.sidebar-admin span.rounded.bg-card,
+aside[data-portal="admin"] span.rounded.bg-card {
+  background-color: rgba(37, 99, 235, 0.25) !important;
+  border-color: rgba(96, 165, 250, 0.35) !important;
+  color: #93c5fd !important;
+}
+
+/* Exit button inside user status card */
+aside.sidebar-admin button,
+aside[data-portal="admin"] button {
+  color: #94a3b8;
+}
+
+aside.sidebar-admin button:hover,
+aside[data-portal="admin"] button:hover {
+  color: #f8fafc;
+}
+
+/* Admin Navigation Section Header */
+aside.sidebar-admin p.text-muted-foreground\/70,
+aside[data-portal="admin"] p.text-muted-foreground\/70 {
+  color: #64748b !important;
 }
 
 /* Admin Navigation Links */
 aside.sidebar-admin nav a,
 aside[data-portal="admin"] nav a {
-  color: #27472f !important;
+  color: #94a3b8 !important;
   font-weight: 500;
 }
 
 aside.sidebar-admin nav a:hover,
 aside[data-portal="admin"] nav a:hover {
-  background-color: rgba(182, 224, 189, 0.55) !important;
-  color: #123d19 !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
   transform: translateX(3px);
 }
 
 aside.sidebar-admin nav a[data-status="active"],
 aside[data-portal="admin"] nav a[data-status="active"] {
-  background: linear-gradient(135deg, rgba(76, 175, 80, 0.22) 0%, rgba(129, 199, 132, 0.3) 100%) !important;
-  color: #1b5e20 !important;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.3) 0%, rgba(59, 130, 246, 0.2) 100%) !important;
+  color: #ffffff !important;
   font-weight: 700 !important;
-  border: 1px solid rgba(129, 199, 132, 0.5) !important;
-  box-shadow: 0 2px 6px -1px rgba(38, 82, 45, 0.1) !important;
+  border: 1px solid rgba(96, 165, 250, 0.35) !important;
+  box-shadow: 0 4px 14px -2px rgba(37, 99, 235, 0.35) !important;
 }
 
 aside.sidebar-admin nav a[data-status="active"] svg,
 aside[data-portal="admin"] nav a[data-status="active"] svg {
-  color: #1b5e20 !important;
-}
-
-aside.sidebar-admin p.text-muted-foreground\/70,
-aside[data-portal="admin"] p.text-muted-foreground\/70 {
-  color: #446e4d !important;
+  color: #60a5fa !important;
 }
 
 /* ==========================================================================
