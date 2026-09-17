@@ -82,10 +82,10 @@ export type ProvisionedStudent = {
   password?: string;
   roll_no: string;
   dept: string;
-  course_1: string;
-  course_2: string;
-  course_3: string;
-  batch_id: string;
+  course_1?: string;
+  course_2?: string;
+  course_3?: string;
+  batch_id?: string;
   college?: string;
 };
 

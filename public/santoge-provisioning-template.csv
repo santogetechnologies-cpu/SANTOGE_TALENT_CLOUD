@@ -1,0 +1,11 @@
+student_name,email,password,roll_no,dept,course_1,batch_id,college
+Ajay Kumar,ajay@college.edu,ajay@college.edu,22CS014,CSE,Java ,2026 Sep - Dec Batch,PSG College of Technology
+Kiran Sundaram,kiran@college.edu,kiran@college.edu,22CS015,CSE,Java,2026 Sep - Dec Batch,PSG College of Technology
+Sneha Iyer,sneha@college.edu,sneha@college.edu,22EC016,ECE,aiml,2026 Sep - Dec Batch,PSG College of Technology
+Arun Raj,arun@college.edu,arun@college.edu,22CS017,CSE,aiml,2026 Sep - Dec Batch,PSG College of Technology
+Priya Sharma,priya@college.edu,priya@college.edu,22IT073,IT,datascience,2026 Oct - Jan Batch,National Institute of Technology
+Manoj Varadhan,manoj@college.edu,manoj@college.edu,22CS018,CSE,datascience,2026 Oct - Jan Batch,PSG College of Technology
+Deepa Krishnan,deepa@college.edu,deepa@college.edu,22EC045,ECE,medical,2026 Oct - Jan Batch,Anna University College of Engineering
+Siddharth N,sid@college.edu,sid@college.edu,22IT088,IT,marketing,2027 Jan - April Batch,National Institute of Technology
+Ananya Ramesh,ananya@college.edu,ananya@college.edu,22CS102,CSE,sap,2027 Jan - April Batch,PSG College of Technology
+Girish Patel,girish@college.edu,girish@college.edu,22AI034,AIDS,sap,2027 Jan - April Batch,PSG College of Technology

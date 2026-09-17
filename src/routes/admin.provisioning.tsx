@@ -60,7 +60,7 @@ export const Route = createFileRoute("/admin/provisioning")({
   component: ProvisioningPage,
 });
 
-/** Standard 10-column CSV Schema */
+/** Standard 8-column CSV Schema */
 const HEADERS = [
   "student_name",
   "email",
@@ -68,24 +68,22 @@ const HEADERS = [
   "roll_no",
   "dept",
   "course_1",
-  "course_2",
-  "course_3",
   "batch_id",
   "college",
 ];
 
 /** Production standard CSV template with realistic entries and valid tracks */
-const TEMPLATE = `${HEADERS.join(",")}
-Ajay Kumar,ajay@college.edu,Temp@1234,22CS014,CSE,java,datascience,aiml,BATCH-2026-ABC-CSE-01,PSG College of Technology
-Kiran Sundaram,kiran@college.edu,Temp@1234,22CS015,CSE,aiml,datascience,java,BATCH-2026-ABC-CSE-01,PSG College of Technology
-Sneha Iyer,sneha@college.edu,Temp@1234,22EC016,ECE,aiml,java,datascience,BATCH-2026-ABC-CSE-01,PSG College of Technology
-Arun Raj,arun@college.edu,Temp@1234,22CS017,CSE,java,aiml,datascience,BATCH-2026-ABC-CSE-01,PSG College of Technology
-Priya Sharma,priya@college.edu,Temp@1234,22IT073,IT,java,datascience,marketing,BATCH-2026-ABC-IT-02,National Institute of Technology
-Manoj Varadhan,manoj@college.edu,Temp@1234,22CS018,CSE,java,datascience,sap,BATCH-2026-ABC-CSE-01,PSG College of Technology
-Deepa Krishnan,deepa@college.edu,Temp@1234,22EC045,ECE,aiml,datascience,medical,BATCH-2026-XYZ-ECE-01,Anna University College of Engineering
-Siddharth N,sid@college.edu,Temp@1234,22IT088,IT,java,datascience,aiml,BATCH-2026-ABC-IT-02,National Institute of Technology
-Ananya Ramesh,ananya@college.edu,Temp@1234,22CS102,CSE,java,marketing,sap,BATCH-2026-ABC-CSE-01,PSG College of Technology
-Girish Patel,girish@college.edu,Temp@1234,22AI034,AIDS,aiml,datascience,java,BATCH-2026-ABC-CSE-01,PSG College of Technology`;
+const TEMPLATE = `student_name,email,password,roll_no,dept,course_1,batch_id,college
+Ajay Kumar,ajay@college.edu,ajay@college.edu,22CS014,CSE,Java ,2026 Sep - Dec Batch,PSG College of Technology
+Kiran Sundaram,kiran@college.edu,kiran@college.edu,22CS015,CSE,Java,2026 Sep - Dec Batch,PSG College of Technology
+Sneha Iyer,sneha@college.edu,sneha@college.edu,22EC016,ECE,aiml,2026 Sep - Dec Batch,PSG College of Technology
+Arun Raj,arun@college.edu,arun@college.edu,22CS017,CSE,aiml,2026 Sep - Dec Batch,PSG College of Technology
+Priya Sharma,priya@college.edu,priya@college.edu,22IT073,IT,datascience,2026 Oct - Jan Batch,National Institute of Technology
+Manoj Varadhan,manoj@college.edu,manoj@college.edu,22CS018,CSE,datascience,2026 Oct - Jan Batch,PSG College of Technology
+Deepa Krishnan,deepa@college.edu,deepa@college.edu,22EC045,ECE,medical,2026 Oct - Jan Batch,Anna University College of Engineering
+Siddharth N,sid@college.edu,sid@college.edu,22IT088,IT,marketing,2027 Jan - April Batch,National Institute of Technology
+Ananya Ramesh,ananya@college.edu,ananya@college.edu,22CS102,CSE,sap,2027 Jan - April Batch,PSG College of Technology
+Girish Patel,girish@college.edu,girish@college.edu,22AI034,AIDS,sap,2027 Jan - April Batch,PSG College of Technology`;
 
 /** Common course alias normalizer to ensure valid TrackId */
 const COURSE_ALIASES: Record<string, TrackId> = {
@@ -365,8 +363,14 @@ function ProvisioningPage() {
         return;
       }
 
-      if (batchId) {
-        batchCounts[batchId] = (batchCounts[batchId] || 0) + 1;
+      const matchedBatch = batchesList.find(
+        (b) => b.id === batchId || b.name.toLowerCase().trim() === batchId.toLowerCase().trim(),
+      );
+      const effectiveBatchId = matchedBatch ? matchedBatch.id : batchId;
+      const displayBatchName = matchedBatch ? matchedBatch.name : (batchNameById.get(batchId) || batchId);
+
+      if (displayBatchName) {
+        batchCounts[displayBatchName] = (batchCounts[displayBatchName] || 0) + 1;
       }
 
       const record: ProvisionedStudent = {
@@ -378,15 +382,13 @@ function ProvisioningPage() {
         course_1: c1,
         course_2: c2,
         course_3: c3,
-        batch_id: batchId,
+        batch_id: effectiveBatchId,
         college,
       };
 
       rows.push(record);
       const coursesStr = [c1, c2, c3].filter(Boolean).join(", ") || "No tracks assigned";
-      const displayBatch =
-        batchNameById.get(batchId) || (isUuid(batchId) ? "Assigned Batch" : batchId);
-      out.push(`[provisioned] ${studentName} (${rollNo}) → ${displayBatch} [${coursesStr}]`);
+      out.push(`[provisioned] ${studentName} (${rollNo}) → ${displayBatchName} [${coursesStr}]`);
     });
 
     Object.entries(batchCounts).forEach(([bid, count]) => {
@@ -526,8 +528,6 @@ function ProvisioningPage() {
           p.roll_no,
           p.dept,
           p.course_1,
-          p.course_2,
-          p.course_3,
           p.batch_id,
           p.college || "Partner Engineering College",
         ].join(","),
@@ -791,7 +791,7 @@ function ProvisioningPage() {
                 type="button"
                 onClick={downloadTemplate}
                 className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-all shadow-xs"
-                title="Download standard 10-column CSV template"
+                title={`Download standard ${HEADERS.length}-column CSV template`}
               >
                 <Download className="size-3.5 text-primary" />
                 <span>Template</span>
@@ -844,7 +844,7 @@ function ProvisioningPage() {
               </div>
               <div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
                 <span className="rounded bg-muted px-1.5 py-0.5 font-semibold text-primary border border-border">
-                  10 Columns
+                  {HEADERS.length} Columns
                 </span>
                 <span>
                   {csvRowCount} {csvRowCount === 1 ? "row" : "rows"}
