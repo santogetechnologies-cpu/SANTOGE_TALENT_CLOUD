@@ -92,8 +92,8 @@ function AdminAnalytics() {
   const [newCompany, setNewCompany] = useState("");
   const [newRoles, setNewRoles] = useState("");
   const [newCtc, setNewCtc] = useState("₹8.0 - ₹10.5 LPA");
-  const [newMinScore, setNewMinScore] = useState(660);
-  const [newSlots, setNewSlots] = useState(50);
+  const [newMinScore, setNewMinScore] = useState<string | number>(660);
+  const [newSlots, setNewSlots] = useState<string | number>(50);
   const [newStatus, setNewStatus] = useState<HiringDrive["status"]>("Active Drive");
 
   // Add Student modal states
@@ -406,12 +406,21 @@ function AdminAnalytics() {
       return;
     }
 
+    const parsedSlots = Number(newSlots);
+    if (!newSlots || isNaN(parsedSlots) || parsedSlots <= 0) {
+      toast.error("Please enter a valid number of open slots (at least 1)");
+      return;
+    }
+
+    const parsedMinScore = Number(newMinScore);
+    const minScore = isNaN(parsedMinScore) || parsedMinScore < 0 ? 650 : parsedMinScore;
+
     const res = await createLiveHiringDrive({
       company: newCompany.trim(),
       roles: newRoles.trim(),
       ctc: newCtc.trim() || "₹8.0 - ₹10.0 LPA",
-      minScore: Number(newMinScore) || 650,
-      openSlots: Number(newSlots) || 50,
+      minScore,
+      openSlots: parsedSlots,
       status: newStatus,
     });
     if (res.ok) {
@@ -424,6 +433,9 @@ function AdminAnalytics() {
 
     setNewCompany("");
     setNewRoles("");
+    setNewCtc("₹8.0 - ₹10.5 LPA");
+    setNewMinScore(660);
+    setNewSlots(50);
     setIsNewDriveModalOpen(false);
   };
 
@@ -1567,10 +1579,13 @@ function AdminAnalytics() {
                   </label>
                   <input
                     type="number"
-                    min={400}
-                    max={950}
+                    min={0}
+                    max={1000}
+                    placeholder="e.g. 660"
                     value={newMinScore}
-                    onChange={(e) => setNewMinScore(Number(e.target.value))}
+                    onChange={(e) =>
+                      setNewMinScore(e.target.value === "" ? "" : Number(e.target.value))
+                    }
                     className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   />
                 </div>
@@ -1582,9 +1597,12 @@ function AdminAnalytics() {
                   <input
                     type="number"
                     min={1}
-                    max={500}
+                    max={5000}
+                    placeholder="e.g. 50"
                     value={newSlots}
-                    onChange={(e) => setNewSlots(Number(e.target.value))}
+                    onChange={(e) =>
+                      setNewSlots(e.target.value === "" ? "" : Number(e.target.value))
+                    }
                     className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
                   />
                 </div>
