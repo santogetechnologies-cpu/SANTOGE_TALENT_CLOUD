@@ -50,6 +50,7 @@ const STUDENT_NAV: NavItem[] = [
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin", label: "Executive Analytics", icon: BarChart3 },
+  { to: "/admin/roster", label: "Student Roster & Cohorts", icon: GraduationCap },
   { to: "/admin/drives", label: "Recruiter Hiring Drives", icon: Briefcase },
   { to: "/admin/content", label: "Curriculum CMS", icon: BookOpen },
   { to: "/admin/provisioning", label: "Bulk CSV Provisioning", icon: FolderUp },
@@ -97,6 +98,12 @@ const SEARCH_ITEMS: SearchResult[] = [
     category: "Placement Tools" as const,
     to: "/student/gateway",
     desc: "ATS Resume Scanner, AI Mock Interviews, Certifications & Marketplace",
+  },
+  {
+    title: "Student Roster & Cohort Management",
+    category: "Platform Admin" as const,
+    to: "/admin/roster",
+    desc: "Full learner directory, per-cohort health dashboards, readiness breakdowns, top performers, and track distribution",
   },
   {
     title: "Recruiter Hiring Drives & Requisitions",
