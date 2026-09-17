@@ -103,7 +103,7 @@ export function DailyJourneyRunner({
       />
 
       {/* Main Content Area Container */}
-      <main className="mx-auto max-w-5xl px-4 sm:px-6">
+      <main className="mx-auto w-full max-w-6xl px-2 sm:px-4">
         {currentStep === "tech-concept" && (
           <RevealCard
             dayNum={dayNum}

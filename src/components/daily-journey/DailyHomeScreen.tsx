@@ -70,7 +70,7 @@ export function DailyHomeScreen({
   const tier = getScoreTier(talentScore);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 pb-12 phase-enter">
+    <div className="w-full space-y-6 pb-12 phase-enter">
       {/* Top Greeting & Status Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/70 pb-6">
         <div>
