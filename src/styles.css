@@ -302,10 +302,13 @@ aside a.hover\:bg-muted:hover {
 }
 
 /* ==========================================================================
- * Platform Admin Dark Blue (Midnight Navy) Sidebar Architecture
+ * Unified Dark Blue (Midnight Navy) Sidebar Architecture (Admin & Student)
  * ========================================================================== */
+aside.portal-sidebar-dark,
 aside.sidebar-admin,
-aside[data-portal="admin"] {
+aside.sidebar-student,
+aside[data-portal="admin"],
+aside[data-portal="student"] {
   background:
     radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.18) 0%, transparent 65%),
     linear-gradient(180deg, #0b1329 0%, #0f1c3a 50%, #080f20 100%) !important;
@@ -315,99 +318,131 @@ aside[data-portal="admin"] {
   box-shadow: 6px 0 32px -4px rgba(2, 6, 23, 0.35) !important;
 }
 
+aside.portal-sidebar-dark .border-border,
 aside.sidebar-admin .border-border,
-aside[data-portal="admin"] .border-border {
+aside.sidebar-student .border-border,
+aside[data-portal] .border-border {
   border-color: rgba(255, 255, 255, 0.09) !important;
 }
 
 /* User status card & info boxes inside dark blue sidebar */
+aside.portal-sidebar-dark .bg-muted\/30,
 aside.sidebar-admin .bg-muted\/30,
-aside[data-portal="admin"] .bg-muted\/30 {
+aside.sidebar-student .bg-muted\/30,
+aside[data-portal] .bg-muted\/30 {
   background-color: rgba(255, 255, 255, 0.05) !important;
   border: 1px solid rgba(255, 255, 255, 0.09) !important;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25) !important;
 }
 
+aside.portal-sidebar-dark .bg-card,
 aside.sidebar-admin .bg-card,
-aside[data-portal="admin"] .bg-card {
+aside.sidebar-student .bg-card,
+aside[data-portal] .bg-card {
   background-color: rgba(255, 255, 255, 0.06) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Admin Brand & Status Header */
+/* Brand & Status Header */
+aside.portal-sidebar-dark span.bg-primary,
 aside.sidebar-admin span.bg-primary,
-aside[data-portal="admin"] span.bg-primary {
+aside.sidebar-student span.bg-primary,
+aside[data-portal] span.bg-primary {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45) !important;
   color: #ffffff !important;
 }
 
+aside.portal-sidebar-dark p.text-foreground,
 aside.sidebar-admin p.text-foreground,
-aside[data-portal="admin"] p.text-foreground {
+aside.sidebar-student p.text-foreground,
+aside[data-portal] p.text-foreground {
   color: #ffffff !important;
 }
 
+aside.portal-sidebar-dark p.text-muted-foreground,
 aside.sidebar-admin p.text-muted-foreground,
-aside[data-portal="admin"] p.text-muted-foreground {
+aside.sidebar-student p.text-muted-foreground,
+aside[data-portal] p.text-muted-foreground {
   color: #60a5fa !important;
 }
 
+aside.portal-sidebar-dark .text-foreground,
 aside.sidebar-admin .text-foreground,
-aside[data-portal="admin"] .text-foreground {
+aside.sidebar-student .text-foreground,
+aside[data-portal] .text-foreground {
   color: #f8fafc !important;
 }
 
+aside.portal-sidebar-dark .text-muted-foreground,
 aside.sidebar-admin .text-muted-foreground,
-aside[data-portal="admin"] .text-muted-foreground {
+aside.sidebar-student .text-muted-foreground,
+aside[data-portal] .text-muted-foreground {
   color: #94a3b8 !important;
 }
 
+aside.portal-sidebar-dark .text-primary,
 aside.sidebar-admin .text-primary,
-aside[data-portal="admin"] .text-primary {
+aside.sidebar-student .text-primary,
+aside[data-portal] .text-primary {
   color: #60a5fa !important;
 }
 
-/* Admin badge inside user status card */
+/* Role badge inside user status card */
+aside.portal-sidebar-dark span.rounded.bg-card,
 aside.sidebar-admin span.rounded.bg-card,
-aside[data-portal="admin"] span.rounded.bg-card {
+aside.sidebar-student span.rounded.bg-card,
+aside[data-portal] span.rounded.bg-card {
   background-color: rgba(37, 99, 235, 0.25) !important;
   border-color: rgba(96, 165, 250, 0.35) !important;
   color: #93c5fd !important;
 }
 
-/* Exit button inside user status card */
+/* Exit and action buttons inside user status card */
+aside.portal-sidebar-dark button,
 aside.sidebar-admin button,
-aside[data-portal="admin"] button {
+aside.sidebar-student button,
+aside[data-portal] button {
   color: #94a3b8;
 }
 
+aside.portal-sidebar-dark button:hover,
 aside.sidebar-admin button:hover,
-aside[data-portal="admin"] button:hover {
+aside.sidebar-student button:hover,
+aside[data-portal] button:hover {
   color: #f8fafc;
 }
 
-/* Admin Navigation Section Header */
+/* Navigation Section Header */
+aside.portal-sidebar-dark p.text-muted-foreground\/70,
 aside.sidebar-admin p.text-muted-foreground\/70,
-aside[data-portal="admin"] p.text-muted-foreground\/70 {
+aside.sidebar-student p.text-muted-foreground\/70,
+aside[data-portal] p.text-muted-foreground\/70 {
   color: #64748b !important;
 }
 
-/* Admin Navigation Links */
+/* Navigation Links */
+aside.portal-sidebar-dark nav a,
 aside.sidebar-admin nav a,
-aside[data-portal="admin"] nav a {
+aside.sidebar-student nav a,
+aside[data-portal] nav a {
   color: #94a3b8 !important;
   font-weight: 500;
 }
 
+aside.portal-sidebar-dark nav a:hover,
 aside.sidebar-admin nav a:hover,
-aside[data-portal="admin"] nav a:hover {
+aside.sidebar-student nav a:hover,
+aside[data-portal] nav a:hover {
   background-color: rgba(255, 255, 255, 0.08) !important;
   color: #ffffff !important;
   transform: translateX(3px);
 }
 
+aside.portal-sidebar-dark nav a[data-status="active"],
 aside.sidebar-admin nav a[data-status="active"],
-aside[data-portal="admin"] nav a[data-status="active"] {
+aside.sidebar-student nav a[data-status="active"],
+aside[data-portal] nav a[data-status="active"] {
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.3) 0%, rgba(59, 130, 246, 0.2) 100%) !important;
   color: #ffffff !important;
   font-weight: 700 !important;
@@ -415,21 +450,29 @@ aside[data-portal="admin"] nav a[data-status="active"] {
   box-shadow: 0 4px 14px -2px rgba(37, 99, 235, 0.35) !important;
 }
 
+aside.portal-sidebar-dark nav a[data-status="active"] svg,
 aside.sidebar-admin nav a[data-status="active"] svg,
-aside[data-portal="admin"] nav a[data-status="active"] svg {
+aside.sidebar-student nav a[data-status="active"] svg,
+aside[data-portal] nav a[data-status="active"] svg {
   color: #60a5fa !important;
 }
 
 /* ==========================================================================
- * Platform Super Admin Light Blue Body & Layout Canvas
+ * Unified Portal Light Blue Body & Layout Canvas (Admin & Student)
  * ========================================================================== */
+body:has(.portal-theme-body),
+html:has(.portal-theme-body),
 body:has(.portal-admin-body),
-html:has(.portal-admin-body) {
+html:has(.portal-admin-body),
+body:has(.portal-student-body),
+html:has(.portal-student-body) {
   background-color: #ebf3fc !important;
 }
 
+.portal-theme-body,
 .portal-admin-body,
-div[data-portal="admin"].portal-admin-body {
+.portal-student-body,
+div[data-portal].portal-theme-body {
   background:
     radial-gradient(ellipse at 85% 0%, rgba(219, 234, 254, 0.65) 0%, transparent 60%),
     radial-gradient(ellipse at 15% 100%, rgba(224, 242, 254, 0.55) 0%, transparent 55%),
@@ -438,12 +481,16 @@ div[data-portal="admin"].portal-admin-body {
   min-height: 100vh;
 }
 
-.portal-admin-body .admin-content-wrapper {
+.portal-theme-body .portal-content-wrapper,
+.portal-theme-body .admin-content-wrapper,
+.portal-theme-body .student-content-wrapper {
   background: transparent !important;
 }
 
-/* Super Admin Frosted Light Blue Top Header */
-.portal-admin-body .admin-header {
+/* Frosted Light Blue Top Header */
+.portal-theme-body .portal-header,
+.portal-theme-body .admin-header,
+.portal-theme-body .student-header {
   background: rgba(240, 247, 255, 0.85) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
@@ -451,16 +498,22 @@ div[data-portal="admin"].portal-admin-body {
   box-shadow: 0 4px 20px -4px rgba(59, 130, 246, 0.05) !important;
 }
 
-.portal-admin-body .admin-header button {
+.portal-theme-body .portal-header button,
+.portal-theme-body .admin-header button,
+.portal-theme-body .student-header button {
   border-color: rgba(191, 219, 254, 0.8) !important;
 }
 
-.portal-admin-body .admin-main {
+.portal-theme-body .portal-main,
+.portal-theme-body .admin-main,
+.portal-theme-body .student-main {
   background: transparent !important;
 }
 
-/* Frosted White Cards over Light Blue Canvas in Admin */
-.portal-admin-body .admin-main .bg-card {
+/* Frosted White Cards over Light Blue Canvas */
+.portal-theme-body .portal-main .bg-card,
+.portal-theme-body .admin-main .bg-card,
+.portal-theme-body .student-main .bg-card {
   background-color: rgba(255, 255, 255, 0.94) !important;
   border-color: rgba(191, 219, 254, 0.75) !important;
   box-shadow:
@@ -468,17 +521,25 @@ div[data-portal="admin"].portal-admin-body {
     0 1px 3px 0 rgba(15, 23, 42, 0.03) !important;
 }
 
-.portal-admin-body .admin-main .border-border {
+.portal-theme-body .portal-main .border-border,
+.portal-theme-body .admin-main .border-border,
+.portal-theme-body .student-main .border-border {
   border-color: rgba(191, 219, 254, 0.65) !important;
 }
 
-.portal-admin-body .admin-main .bg-muted\/30 {
+.portal-theme-body .portal-main .bg-muted\/30,
+.portal-theme-body .admin-main .bg-muted\/30,
+.portal-theme-body .student-main .bg-muted\/30 {
   background-color: rgba(238, 246, 255, 0.65) !important;
   border-color: rgba(191, 219, 254, 0.65) !important;
 }
 
-.portal-admin-body .admin-main input,
-.portal-admin-body .admin-main select {
+.portal-theme-body .portal-main input,
+.portal-theme-body .admin-main input,
+.portal-theme-body .student-main input,
+.portal-theme-body .portal-main select,
+.portal-theme-body .admin-main select,
+.portal-theme-body .student-main select {
   border-color: rgba(191, 219, 254, 0.8) !important;
 }
 
