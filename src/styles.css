@@ -376,6 +376,68 @@ aside[data-portal="admin"] p.text-muted-foreground\/70 {
   color: #446e4d !important;
 }
 
+/* ==========================================================================
+ * Platform Super Admin Light Blue Body & Layout Canvas
+ * ========================================================================== */
+body:has(.portal-admin-body),
+html:has(.portal-admin-body) {
+  background-color: #ebf3fc !important;
+}
+
+.portal-admin-body,
+div[data-portal="admin"].portal-admin-body {
+  background:
+    radial-gradient(ellipse at 85% 0%, rgba(219, 234, 254, 0.65) 0%, transparent 60%),
+    radial-gradient(ellipse at 15% 100%, rgba(224, 242, 254, 0.55) 0%, transparent 55%),
+    linear-gradient(135deg, #f0f7ff 0%, #e6f1fc 45%, #edf5fe 100%) !important;
+  background-attachment: fixed !important;
+  min-height: 100vh;
+}
+
+.portal-admin-body .admin-content-wrapper {
+  background: transparent !important;
+}
+
+/* Super Admin Frosted Light Blue Top Header */
+.portal-admin-body .admin-header {
+  background: rgba(240, 247, 255, 0.85) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(191, 219, 254, 0.75) !important;
+  box-shadow: 0 4px 20px -4px rgba(59, 130, 246, 0.05) !important;
+}
+
+.portal-admin-body .admin-header button {
+  border-color: rgba(191, 219, 254, 0.8) !important;
+}
+
+.portal-admin-body .admin-main {
+  background: transparent !important;
+}
+
+/* Frosted White Cards over Light Blue Canvas in Admin */
+.portal-admin-body .admin-main .bg-card {
+  background-color: rgba(255, 255, 255, 0.94) !important;
+  border-color: rgba(191, 219, 254, 0.75) !important;
+  box-shadow:
+    0 4px 20px -2px rgba(37, 99, 235, 0.05),
+    0 1px 3px 0 rgba(15, 23, 42, 0.03) !important;
+}
+
+.portal-admin-body .admin-main .border-border {
+  border-color: rgba(191, 219, 254, 0.65) !important;
+}
+
+.portal-admin-body .admin-main .bg-muted\/30 {
+  background-color: rgba(238, 246, 255, 0.65) !important;
+  border-color: rgba(191, 219, 254, 0.65) !important;
+}
+
+.portal-admin-body .admin-main input,
+.portal-admin-body .admin-main select {
+  border-color: rgba(191, 219, 254, 0.8) !important;
+}
+
 /* Modal Backdrops & Glass Container Polish */
 .backdrop-blur-sm,
 .backdrop-blur-xs,
