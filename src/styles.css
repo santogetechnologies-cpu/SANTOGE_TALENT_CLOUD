@@ -5,8 +5,11 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * SantoGe Talent Cloud — Clean Modern SaaS Design System
- * Neutral-first architecture with refined brand accents.
+ * ==========================================================================
+ * SantoGe Talent Cloud (STC) — Ultra-Premium SaaS Design System
+ * Curated High-End White/Light Mode Palette with Multi-Layered Elevation,
+ * Fluid Micro-Interactions, Glassmorphism, and Refined Typography.
+ * ==========================================================================
  */
 
 @theme inline {
@@ -66,100 +69,72 @@
 }
 
 :root {
-  --radius: 0.5rem;
-  --background: oklch(0.985 0.003 247);
-  --foreground: oklch(0.18 0.02 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 260);
-  --primary: oklch(0.52 0.22 260);
-  --primary-foreground: oklch(0.99 0.002 260);
-  --secondary: oklch(0.96 0.006 247);
-  --secondary-foreground: oklch(0.25 0.02 260);
-  --muted: oklch(0.96 0.006 247);
-  --muted-foreground: oklch(0.48 0.02 260);
-  --accent: oklch(0.96 0.006 247);
-  --accent-foreground: oklch(0.18 0.02 260);
-  --destructive: oklch(0.58 0.22 25);
-  --destructive-foreground: oklch(0.99 0.002 260);
-  --border: oklch(0.92 0.006 247);
-  --input: oklch(0.92 0.006 247);
-  --ring: oklch(0.52 0.22 260 / 25%);
-  --chart-1: oklch(0.52 0.22 260);
-  --chart-2: oklch(0.6 0.16 155);
-  --chart-3: oklch(0.72 0.16 75);
-  --chart-4: oklch(0.58 0.16 225);
-  --chart-5: oklch(0.58 0.22 25);
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.18 0.02 260);
-  --sidebar-primary: oklch(0.52 0.22 260);
-  --sidebar-primary-foreground: oklch(0.99 0.002 260);
-  --sidebar-accent: oklch(0.96 0.006 247);
-  --sidebar-accent-foreground: oklch(0.18 0.02 260);
-  --sidebar-border: oklch(0.92 0.006 247);
-  --sidebar-ring: oklch(0.52 0.22 260 / 25%);
-  --brand-ink: oklch(0.18 0.02 260);
-  --brand-blue: oklch(0.52 0.22 260);
-  --brand-cyan: oklch(0.58 0.16 225);
-  --brand-purple: oklch(0.55 0.18 290);
-  --brand-emerald: oklch(0.6 0.16 155);
-  --brand-amber: oklch(0.72 0.16 75);
-  --brand-rose: oklch(0.58 0.22 25);
-  --surface: oklch(1 0 0);
-  --surface-elevated: oklch(1 0 0);
-  --surface-soft: oklch(0.965 0.005 247);
-  --surface-dark: oklch(0.12 0.02 260);
-  --line-soft: oklch(0.92 0.006 247);
-  --copy-subtle: oklch(0.48 0.02 260);
-}
+  --radius: 0.625rem;
 
-.dark {
-  --background: oklch(0.13 0.02 260);
-  --foreground: oklch(0.98 0.003 247);
-  --card: oklch(0.17 0.02 260);
-  --card-foreground: oklch(0.98 0.003 247);
-  --popover: oklch(0.17 0.02 260);
-  --popover-foreground: oklch(0.98 0.003 247);
-  --primary: oklch(0.62 0.2 255);
-  --primary-foreground: oklch(0.12 0.02 260);
-  --secondary: oklch(0.22 0.02 260);
-  --secondary-foreground: oklch(0.98 0.003 247);
-  --muted: oklch(0.22 0.02 260);
-  --muted-foreground: oklch(0.68 0.02 260);
-  --accent: oklch(0.22 0.02 260);
-  --accent-foreground: oklch(0.98 0.003 247);
-  --destructive: oklch(0.62 0.2 25);
-  --destructive-foreground: oklch(0.98 0.003 247);
-  --border: oklch(0.25 0.02 260);
-  --input: oklch(0.25 0.02 260);
-  --ring: oklch(0.62 0.2 255 / 35%);
-  --chart-1: oklch(0.62 0.2 255);
-  --chart-2: oklch(0.7 0.15 155);
-  --chart-3: oklch(0.78 0.15 75);
-  --chart-4: oklch(0.68 0.14 225);
-  --chart-5: oklch(0.68 0.19 25);
-  --sidebar: oklch(0.15 0.02 260);
-  --sidebar-foreground: oklch(0.98 0.003 247);
-  --sidebar-primary: oklch(0.62 0.2 255);
-  --sidebar-primary-foreground: oklch(0.12 0.02 260);
-  --sidebar-accent: oklch(0.22 0.02 260);
-  --sidebar-accent-foreground: oklch(0.98 0.003 247);
-  --sidebar-border: oklch(0.24 0.02 260);
-  --sidebar-ring: oklch(0.62 0.2 255 / 35%);
-  --brand-ink: oklch(0.98 0.003 247);
-  --brand-blue: oklch(0.62 0.2 255);
-  --brand-cyan: oklch(0.68 0.14 225);
-  --brand-purple: oklch(0.68 0.16 290);
-  --brand-emerald: oklch(0.7 0.15 155);
-  --brand-amber: oklch(0.78 0.15 75);
-  --brand-rose: oklch(0.68 0.19 25);
-  --surface: oklch(0.17 0.02 260);
-  --surface-elevated: oklch(0.19 0.02 260);
-  --surface-soft: oklch(0.22 0.02 260);
-  --surface-dark: oklch(0.1 0.015 260);
-  --line-soft: oklch(0.25 0.02 260);
-  --copy-subtle: oklch(0.68 0.02 260);
+  /* Premium High-Contrast Light Canvas */
+  --background: oklch(0.985 0.003 250);
+  --foreground: oklch(0.15 0.028 260);
+
+  /* Clean Pure White Surfaces */
+  --card: #ffffff;
+  --card-foreground: oklch(0.15 0.028 260);
+  --popover: #ffffff;
+  --popover-foreground: oklch(0.15 0.028 260);
+
+  /* Vibrant Royal Indigo Primary Accent */
+  --primary: oklch(0.53 0.23 264);
+  --primary-foreground: #ffffff;
+
+  /* Soft Ambient Neutrals */
+  --secondary: oklch(0.965 0.005 250);
+  --secondary-foreground: oklch(0.22 0.025 260);
+  --muted: oklch(0.965 0.005 250);
+  --muted-foreground: oklch(0.46 0.024 260);
+  --accent: oklch(0.96 0.008 250);
+  --accent-foreground: oklch(0.15 0.028 260);
+
+  /* Status Colors */
+  --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: #ffffff;
+
+  /* Crisp Subtle Borders & Focus Rings */
+  --border: oklch(0.915 0.006 250);
+  --input: oklch(0.915 0.006 250);
+  --ring: oklch(0.53 0.23 264 / 22%);
+
+  /* Analytics & Data Viz Charts */
+  --chart-1: oklch(0.53 0.23 264);
+  --chart-2: oklch(0.62 0.18 155);
+  --chart-3: oklch(0.74 0.17 70);
+  --chart-4: oklch(0.60 0.17 225);
+  --chart-5: oklch(0.60 0.22 25);
+
+  /* Sidebar Tokens */
+  --sidebar: #ffffff;
+  --sidebar-foreground: oklch(0.15 0.028 260);
+  --sidebar-primary: oklch(0.53 0.23 264);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: oklch(0.965 0.006 250);
+  --sidebar-accent-foreground: oklch(0.15 0.028 260);
+  --sidebar-border: oklch(0.92 0.006 250);
+  --sidebar-ring: oklch(0.53 0.23 264 / 22%);
+
+  /* Rich Curated Brand Highlights */
+  --brand-ink: oklch(0.15 0.028 260);
+  --brand-blue: oklch(0.54 0.21 255);
+  --brand-cyan: oklch(0.60 0.16 220);
+  --brand-purple: oklch(0.56 0.21 295);
+  --brand-emerald: oklch(0.62 0.18 155);
+  --brand-amber: oklch(0.74 0.17 70);
+  --brand-rose: oklch(0.58 0.22 25);
+
+  /* Multi-Layer Surfaces */
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-soft: oklch(0.97 0.004 250);
+  --surface-dark: oklch(0.11 0.015 260);
+  --line-soft: oklch(0.92 0.006 250);
+  --copy-subtle: oklch(0.46 0.024 260);
 }
 
 @layer base {
@@ -167,53 +142,411 @@
     border-color: var(--color-border);
   }
 
+  html {
+    color-scheme: light;
+    scroll-behavior: smooth;
+  }
+
   body {
     background-color: var(--color-background);
+    background-image:
+      radial-gradient(ellipse 65% 40% at 50% -10%, rgba(99, 102, 241, 0.045), transparent 75%),
+      radial-gradient(ellipse 40% 30% at 90% 15%, rgba(56, 189, 248, 0.035), transparent 60%);
+    background-attachment: fixed;
     color: var(--color-foreground);
-    font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    letter-spacing: -0.011em;
+    font-family: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    letter-spacing: -0.012em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.025em;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  button, input, select, textarea {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
 
+/* Typography Utilities */
 @utility font-display {
-  font-family: "Plus Jakarta Sans", "Outfit", sans-serif;
+  font-family: "Plus Jakarta Sans", "Outfit", "Inter", sans-serif;
+  letter-spacing: -0.02em;
 }
+
 @utility font-mono {
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-feature-settings: "tnum", "zero";
 }
 
-/* Subtle clean surface card */
+/* ==========================================================================
+ * Glassmorphism & Surface Architecture
+ * ========================================================================== */
+
+/* Elevated Frosted Glass Card */
 .glass-card {
-  background: var(--surface-elevated);
-  border: 1px solid var(--line-soft);
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(226, 232, 240, 0.82);
+  box-shadow:
+    0 1px 3px 0 rgba(15, 23, 42, 0.03),
+    0 6px 18px -3px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow:
+    0 14px 34px -4px rgba(99, 102, 241, 0.12),
+    0 6px 16px -2px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 0 #ffffff;
+  transform: translateY(-3px);
+}
+
+/* Base Card Surfaces with Glass Frosting */
+section.bg-card,
+div.rounded-xl.bg-card,
+div.rounded-2xl.bg-card {
+  background-color: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(226, 232, 240, 0.82);
+  box-shadow:
+    0 1px 3px 0 rgba(15, 23, 42, 0.03),
+    0 4px 14px -3px rgba(15, 23, 42, 0.03),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Floating Hover Lift for Interactive Cards & Sections */
+section.bg-card:hover,
+div.rounded-xl.border.bg-card:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow:
+    0 12px 30px -4px rgba(99, 102, 241, 0.09),
+    0 4px 12px -2px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 0 #ffffff;
+  transform: translateY(-2px);
+}
+
+/* App Grid Canvas */
 .app-grid {
   background-color: var(--color-background);
 }
 
+/* Hero & Header Aurora Glow */
 .hero-aurora {
-  background: var(--surface-elevated);
-  border: 1px solid var(--line-soft);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.85) 100%);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow:
+    0 1px 3px 0 rgba(15, 23, 42, 0.03),
+    0 8px 24px -4px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
 }
 
+/* Vibrant Gradient Text */
 .text-gradient-brand {
-  color: var(--color-foreground);
+  background: linear-gradient(135deg, oklch(0.48 0.24 265) 0%, oklch(0.58 0.20 230) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
+/* Deep High-End Terminal & Console Surface */
 .terminal-grid {
-  background-color: var(--surface-dark);
-  border: 1px solid var(--line-soft);
+  background-color: #0c1017;
+  border: 1px solid rgba(30, 41, 59, 0.8);
+  box-shadow:
+    inset 0 1px 2px 0 rgba(0, 0, 0, 0.4),
+    0 4px 12px 0 rgba(15, 23, 42, 0.08);
 }
 
-/* Daily Journey Micro-Interactions & Styling */
+/* Sticky Header Glass Polish */
+header.sticky {
+  background: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(20px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
+  box-shadow:
+    0 4px 20px -4px rgba(15, 23, 42, 0.04),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Sidebar Glassmorphism */
+aside {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border-right: 1px solid rgba(226, 232, 240, 0.82) !important;
+  box-shadow: 4px 0 24px -4px rgba(15, 23, 42, 0.03) !important;
+}
+
+/* Sidebar Navigation Items Hover */
+aside nav a,
+aside a {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+aside nav a:hover,
+aside a.hover\:bg-muted:hover {
+  transform: translateX(3px);
+  background-color: rgba(99, 102, 241, 0.08) !important;
+  color: oklch(0.48 0.24 265) !important;
+}
+
+/* Modal Backdrops & Glass Container Polish */
+.backdrop-blur-sm,
+.backdrop-blur-xs,
+.backdrop-blur-md {
+  background-color: rgba(15, 23, 42, 0.36) !important;
+  backdrop-filter: blur(16px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(170%) !important;
+}
+
+/* Floating Modals and Dialog Windows */
+div.fixed.inset-0 > div.bg-card,
+div.fixed.inset-0 > div[role="dialog"] {
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: blur(24px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  box-shadow:
+    0 24px 64px -12px rgba(15, 23, 42, 0.16),
+    0 8px 24px -4px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Frosted Dropdowns, Menus & Select Popovers */
+[role="menu"],
+[role="listbox"],
+[data-radix-popper-content-wrapper] > div {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  box-shadow:
+    0 12px 36px -4px rgba(15, 23, 42, 0.1),
+    0 4px 14px -2px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.95) !important;
+}
+
+/* ==========================================================================
+ * Interactive Components & Button Hover Physics
+ * ========================================================================== */
+
+/* Primary Button Gloss, Bloom & Micro-Lift */
+button.bg-primary,
+a.bg-primary {
+  background: linear-gradient(135deg, oklch(0.55 0.23 264) 0%, oklch(0.49 0.24 268) 100%) !important;
+  box-shadow:
+    0 1px 2px 0 rgba(79, 70, 229, 0.2),
+    0 3px 8px -1px rgba(79, 70, 229, 0.28),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.25) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+button.bg-primary:hover:not(:disabled),
+a.bg-primary:hover {
+  box-shadow:
+    0 4px 14px 0 rgba(79, 70, 229, 0.38),
+    0 8px 24px -2px rgba(79, 70, 229, 0.28),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.35) !important;
+  transform: translateY(-1.5px) scale(1.008);
+  filter: brightness(1.04);
+}
+
+button.bg-primary:active:not(:disabled),
+a.bg-primary:active {
+  transform: translateY(0) scale(0.985);
+  box-shadow: 0 1px 3px 0 rgba(79, 70, 229, 0.25) !important;
+}
+
+/* Secondary & Card Buttons */
+button.bg-card,
+button.border-border {
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+button.bg-card:hover:not(:disabled),
+button.border-border:hover:not(:disabled) {
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  background-color: rgba(248, 250, 252, 0.95);
+  box-shadow:
+    0 2px 8px -1px rgba(15, 23, 42, 0.05),
+    0 1px 3px 0 rgba(15, 23, 42, 0.03);
+  transform: translateY(-1px);
+}
+
+button.bg-card:active:not(:disabled),
+button.border-border:active:not(:disabled) {
+  transform: translateY(0) scale(0.99);
+}
+
+/* Badges & Chips Hover Micro-Pop */
+span.rounded-md.border,
+span.rounded-full.border {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+span.rounded-md.border:hover,
+span.rounded-full.border:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 3px 8px -2px rgba(15, 23, 42, 0.08);
+}
+
+/* Table Row Smooth Hover */
+table tbody tr {
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+table tbody tr:hover {
+  background-color: rgba(241, 245, 249, 0.65) !important;
+}
+
+/* Inputs & Focus Rings */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.16) !important;
+}
+
+/* ==========================================================================
+ * Custom Slim Luxury Scrollbar
+ * ========================================================================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.65);
+}
+
+/* ==========================================================================
+ * Floating Effects & Physics Keyframes
+ * ========================================================================== */
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes floatDrift {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  33% {
+    transform: translateY(-4px) rotate(0.4deg);
+  }
+  66% {
+    transform: translateY(-2px) rotate(-0.4deg);
+  }
+}
+
+@keyframes floatingGlow {
+  0%, 100% {
+    box-shadow:
+      0 4px 12px -2px rgba(99, 102, 241, 0.12),
+      0 1px 3px 0 rgba(15, 23, 42, 0.04);
+    transform: translateY(0);
+  }
+  50% {
+    box-shadow:
+      0 14px 28px -4px rgba(99, 102, 241, 0.22),
+      0 4px 10px 0 rgba(15, 23, 42, 0.06);
+    transform: translateY(-5px);
+  }
+}
+
+/* Floating Utility Classes */
+.float-gentle {
+  animation: floatGentle 4s ease-in-out infinite;
+}
+
+.float-slow {
+  animation: floatSlow 6s ease-in-out infinite;
+}
+
+.float-drift {
+  animation: floatDrift 8s ease-in-out infinite;
+}
+
+.floating-glow {
+  animation: floatingGlow 4.5s ease-in-out infinite;
+}
+
+.hover-float {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.hover-float:hover {
+  transform: translateY(-4px) !important;
+  box-shadow:
+    0 16px 32px -4px rgba(15, 23, 42, 0.08),
+    0 6px 16px -2px rgba(99, 102, 241, 0.12) !important;
+}
+
+/* Key Floating UI Anchors */
+span.grid.size-8.place-items-center.rounded-lg.bg-primary {
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.32);
+  animation: floatGentle 5s ease-in-out infinite;
+}
+
+header span.rounded-md.bg-amber-50\/70,
+header span.rounded-md.bg-blue-50\/70 {
+  animation: floatGentle 6s ease-in-out infinite;
+  animation-delay: 0.5s;
+}
+
+/* Dark Login Container Glass & Floating Splendor */
+.dark .rounded-3xl.border.bg-\[\#0e1424\]\/90 {
+  backdrop-filter: blur(28px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(200%) !important;
+  box-shadow:
+    0 24px 64px -12px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15) !important;
+  animation: floatGentle 9s ease-in-out infinite;
+}
+
+/* ==========================================================================
+ * Micro-Animations & Keyframes
+ * ========================================================================== */
 @keyframes journeyFadeIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -242,20 +575,20 @@
     opacity: 1;
   }
   50% {
-    transform: scale(1.04);
-    opacity: 0.85;
+    transform: scale(1.03);
+    opacity: 0.9;
   }
 }
 
 @keyframes micRipples {
   0% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.45);
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.45);
   }
   70% {
-    box-shadow: 0 0 0 16px rgba(59, 130, 246, 0);
+    box-shadow: 0 0 0 16px rgba(79, 70, 229, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
   }
 }
 
@@ -268,17 +601,28 @@
 }
 
 .journey-card {
-  background: var(--surface-elevated);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-lg, 1rem);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: var(--radius-lg, 0.75rem);
+  box-shadow:
+    0 1px 3px 0 rgba(15, 23, 42, 0.03),
+    0 6px 18px -3px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .journey-card:hover {
-  border-color: var(--line-strong, var(--border));
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow:
+    0 14px 34px -4px rgba(99, 102, 241, 0.12),
+    0 4px 12px 0 rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 0 #ffffff;
+  transform: translateY(-3px);
 }
 
 .mic-active {
   animation: micRipples 1.8s infinite;
 }
+
