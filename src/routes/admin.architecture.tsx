@@ -129,7 +129,7 @@ function ArchitecturePage() {
                 step: "Stage 0.2",
                 phase: "Provisioning & Identity",
                 title: "Bulk CSV Roster Ingestion & Validation",
-                desc: "Platform Admin uploads CSV roster (student_name, email, password, roll_no, dept, course_1, course_2, course_3, batch_id). Schema and uniqueness checks pass instantly.",
+                desc: "Platform Admin uploads CSV roster (student_name, email, password, roll_no, dept, course_1, batch_id, college). Schema and uniqueness checks pass instantly.",
                 metrics:
                   "100% automated validation · Instant password hashing · Zero pre-test screening hurdles",
               },
