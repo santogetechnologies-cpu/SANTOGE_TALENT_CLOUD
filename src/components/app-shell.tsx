@@ -251,7 +251,13 @@ export function AppShell({ portal }: { portal: Role }) {
     : SEARCH_ITEMS.slice(0, 8);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      data-portal={portal}
+      className={cn(
+        "min-h-screen bg-background",
+        portal === "admin" && "portal-admin-body",
+      )}
+    >
       <div className="flex min-h-screen">
         {/* Sidebar */}
         <aside
@@ -388,9 +394,19 @@ export function AppShell({ portal }: { portal: Role }) {
           />
         )}
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 flex-col",
+            portal === "admin" && "admin-content-wrapper",
+          )}
+        >
           {/* Top Header */}
-          <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-card/80 px-4 py-2.5 backdrop-blur-md sm:px-6">
+          <header
+            className={cn(
+              "sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-card/80 px-4 py-2.5 backdrop-blur-md sm:px-6",
+              portal === "admin" && "admin-header",
+            )}
+          >
             <button
               className="lg:hidden text-muted-foreground hover:text-foreground"
               onClick={() => setOpen(true)}
@@ -436,7 +452,12 @@ export function AppShell({ portal }: { portal: Role }) {
           </header>
 
           {/* Main Content Area */}
-          <main className="mx-auto w-full max-w-[1240px] flex-1 px-4 py-6 sm:px-6 sm:py-8">
+          <main
+            className={cn(
+              "mx-auto w-full max-w-[1240px] flex-1 px-4 py-6 sm:px-6 sm:py-8",
+              portal === "admin" && "admin-main",
+            )}
+          >
             <Outlet />
           </main>
         </div>
