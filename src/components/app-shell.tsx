@@ -255,8 +255,10 @@ export function AppShell({ portal }: { portal: Role }) {
       <div className="flex min-h-screen">
         {/* Sidebar */}
         <aside
+          data-portal={portal}
           className={cn(
             "fixed z-40 flex h-screen w-[256px] flex-col border-r border-border bg-card p-4 transition-transform lg:sticky lg:top-0 lg:translate-x-0",
+            portal === "admin" && "sidebar-admin",
             open ? "translate-x-0" : "-translate-x-full",
           )}
         >

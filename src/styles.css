@@ -301,6 +301,81 @@ aside a.hover\:bg-muted:hover {
   color: oklch(0.48 0.24 265) !important;
 }
 
+/* ==========================================================================
+ * Platform Admin Pista Green (Pistachio) Sidebar Architecture
+ * ========================================================================== */
+aside.sidebar-admin,
+aside[data-portal="admin"] {
+  background: linear-gradient(180deg, #edf7ee 0%, #e1f2e4 55%, #d8ebd9 100%) !important;
+  backdrop-filter: blur(24px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
+  border-right: 1px solid rgba(162, 212, 171, 0.85) !important;
+  box-shadow: 4px 0 24px -4px rgba(38, 82, 45, 0.08) !important;
+}
+
+aside.sidebar-admin .border-border,
+aside[data-portal="admin"] .border-border {
+  border-color: rgba(162, 212, 171, 0.65) !important;
+}
+
+/* User status card & info boxes inside pista green sidebar */
+aside.sidebar-admin .bg-muted\/30,
+aside[data-portal="admin"] .bg-muted\/30 {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  border: 1px solid rgba(162, 212, 171, 0.65) !important;
+  box-shadow: 0 1px 3px 0 rgba(38, 82, 45, 0.04) !important;
+}
+
+aside.sidebar-admin .bg-card,
+aside[data-portal="admin"] .bg-card {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+}
+
+/* Admin Brand & Status Header */
+aside.sidebar-admin span.bg-primary,
+aside[data-portal="admin"] span.bg-primary {
+  background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%) !important;
+  box-shadow: 0 3px 10px rgba(46, 125, 50, 0.35) !important;
+}
+
+aside.sidebar-admin .text-primary,
+aside[data-portal="admin"] .text-primary {
+  color: #2e7d32 !important;
+}
+
+/* Admin Navigation Links */
+aside.sidebar-admin nav a,
+aside[data-portal="admin"] nav a {
+  color: #27472f !important;
+  font-weight: 500;
+}
+
+aside.sidebar-admin nav a:hover,
+aside[data-portal="admin"] nav a:hover {
+  background-color: rgba(182, 224, 189, 0.55) !important;
+  color: #123d19 !important;
+  transform: translateX(3px);
+}
+
+aside.sidebar-admin nav a[data-status="active"],
+aside[data-portal="admin"] nav a[data-status="active"] {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.22) 0%, rgba(129, 199, 132, 0.3) 100%) !important;
+  color: #1b5e20 !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(129, 199, 132, 0.5) !important;
+  box-shadow: 0 2px 6px -1px rgba(38, 82, 45, 0.1) !important;
+}
+
+aside.sidebar-admin nav a[data-status="active"] svg,
+aside[data-portal="admin"] nav a[data-status="active"] svg {
+  color: #1b5e20 !important;
+}
+
+aside.sidebar-admin p.text-muted-foreground\/70,
+aside[data-portal="admin"] p.text-muted-foreground\/70 {
+  color: #446e4d !important;
+}
+
 /* Modal Backdrops & Glass Container Polish */
 .backdrop-blur-sm,
 .backdrop-blur-xs,
