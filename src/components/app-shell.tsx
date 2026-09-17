@@ -254,8 +254,8 @@ export function AppShell({ portal }: { portal: Role }) {
     <div
       data-portal={portal}
       className={cn(
-        "min-h-screen bg-background",
-        portal === "admin" && "portal-admin-body",
+        "min-h-screen bg-background portal-theme-body",
+        portal === "admin" ? "portal-admin-body" : "portal-student-body",
       )}
     >
       <div className="flex min-h-screen">
@@ -263,8 +263,8 @@ export function AppShell({ portal }: { portal: Role }) {
         <aside
           data-portal={portal}
           className={cn(
-            "fixed z-40 flex h-screen w-[256px] flex-col border-r border-border bg-card p-4 transition-transform lg:sticky lg:top-0 lg:translate-x-0",
-            portal === "admin" && "sidebar-admin",
+            "fixed z-40 flex h-screen w-[256px] flex-col border-r border-border bg-card p-4 transition-transform lg:sticky lg:top-0 lg:translate-x-0 portal-sidebar-dark",
+            portal === "admin" ? "sidebar-admin" : "sidebar-student",
             open ? "translate-x-0" : "-translate-x-full",
           )}
         >
@@ -396,15 +396,15 @@ export function AppShell({ portal }: { portal: Role }) {
 
         <div
           className={cn(
-            "flex min-w-0 flex-1 flex-col",
-            portal === "admin" && "admin-content-wrapper",
+            "flex min-w-0 flex-1 flex-col portal-content-wrapper",
+            portal === "admin" ? "admin-content-wrapper" : "student-content-wrapper",
           )}
         >
           {/* Top Header */}
           <header
             className={cn(
-              "sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-card/80 px-4 py-2.5 backdrop-blur-md sm:px-6",
-              portal === "admin" && "admin-header",
+              "sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-card/80 px-4 py-2.5 backdrop-blur-md sm:px-6 portal-header",
+              portal === "admin" ? "admin-header" : "student-header",
             )}
           >
             <button
@@ -454,8 +454,8 @@ export function AppShell({ portal }: { portal: Role }) {
           {/* Main Content Area */}
           <main
             className={cn(
-              "mx-auto w-full max-w-[1240px] flex-1 px-4 py-6 sm:px-6 sm:py-8",
-              portal === "admin" && "admin-main",
+              "mx-auto w-full max-w-[1240px] flex-1 px-4 py-6 sm:px-6 sm:py-8 portal-main",
+              portal === "admin" ? "admin-main" : "student-main",
             )}
           >
             <Outlet />
