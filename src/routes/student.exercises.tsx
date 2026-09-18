@@ -30,8 +30,6 @@ import {
   Check,
   RotateCcw,
   Sparkles,
-  Mic,
-  Volume2,
   Award,
   Clock,
   ArrowRight,
@@ -51,7 +49,6 @@ import {
   Lightbulb,
   TrendingUp,
   BrainCircuit,
-  MessageSquare,
   CheckSquare,
   BookmarkCheck,
   ExternalLink,
@@ -70,14 +67,14 @@ export const Route = createFileRoute("/student/exercises")({
       {
         property: "og:description",
         content:
-          "4 core daily exercise pillars: Speed Math, Corporate English, Code Challenges, and AI Voice Pitch.",
+          "3 core daily exercise pillars: Speed Math, Corporate English, and Technical Code Challenges.",
       },
     ],
   }),
   component: DailyExercisesPage,
 });
 
-type WorkoutTab = "all" | "aptitude" | "english" | "code" | "voice";
+type WorkoutTab = "all" | "aptitude" | "english" | "code";
 
 export function DailyExercisesPage() {
   const store = useAppStore();
@@ -179,17 +176,6 @@ console.log(solveChallenge());`;
     return completedTechDays.includes(selectedDayNum);
   });
 
-  // 4. Voice Pitch state
-  const [isRecording, setIsRecording] = useState<boolean>(false);
-  const [recordingSeconds, setRecordingSeconds] = useState<number>(0);
-  const [voiceAnalyzed, setVoiceAnalyzed] = useState<boolean>(() => {
-    return attendance.includes(selectedDayNum);
-  });
-  const [voiceLog, setVoiceLog] = useState<string[]>([
-    "[ready] Speech Engine & ITSE STAR Rubric ready.",
-    `[prompt] "${currentPlan.practice.voicePrompt.prompt}"`,
-  ]);
-
   // Aptitude MCQs from currentPlan
   const aptitudeMcqs = useMemo(() => {
     return currentPlan.practice.mcqs.filter(
@@ -206,13 +192,11 @@ console.log(solveChallenge());`;
   const isAptitudeDone = aptitudeSubmitted || attendance.includes(selectedDayNum);
   const isEnglishDone = englishSubmitted || attendance.includes(selectedDayNum);
   const isCodeDone = isCodeVerified || completedTechDays.includes(selectedDayNum);
-  const isVoiceDone = voiceAnalyzed || attendance.includes(selectedDayNum);
 
   const completedModulesCount =
     (isAptitudeDone ? 1 : 0) +
     (isEnglishDone ? 1 : 0) +
-    (isCodeDone ? 1 : 0) +
-    (isVoiceDone ? 1 : 0);
+    (isCodeDone ? 1 : 0);
 
   // Overall workout accuracy
   const totalQuestionsAnswered =
@@ -262,8 +246,6 @@ console.log(solveChallenge());`;
 
     const isTechAlreadyDone = completedTechDays.includes(dayNum);
     setIsCodeVerified(isTechAlreadyDone);
-    const isAttAlreadyDone = attendance.includes(dayNum);
-    setVoiceAnalyzed(isAttAlreadyDone);
 
     const newSyllabus = getTrackSyllabus(selectedTrackId);
     const newWIdx = Math.floor((dayNum - 1) / 5);
@@ -351,41 +333,6 @@ console.log(solveChallenge());`;
     });
   };
 
-  const handleRunVoicePitch = () => {
-    setIsRecording(true);
-    setRecordingSeconds(0);
-    setVoiceLog((l) => [
-      `[voice] Recording 60s speech pitch for Day ${selectedDayNum} prompt…`,
-      ...l,
-    ]);
-
-    // Simulate 3-second recording analysis
-    setTimeout(async () => {
-      setIsRecording(false);
-      setVoiceAnalyzed(true);
-      setVoiceLog((l) => [
-        `[voice] Analysis Complete: Clarity 91% · Pace 75 WPM (Optimal)`,
-        `[voice] STAR Rubric: Situation (✓) Task (✓) Action (✓) Result (✓)`,
-        `[voice] Vocabulary Matches: ${currentPlan.english.keyVocabulary.slice(0, 3).join(", ")}`,
-        `[voice] Talent Score evidence submitted (+25 XP)`,
-        ...l,
-      ]);
-
-      if (liveStudentId) {
-        await completeLiveDailyStep(liveStudentId, "practice");
-        await completeLivePlacementDay(liveStudentId, selectedDayNum);
-        queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
-        queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
-      }
-      await store.completeDailyStep("practice");
-      await store.completePlacementDay(selectedDayNum);
-
-      toast.success("Speech Analysis Passed! (+25 XP)", {
-        description: "Communication score updated on Talent Score engine.",
-      });
-    }, 2400);
-  };
-
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       {/* Top Header */}
@@ -410,8 +357,8 @@ console.log(solveChallenge());`;
               <Flame className="size-3.5 fill-amber-500 text-amber-500" />
               <span>{streak} Day Streak</span>
             </div>
-            <Chip tone={completedModulesCount === 4 ? "emerald" : "cyan"}>
-              {completedModulesCount} / 4 Workouts Completed
+            <Chip tone={completedModulesCount === 3 ? "emerald" : "cyan"}>
+              {completedModulesCount} / 3 Workouts Completed
             </Chip>
           </div>
         }
@@ -421,12 +368,12 @@ console.log(solveChallenge());`;
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
           label="Daily Workout Progress"
-          value={`${completedModulesCount} / 4 Done`}
-          tone={completedModulesCount === 4 ? "emerald" : "brand"}
+          value={`${completedModulesCount} / 3 Done`}
+          tone={completedModulesCount === 3 ? "emerald" : "brand"}
           hint={
-            completedModulesCount === 4
-              ? "All 4 daily modules finished! 🎉"
-              : "Aptitude + English + Code + Pitch"
+            completedModulesCount === 3
+              ? "All 3 daily modules finished! 🎉"
+              : "Aptitude + English + Code"
           }
         />
         <Stat
@@ -581,7 +528,7 @@ console.log(solveChallenge());`;
             )}
           >
             <Dumbbell className="size-3.5" />
-            All 4 Workouts
+            All 3 Workouts
           </button>
           <button
             onClick={() => setActiveTab("aptitude")}
@@ -622,34 +569,21 @@ console.log(solveChallenge());`;
             Technical Code Drill
             {isCodeDone && <Check className="size-3 text-emerald-400 ml-0.5" />}
           </button>
-          <button
-            onClick={() => setActiveTab("voice")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
-              activeTab === "voice"
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-            )}
-          >
-            <Mic className="size-3.5" />
-            AI Voice Pitch
-            {isVoiceDone && <Check className="size-3 text-emerald-400 ml-0.5" />}
-          </button>
         </div>
 
         {/* Completion Progress Bar */}
         <div className="flex items-center gap-3">
           <div className="w-28 hidden sm:block">
-            <Meter value={(completedModulesCount / 4) * 100} tone="emerald" />
+            <Meter value={(completedModulesCount / 3) * 100} tone="emerald" />
           </div>
           <span className="text-xs font-mono font-medium text-muted-foreground">
-            {completedModulesCount}/4 Complete
+            {completedModulesCount}/3 Complete
           </span>
         </div>
       </div>
 
-      {/* Celebration Banner when all 4 completed */}
-      {completedModulesCount === 4 && (
+      {/* Celebration Banner when all 3 completed */}
+      {completedModulesCount === 3 && (
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-900 dark:text-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
@@ -660,7 +594,7 @@ console.log(solveChallenge());`;
                 Day {selectedDayNum} Daily Workout Fully Mastered! 🌟
               </p>
               <p className="text-xs text-muted-foreground">
-                All 4 modules passed. Daily streak maintained and +100 XP added to your Talent Score ledger.
+                All 3 modules passed. Daily streak maintained and +100 XP added to your Talent Score ledger.
               </p>
             </div>
           </div>
@@ -1187,127 +1121,6 @@ console.log(solveChallenge());`;
           </Panel>
         )}
 
-        {/* PILLAR 4: AI VOICE PITCH & COMMUNICATION DRILL */}
-        {(activeTab === "all" || activeTab === "voice") && (
-          <Panel
-            title={
-              <div className="flex items-center gap-2">
-                <Mic className="size-4 text-primary" />
-                <span>4. AI Voice Pitch & Interview Drill</span>
-              </div>
-            }
-            subtitle={`Day ${selectedDayNum} · STAR Rubric Speech Evaluation`}
-            action={
-              isVoiceDone ? (
-                <Chip tone="emerald">Pitch Evaluated (+25 XP)</Chip>
-              ) : (
-                <Chip tone="amber">60s Audio Pitch</Chip>
-              )
-            }
-            className="flex flex-col justify-between"
-          >
-            <div className="space-y-4 text-xs">
-              {/* Daily Speech Prompt Card */}
-              <div className="rounded-lg border border-border bg-card p-3.5 space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-semibold text-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <MessageSquare className="size-3.5 text-primary" />
-                    Today's Interview Prompt
-                  </span>
-                  <span className="rounded bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.5 font-mono text-[10px]">
-                    {currentPlan.practice.voicePrompt.starCategory} Focus
-                  </span>
-                </div>
-                <p className="text-xs font-medium text-foreground bg-muted/40 p-2.5 rounded border border-border/60">
-                  "{currentPlan.practice.voicePrompt.prompt}"
-                </p>
-              </div>
-
-              {/* Keywords Checklist */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Target Competency Keywords (Speak these to score 90%+)</span>
-                  <span className="font-mono text-primary">STAR Rubric</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {currentPlan.practice.voicePrompt.targetKeywords.map((kw, i) => (
-                    <span
-                      key={i}
-                      className={cn(
-                        "rounded-md border px-2 py-0.5 text-[11px] font-mono",
-                        voiceAnalyzed
-                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold"
-                          : "border-border bg-muted/50 text-muted-foreground",
-                      )}
-                    >
-                      {voiceAnalyzed ? "✓ " : ""}
-                      {kw}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Voice Visualizer / Audio Recorder Simulator */}
-              <div className="rounded-xl border border-border bg-surface-dark p-4 text-center space-y-3">
-                <div className="flex items-center justify-center gap-1 h-8">
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "w-1 rounded-full transition-all duration-200",
-                        isRecording
-                          ? "bg-primary animate-pulse"
-                          : "bg-slate-700",
-                      )}
-                      style={{
-                        height: isRecording
-                          ? `${Math.max(8, Math.sin(i * 0.8 + Date.now() * 0.005) * 28 + 10)}px`
-                          : "6px",
-                      }}
-                    />
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-center gap-3">
-                  <button
-                    onClick={handleRunVoicePitch}
-                    disabled={isRecording}
-                    className={cn(
-                      "flex items-center gap-2 rounded-full px-5 py-2 text-xs font-bold shadow-sm transition-all",
-                      isRecording
-                        ? "bg-rose-500 text-white animate-pulse cursor-wait"
-                        : "bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-102",
-                    )}
-                  >
-                    <Mic className="size-4" />
-                    <span>{isRecording ? "Analyzing Speech Flow…" : "Start 60s Voice Pitch Drill"}</span>
-                  </button>
-                </div>
-                <p className="text-[10px] text-slate-400 font-mono">
-                  {isRecording
-                    ? "Microphone listening… Testing clarity, pace, and STAR framework."
-                    : "Zero video fatigue: 100% audio evaluation with instant automated STAR report."}
-                </p>
-              </div>
-
-              {/* Speech Analysis Console */}
-              <div className="space-y-1">
-                <span className="text-[11px] text-muted-foreground">AI Speech Engine Output</span>
-                <Console lines={voiceLog} empty="Awaiting audio pitch recording…" />
-              </div>
-            </div>
-
-            {/* Voice Pitch Action Footer */}
-            <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
-              <span className="text-[11px] text-muted-foreground">
-                Evaluates Clarity, Words Per Minute (WPM), and Filler Words
-              </span>
-              <Chip tone={isVoiceDone ? "emerald" : "muted"}>
-                {isVoiceDone ? "Communication Evidence Verified" : "Awaiting Drill"}
-              </Chip>
-            </div>
-          </Panel>
-        )}
       </div>
 
       {/* Daily Routine Summary Checklist Card */}
@@ -1323,12 +1136,12 @@ console.log(solveChallenge());`;
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-foreground">
-              {completedModulesCount} of 4 Modules Completed
+              {completedModulesCount} of 3 Modules Completed
             </span>
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 pt-4">
+        <div className="grid gap-3 sm:grid-cols-3 pt-4">
           <div
             className={cn(
               "rounded-lg border p-3.5 space-y-1.5 transition-all",
@@ -1389,27 +1202,6 @@ console.log(solveChallenge());`;
             </div>
             <p className="text-[11px] text-muted-foreground">
               {isCodeDone ? `${primaryTrack.short} Test cases verified (+50 XP)` : "Pending sandbox execution"}
-            </p>
-          </div>
-
-          <div
-            className={cn(
-              "rounded-lg border p-3.5 space-y-1.5 transition-all",
-              isVoiceDone
-                ? "border-emerald-500/30 bg-emerald-500/5"
-                : "border-border bg-card",
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-foreground">4. AI Voice Pitch</span>
-              {isVoiceDone ? (
-                <CheckCircle2 className="size-4 text-emerald-500" />
-              ) : (
-                <Circle className="size-4 text-muted-foreground" />
-              )}
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              {isVoiceDone ? "STAR rubric analyzed (+25 XP)" : "Pending 60s speech recording"}
             </p>
           </div>
         </div>

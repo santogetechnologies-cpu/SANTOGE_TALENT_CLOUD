@@ -335,7 +335,7 @@ export function DailyHomeScreen({
             <div>
               <h4 className="text-xs font-semibold text-foreground">Daily Exercise Dashboard</h4>
               <p className="text-[11px] text-muted-foreground">
-                Speed math, English, Code &amp; AI pitch
+                Speed math, Corporate English &amp; Code drills
               </p>
             </div>
           </div>
