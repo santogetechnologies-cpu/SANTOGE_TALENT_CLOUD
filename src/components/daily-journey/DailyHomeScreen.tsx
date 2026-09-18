@@ -19,10 +19,9 @@ import {
   BookOpen,
   Dumbbell,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getScoreTier } from "@/lib/utils";
 import { trackById, type TrackId, type Track } from "@/lib/tracks";
 import type { AcceleratorDay } from "@/lib/placement-accelerator-data";
-import { getScoreTier } from "@/routes/student.index";
 
 interface DailyHomeScreenProps {
   studentName: string;
