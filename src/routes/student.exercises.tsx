@@ -20,7 +20,6 @@ import {
 } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import {
-  Dumbbell,
   Calendar,
   Flame,
   Zap,
@@ -33,6 +32,7 @@ import {
   Award,
   Clock,
   ArrowRight,
+  Lock,
   ChevronLeft,
   ChevronRight,
   Code2,
@@ -74,7 +74,7 @@ export const Route = createFileRoute("/student/exercises")({
   component: DailyExercisesPage,
 });
 
-type WorkoutTab = "all" | "aptitude" | "english" | "code";
+type WorkoutTab = "aptitude" | "english" | "code";
 
 export function DailyExercisesPage() {
   const store = useAppStore();
@@ -110,7 +110,7 @@ export function DailyExercisesPage() {
 
   // Active day selection (defaults to current cohort day)
   const [selectedDayNum, setSelectedDayNum] = useState<number>(cohortDay);
-  const [activeTab, setActiveTab] = useState<WorkoutTab>("all");
+  const [activeTab, setActiveTab] = useState<WorkoutTab>("aptitude");
   const [dayFilter, setDayFilter] = useState<"all" | "current-week" | "fridays">("current-week");
 
   // Selected technical track for coding drill
@@ -243,6 +243,7 @@ console.log(solveChallenge());`;
     setEnglishAnswers({});
     setEnglishSubmitted(false);
     setActiveVocabIdx(0);
+    setActiveTab("aptitude");
 
     const isTechAlreadyDone = completedTechDays.includes(dayNum);
     setIsCodeVerified(isTechAlreadyDone);
@@ -277,8 +278,17 @@ console.log(solveChallenge());`;
     }
     await store.completeDailyStep("aptitude");
     toast.success("Aptitude Drill Complete! (+25 XP)", {
-      description: `${correctAnswersCount} correct answers recorded.`,
+      description: "Opening Corporate English Workout…",
     });
+
+    // Automatically open Corporate English workout
+    setTimeout(() => {
+      setActiveTab("english");
+      const englishEl = document.getElementById("corporate-english-workout");
+      if (englishEl) {
+        englishEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 350);
   };
 
   const handleSubmitEnglish = async () => {
@@ -294,8 +304,17 @@ console.log(solveChallenge());`;
     }
     await store.completeDailyStep("english");
     toast.success("Corporate English Drill Complete! (+25 XP)", {
-      description: "Grammar and vocabulary evidence logged.",
+      description: "Opening Technical Code Drill…",
     });
+
+    // Automatically open Technical Code Drill
+    setTimeout(() => {
+      setActiveTab("code");
+      const codeEl = document.getElementById("technical-code-workout");
+      if (codeEl) {
+        codeEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 350);
   };
 
   const handleRunCodeTests = () => {
@@ -519,55 +538,75 @@ console.log(solveChallenge());`;
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-3">
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => setActiveTab("all")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
-              activeTab === "all"
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-            )}
-          >
-            <Dumbbell className="size-3.5" />
-            All 3 Workouts
-          </button>
-          <button
             onClick={() => setActiveTab("aptitude")}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all cursor-pointer",
               activeTab === "aptitude"
                 ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
             )}
           >
             <Calculator className="size-3.5" />
-            Aptitude & Logic
+            1. Aptitude &amp; Logic
             {isAptitudeDone && <Check className="size-3 text-emerald-400 ml-0.5" />}
           </button>
           <button
-            onClick={() => setActiveTab("english")}
+            onClick={() => {
+              if (!isAptitudeDone) {
+                toast.info("Complete Aptitude & Logic first to unlock Corporate English.");
+                setActiveTab("aptitude");
+                return;
+              }
+              setActiveTab("english");
+            }}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all cursor-pointer",
               activeTab === "english"
                 ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+              !isAptitudeDone && "opacity-75",
             )}
           >
             <BookOpen className="size-3.5" />
-            Corporate English
-            {isEnglishDone && <Check className="size-3 text-emerald-400 ml-0.5" />}
+            2. Corporate English
+            {!isAptitudeDone ? (
+              <Lock className="size-3 text-muted-foreground ml-0.5" />
+            ) : isEnglishDone ? (
+              <Check className="size-3 text-emerald-400 ml-0.5" />
+            ) : null}
           </button>
           <button
-            onClick={() => setActiveTab("code")}
+            onClick={() => {
+              if (!isEnglishDone) {
+                toast.info(
+                  !isAptitudeDone
+                    ? "Complete Aptitude & Logic first."
+                    : "Complete Corporate English first to unlock Technical Code Drill.",
+                );
+                if (!isAptitudeDone) {
+                  setActiveTab("aptitude");
+                } else {
+                  setActiveTab("english");
+                }
+                return;
+              }
+              setActiveTab("code");
+            }}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all cursor-pointer",
               activeTab === "code"
                 ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+              !isEnglishDone && "opacity-75",
             )}
           >
             <Code2 className="size-3.5" />
-            Technical Code Drill
-            {isCodeDone && <Check className="size-3 text-emerald-400 ml-0.5" />}
+            3. Technical Code Drill
+            {!isEnglishDone ? (
+              <Lock className="size-3 text-muted-foreground ml-0.5" />
+            ) : isCodeDone ? (
+              <Check className="size-3 text-emerald-400 ml-0.5" />
+            ) : null}
           </button>
         </div>
 
@@ -609,10 +648,11 @@ console.log(solveChallenge());`;
       )}
 
       {/* WORKOUT CONTENT SECTIONS */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-6">
         {/* PILLAR 1: APTITUDE & LOGICAL REASONING WORKOUT */}
-        {(activeTab === "all" || activeTab === "aptitude") && (
+        {activeTab === "aptitude" && (
           <Panel
+            id="aptitude-workout"
             title={
               <div className="flex items-center gap-2">
                 <Calculator className="size-4 text-primary" />
@@ -789,30 +829,44 @@ console.log(solveChallenge());`;
             </div>
 
             {/* Aptitude Action Footer */}
-            <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
+            <div className="mt-4 pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
               <span className="text-[11px] text-muted-foreground">
-                Formula drill delivered daily via Telegram @ 06:00
+                {isAptitudeDone
+                  ? "✓ Aptitude logic completed (+25 XP)"
+                  : "Formula drill delivered daily via Telegram @ 06:00"}
               </span>
-              <button
-                onClick={handleSubmitAptitude}
-                disabled={isAptitudeDone}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-xs transition-all",
-                  isAptitudeDone
-                    ? "bg-muted text-muted-foreground border border-border cursor-not-allowed"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90",
-                )}
-              >
-                <Check className="size-3.5" />
-                {isAptitudeDone ? "Aptitude Drill Logged" : "Submit Aptitude Workout (+25 XP)"}
-              </button>
+              {isAptitudeDone ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("english");
+                    setTimeout(() => {
+                      document.getElementById("corporate-english-workout")?.scrollIntoView({ behavior: "smooth" });
+                    }, 50);
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+                >
+                  <span>Next: Open Corporate English Workout</span>
+                  <ArrowRight className="size-3.5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSubmitAptitude}
+                  className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 shadow-xs transition-all cursor-pointer"
+                >
+                  <Check className="size-3.5" />
+                  <span>Submit Aptitude Workout (+25 XP)</span>
+                </button>
+              )}
             </div>
           </Panel>
         )}
 
         {/* PILLAR 2: CORPORATE ENGLISH & VERBAL WORKOUT */}
-        {(activeTab === "all" || activeTab === "english") && (
+        {activeTab === "english" && (
           <Panel
+            id="corporate-english-workout"
             title={
               <div className="flex items-center gap-2">
                 <BookOpen className="size-4 text-primary" />
@@ -821,7 +875,9 @@ console.log(solveChallenge());`;
             }
             subtitle={`Day ${selectedDayNum} · ${currentPlan.english.title}`}
             action={
-              isEnglishDone ? (
+              !isAptitudeDone ? (
+                <Chip tone="muted">🔒 Complete Aptitude to Open</Chip>
+              ) : isEnglishDone ? (
                 <Chip tone="emerald">Verbal Mastered (+25 XP)</Chip>
               ) : (
                 <Chip tone="cyan">10 Min Workout</Chip>
@@ -829,167 +885,213 @@ console.log(solveChallenge());`;
             }
             className="flex flex-col justify-between"
           >
-            <div className="space-y-4 text-xs">
-              {/* Grammar Rule Card */}
-              <div className="rounded-lg border border-border bg-card p-3.5 space-y-1.5">
-                <div className="flex items-center gap-1.5 text-foreground font-semibold text-xs">
-                  <BookmarkCheck className="size-3.5 text-primary" />
-                  <span>Grammar & Corporate Etiquette Rule</span>
+            {!isAptitudeDone ? (
+              <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center space-y-3.5 my-auto">
+                <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-500">
+                  <Lock className="size-6" />
                 </div>
-                <p className="text-xs text-foreground font-medium bg-muted/30 p-2 rounded border border-border/50">
-                  {currentPlan.english.grammarRule}
-                </p>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  <strong className="text-foreground">Instructor Context: </strong>
-                  {currentPlan.english.instructorBrief}
-                </p>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold text-foreground">
+                    Locked: Complete Aptitude &amp; Logic Drill First
+                  </h4>
+                  <p className="mx-auto max-w-sm text-xs text-muted-foreground leading-relaxed">
+                    Corporate English will open automatically as soon as you finish and submit your Quantitative Aptitude &amp; Logic workout on the left.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("aptitude");
+                    setTimeout(() => {
+                      document.getElementById("aptitude-workout")?.scrollIntoView({ behavior: "smooth" });
+                    }, 50);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+                >
+                  <Calculator className="size-3.5" />
+                  <span>Start Aptitude &amp; Logic Workout</span>
+                  <ArrowRight className="size-3.5" />
+                </button>
               </div>
-
-              {/* 4 Vocabulary Flashcards */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">
-                    Corporate Vocabulary Drill (4 Flashcards)
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">Click word to study</span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                  {currentPlan.english.keyVocabulary.map((word, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setActiveVocabIdx(idx)}
-                      className={cn(
-                        "rounded-lg border p-2 text-center transition-all",
-                        activeVocabIdx === idx
-                          ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                          : "border-border bg-card text-foreground hover:bg-muted/50",
-                      )}
-                    >
-                      <span className="block text-xs font-mono capitalize">{word}</span>
-                      <span className="text-[9px] text-muted-foreground">Card #{idx + 1}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Expanded Vocabulary Preview */}
-                <div className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-foreground text-xs uppercase font-mono">
-                      "{currentPlan.english.keyVocabulary[activeVocabIdx]}"
-                    </span>
-                    <span className="text-[10px] text-primary font-semibold">Corporate Context</span>
+            ) : (
+              <div className="space-y-4 text-xs">
+                {/* Grammar Rule Card */}
+                <div className="rounded-lg border border-border bg-card p-3.5 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-foreground font-semibold text-xs">
+                    <BookmarkCheck className="size-3.5 text-primary" />
+                    <span>Grammar & Corporate Etiquette Rule</span>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Used to demonstrate professional precision during interviews and status updates.
-                    Example: <em>"We leveraged {currentPlan.english.keyVocabulary[activeVocabIdx]} to optimize the client deliverable."</em>
+                  <p className="text-xs text-foreground font-medium bg-muted/30 p-2 rounded border border-border/50">
+                    {currentPlan.english.grammarRule}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    <strong className="text-foreground">Instructor Context: </strong>
+                    {currentPlan.english.instructorBrief}
                   </p>
                 </div>
-              </div>
 
-              {/* Interactive English MCQs */}
-              {englishMcqs.length > 0 && (
-                <div className="space-y-2.5 pt-2">
-                  <p className="text-xs font-bold text-foreground">
-                    Verbal Reasoning & Grammar Accuracy
-                  </p>
-                  {englishMcqs.map((q, idx) => {
-                    const selected = englishAnswers[idx];
-                    const hasAnswered = selected !== undefined;
-                    const isCorrect = selected === q.answer;
+                {/* 4 Vocabulary Flashcards */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground">
+                      Corporate Vocabulary Drill (4 Flashcards)
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">Click word to study</span>
+                  </div>
 
-                    return (
-                      <div
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    {currentPlan.english.keyVocabulary.map((word, idx) => (
+                      <button
                         key={idx}
-                        className="rounded-lg border border-border bg-card/70 p-3 space-y-2 shadow-xs"
-                      >
-                        <p className="font-medium text-foreground text-xs leading-relaxed">
-                          <span className="font-mono text-primary font-semibold mr-1.5">Q.</span>
-                          {q.q}
-                        </p>
-
-                        <div className="grid gap-1.5 sm:grid-cols-2">
-                          {q.options.map((opt, optIdx) => {
-                            const isOptionSelected = selected === optIdx;
-                            const isOptionCorrectAnswer = optIdx === q.answer;
-
-                            let btnStyle = "border-border bg-card hover:bg-muted/50 text-foreground";
-                            if (hasAnswered) {
-                              if (isOptionCorrectAnswer) {
-                                btnStyle = "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold";
-                              } else if (isOptionSelected) {
-                                btnStyle = "border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300";
-                              } else {
-                                btnStyle = "opacity-60 border-border bg-card";
-                              }
-                            }
-
-                            return (
-                              <button
-                                key={optIdx}
-                                disabled={hasAnswered}
-                                onClick={() =>
-                                  setEnglishAnswers((prev) => ({ ...prev, [idx]: optIdx }))
-                                }
-                                className={cn(
-                                  "flex items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all",
-                                  btnStyle,
-                                )}
-                              >
-                                <span className="font-mono text-[10px]">
-                                  {String.fromCharCode(65 + optIdx)}.
-                                </span>
-                                <span className="truncate">{opt}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {hasAnswered && (
-                          <div
-                            className={cn(
-                              "rounded-md p-2 text-[11px] leading-relaxed",
-                              isCorrect
-                                ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20"
-                                : "bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20",
-                            )}
-                          >
-                            <p className="font-semibold">{isCorrect ? "✓ Well done!" : "Correction:"}</p>
-                            <p className="mt-0.5">{q.explanation}</p>
-                          </div>
+                        onClick={() => setActiveVocabIdx(idx)}
+                        className={cn(
+                          "rounded-lg border p-2 text-center transition-all",
+                          activeVocabIdx === idx
+                            ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
+                            : "border-border bg-card text-foreground hover:bg-muted/50",
                         )}
-                      </div>
-                    );
-                  })}
+                      >
+                        <span className="block text-xs font-mono capitalize">{word}</span>
+                        <span className="text-[9px] text-muted-foreground">Card #{idx + 1}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Expanded Vocabulary Preview */}
+                  <div className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-foreground text-xs uppercase font-mono">
+                        "{currentPlan.english.keyVocabulary[activeVocabIdx]}"
+                      </span>
+                      <span className="text-[10px] text-primary font-semibold">Corporate Context</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Used to demonstrate professional precision during interviews and status updates.
+                      Example: <em>"We leveraged {currentPlan.english.keyVocabulary[activeVocabIdx]} to optimize the client deliverable."</em>
+                    </p>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                {/* Interactive English MCQs */}
+                {englishMcqs.length > 0 && (
+                  <div className="space-y-2.5 pt-2">
+                    <p className="text-xs font-bold text-foreground">
+                      Verbal Reasoning & Grammar Accuracy
+                    </p>
+                    {englishMcqs.map((q, idx) => {
+                      const selected = englishAnswers[idx];
+                      const hasAnswered = selected !== undefined;
+                      const isCorrect = selected === q.answer;
+
+                      return (
+                        <div
+                          key={idx}
+                          className="rounded-lg border border-border bg-card/70 p-3 space-y-2 shadow-xs"
+                        >
+                          <p className="font-medium text-foreground text-xs leading-relaxed">
+                            <span className="font-mono text-primary font-semibold mr-1.5">Q.</span>
+                            {q.q}
+                          </p>
+
+                          <div className="grid gap-1.5 sm:grid-cols-2">
+                            {q.options.map((opt, optIdx) => {
+                              const isOptionSelected = selected === optIdx;
+                              const isOptionCorrectAnswer = optIdx === q.answer;
+
+                              let btnStyle = "border-border bg-card hover:bg-muted/50 text-foreground";
+                              if (hasAnswered) {
+                                if (isOptionCorrectAnswer) {
+                                  btnStyle = "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold";
+                                } else if (isOptionSelected) {
+                                  btnStyle = "border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300";
+                                } else {
+                                  btnStyle = "opacity-60 border-border bg-card";
+                                }
+                              }
+
+                              return (
+                                <button
+                                  key={optIdx}
+                                  disabled={hasAnswered}
+                                  onClick={() =>
+                                    setEnglishAnswers((prev) => ({ ...prev, [idx]: optIdx }))
+                                  }
+                                  className={cn(
+                                    "flex items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all",
+                                    btnStyle,
+                                  )}
+                                >
+                                  <span className="font-mono text-[10px]">
+                                    {String.fromCharCode(65 + optIdx)}.
+                                  </span>
+                                  <span className="truncate">{opt}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {hasAnswered && (
+                            <div
+                              className={cn(
+                                "rounded-md p-2 text-[11px] leading-relaxed",
+                                isCorrect
+                                  ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20"
+                                  : "bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20",
+                              )}
+                            >
+                              <p className="font-semibold">{isCorrect ? "✓ Well done!" : "Correction:"}</p>
+                              <p className="mt-0.5">{q.explanation}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* English Action Footer */}
-            <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
-              <span className="text-[11px] text-muted-foreground">
-                Timeline: 03m Concept · 04m Demo · 03m Drill
-              </span>
-              <button
-                onClick={handleSubmitEnglish}
-                disabled={isEnglishDone}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-xs transition-all",
-                  isEnglishDone
-                    ? "bg-muted text-muted-foreground border border-border cursor-not-allowed"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90",
+            {isAptitudeDone && (
+              <div className="mt-4 pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[11px] text-muted-foreground">
+                  {isEnglishDone
+                    ? "✓ Corporate English completed (+25 XP)"
+                    : "Timeline: 03m Concept · 04m Demo · 03m Drill"}
+                </span>
+                {isEnglishDone ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("code");
+                      setTimeout(() => {
+                        document.getElementById("technical-code-workout")?.scrollIntoView({ behavior: "smooth" });
+                      }, 50);
+                    }}
+                    className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+                  >
+                    <span>Next: Open Technical Code Drill</span>
+                    <ArrowRight className="size-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSubmitEnglish}
+                    className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 shadow-xs transition-all cursor-pointer"
+                  >
+                    <Check className="size-3.5" />
+                    <span>Submit English Workout (+25 XP)</span>
+                  </button>
                 )}
-              >
-                <Check className="size-3.5" />
-                {isEnglishDone ? "English Drill Logged" : "Submit English Workout (+25 XP)"}
-              </button>
-            </div>
+              </div>
+            )}
           </Panel>
         )}
 
         {/* PILLAR 3: TECHNICAL CODE & BUG-HUNT DRILL (COURSE-SPECIFIC) */}
-        {(activeTab === "all" || activeTab === "code") && (
+        {activeTab === "code" && (
           <Panel
+            id="technical-code-workout"
             title={
               <div className="flex items-center gap-2">
                 <Code2 className="size-4 text-primary" />
@@ -998,7 +1100,9 @@ console.log(solveChallenge());`;
             }
             subtitle={`Day ${selectedDayNum} · ${primaryTrack.name}`}
             action={
-              isCodeDone ? (
+              !isEnglishDone ? (
+                <Chip tone="muted">🔒 Complete English to Open</Chip>
+              ) : isCodeDone ? (
                 <Chip tone="emerald">Code Verified (+50 XP)</Chip>
               ) : (
                 <Chip tone="purple">15 Min Sandbox</Chip>
@@ -1006,118 +1110,157 @@ console.log(solveChallenge());`;
             }
             className="flex flex-col justify-between"
           >
-            <div className="space-y-4 text-xs">
-              {/* Course Selector Tabs (If student has multiple assigned tracks) */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground text-[11px] font-medium">Assigned Course:</span>
-                  <div className="flex gap-1">
-                    {activeTracks.map((tId) => {
-                      const t = trackById(tId);
-                      return (
-                        <button
-                          key={tId}
-                          onClick={() => {
-                            setSelectedTrackId(tId);
-                            const syl = getTrackSyllabus(tId);
-                            const wI = Math.floor((selectedDayNum - 1) / 5);
-                            const dI = (selectedDayNum - 1) % 5;
-                            const wP = syl.weeks[wI] || syl.weeks[0]!;
-                            const dP = wP.days[dI] || wP.days[0]!;
-                            setUserCode(
-                              `// ${t.name} · Day ${selectedDayNum} Exercise\n// Objective: ${dP.practice}\n\nfunction solveChallenge() {\n  // TODO: Implement solution logic for ${dP.topic}\n  const status = "OPTIMIZED";\n  return status;\n}\n\nconsole.log(solveChallenge());`,
-                            );
-                            setConsoleOutput([`[ready] Switched sandbox to ${t.name} (Day ${selectedDayNum})`]);
-                          }}
-                          className={cn(
-                            "rounded-md px-2 py-0.5 text-xs font-semibold transition-all",
-                            selectedTrackId === tId
-                              ? "bg-primary/10 text-primary border border-primary/30"
-                              : "bg-muted text-muted-foreground hover:text-foreground",
-                          )}
-                        >
-                          {t.short}
-                        </button>
-                      );
-                    })}
+            {!isEnglishDone ? (
+              <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center space-y-3.5 my-auto">
+                <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-500">
+                  <Lock className="size-6" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold text-foreground">
+                    Locked: Complete Corporate English Workout First
+                  </h4>
+                  <p className="mx-auto max-w-sm text-xs text-muted-foreground leading-relaxed">
+                    The Technical Code Drill will unlock and open automatically as soon as you finish and submit your Corporate English workout.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isAptitudeDone) {
+                      setActiveTab("aptitude");
+                      setTimeout(() => {
+                        document.getElementById("aptitude-workout")?.scrollIntoView({ behavior: "smooth" });
+                      }, 50);
+                    } else {
+                      setActiveTab("english");
+                      setTimeout(() => {
+                        document.getElementById("corporate-english-workout")?.scrollIntoView({ behavior: "smooth" });
+                      }, 50);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+                >
+                  <BookOpen className="size-3.5" />
+                  <span>{!isAptitudeDone ? "Go to Aptitude & Logic" : "Open Corporate English Workout"}</span>
+                  <ArrowRight className="size-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4 text-xs">
+                {/* Course Selector Tabs (If student has multiple assigned tracks) */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground text-[11px] font-medium">Assigned Course:</span>
+                    <div className="flex gap-1">
+                      {activeTracks.map((tId) => {
+                        const t = trackById(tId);
+                        return (
+                          <button
+                            key={tId}
+                            onClick={() => {
+                              setSelectedTrackId(tId);
+                              const syl = getTrackSyllabus(tId);
+                              const wI = Math.floor((selectedDayNum - 1) / 5);
+                              const dI = (selectedDayNum - 1) % 5;
+                              const wP = syl.weeks[wI] || syl.weeks[0]!;
+                              const dP = wP.days[dI] || wP.days[0]!;
+                              setUserCode(
+                                `// ${t.name} · Day ${selectedDayNum} Exercise\n// Objective: ${dP.practice}\n\nfunction solveChallenge() {\n  // TODO: Implement solution logic for ${dP.topic}\n  const status = "OPTIMIZED";\n  return status;\n}\n\nconsole.log(solveChallenge());`,
+                              );
+                              setConsoleOutput([`[ready] Switched sandbox to ${t.name} (Day ${selectedDayNum})`]);
+                            }}
+                            className={cn(
+                              "rounded-md px-2 py-0.5 text-xs font-semibold transition-all",
+                              selectedTrackId === tId
+                                ? "bg-primary/10 text-primary border border-primary/30"
+                                : "bg-muted text-muted-foreground hover:text-foreground",
+                            )}
+                          >
+                            {t.short}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
 
-                <span className="text-[10px] font-mono text-muted-foreground">
-                  Week {currentWeekPlan.week} · {currentWeekPlan.theme.slice(0, 20)}…
-                </span>
-              </div>
-
-              {/* Day Objective Card */}
-              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-foreground text-xs">
-                    {currentTechDay.topic}
-                  </span>
-                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-                    100% In-Browser
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    Week {currentWeekPlan.week} · {currentWeekPlan.theme.slice(0, 20)}…
                   </span>
                 </div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  <strong className="text-foreground">Hands-on Goal: </strong>
-                  {currentTechDay.practice}
-                </p>
-              </div>
 
-              {/* In-Browser Code Simulator */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Terminal className="size-3.5 text-primary" />
-                    Interactive Sandbox Editor ({primaryTrack.short})
-                  </span>
-                  <span className="font-mono text-[10px]">Wasm Virtual Runner</span>
+                {/* Day Objective Card */}
+                <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-foreground text-xs">
+                      {currentTechDay.topic}
+                    </span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                      100% In-Browser
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    <strong className="text-foreground">Hands-on Goal: </strong>
+                    {currentTechDay.practice}
+                  </p>
                 </div>
 
-                <textarea
-                  value={userCode}
-                  onChange={(e) => setUserCode(e.target.value)}
-                  rows={7}
-                  spellCheck={false}
-                  className="w-full resize-y rounded-lg border border-border bg-surface-dark p-3 font-mono text-[11.5px] leading-relaxed text-slate-100 outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20"
-                />
-              </div>
+                {/* In-Browser Code Simulator */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Terminal className="size-3.5 text-primary" />
+                      Interactive Sandbox Editor ({primaryTrack.short})
+                    </span>
+                    <span className="font-mono text-[10px]">Wasm Virtual Runner</span>
+                  </div>
 
-              {/* Execution Console */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Execution Output Console</span>
-                  {isTestRunning && <span className="text-primary animate-pulse">Running test cases…</span>}
+                  <textarea
+                    value={userCode}
+                    onChange={(e) => setUserCode(e.target.value)}
+                    rows={7}
+                    spellCheck={false}
+                    className="w-full resize-y rounded-lg border border-border bg-surface-dark p-3 font-mono text-[11.5px] leading-relaxed text-slate-100 outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20"
+                  />
                 </div>
-                <Console lines={consoleOutput} empty="Click 'Run Test Cases' to compile and execute." />
+
+                {/* Execution Console */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>Execution Output Console</span>
+                    {isTestRunning && <span className="text-primary animate-pulse">Running test cases…</span>}
+                  </div>
+                  <Console lines={consoleOutput} empty="Click 'Run Test Cases' to compile and execute." />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Technical Code Action Footer */}
-            <div className="mt-4 pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
-              <button
-                onClick={handleRunCodeTests}
-                disabled={isTestRunning}
-                className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted hover:border-border/80 transition-all shadow-xs"
-              >
-                <Play className="size-3.5 text-primary" />
-                {isTestRunning ? "Executing…" : "Run Test Cases"}
-              </button>
+            {isEnglishDone && (
+              <div className="mt-4 pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
+                <button
+                  onClick={handleRunCodeTests}
+                  disabled={isTestRunning}
+                  className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted hover:border-border/80 transition-all shadow-xs"
+                >
+                  <Play className="size-3.5 text-primary" />
+                  {isTestRunning ? "Executing…" : "Run Test Cases"}
+                </button>
 
-              <button
-                onClick={handleVerifyCode}
-                disabled={isCodeDone}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-xs transition-all",
-                  isCodeDone
-                    ? "bg-muted text-muted-foreground border border-border cursor-not-allowed"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90",
-                )}
-              >
-                <FileCheck className="size-3.5" />
-                {isCodeDone ? "Code Verified (+50 XP Logged)" : "Verify Solution (+50 XP)"}
-              </button>
-            </div>
+                <button
+                  onClick={handleVerifyCode}
+                  disabled={isCodeDone}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-xs transition-all",
+                    isCodeDone
+                      ? "bg-muted text-muted-foreground border border-border cursor-not-allowed"
+                      : "bg-primary text-primary-foreground hover:bg-primary/90",
+                  )}
+                >
+                  <FileCheck className="size-3.5" />
+                  {isCodeDone ? "Code Verified (+50 XP Logged)" : "Verify Solution (+50 XP)"}
+                </button>
+              </div>
+            )}
           </Panel>
         )}
 

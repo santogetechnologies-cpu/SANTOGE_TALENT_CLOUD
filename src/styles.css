@@ -295,8 +295,8 @@ aside a {
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-aside nav a:hover,
-aside a.hover\:bg-muted:hover {
+aside:not(.portal-sidebar-dark) nav a:hover,
+aside:not(.portal-sidebar-dark) a.hover\:bg-muted:hover {
   transform: translateX(3px);
   background-color: rgba(99, 102, 241, 0.08) !important;
   color: oklch(0.48 0.24 265) !important;
@@ -354,6 +354,15 @@ aside[data-portal] span.bg-primary {
   color: #ffffff !important;
 }
 
+/* All sidebar text & icons pure white */
+aside.portal-sidebar-dark,
+aside.sidebar-admin,
+aside.sidebar-student,
+aside[data-portal="admin"],
+aside[data-portal="student"] {
+  color: #ffffff !important;
+}
+
 aside.portal-sidebar-dark p.text-foreground,
 aside.sidebar-admin p.text-foreground,
 aside.sidebar-student p.text-foreground,
@@ -365,28 +374,28 @@ aside.portal-sidebar-dark p.text-muted-foreground,
 aside.sidebar-admin p.text-muted-foreground,
 aside.sidebar-student p.text-muted-foreground,
 aside[data-portal] p.text-muted-foreground {
-  color: #60a5fa !important;
+  color: #ffffff !important;
 }
 
 aside.portal-sidebar-dark .text-foreground,
 aside.sidebar-admin .text-foreground,
 aside.sidebar-student .text-foreground,
 aside[data-portal] .text-foreground {
-  color: #f8fafc !important;
+  color: #ffffff !important;
 }
 
 aside.portal-sidebar-dark .text-muted-foreground,
 aside.sidebar-admin .text-muted-foreground,
 aside.sidebar-student .text-muted-foreground,
 aside[data-portal] .text-muted-foreground {
-  color: #94a3b8 !important;
+  color: #ffffff !important;
 }
 
 aside.portal-sidebar-dark .text-primary,
 aside.sidebar-admin .text-primary,
 aside.sidebar-student .text-primary,
 aside[data-portal] .text-primary {
-  color: #60a5fa !important;
+  color: #ffffff !important;
 }
 
 /* Role badge inside user status card */
@@ -396,7 +405,7 @@ aside.sidebar-student span.rounded.bg-card,
 aside[data-portal] span.rounded.bg-card {
   background-color: rgba(37, 99, 235, 0.25) !important;
   border-color: rgba(96, 165, 250, 0.35) !important;
-  color: #93c5fd !important;
+  color: #ffffff !important;
 }
 
 /* Exit and action buttons inside user status card */
@@ -404,14 +413,14 @@ aside.portal-sidebar-dark button,
 aside.sidebar-admin button,
 aside.sidebar-student button,
 aside[data-portal] button {
-  color: #94a3b8;
+  color: #ffffff !important;
 }
 
 aside.portal-sidebar-dark button:hover,
 aside.sidebar-admin button:hover,
 aside.sidebar-student button:hover,
 aside[data-portal] button:hover {
-  color: #f8fafc;
+  color: #ffffff !important;
 }
 
 /* Navigation Section Header */
@@ -419,35 +428,50 @@ aside.portal-sidebar-dark p.text-muted-foreground\/70,
 aside.sidebar-admin p.text-muted-foreground\/70,
 aside.sidebar-student p.text-muted-foreground\/70,
 aside[data-portal] p.text-muted-foreground\/70 {
-  color: #64748b !important;
+  color: #ffffff !important;
+  opacity: 0.9;
 }
 
-/* Navigation Links */
+/* Navigation Links & Icons */
 aside.portal-sidebar-dark nav a,
 aside.sidebar-admin nav a,
 aside.sidebar-student nav a,
 aside[data-portal] nav a {
-  color: #94a3b8 !important;
+  color: #ffffff !important;
   font-weight: 500;
+}
+
+aside.portal-sidebar-dark nav a svg,
+aside.sidebar-admin nav a svg,
+aside.sidebar-student nav a svg,
+aside[data-portal] nav a svg {
+  color: #ffffff !important;
 }
 
 aside.portal-sidebar-dark nav a:hover,
 aside.sidebar-admin nav a:hover,
 aside.sidebar-student nav a:hover,
 aside[data-portal] nav a:hover {
-  background-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(255, 255, 255, 0.12) !important;
   color: #ffffff !important;
   transform: translateX(3px);
+}
+
+aside.portal-sidebar-dark nav a:hover svg,
+aside.sidebar-admin nav a:hover svg,
+aside.sidebar-student nav a:hover svg,
+aside[data-portal] nav a:hover svg {
+  color: #ffffff !important;
 }
 
 aside.portal-sidebar-dark nav a[data-status="active"],
 aside.sidebar-admin nav a[data-status="active"],
 aside.sidebar-student nav a[data-status="active"],
 aside[data-portal] nav a[data-status="active"] {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.3) 0%, rgba(59, 130, 246, 0.2) 100%) !important;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.45) 0%, rgba(59, 130, 246, 0.3) 100%) !important;
   color: #ffffff !important;
   font-weight: 700 !important;
-  border: 1px solid rgba(96, 165, 250, 0.35) !important;
+  border: 1px solid rgba(96, 165, 250, 0.4) !important;
   box-shadow: 0 4px 14px -2px rgba(37, 99, 235, 0.35) !important;
 }
 
@@ -455,7 +479,7 @@ aside.portal-sidebar-dark nav a[data-status="active"] svg,
 aside.sidebar-admin nav a[data-status="active"] svg,
 aside.sidebar-student nav a[data-status="active"] svg,
 aside[data-portal] nav a[data-status="active"] svg {
-  color: #60a5fa !important;
+  color: #ffffff !important;
 }
 
 /* ==========================================================================
