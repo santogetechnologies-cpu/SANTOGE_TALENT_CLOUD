@@ -230,14 +230,57 @@ export function Chip({
 export function Console({
   lines,
   empty = "Awaiting execution…",
+  title = "Sandbox Terminal Output",
 }: {
   lines: string[];
   empty?: string;
+  title?: string;
 }) {
   return (
-    <pre className="terminal-grid max-h-64 overflow-auto rounded-lg border border-border bg-surface-dark p-3.5 font-mono text-[12px] leading-relaxed text-slate-200">
-      {lines.length === 0 ? <span className="text-muted-foreground">{empty}</span> : lines.join("\n")}
-    </pre>
+    <div className="overflow-hidden rounded-xl border border-border bg-surface-dark shadow-xs">
+      <div className="flex items-center justify-between border-b border-border/40 bg-card/5 px-3.5 py-2 text-[11px] font-mono text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <span className="size-2.5 rounded-full bg-rose-500/80 inline-block" />
+          <span className="size-2.5 rounded-full bg-amber-500/80 inline-block" />
+          <span className="size-2.5 rounded-full bg-emerald-500/80 inline-block" />
+          <span className="ml-2 text-slate-300 font-semibold">{title}</span>
+        </div>
+        <span className="text-[10px] text-slate-400">bash · UTF-8</span>
+      </div>
+      <pre className="terminal-grid max-h-64 overflow-auto p-3.5 font-mono text-[12px] leading-relaxed text-slate-200">
+        {lines.length === 0 ? (
+          <span className="text-muted-foreground">{empty}</span>
+        ) : (
+          lines.map((line, idx) => {
+            const isSuccess =
+              line.includes("✓") ||
+              line.includes("BUILD SUCCESS") ||
+              line.includes("[pass]") ||
+              line.includes("Ready");
+            const isError =
+              line.includes("✗") ||
+              line.includes("BUILD FAILURE") ||
+              line.includes("FAILED") ||
+              line.includes("[fail]") ||
+              line.includes("INVALID");
+            const isWarning = line.includes("⚠") || line.includes("WARNING");
+            const isCmd = line.startsWith("$") || line.startsWith(">>>") || line.startsWith(">");
+
+            let style = "text-slate-200";
+            if (isSuccess) style = "text-emerald-400 font-medium";
+            else if (isError) style = "text-rose-400 font-medium";
+            else if (isWarning) style = "text-amber-400";
+            else if (isCmd) style = "text-cyan-300 font-semibold";
+
+            return (
+              <div key={idx} className={style}>
+                {line}
+              </div>
+            );
+          })
+        )}
+      </pre>
+    </div>
   );
 }
 
