@@ -93,7 +93,7 @@ const SEARCH_ITEMS: SearchResult[] = [
     title: "Daily Exercise & Practice Dashboard",
     category: "Placement Tools" as const,
     to: "/student/exercises",
-    desc: "Interactive workouts: Aptitude drills, Corporate English, Code Debugging, and AI Voice Pitch",
+    desc: "Interactive workouts: Aptitude drills, Corporate English, and Technical Code Challenges",
   },
   {
     title: "90-Day Placement Syllabus & Portfolio",
