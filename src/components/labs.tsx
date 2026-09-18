@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Play, RotateCcw } from "lucide-react";
+import { Play, RotateCcw, Loader2, CheckCircle2, AlertCircle, Sparkles } from "lucide-react";
 import { Console, CodeEditor, Chip } from "@/components/kit";
 import { useAppStore } from "@/lib/app-store";
 import { TRACKS, type TrackId } from "@/lib/tracks";
 import { useLiveStudentProfile, useLiveStudentProgress, completeLiveLab } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 function LabFrame({
   id,
@@ -14,7 +15,12 @@ function LabFrame({
 }: {
   id: TrackId | string;
   concept: string;
-  children: (run: (lines: string[]) => void, lines: string[], reset: () => void) => React.ReactNode;
+  children: (
+    run: (lines: string[], passed?: boolean) => void,
+    lines: string[],
+    reset: () => void,
+    isRunning: boolean,
+  ) => React.ReactNode;
 }) {
   const store = useAppStore();
   const queryClient = useQueryClient();
@@ -30,52 +36,138 @@ function LabFrame({
   );
 
   const [lines, setLines] = useState<string[]>([]);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [executionResult, setExecutionResult] = useState<"idle" | "passed" | "failed">("idle");
   const track = TRACKS.find((t) => t.id === id) || TRACKS[0]!;
   const completedLabs = liveProgressData?.completedLabs || store.completedLabs;
   const done = completedLabs.includes(id as any);
 
-  const run = async (out: string[]) => {
-    setLines(out);
-    if (liveStudentId) {
-      await completeLiveLab(liveStudentId, id, track.labTitle);
-      queryClient.invalidateQueries({
-        queryKey: ["live", "student-progress", liveStudentId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
-      });
-    }
-    store.completeLab(id);
+  const run = (out: string[], passed: boolean = true) => {
+    setIsExecuting(true);
+    setExecutionResult("idle");
+    setLines([
+      `$ sandbox --target=${track.short.toLowerCase()} --init`,
+      `[exec] Booting isolated container runtime for ${track.name}…`,
+      `[exec] Loading language standard libraries and runtime contracts…`,
+    ]);
+
+    setTimeout(async () => {
+      setIsExecuting(false);
+      setLines(out);
+
+      if (passed) {
+        setExecutionResult("passed");
+        if (liveStudentId) {
+          try {
+            await completeLiveLab(liveStudentId, id, track.labTitle);
+            queryClient.invalidateQueries({
+              queryKey: ["live", "student-progress", liveStudentId],
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+            });
+          } catch {
+            // Handled inside completeLab fallback
+          }
+        }
+        await store.completeLab(id);
+      } else {
+        setExecutionResult("failed");
+        toast.error("Sandbox Test Failed (0 XP)", {
+          description: "One or more assertion test cases failed. Check console output and adjust your solution.",
+        });
+      }
+    }, 550);
+  };
+
+  const handleReset = () => {
+    setLines([]);
+    setExecutionResult("idle");
   };
 
   return (
-    <div className="space-y-3.5">
-      <div className="rounded-lg border border-border bg-muted/20 p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Concept Card
-        </p>
-        <p className="mt-1 text-xs text-foreground leading-relaxed">{concept}</p>
+    <div className="space-y-4">
+      {/* Concept Card */}
+      <div className="rounded-xl border border-border bg-card p-4 shadow-xs space-y-1.5">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+            <Sparkles className="size-3.5" />
+            Sandbox Challenge Concept
+          </p>
+          <span className="text-[11px] font-mono text-muted-foreground">{track.tagline}</span>
+        </div>
+        <p className="text-xs text-foreground leading-relaxed">{concept}</p>
       </div>
-      {children(run, lines, () => setLines([]))}
-      <div className="flex items-center gap-2">
-        {done ? (
-          <Chip tone="emerald">Verified · +50 XP awarded</Chip>
-        ) : (
-          <Chip tone="muted">Not yet verified</Chip>
+
+      {/* Lab Interactive Content */}
+      <div className="space-y-3.5">
+        {children(run, lines, handleReset, isExecuting)}
+      </div>
+
+      {/* Footer Status Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border/70">
+        <div className="flex items-center gap-2">
+          {done ? (
+            <Chip tone="emerald">✓ Verified · +50 XP Awarded</Chip>
+          ) : executionResult === "failed" ? (
+            <Chip tone="rose">✗ Incomplete (0 XP)</Chip>
+          ) : (
+            <Chip tone="muted">Awaiting Verification (+50 XP)</Chip>
+          )}
+          <Chip tone="cyan">{track.short} Virtual Sandbox</Chip>
+        </div>
+
+        {executionResult === "passed" && (
+          <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="size-3.5" />
+            All Test Cases Verified (+50 XP)
+          </span>
         )}
-        <Chip tone="cyan">{track.short} sandbox</Chip>
+        {executionResult === "failed" && (
+          <span className="flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-400">
+            <AlertCircle className="size-3.5" />
+            Assertions Failed (0 XP)
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
-function RunButton({ onClick, label = "Run" }: { onClick: () => void; label?: string }) {
+function RunButton({
+  onClick,
+  label = "Run",
+  disabled = false,
+  isRunning = false,
+}: {
+  onClick: () => void;
+  label?: string;
+  disabled?: boolean;
+  isRunning?: boolean;
+}) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs cursor-pointer"
+      disabled={disabled || isRunning}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs transition-all cursor-pointer",
+        isRunning
+          ? "bg-primary/70 cursor-wait opacity-80"
+          : "bg-primary hover:bg-primary/90",
+      )}
     >
-      <Play className="size-3.5" /> {label}
+      {isRunning ? (
+        <>
+          <Loader2 className="size-3.5 animate-spin" />
+          <span>Executing Sandbox…</span>
+        </>
+      ) : (
+        <>
+          <Play className="size-3.5" />
+          <span>{label}</span>
+        </>
+      )}
     </button>
   );
 }
@@ -83,10 +175,11 @@ function RunButton({ onClick, label = "Run" }: { onClick: () => void; label?: st
 function ResetButton({ onClick }: { onClick: () => void }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
     >
-      <RotateCcw className="size-3.5" /> Clear
+      <RotateCcw className="size-3.5" /> Clear Console
     </button>
   );
 }
@@ -175,32 +268,58 @@ function JavaLab() {
       id="java"
       concept="A Spring Boot controller is only trustworthy with green unit tests. Execute the JUnit 5 suite against the MockMvc context."
     >
-      {(run, lines, reset) => (
-        <>
-          <CodeEditor value={code} onChange={setCode} rows={9} />
-          <div className="flex gap-2">
-            <RunButton
-              label="mvn test"
-              onClick={() =>
-                run([
-                  "$ mvn -q test -Dtest=LearnerControllerTest",
-                  "[INFO] Running JUnit 5 (junit-jupiter 5.10.2)",
-                  "  ✓ find_returnsOk()                     18ms",
-                  "  ✓ find_unknownId_returns404()          11ms",
-                  "  ✓ find_serializesLearnerPayload()       9ms",
-                  code.includes("@GetMapping")
-                    ? "  ✓ mapping_annotationPresent()          2ms"
-                    : "  ✗ mapping_annotationPresent() FAILED",
-                  "[INFO] Tests run: 4, Failures: 0, Skipped: 0",
-                  "[INFO] BUILD SUCCESS",
-                ])
-              }
-            />
-            <ResetButton onClick={reset} />
-          </div>
-          <Console lines={lines} />
-        </>
-      )}
+      {(run, lines, reset, isRunning) => {
+        const hasRest = code.includes("@RestController");
+        const hasMapping = code.includes("@GetMapping") || code.includes("@RequestMapping");
+        const hasOk =
+          code.includes("ResponseEntity.ok") || code.includes("HttpStatus.OK") || code.includes("200");
+        const allPassed = hasRest && hasMapping && hasOk;
+
+        return (
+          <>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground">
+                  Spring Boot Controller Source (<span className="font-mono text-primary">LearnerController.java</span>)
+                </span>
+                <span className="text-[10px] font-mono text-muted-foreground">OpenJDK 21 · Spring Boot 3.2.4</span>
+              </div>
+              <CodeEditor value={code} onChange={setCode} rows={8} />
+            </div>
+            <div className="flex gap-2">
+              <RunButton
+                label="mvn test -Dtest=LearnerControllerTest"
+                isRunning={isRunning}
+                onClick={() =>
+                  run(
+                    [
+                      "$ mvn -q test -Dtest=LearnerControllerTest",
+                      "[INFO] Running JUnit 5 (junit-jupiter 5.10.2) in Spring Boot MockMvc context",
+                      hasRest
+                        ? "  ✓ testControllerBeanDefinition()            14ms"
+                        : "  ✗ testControllerBeanDefinition() FAILED: Missing @RestController annotation",
+                      hasMapping
+                        ? "  ✓ testGetMappingRouteConfigured()           18ms"
+                        : "  ✗ testGetMappingRouteConfigured() FAILED: Missing @GetMapping mapping",
+                      hasOk
+                        ? "  ✓ testResponseStatus200Ok()                 11ms"
+                        : "  ✗ testResponseStatus200Ok() FAILED: Expected 200 OK status",
+                      "  ✓ testSerializeLearnerJsonPayload()         9ms",
+                      `[INFO] Tests run: 4, Failures: ${allPassed ? 0 : 1}, Errors: 0, Skipped: 0`,
+                      allPassed
+                        ? "[INFO] BUILD SUCCESS (1.18s) — Controller verified (+50 XP)"
+                        : "[INFO] BUILD FAILURE (0.42s) — Fix missing annotations or status code",
+                    ],
+                    allPassed,
+                  )
+                }
+              />
+              <ResetButton onClick={reset} />
+            </div>
+            <Console lines={lines} />
+          </>
+        );
+      }}
     </LabFrame>
   );
 }
@@ -229,34 +348,50 @@ function AiLab() {
       id="aiml"
       concept="Retrieval-augmented generation grounds an LLM answer in your own corpus. Query the Pinecone index and inspect cosine similarity per chunk."
     >
-      {(run, lines, reset) => (
+      {(run, lines, reset, isRunning) => (
         <>
-          <TextField label="Similarity query" value={query} onChange={setQuery} />
-          <label className="block text-xs font-semibold text-copy-subtle">
-            top_k = {k}
+          <TextField
+            label="Vector Semantic Query"
+            value={query}
+            onChange={setQuery}
+            placeholder="e.g. when does the placement gate unlock?"
+          />
+          <div className="rounded-lg border border-border bg-card p-3 space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-foreground">Top K Nearest Neighbors: {k} Chunks</span>
+              <span className="font-mono text-[11px] text-muted-foreground">Index: pinecone-rag · Dim 1536</span>
+            </div>
             <input
               type="range"
               min={1}
               max={5}
               value={k}
               onChange={(e) => setK(Number(e.target.value))}
-              className="mt-2 w-full accent-brand-purple"
+              className="w-full accent-primary cursor-pointer"
             />
-          </label>
+          </div>
           <div className="flex gap-2">
             <RunButton
               label="similarity_search()"
-              onClick={() =>
-                run([
-                  `>>> retriever.similarity_search(${JSON.stringify(query)}, k=${k})`,
-                  "index: itse-knowledge · dim 1536 · metric cosine",
-                  ...CHUNKS.slice(0, k).map(
-                    (c, i) =>
-                      `  ${i + 1}. ${c.id}  score=${(c.base - i * 0.01).toFixed(3)}  "${c.text}"`,
-                  ),
-                  `✓ ${k} chunks injected into prompt context (${k * 128} tokens)`,
-                ])
-              }
+              isRunning={isRunning}
+              onClick={() => {
+                const isValid = query.trim().length > 3;
+                run(
+                  [
+                    `>>> query_vector = embeddings.embed_query(${JSON.stringify(query)})`,
+                    `>>> docs = vectorstore.similarity_search_with_relevance_scores(query, k=${k})`,
+                    "index: stc-knowledge-base · dim 1536 · metric cosine",
+                    ...CHUNKS.slice(0, k).map(
+                      (c, i) =>
+                        `  ${i + 1}. [${c.id}]  cosine_similarity=${(c.base - i * 0.01).toFixed(3)}  "${c.text}"`,
+                    ),
+                    isValid
+                      ? `✓ ${k} chunks injected into prompt context (${k * 128} tokens) · Augmented response generated (+50 XP)`
+                      : "✗ Query too short. Provide a descriptive query to search index.",
+                  ],
+                  isValid,
+                );
+              }}
             />
             <ResetButton onClick={reset} />
           </div>
@@ -283,14 +418,14 @@ function DataLab() {
       id="datascience"
       concept="Before modelling, clean the frame and read the correlation matrix. Nulls silently bias every downstream statistic."
     >
-      {(run, lines, reset) => (
+      {(run, lines, reset, isRunning) => (
         <>
-          <div className="overflow-hidden rounded-xl border border-line-soft">
-            <table className="w-full text-left font-mono text-[12px]">
-              <thead className="bg-surface-soft text-copy-subtle">
+          <div className="overflow-hidden rounded-xl border border-border">
+            <table className="w-full text-left font-mono text-[11px]">
+              <thead className="bg-muted/50 text-muted-foreground">
                 <tr>
                   {["id", "hours", "score", "attendance"].map((h) => (
-                    <th key={h} className="px-3 py-2">
+                    <th key={h} className="px-3 py-2 font-semibold">
                       {h}
                     </th>
                   ))}
@@ -298,64 +433,67 @@ function DataLab() {
               </thead>
               <tbody>
                 {RAW_ROWS.map((r) => (
-                  <tr key={r.id} className="border-t border-line-soft text-foreground">
+                  <tr key={r.id} className="border-t border-border text-foreground">
                     <td className="px-3 py-1.5">{r.id}</td>
-                    <td className={cn("px-3 py-1.5", Number.isNaN(r.hours) && "text-brand-rose")}>
-                      {Number.isNaN(r.hours) ? "NaN" : r.hours}
+                    <td className={cn("px-3 py-1.5 font-bold", Number.isNaN(r.hours) && "text-rose-600 dark:text-rose-400")}>
+                      {Number.isNaN(r.hours) ? "NaN (Missing)" : r.hours}
                     </td>
                     <td className="px-3 py-1.5">{r.score}</td>
-                    <td className="px-3 py-1.5">{r.attendance}</td>
+                    <td className="px-3 py-1.5">{r.attendance}%</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="flex flex-wrap gap-4 text-xs font-semibold text-copy-subtle">
-            <label className="flex items-center gap-2">
+          <div className="flex flex-wrap gap-4 text-xs font-semibold text-foreground">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={dropna}
                 onChange={(e) => setDropna(e.target.checked)}
-                className="accent-brand-emerald"
-              />{" "}
-              df.dropna()
+                className="accent-primary size-4"
+              />
+              <span>df.dropna() (Remove corrupted null rows)</span>
             </label>
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={normalize}
                 onChange={(e) => setNormalize(e.target.checked)}
-                className="accent-brand-emerald"
-              />{" "}
-              min-max normalize
+                className="accent-primary size-4"
+              />
+              <span>Min-Max Normalization ((x - min) / (max - min))</span>
             </label>
           </div>
           <div className="flex gap-2">
             <RunButton
-              label="Run pipeline"
-              onClick={() =>
+              label="Run Pandas Pipeline"
+              isRunning={isRunning}
+              onClick={() => {
+                const isClean = dropna;
                 run(
                   [
                     ">>> df = pd.read_csv('cohort.csv')",
                     dropna
-                      ? ">>> df = df.dropna()   # 1 row removed"
-                      : ">>> # nulls retained — corr() will skip pairs",
-                    normalize ? ">>> df = (df - df.min()) / (df.max() - df.min())" : "",
+                      ? ">>> df = df.dropna()   # 1 row removed (4 clean observations remain)"
+                      : ">>> # WARNING: nulls retained — corr() will skip pairs, model will fail on NaN",
+                    normalize ? ">>> df = (df - df.min()) / (df.max() - df.min())  # Min-max normalized" : "",
                     ">>> df.corr(numeric_only=True)",
-                    "              hours   score  attendance",
+                    "              hours    score   attendance",
                     dropna
-                      ? "hours         1.000   0.982       0.964"
-                      : "hours         1.000   0.947       0.921",
+                      ? "hours         1.000    0.982        0.964"
+                      : "hours         1.000    0.947        0.921",
                     dropna
-                      ? "score         0.982   1.000       0.971"
-                      : "score         0.947   1.000       0.958",
+                      ? "score         0.982    1.000        0.971"
+                      : "score         0.947    1.000        0.902",
+                    "attendance    0.964    0.971        1.000",
                     dropna
-                      ? "attendance    0.964   0.971       1.000"
-                      : "attendance    0.921   0.958       1.000",
-                    `✓ ${dropna ? 4 : 5} rows · study hours strongly predict score`,
+                      ? "✓ Dataframe cleaned: 4 rows ready for regression model (+50 XP)"
+                      : "✗ 1 null remaining in 'hours' column. Check df.dropna() to clean data.",
                   ].filter(Boolean),
-                )
-              }
+                  isClean,
+                );
+              }}
             />
             <ResetButton onClick={reset} />
           </div>
@@ -797,48 +935,86 @@ function MedicalLab() {
       id="medical"
       concept="Clean claim rate depends on valid ICD-10 diagnosis and CPT procedure pairing. Validate the codes, then project reimbursement quality."
     >
-      {(run, lines, reset) => (
-        <>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <TextField label="ICD-10 diagnosis code" value={icd} onChange={setIcd} />
-            <TextField label="CPT procedure code" value={cpt} onChange={setCpt} />
-          </div>
-          <label className="block text-xs font-semibold text-copy-subtle">
-            Monthly claim volume: {claims}
-            <input
-              type="range"
-              min={20}
-              max={400}
-              step={10}
-              value={claims}
-              onChange={(e) => setClaims(Number(e.target.value))}
-              className="mt-2 w-full accent-brand-rose"
-            />
-          </label>
-          <div className="flex gap-2">
-            <RunButton
-              label="Validate & scrub"
-              onClick={() => {
-                const icdOk = Boolean(ICD[icd.toUpperCase()]);
-                const cptOk = Boolean(CPT[cpt]);
-                const rate = icdOk && cptOk ? 98.2 : icdOk || cptOk ? 74.5 : 41.0;
-                run([
-                  "> claim scrubber v4 · payer: Aetna",
-                  `ICD-10 ${icd.toUpperCase()}: ${icdOk ? `VALID — ${ICD[icd.toUpperCase()]}` : "INVALID — not found in FY2026 code set"}`,
-                  `CPT    ${cpt}: ${cptOk ? `VALID — ${CPT[cpt]}` : "INVALID — not found in CPT 2026"}`,
-                  `medical necessity link: ${icdOk && cptOk ? "supported" : "unsupported (edit required)"}`,
-                  `clean claim rate: ${rate}%  ·  denials projected: ${Math.round((claims * (100 - rate)) / 100)} / ${claims}`,
-                  rate > 95
-                    ? "✓ Claim batch ready for submission"
-                    : "⚠ Route to coder review queue",
-                ]);
-              }}
-            />
-            <ResetButton onClick={reset} />
-          </div>
-          <Console lines={lines} />
-        </>
-      )}
+      {(run, lines, reset, isRunning) => {
+        const icdOk = Boolean(ICD[icd.toUpperCase()]);
+        const cptOk = Boolean(CPT[cpt]);
+        const rate = icdOk && cptOk ? 98.2 : icdOk || cptOk ? 74.5 : 41.0;
+        const passed = rate > 90;
+
+        return (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <TextField label="ICD-10 Diagnosis Code" value={icd} onChange={setIcd} />
+                <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+                  <span>Samples:</span>
+                  {["M54.5", "E11.9", "J45.909"].map((code) => (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => setIcd(code)}
+                      className="underline hover:text-primary cursor-pointer font-mono"
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <TextField label="CPT Procedure Code" value={cpt} onChange={setCpt} />
+                <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+                  <span>Samples:</span>
+                  {["22840", "99213", "70450"].map((code) => (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => setCpt(code)}
+                      className="underline hover:text-primary cursor-pointer font-mono"
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <label className="block text-xs font-semibold text-foreground">
+              Monthly Claim Volume: {claims} claims
+              <input
+                type="range"
+                min={20}
+                max={400}
+                step={10}
+                value={claims}
+                onChange={(e) => setClaims(Number(e.target.value))}
+                className="mt-2 w-full accent-primary cursor-pointer"
+              />
+            </label>
+            <div className="flex gap-2">
+              <RunButton
+                label="Validate & Scrub Claims"
+                isRunning={isRunning}
+                onClick={() => {
+                  run(
+                    [
+                      "> claim scrubber v4 · payer: Aetna · CMS-1500 EDI 837P",
+                      `ICD-10 ${icd.toUpperCase()}: ${icdOk ? `VALID — ${ICD[icd.toUpperCase()]}` : "INVALID — not found in FY2026 code set"}`,
+                      `CPT    ${cpt}: ${cptOk ? `VALID — ${CPT[cpt]}` : "INVALID — not found in CPT 2026"}`,
+                      `Medical necessity link: ${icdOk && cptOk ? "supported (Level 1 Medical Review Pass)" : "unsupported (edit required)"}`,
+                      `Clean claim rate: ${rate}%  ·  denials projected: ${Math.round((claims * (100 - rate)) / 100)} / ${claims}`,
+                      passed
+                        ? "✓ Claim batch scrubbed and approved for clearinghouse submission (+50 XP)"
+                        : "✗ Validation failed: Invalid code pair. Route to coder review queue.",
+                    ],
+                    passed,
+                  );
+                }}
+              />
+              <ResetButton onClick={reset} />
+            </div>
+            <Console lines={lines} />
+          </>
+        );
+      }}
     </LabFrame>
   );
 }
@@ -857,65 +1033,72 @@ function MarketingLab() {
       id="marketing"
       concept="Budget reallocation is the fastest ROAS lever. Shift spend between channels and watch blended return and CAC respond."
     >
-      {(run, lines, reset) => (
-        <>
-          <label className="block text-xs font-semibold text-copy-subtle">
-            Monthly budget ₹{budget.toLocaleString("en-IN")}
-            <input
-              type="range"
-              min={50000}
-              max={1000000}
-              step={10000}
-              value={budget}
-              onChange={(e) => setBudget(Number(e.target.value))}
-              className="mt-2 w-full accent-brand-amber"
-            />
-          </label>
-          <label className="block text-xs font-semibold text-copy-subtle">
-            Paid search {split}% · paid social {100 - split}%
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={split}
-              onChange={(e) => setSplit(Number(e.target.value))}
-              className="mt-2 w-full accent-brand-amber"
-            />
-          </label>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {[
-              ["Search spend", `₹${Math.round(searchSpend).toLocaleString("en-IN")}`],
-              ["Social spend", `₹${Math.round(socialSpend).toLocaleString("en-IN")}`],
-              ["Projected revenue", `₹${Math.round(revenue).toLocaleString("en-IN")}`],
-              ["Blended ROAS", `${(revenue / budget).toFixed(2)}x`],
-            ].map(([l, v]) => (
-              <div key={l} className="rounded-xl border border-line-soft bg-surface-soft p-2.5">
-                <p className="text-[10px] uppercase tracking-widest text-copy-subtle">{l}</p>
-                <p className="mt-1 font-mono text-sm text-brand-amber">{v}</p>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <RunButton
-              label="Commit reallocation"
-              onClick={() =>
-                run([
-                  "> reallocate --account itse-growth",
-                  `paid_search: ₹${Math.round(searchSpend).toLocaleString("en-IN")} @ ${searchRoas}x`,
-                  `paid_social: ₹${Math.round(socialSpend).toLocaleString("en-IN")} @ ${socialRoas}x`,
-                  `blended ROAS ${(revenue / budget).toFixed(2)}x · CAC ₹${Math.round(budget / Math.max(1, revenue / 4200))}`,
-                  `projected revenue ₹${Math.round(revenue).toLocaleString("en-IN")}`,
-                  split > 70
-                    ? "⚠ heavy search concentration — audit frequency capping"
-                    : "✓ channel mix within variance guardrails",
-                ])
-              }
-            />
-            <ResetButton onClick={reset} />
-          </div>
-          <Console lines={lines} />
-        </>
-      )}
+      {(run, lines, reset, isRunning) => {
+        const isBalanced = split >= 20 && split <= 80;
+        return (
+          <>
+            <label className="block text-xs font-semibold text-foreground">
+              Monthly Budget: ₹{budget.toLocaleString("en-IN")}
+              <input
+                type="range"
+                min={50000}
+                max={1000000}
+                step={10000}
+                value={budget}
+                onChange={(e) => setBudget(Number(e.target.value))}
+                className="mt-2 w-full accent-primary cursor-pointer"
+              />
+            </label>
+            <label className="block text-xs font-semibold text-foreground">
+              Paid Search: {split}% · Paid Social: {100 - split}%
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={split}
+                onChange={(e) => setSplit(Number(e.target.value))}
+                className="mt-2 w-full accent-primary cursor-pointer"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[
+                ["Search spend", `₹${Math.round(searchSpend).toLocaleString("en-IN")}`],
+                ["Social spend", `₹${Math.round(socialSpend).toLocaleString("en-IN")}`],
+                ["Projected revenue", `₹${Math.round(revenue).toLocaleString("en-IN")}`],
+                ["Blended ROAS", `${(revenue / budget).toFixed(2)}x`],
+              ].map(([l, v]) => (
+                <div key={l} className="rounded-xl border border-border bg-card p-2.5 shadow-xs">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{l}</p>
+                  <p className="mt-1 font-mono text-sm font-bold text-foreground">{v}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <RunButton
+                label="Commit Reallocation"
+                isRunning={isRunning}
+                onClick={() =>
+                  run(
+                    [
+                      "> reallocate --account itse-growth",
+                      `Paid search: ₹${Math.round(searchSpend).toLocaleString("en-IN")} @ ${searchRoas}x ROAS`,
+                      `Paid social: ₹${Math.round(socialSpend).toLocaleString("en-IN")} @ ${socialRoas}x ROAS`,
+                      `Blended ROAS: ${(revenue / budget).toFixed(2)}x · Projected CAC: ₹${Math.round(budget / Math.max(1, revenue / 4200))}`,
+                      `Projected revenue: ₹${Math.round(revenue).toLocaleString("en-IN")}`,
+                      isBalanced
+                        ? "✓ Channel mix within optimal variance guardrails · Budget committed (+50 XP)"
+                        : "✗ Channel overconcentration (>80% on single channel). Rebalance spend between search and social.",
+                    ],
+                    isBalanced,
+                  )
+                }
+              />
+              <ResetButton onClick={reset} />
+            </div>
+            <Console lines={lines} />
+          </>
+        );
+      }}
     </LabFrame>
   );
 }
@@ -930,43 +1113,57 @@ function SapLab() {
       id="sap"
       concept="Every FI document must balance debit and credit before posting. Fill the GL line items and post through transaction FB50."
     >
-      {(run, lines, reset) => (
-        <>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <TextField label="Debit GL account" value={debit} onChange={setDebit} />
-            <TextField label="Credit GL account" value={credit} onChange={setCredit} />
-          </div>
-          <label className="block text-xs font-semibold text-copy-subtle">
-            Amount ₹{amount.toLocaleString("en-IN")}
-            <input
-              type="range"
-              min={1000}
-              max={500000}
-              step={1000}
-              value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
-              className="mt-2 w-full accent-brand-blue"
-            />
-          </label>
-          <div className="flex gap-2">
-            <RunButton
-              label="Post (FB50)"
-              onClick={() =>
-                run([
-                  "SAP Easy Access · /nFB50 · Company Code 1000 · FY 2026",
-                  `Line 1  40  ${debit}  Debit   ₹${amount.toLocaleString("en-IN")}`,
-                  `Line 2  50  ${credit}  Credit  ₹${amount.toLocaleString("en-IN")}`,
-                  "Balance check: 0.00 — document is balanced",
-                  `Document 10000${Math.floor(Math.random() * 9000 + 1000)} was posted in company code 1000`,
-                  "✓ Ledger 0L updated · FAGLL03 line items available",
-                ])
-              }
-            />
-            <ResetButton onClick={reset} />
-          </div>
-          <Console lines={lines} />
-        </>
-      )}
+      {(run, lines, reset, isRunning) => {
+        const isBalanced =
+          debit !== credit && debit.trim().length > 0 && credit.trim().length > 0 && amount > 0;
+        return (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextField label="Debit GL Account (Expense)" value={debit} onChange={setDebit} />
+              <TextField label="Credit GL Account (Bank Clearing)" value={credit} onChange={setCredit} />
+            </div>
+            <label className="block text-xs font-semibold text-foreground">
+              Posting Amount: ₹{amount.toLocaleString("en-IN")}
+              <input
+                type="range"
+                min={1000}
+                max={500000}
+                step={1000}
+                value={amount}
+                onChange={(e) => setAmount(Number(e.target.value))}
+                className="mt-2 w-full accent-primary cursor-pointer"
+              />
+            </label>
+            <div className="flex gap-2">
+              <RunButton
+                label="Post Document (FB50)"
+                isRunning={isRunning}
+                onClick={() =>
+                  run(
+                    [
+                      "SAP Easy Access · /nFB50 · Company Code 1000 · FY 2026",
+                      `Line 1  Posting Key 40  GL Account ${debit}  Debit   ₹${amount.toLocaleString("en-IN")}`,
+                      `Line 2  Posting Key 50  GL Account ${credit}  Credit  ₹${amount.toLocaleString("en-IN")}`,
+                      isBalanced
+                        ? "Balance check: 0.00 — Document is balanced"
+                        : "Balance check: FAILED — Debit and Credit accounts must be distinct and non-zero",
+                      isBalanced
+                        ? `Document 10000${Math.floor(Math.random() * 9000 + 1000)} was posted in company code 1000`
+                        : "Error: Posting aborted. Document not balanced.",
+                      isBalanced
+                        ? "✓ Ledger 0L updated · FAGLL03 line items available in general ledger (+50 XP)"
+                        : "✗ SAP document posting rejected: Correct line items before posting.",
+                    ],
+                    isBalanced,
+                  )
+                }
+              />
+              <ResetButton onClick={reset} />
+            </div>
+            <Console lines={lines} />
+          </>
+        );
+      }}
     </LabFrame>
   );
 }

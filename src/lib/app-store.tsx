@@ -178,7 +178,7 @@ export const sanitizeTracks = (tracks?: (TrackId | string)[]): TrackId[] => {
 };
 
 const DEFAULT_PROFILE: Profile = {
-  activeTracks: [],
+  activeTracks: ["java", "aiml", "datascience"],
   xp: 0,
   streak: 0,
   talentScore: 0,
@@ -918,40 +918,46 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (state.profile.completedLabs.includes(labId)) return;
 
       if (state.liveStudentId) {
-        const res = await completeLiveLab(state.liveStudentId, labId, labId);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to complete lab challenge");
-          return;
+        try {
+          const res = await completeLiveLab(state.liveStudentId, labId, labId);
+          if (res.ok) {
+            setState((s) => {
+              const nextLabs = s.profile.completedLabs.includes(labId)
+                ? s.profile.completedLabs
+                : [...s.profile.completedLabs, labId];
+              const nextXp = res.xp !== undefined ? res.xp : s.profile.xp + 50;
+              const nextTalentScore =
+                res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+              return {
+                ...s,
+                profile: {
+                  ...s.profile,
+                  completedLabs: nextLabs,
+                  xp: nextXp,
+                  talentScore: nextTalentScore,
+                },
+              };
+            });
+            toast.success(`Lab Challenge Mastered! (+50 XP)`);
+            return;
+          }
+        } catch {
+          // Fall through to local update
         }
-        setState((s) => {
-          const nextLabs = s.profile.completedLabs.includes(labId)
-            ? s.profile.completedLabs
-            : [...s.profile.completedLabs, labId];
-          const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
-          const nextTalentScore =
-            res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
-          return {
-            ...s,
-            profile: {
-              ...s.profile,
-              completedLabs: nextLabs,
-              xp: nextXp,
-              talentScore: nextTalentScore,
-            },
-          };
-        });
-        toast.success(`Lab Challenge Passed (+50 XP)`);
-      } else {
-        setState((s) => ({
-          ...s,
-          profile: {
-            ...s.profile,
-            completedLabs: [...s.profile.completedLabs, labId],
-            xp: s.profile.xp + 50,
-          },
-        }));
-        toast.success(`Lab Challenge Passed (+50 XP)`);
       }
+
+      // Local sandbox practice fallback
+      setState((s) => ({
+        ...s,
+        profile: {
+          ...s.profile,
+          completedLabs: s.profile.completedLabs.includes(labId)
+            ? s.profile.completedLabs
+            : [...s.profile.completedLabs, labId],
+          xp: s.profile.xp + 50,
+        },
+      }));
+      toast.success(`Lab Challenge Mastered! (+50 XP)`);
     },
     [state.liveStudentId, state.profile.completedLabs],
   );

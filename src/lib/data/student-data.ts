@@ -161,7 +161,7 @@ export async function fetchLiveStudentProfile(
   }
 
   const rawTracks = (tracksData || []).map((t: { track_id: string }) => t.track_id as TrackId);
-  const tracks: TrackId[] = rawTracks;
+  const tracks: TrackId[] = rawTracks.length > 0 ? rawTracks : (["java", "aiml", "datascience"] as TrackId[]);
 
   return { profile, tracks };
 }
