@@ -781,6 +781,150 @@ BEGIN
 END;
 $$;
 
+-- -----------------------------------------------------------------------------
+-- Atomic Technical Day Completion RPC
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.complete_student_technical_day(
+    p_student_id UUID,
+    p_day INT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_new_xp INT;
+    v_talent_score INT;
+    v_row_count INT := 0;
+BEGIN
+    IF NOT (public.is_admin() OR p_student_id = public.current_student_id()) THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF p_day < 1 OR p_day > 90 THEN
+        RAISE EXCEPTION 'Invalid technical day: must be between 1 and 90';
+    END IF;
+
+    INSERT INTO public.student_technical_days (student_id, day, completed_at)
+    VALUES (p_student_id, p_day, now())
+    ON CONFLICT (student_id, day) DO NOTHING;
+
+    GET DIAGNOSTICS v_row_count = ROW_COUNT;
+
+    IF v_row_count > 0 THEN
+        UPDATE public.student_profiles
+        SET xp = xp + 50,
+            readiness_t = LEAST(100, readiness_t + 2),
+            updated_at = now()
+        WHERE id = p_student_id
+        RETURNING xp INTO v_new_xp;
+
+        PERFORM public.calculate_talent_score(p_student_id);
+    ELSE
+        SELECT xp INTO v_new_xp FROM public.student_profiles WHERE id = p_student_id;
+    END IF;
+
+    SELECT talent_score INTO v_talent_score FROM public.student_profiles WHERE id = p_student_id;
+
+    RETURN jsonb_build_object(
+        'ok', true,
+        'student_id', p_student_id,
+        'day', p_day,
+        'xp', v_new_xp,
+        'talent_score', COALESCE(v_talent_score, 0)
+    );
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.complete_student_technical_day(UUID, INT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.complete_student_technical_day(UUID, INT) TO authenticated, service_role;
+
+-- -----------------------------------------------------------------------------
+-- Platform-wide Talent Score Recalculation Engine
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.recalculate_all_talent_scores()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_rec RECORD;
+    v_count INT := 0;
+BEGIN
+    FOR v_rec IN 
+        SELECT id FROM public.student_profiles WHERE status = 'active'
+    LOOP
+        PERFORM public.calculate_talent_score(v_rec.id);
+        v_count := v_count + 1;
+    END LOOP;
+
+    RETURN jsonb_build_object('ok', true, 'recalculated_count', v_count, 'timestamp', now());
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.recalculate_all_talent_scores() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.recalculate_all_talent_scores() TO authenticated, service_role;
+
+-- -----------------------------------------------------------------------------
+-- Secure Student Profile Identity Claim RPC
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.claim_student_profile()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_auth_uid UUID := auth.uid();
+    v_email TEXT;
+    v_profile_id UUID;
+    v_existing_auth_uid UUID;
+BEGIN
+    IF v_auth_uid IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized: User session required';
+    END IF;
+
+    SELECT email INTO v_email FROM auth.users WHERE id = v_auth_uid;
+    IF v_email IS NULL THEN
+        RAISE EXCEPTION 'No email associated with authenticated account';
+    END IF;
+
+    SELECT id INTO v_profile_id
+    FROM public.student_profiles
+    WHERE auth_user_id = v_auth_uid;
+
+    IF v_profile_id IS NOT NULL THEN
+        RETURN jsonb_build_object('ok', true, 'profile_id', v_profile_id, 'linked', true);
+    END IF;
+
+    SELECT id, auth_user_id INTO v_profile_id, v_existing_auth_uid
+    FROM public.student_profiles
+    WHERE LOWER(email) = LOWER(TRIM(v_email))
+      AND status = 'active'
+    LIMIT 1;
+
+    IF v_profile_id IS NULL THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'No active student profile found matching account email');
+    END IF;
+
+    IF v_existing_auth_uid IS NOT NULL AND v_existing_auth_uid <> v_auth_uid THEN
+        RAISE EXCEPTION 'Profile is already claimed by another authenticated account';
+    END IF;
+
+    UPDATE public.student_profiles
+    SET auth_user_id = v_auth_uid,
+        updated_at = now()
+    WHERE id = v_profile_id;
+
+    RETURN jsonb_build_object('ok', true, 'profile_id', v_profile_id, 'linked', true);
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.claim_student_profile() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.claim_student_profile() TO authenticated, service_role;
+
 -- ============================================================================
 -- 7. PERFORMANCE INDEXES
 -- ============================================================================
