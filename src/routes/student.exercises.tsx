@@ -147,10 +147,16 @@ export function DailyExercisesPage() {
   const [aptitudeAnswers, setAptitudeAnswers] = useState<Record<number, number>>({});
   const [puzzleAnswer, setPuzzleAnswer] = useState<number | null>(null);
   const [aptitudeSubmitted, setAptitudeSubmitted] = useState<boolean>(false);
+  const [aptitudeXpEarned, setAptitudeXpEarned] = useState<number>(() => {
+    return attendance.includes(cohortDay) ? 25 : 0;
+  });
 
   // 2. English state
   const [englishAnswers, setEnglishAnswers] = useState<Record<number, number>>({});
   const [englishSubmitted, setEnglishSubmitted] = useState<boolean>(false);
+  const [englishXpEarned, setEnglishXpEarned] = useState<number>(() => {
+    return attendance.includes(cohortDay) ? 25 : 0;
+  });
   const [activeVocabIdx, setActiveVocabIdx] = useState<number>(0);
 
   // 3. Technical Code drill state
@@ -240,8 +246,10 @@ console.log(solveChallenge());`;
     setAptitudeAnswers({});
     setPuzzleAnswer(null);
     setAptitudeSubmitted(false);
+    setAptitudeXpEarned(attendance.includes(dayNum) ? 25 : 0);
     setEnglishAnswers({});
     setEnglishSubmitted(false);
+    setEnglishXpEarned(attendance.includes(dayNum) ? 25 : 0);
     setActiveVocabIdx(0);
     setActiveTab("aptitude");
 
@@ -264,20 +272,55 @@ console.log(solveChallenge());`;
     ]);
   };
 
+  // Evaluate correctness of submitted answers
+  const answeredAptitudeIndices = Object.keys(aptitudeAnswers).map(Number);
+  const totalAptitudeAttempted = answeredAptitudeIndices.length + (puzzleAnswer !== null ? 1 : 0);
+  const hasAptitudeAttempted = totalAptitudeAttempted > 0;
+  const isAptitudeAllCorrect =
+    hasAptitudeAttempted &&
+    answeredAptitudeIndices.every((idx) => aptitudeAnswers[idx] === aptitudeMcqs[idx]?.answer) &&
+    (puzzleAnswer === null || puzzleAnswer === currentPlan.practice.puzzle?.answer);
+  const hasAptitudeIncorrect =
+    hasAptitudeAttempted &&
+    (answeredAptitudeIndices.some((idx) => aptitudeAnswers[idx] !== aptitudeMcqs[idx]?.answer) ||
+      (puzzleAnswer !== null && puzzleAnswer !== currentPlan.practice.puzzle?.answer));
+
+  const answeredEnglishIndices = Object.keys(englishAnswers).map(Number);
+  const totalEnglishAttempted = answeredEnglishIndices.length;
+  const hasEnglishAttempted = totalEnglishAttempted > 0;
+  const isEnglishAllCorrect =
+    hasEnglishAttempted &&
+    answeredEnglishIndices.every((idx) => englishAnswers[idx] === englishMcqs[idx]?.answer);
+  const hasEnglishIncorrect =
+    hasEnglishAttempted &&
+    answeredEnglishIndices.some((idx) => englishAnswers[idx] !== englishMcqs[idx]?.answer);
+
   // Actions
   const handleSubmitAptitude = async () => {
-    if (Object.keys(aptitudeAnswers).length === 0 && puzzleAnswer === null) {
+    if (totalAptitudeAttempted === 0) {
       toast.error("Please answer at least one question before submitting.");
       return;
     }
     setAptitudeSubmitted(true);
+
+    if (hasAptitudeIncorrect || !isAptitudeAllCorrect) {
+      // WRONG ANSWER SUBMITTED: DO NOT INCREASE XP!
+      setAptitudeXpEarned(0);
+      toast.error("Submitted with Incorrect Answer (0 XP Earned)", {
+        description: "No XP points awarded because the answer is incorrect. Click 'Try Again' to re-attempt and earn +25 XP.",
+      });
+      return;
+    }
+
+    // ALL ANSWERS CORRECT: INCREASE XP (+25 XP)
+    setAptitudeXpEarned(25);
     if (liveStudentId) {
       await completeLiveDailyStep(liveStudentId, "aptitude");
       queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
       queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
     }
     await store.completeDailyStep("aptitude");
-    toast.success("Aptitude Drill Complete! (+25 XP)", {
+    toast.success("Aptitude Drill Mastered! (+25 XP)", {
       description: "Opening Corporate English Workout…",
     });
 
@@ -291,19 +334,39 @@ console.log(solveChallenge());`;
     }, 350);
   };
 
+  const handleRetryAptitude = () => {
+    setAptitudeAnswers({});
+    setPuzzleAnswer(null);
+    setAptitudeSubmitted(false);
+    setAptitudeXpEarned(0);
+    toast.info("Aptitude drill reset. Choose the correct answers to earn +25 XP!");
+  };
+
   const handleSubmitEnglish = async () => {
-    if (Object.keys(englishAnswers).length === 0) {
+    if (totalEnglishAttempted === 0) {
       toast.error("Please answer the verbal exercise question.");
       return;
     }
     setEnglishSubmitted(true);
+
+    if (hasEnglishIncorrect || !isEnglishAllCorrect) {
+      // WRONG ANSWER SUBMITTED: DO NOT INCREASE XP!
+      setEnglishXpEarned(0);
+      toast.error("Submitted with Incorrect Answer (0 XP Earned)", {
+        description: "No XP points awarded because the answer is incorrect. Click 'Try Again' to re-attempt and earn +25 XP.",
+      });
+      return;
+    }
+
+    // ALL ANSWERS CORRECT: INCREASE XP (+25 XP)
+    setEnglishXpEarned(25);
     if (liveStudentId) {
       await completeLiveDailyStep(liveStudentId, "english");
       queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
       queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
     }
     await store.completeDailyStep("english");
-    toast.success("Corporate English Drill Complete! (+25 XP)", {
+    toast.success("Corporate English Mastered! (+25 XP)", {
       description: "Opening Technical Code Drill…",
     });
 
@@ -315,6 +378,13 @@ console.log(solveChallenge());`;
         codeEl.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }, 350);
+  };
+
+  const handleRetryEnglish = () => {
+    setEnglishAnswers({});
+    setEnglishSubmitted(false);
+    setEnglishXpEarned(0);
+    toast.info("English drill reset. Choose the correct answer to earn +25 XP!");
   };
 
   const handleRunCodeTests = () => {
@@ -403,7 +473,7 @@ console.log(solveChallenge());`;
         />
         <Stat
           label="Today's XP Unlocked"
-          value={`+${(completedModulesCount * 25) + (isCodeDone ? 25 : 0)} XP`}
+          value={`+${aptitudeXpEarned + englishXpEarned + (isCodeDone ? 50 : 0)} XP`}
           tone="purple"
           hint="+25 to +50 XP per verified workout"
         />
@@ -662,9 +732,13 @@ console.log(solveChallenge());`;
             subtitle={`Day ${selectedDayNum} · ${currentPlan.aptitude.title}`}
             action={
               isAptitudeDone ? (
-                <Chip tone="emerald">Drill Mastered (+25 XP)</Chip>
+                aptitudeXpEarned > 0 ? (
+                  <Chip tone="emerald">Drill Mastered (+25 XP)</Chip>
+                ) : (
+                  <Chip tone="rose">Incorrect (0 XP)</Chip>
+                )
               ) : (
-                <Chip tone="amber">10 Min Workout</Chip>
+                <Chip tone="cyan">10 Min Workout</Chip>
               )
             }
             className="flex flex-col justify-between"
@@ -743,7 +817,7 @@ console.log(solveChallenge());`;
                           return (
                             <button
                               key={optIdx}
-                              disabled={hasAnswered}
+                              disabled={aptitudeSubmitted}
                               onClick={() => {
                                 setAptitudeAnswers((prev) => ({ ...prev, [idx]: optIdx }));
                               }}
@@ -810,7 +884,7 @@ console.log(solveChallenge());`;
                         return (
                           <button
                             key={optIdx}
-                            disabled={isPuzzleDone}
+                            disabled={aptitudeSubmitted}
                             onClick={() => setPuzzleAnswer(optIdx)}
                             className={cn(
                               "flex items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all",
@@ -832,33 +906,56 @@ console.log(solveChallenge());`;
             <div className="mt-4 pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
               <span className="text-[11px] text-muted-foreground">
                 {isAptitudeDone
-                  ? "✓ Aptitude logic completed (+25 XP)"
+                  ? aptitudeXpEarned > 0
+                    ? "✓ Aptitude logic completed (+25 XP)"
+                    : "✗ Aptitude submitted with incorrect answer (0 XP)"
                   : "Formula drill delivered daily via Telegram @ 06:00"}
               </span>
-              {isAptitudeDone ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab("english");
-                    setTimeout(() => {
-                      document.getElementById("corporate-english-workout")?.scrollIntoView({ behavior: "smooth" });
-                    }, 50);
-                  }}
-                  className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
-                >
-                  <span>Next: Open Corporate English Workout</span>
-                  <ArrowRight className="size-3.5" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSubmitAptitude}
-                  className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 shadow-xs transition-all cursor-pointer"
-                >
-                  <Check className="size-3.5" />
-                  <span>Submit Aptitude Workout (+25 XP)</span>
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {isAptitudeDone && aptitudeXpEarned === 0 && (
+                  <button
+                    type="button"
+                    onClick={handleRetryAptitude}
+                    className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-all cursor-pointer"
+                  >
+                    <RotateCcw className="size-3.5" />
+                    <span>Try Again for +25 XP</span>
+                  </button>
+                )}
+                {isAptitudeDone ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("english");
+                      setTimeout(() => {
+                        document.getElementById("corporate-english-workout")?.scrollIntoView({ behavior: "smooth" });
+                      }, 50);
+                    }}
+                    className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+                  >
+                    <span>Next: Open Corporate English Workout</span>
+                    <ArrowRight className="size-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSubmitAptitude}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-xs transition-all cursor-pointer",
+                      hasAptitudeIncorrect
+                        ? "bg-rose-600 hover:bg-rose-700 text-white"
+                        : "bg-primary hover:bg-primary/90 text-primary-foreground",
+                    )}
+                  >
+                    <Check className="size-3.5" />
+                    <span>
+                      {hasAptitudeIncorrect
+                        ? "Submit Workout (0 XP — Incorrect Answer)"
+                        : "Submit Aptitude Workout (+25 XP)"}
+                    </span>
+                  </button>
+                )}
+              </div>
             </div>
           </Panel>
         )}
@@ -878,7 +975,11 @@ console.log(solveChallenge());`;
               !isAptitudeDone ? (
                 <Chip tone="muted">🔒 Complete Aptitude to Open</Chip>
               ) : isEnglishDone ? (
-                <Chip tone="emerald">Verbal Mastered (+25 XP)</Chip>
+                englishXpEarned > 0 ? (
+                  <Chip tone="emerald">Verbal Mastered (+25 XP)</Chip>
+                ) : (
+                  <Chip tone="rose">Incorrect (0 XP)</Chip>
+                )
               ) : (
                 <Chip tone="cyan">10 Min Workout</Chip>
               )
@@ -1012,7 +1113,7 @@ console.log(solveChallenge());`;
                               return (
                                 <button
                                   key={optIdx}
-                                  disabled={hasAnswered}
+                                  disabled={englishSubmitted}
                                   onClick={() =>
                                     setEnglishAnswers((prev) => ({ ...prev, [idx]: optIdx }))
                                   }
@@ -1056,33 +1157,56 @@ console.log(solveChallenge());`;
               <div className="mt-4 pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[11px] text-muted-foreground">
                   {isEnglishDone
-                    ? "✓ Corporate English completed (+25 XP)"
+                    ? englishXpEarned > 0
+                      ? "✓ Corporate English completed (+25 XP)"
+                      : "✗ Corporate English submitted with incorrect answer (0 XP)"
                     : "Timeline: 03m Concept · 04m Demo · 03m Drill"}
                 </span>
-                {isEnglishDone ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab("code");
-                      setTimeout(() => {
-                        document.getElementById("technical-code-workout")?.scrollIntoView({ behavior: "smooth" });
-                      }, 50);
-                    }}
-                    className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
-                  >
-                    <span>Next: Open Technical Code Drill</span>
-                    <ArrowRight className="size-3.5" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSubmitEnglish}
-                    className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 shadow-xs transition-all cursor-pointer"
-                  >
-                    <Check className="size-3.5" />
-                    <span>Submit English Workout (+25 XP)</span>
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {isEnglishDone && englishXpEarned === 0 && (
+                    <button
+                      type="button"
+                      onClick={handleRetryEnglish}
+                      className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-all cursor-pointer"
+                    >
+                      <RotateCcw className="size-3.5" />
+                      <span>Try Again for +25 XP</span>
+                    </button>
+                  )}
+                  {isEnglishDone ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("code");
+                        setTimeout(() => {
+                          document.getElementById("technical-code-workout")?.scrollIntoView({ behavior: "smooth" });
+                        }, 50);
+                      }}
+                      className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+                    >
+                      <span>Next: Open Technical Code Drill</span>
+                      <ArrowRight className="size-3.5" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSubmitEnglish}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-xs transition-all cursor-pointer",
+                        hasEnglishIncorrect
+                          ? "bg-rose-600 hover:bg-rose-700 text-white"
+                          : "bg-primary hover:bg-primary/90 text-primary-foreground",
+                      )}
+                    >
+                      <Check className="size-3.5" />
+                      <span>
+                        {hasEnglishIncorrect
+                          ? "Submit Workout (0 XP — Incorrect Answer)"
+                          : "Submit English Workout (+25 XP)"}
+                      </span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </Panel>
@@ -1302,7 +1426,11 @@ console.log(solveChallenge());`;
               )}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              {isAptitudeDone ? "Formula + MCQs logged (+25 XP)" : "Pending practice submission"}
+              {isAptitudeDone
+                ? aptitudeXpEarned > 0
+                  ? "Formula + MCQs logged (+25 XP)"
+                  : "Submitted with incorrect answer (0 XP)"
+                : "Pending practice submission"}
             </p>
           </div>
 
@@ -1323,7 +1451,11 @@ console.log(solveChallenge());`;
               )}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              {isEnglishDone ? "Grammar + 4 Vocab cards (+25 XP)" : "Pending practice submission"}
+              {isEnglishDone
+                ? englishXpEarned > 0
+                  ? "Grammar + 4 Vocab cards (+25 XP)"
+                  : "Submitted with incorrect answer (0 XP)"
+                : "Pending practice submission"}
             </p>
           </div>
 
