@@ -76,7 +76,7 @@ export const Route = createFileRoute("/student/exercises")({
 
 type WorkoutTab = "aptitude" | "english" | "code";
 
-export function DailyExercisesPage() {
+function DailyExercisesPage() {
   const store = useAppStore();
   const queryClient = useQueryClient();
 
