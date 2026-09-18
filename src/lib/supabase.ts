@@ -438,6 +438,18 @@ export async function fetchLiveUserRole(
   try {
     const client = getSupabaseClient();
 
+    // Ensure session is fresh and valid before calling authenticated endpoints
+    try {
+      const { data: sessionData } = await client.auth.getSession();
+      const currentSession = sessionData?.session;
+      if (currentSession?.expires_at && currentSession.expires_at * 1000 <= Date.now() + 10000) {
+        // Token is expired or expiring in < 10s: refresh proactively
+        await client.auth.refreshSession();
+      }
+    } catch {
+      // Ignore refresh errors and proceed to role resolution
+    }
+
     // 1. Primary check: Secure SECURITY DEFINER RPC get_my_role
     try {
       const { data: rpcRole, error: rpcErr } = await client.rpc("get_my_role");
@@ -446,21 +458,44 @@ export async function fetchLiveUserRole(
         if (r === "admin" || r === "super_admin") return "admin";
         if (r === "student") return "student";
       }
+
+      // If 401 Unauthorized or expired JWT returned, attempt one fresh session refresh & retry
+      if (
+        rpcErr &&
+        (rpcErr.message?.toLowerCase().includes("jwt") ||
+          rpcErr.message?.toLowerCase().includes("unauthorized") ||
+          (rpcErr as { status?: number }).status === 401 ||
+          (rpcErr as { code?: string }).code === "PGRST301")
+      ) {
+        const { data: refreshed } = await client.auth.refreshSession();
+        if (refreshed?.session) {
+          const retry = await client.rpc("get_my_role");
+          if (!retry.error && retry.data) {
+            const r = String(retry.data).toLowerCase();
+            if (r === "admin" || r === "super_admin") return "admin";
+            if (r === "student") return "student";
+          }
+        }
+      }
     } catch {
       // Fall through to direct table check
     }
 
     // 2. Direct query on public.user_roles
-    const { data, error } = await client
-      .from("user_roles")
-      .select("role")
-      .eq("auth_user_id", authUserId)
-      .maybeSingle();
+    try {
+      const { data, error } = await client
+        .from("user_roles")
+        .select("role")
+        .eq("auth_user_id", authUserId)
+        .maybeSingle();
 
-    if (!error && data?.role) {
-      const r = String(data.role).toLowerCase();
-      if (r === "admin" || r === "super_admin") return "admin";
-      return "student";
+      if (!error && data?.role) {
+        const r = String(data.role).toLowerCase();
+        if (r === "admin" || r === "super_admin") return "admin";
+        return "student";
+      }
+    } catch {
+      // Fall through to metadata check
     }
 
     // 3. Fallback: Check user_metadata role
