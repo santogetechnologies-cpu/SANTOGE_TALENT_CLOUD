@@ -17,6 +17,7 @@ import {
   HelpCircle,
   Calendar,
   BookOpen,
+  Dumbbell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackById, type TrackId, type Track } from "@/lib/tracks";
@@ -322,7 +323,25 @@ export function DailyHomeScreen({
       </div>
 
       {/* Helpful Secondary Links Banner */}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Link
+          to="/student/exercises"
+          className="group flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-4 transition-all hover:border-primary/60 hover:bg-primary/10 shadow-2xs"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/20 text-primary group-hover:scale-105 transition-all">
+              <Dumbbell className="size-4" />
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold text-foreground">Daily Exercise Dashboard</h4>
+              <p className="text-[11px] text-muted-foreground">
+                Speed math, English, Code &amp; AI pitch
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="size-4 text-primary group-hover:translate-x-0.5 transition-all" />
+        </Link>
+
         <Link
           to="/student/technical"
           className="group flex items-center justify-between rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:bg-muted/30 shadow-2xs"
