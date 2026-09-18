@@ -25,6 +25,7 @@ import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as StudentIndexRouteImport } from './routes/student.index'
 import { Route as StudentAcceleratorRouteImport } from './routes/student.accelerator'
 import { Route as StudentBatchRouteImport } from './routes/student.batch'
+import { Route as StudentExercisesRouteImport } from './routes/student.exercises'
 import { Route as StudentGatewayRouteImport } from './routes/student.gateway'
 import { Route as StudentLabsRouteImport } from './routes/student.labs'
 import { Route as StudentLeaderboardRouteImport } from './routes/student.leaderboard'
@@ -112,6 +113,11 @@ const StudentBatchRoute = StudentBatchRouteImport.update({
   path: '/batch',
   getParentRoute: () => StudentRoute,
 } as any)
+const StudentExercisesRoute = StudentExercisesRouteImport.update({
+  id: '/exercises',
+  path: '/exercises',
+  getParentRoute: () => StudentRoute,
+} as any)
 const StudentGatewayRoute = StudentGatewayRouteImport.update({
   id: '/gateway',
   path: '/gateway',
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/student/accelerator': typeof StudentAcceleratorRoute
   '/student/batch': typeof StudentBatchRoute
+  '/student/exercises': typeof StudentExercisesRoute
   '/student/gateway': typeof StudentGatewayRoute
   '/student/labs': typeof StudentLabsRoute
   '/student/leaderboard': typeof StudentLeaderboardRoute
@@ -180,6 +187,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/student/accelerator': typeof StudentAcceleratorRoute
   '/student/batch': typeof StudentBatchRoute
+  '/student/exercises': typeof StudentExercisesRoute
   '/student/gateway': typeof StudentGatewayRoute
   '/student/labs': typeof StudentLabsRoute
   '/student/leaderboard': typeof StudentLeaderboardRoute
@@ -205,6 +213,7 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/student/accelerator': typeof StudentAcceleratorRoute
   '/student/batch': typeof StudentBatchRoute
+  '/student/exercises': typeof StudentExercisesRoute
   '/student/gateway': typeof StudentGatewayRoute
   '/student/labs': typeof StudentLabsRoute
   '/student/leaderboard': typeof StudentLeaderboardRoute
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/student/accelerator'
     | '/student/batch'
+    | '/student/exercises'
     | '/student/gateway'
     | '/student/labs'
     | '/student/leaderboard'
@@ -253,6 +263,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/student/accelerator'
     | '/student/batch'
+    | '/student/exercises'
     | '/student/gateway'
     | '/student/labs'
     | '/student/leaderboard'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/student/accelerator'
     | '/student/batch'
+    | '/student/exercises'
     | '/student/gateway'
     | '/student/labs'
     | '/student/leaderboard'
@@ -408,6 +420,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudentBatchRouteImport
       parentRoute: typeof StudentRoute
     }
+    '/student/exercises': {
+      id: '/student/exercises'
+      path: '/exercises'
+      fullPath: '/student/exercises'
+      preLoaderRoute: typeof StudentExercisesRouteImport
+      parentRoute: typeof StudentRoute
+    }
     '/student/gateway': {
       id: '/student/gateway'
       path: '/gateway'
@@ -482,6 +501,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface StudentRouteChildren {
   StudentAcceleratorRoute: typeof StudentAcceleratorRoute
   StudentBatchRoute: typeof StudentBatchRoute
+  StudentExercisesRoute: typeof StudentExercisesRoute
   StudentGatewayRoute: typeof StudentGatewayRoute
   StudentLabsRoute: typeof StudentLabsRoute
   StudentLeaderboardRoute: typeof StudentLeaderboardRoute
@@ -494,6 +514,7 @@ interface StudentRouteChildren {
 const StudentRouteChildren: StudentRouteChildren = {
   StudentAcceleratorRoute: StudentAcceleratorRoute,
   StudentBatchRoute: StudentBatchRoute,
+  StudentExercisesRoute: StudentExercisesRoute,
   StudentGatewayRoute: StudentGatewayRoute,
   StudentLabsRoute: StudentLabsRoute,
   StudentLeaderboardRoute: StudentLeaderboardRoute,

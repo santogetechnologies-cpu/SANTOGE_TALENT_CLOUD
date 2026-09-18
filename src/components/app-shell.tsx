@@ -27,6 +27,7 @@ import {
   Command,
   BookOpen,
   Briefcase,
+  Dumbbell,
 } from "lucide-react";
 import { useAppStore, type Role } from "@/lib/app-store";
 import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
@@ -38,6 +39,7 @@ type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; sectio
 
 const STUDENT_NAV: NavItem[] = [
   { to: "/student", label: "Today", icon: LayoutDashboard },
+  { to: "/student/exercises", label: "Daily Exercises", icon: Dumbbell },
   { to: "/student/technical", label: "90-Day Journey", icon: Code2 },
   {
     to: "/student/gateway",
@@ -86,6 +88,12 @@ const SEARCH_ITEMS: SearchResult[] = [
     category: "Placement Tools" as const,
     to: "/student",
     desc: "Twin 30-min routine: Placement Accelerator + Technical Sandbox",
+  },
+  {
+    title: "Daily Exercise & Practice Dashboard",
+    category: "Placement Tools" as const,
+    to: "/student/exercises",
+    desc: "Interactive workouts: Aptitude drills, Corporate English, Code Debugging, and AI Voice Pitch",
   },
   {
     title: "90-Day Placement Syllabus & Portfolio",
