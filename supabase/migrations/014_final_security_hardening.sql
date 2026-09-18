@@ -24,12 +24,9 @@ GRANT EXECUTE ON FUNCTION public.get_track_distribution() TO authenticated, serv
 REVOKE EXECUTE ON FUNCTION public.bootstrap_super_admin(TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.bootstrap_super_admin(TEXT) TO service_role;
 
--- Role resolution and admin check helpers
-REVOKE EXECUTE ON FUNCTION public.get_my_role() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.get_my_role() TO authenticated, service_role;
-
-REVOKE EXECUTE ON FUNCTION public.is_admin() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated, service_role;
+-- Role resolution and admin check helpers (accessible to anon to prevent 401 on initial / unauthenticated requests)
+GRANT EXECUTE ON FUNCTION public.get_my_role() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated, service_role;
 
 REVOKE EXECUTE ON FUNCTION public.current_student_id() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.current_student_id() TO authenticated, service_role;

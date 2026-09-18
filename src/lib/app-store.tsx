@@ -337,7 +337,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const user = session.user;
+      // Ensure token is fresh before firing parallel requests
+      let activeSession = session;
+      if (session.expires_at && session.expires_at * 1000 <= Date.now() + 5000) {
+        try {
+          const { data: refreshed } = await supabase.auth.refreshSession();
+          if (refreshed?.session) {
+            activeSession = refreshed.session;
+          }
+        } catch {
+          // Continue with existing session
+        }
+      }
+
+      const user = activeSession.user;
       const userEmail = (user.email || "").toLowerCase();
 
       try {
@@ -459,7 +472,23 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
 
     // 1. Authoritative initial session retrieval from Supabase Auth
-    void supabase.auth.getSession().then(({ data: { session } }) => {
+    void supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.expires_at && session.expires_at * 1000 <= Date.now() + 10000) {
+        // Cached session is expired or expiring in < 10s: refresh before syncing
+        try {
+          const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
+          if (!refreshErr && refreshed.session) {
+            void syncSession(refreshed.session);
+            return;
+          }
+          // If refresh token is expired or revoked, reset session
+          void syncSession(null);
+          return;
+        } catch {
+          void syncSession(null);
+          return;
+        }
+      }
       void syncSession(session);
     });
 
