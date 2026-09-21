@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { BookOpen, Sparkles, ArrowRight, CheckCircle2, ChevronDown, Bot, Layers } from "lucide-react";
 import { AITutor } from "./AITutor";
+import { useAppStore } from "@/lib/app-store";
 
 interface RevealCardProps {
   dayNum: number;
+  trackId?: string;
   topic: string;
   practice: string;
   theme: string;
@@ -15,6 +17,7 @@ interface RevealCardProps {
 
 export function RevealCard({
   dayNum,
+  trackId = "general",
   topic,
   practice,
   theme,
@@ -23,8 +26,23 @@ export function RevealCard({
   trackShort,
   onNext,
 }: RevealCardProps) {
+  const store = useAppStore();
+  const existingRecord = store.getDailyStepRecord(dayNum, trackId, "tech-concept");
+
+  const [isLocked, setIsLocked] = useState(() => Boolean(existingRecord?.isLocked));
+  const isProcessingRef = useRef(Boolean(existingRecord?.isLocked));
+
   const [showTutor, setShowTutor] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+
+  const handleNext = async () => {
+    if (!isLocked && !isProcessingRef.current) {
+      isProcessingRef.current = true;
+      setIsLocked(true);
+      await store.recordDailyStepAction(dayNum, trackId, "tech-concept");
+    }
+    onNext();
+  };
 
   // Generate 3 bite-sized key takeaways from practice or topic
   const takeaways = [
@@ -117,8 +135,8 @@ export function RevealCard({
         </button>
 
         <button
-          onClick={onNext}
-          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+          onClick={handleNext}
+          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors cursor-pointer"
         >
           <span>View Visual Architecture</span>
           <ArrowRight className="size-4" />

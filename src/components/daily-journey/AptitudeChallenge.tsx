@@ -1,14 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Calculator, ArrowRight, CheckCircle2, AlertCircle, Sparkles, Timer, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AcceleratorDay } from "@/lib/placement-accelerator-data";
 import { XPReward } from "./XPReward";
+import { useAppStore } from "@/lib/app-store";
 
 export type AptitudeLesson = AcceleratorDay["aptitude"];
 export type PlacementMCQ = AcceleratorDay["practice"]["mcqs"][number];
 
 interface AptitudeChallengeProps {
   dayNum: number;
+  trackId?: string;
   aptitude: AptitudeLesson;
   mcq?: PlacementMCQ | undefined;
   onSuccess: (xpBonus: number) => void;
@@ -17,14 +19,23 @@ interface AptitudeChallengeProps {
 
 export function AptitudeChallenge({
   dayNum,
+  trackId = "general",
   aptitude,
   mcq,
   onSuccess,
   onNext,
 }: AptitudeChallengeProps) {
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  const [hasAnswered, setHasAnswered] = useState(false);
-  const [xpAwarded, setXpAwarded] = useState(false);
+  const store = useAppStore();
+  const existingRecord = store.getDailyStepRecord(dayNum, trackId, "placement-aptitude");
+
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(() =>
+    typeof existingRecord?.selectedOption === "number" ? existingRecord.selectedOption : null,
+  );
+  const [hasAnswered, setHasAnswered] = useState<boolean>(() => Boolean(existingRecord?.isLocked));
+  const [isLocked, setIsLocked] = useState<boolean>(() => Boolean(existingRecord?.isLocked));
+  const [xpAwarded, setXpAwarded] = useState<boolean>(() => Boolean(existingRecord?.xpAwarded));
+  const isProcessingRef = useRef<boolean>(Boolean(existingRecord?.isLocked));
+
   const [secondsLeft, setSecondsLeft] = useState(60);
 
   // Fallback MCQ if not provided
@@ -44,11 +55,21 @@ export function AptitudeChallenge({
     return () => clearInterval(interval);
   }, [hasAnswered, secondsLeft]);
 
-  const handleSelect = (idx: number) => {
+  const handleSelect = async (idx: number) => {
+    if (isLocked || isProcessingRef.current) return;
+    isProcessingRef.current = true;
+
     setSelectedIdx(idx);
     setHasAnswered(true);
+    setIsLocked(true);
 
-    if (idx === activeMcq.answer && !xpAwarded) {
+    const isCorrectChoice = idx === activeMcq.answer;
+    const res = await store.recordDailyStepAction(dayNum, trackId, "placement-aptitude", {
+      selectedOption: idx,
+      isCorrect: isCorrectChoice,
+    });
+
+    if (isCorrectChoice && res.xpAwarded && !xpAwarded) {
       setXpAwarded(true);
       onSuccess(15);
     }
@@ -112,14 +133,16 @@ export function AptitudeChallenge({
             return (
               <button
                 key={idx}
+                disabled={isLocked || isProcessingRef.current}
                 onClick={() => handleSelect(idx)}
                 className={cn(
-                  "group flex items-center gap-3 rounded-xl border p-3.5 text-left text-xs transition-all cursor-pointer",
+                  "group flex items-center gap-3 rounded-xl border p-3.5 text-left text-xs transition-all",
+                  isLocked ? "cursor-not-allowed" : "cursor-pointer",
                   showSuccess
                     ? "border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200 font-semibold ring-1 ring-emerald-500/30"
                     : showError
                       ? "border-destructive bg-destructive/10 text-destructive"
-                      : isCorrect
+                      : isLocked
                         ? "border-border/60 bg-muted/20 opacity-60 text-muted-foreground"
                         : "border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted/30",
                 )}
@@ -179,7 +202,7 @@ export function AptitudeChallenge({
         <button
           onClick={onNext}
           disabled={!hasAnswered}
-          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-40 transition-colors"
+          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-40 transition-colors cursor-pointer"
         >
           <span>Continue to Logic Puzzle</span>
           <ArrowRight className="size-4" />

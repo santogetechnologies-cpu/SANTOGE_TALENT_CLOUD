@@ -14,6 +14,7 @@ import { CommunicationInteraction } from "./CommunicationInteraction";
 import { AptitudeChallenge } from "./AptitudeChallenge";
 import { LogicChallenge } from "./LogicChallenge";
 import { DailyCompletion } from "./DailyCompletion";
+import { useAppStore } from "@/lib/app-store";
 
 interface DailyJourneyRunnerProps {
   dayNum: number;
@@ -56,18 +57,42 @@ export function DailyJourneyRunner({
   onRecordVoicePitch,
   onExit,
 }: DailyJourneyRunnerProps) {
-  // Determine initial step based on what's already completed
+  const store = useAppStore();
+
+  // Determine initial step based on the earliest incomplete step
   const initialStep: JourneyStepId = useMemo(() => {
     if (isLabCompleted && isPlacementCompleted) return "complete";
-    if (isLabCompleted) return "placement-communication";
-    return "tech-concept";
-  }, [isLabCompleted, isPlacementCompleted]);
+
+    const steps: JourneyStepId[] = [
+      "tech-concept",
+      "tech-visual",
+      "tech-check",
+      "tech-sandbox",
+      "placement-communication",
+      "placement-aptitude",
+      "placement-logic",
+    ];
+
+    for (const s of steps) {
+      if (s === "tech-sandbox" && isLabCompleted) continue;
+      if (s === "placement-logic" && isPlacementCompleted) continue;
+      if (!store.isDailyStepLocked(dayNum, trackId, s)) {
+        return s;
+      }
+    }
+
+    return "complete";
+  }, [dayNum, trackId, isLabCompleted, isPlacementCompleted, store]);
 
   const [currentStep, setCurrentStep] = useState<JourneyStepId>(initialStep);
   const [sessionXp, setSessionXp] = useState<number>(() => {
     let initialXp = 0;
     if (isLabCompleted) initialXp += 50;
     if (isPlacementCompleted) initialXp += 25;
+    const checkRec = store.getDailyStepRecord(dayNum, trackId, "tech-check");
+    if (checkRec?.xpAwarded && !isLabCompleted) initialXp += 15;
+    const aptRec = store.getDailyStepRecord(dayNum, trackId, "placement-aptitude");
+    if (aptRec?.xpAwarded && !isPlacementCompleted) initialXp += 15;
     return initialXp;
   });
 
@@ -108,6 +133,7 @@ export function DailyJourneyRunner({
         {currentStep === "tech-concept" && (
           <RevealCard
             dayNum={dayNum}
+            trackId={trackId}
             topic={techTopic}
             practice={techPractice}
             theme={weekTheme}
@@ -120,6 +146,7 @@ export function DailyJourneyRunner({
 
         {currentStep === "tech-visual" && (
           <ConceptVisual
+            dayNum={dayNum}
             trackId={trackId}
             trackName={trackName}
             topic={techTopic}
@@ -141,6 +168,7 @@ export function DailyJourneyRunner({
         {currentStep === "tech-sandbox" && (
           <GuidedSandbox
             dayNum={dayNum}
+            trackId={trackId}
             topic={techTopic}
             practice={techPractice}
             trackName={trackName}
@@ -157,6 +185,7 @@ export function DailyJourneyRunner({
         {currentStep === "placement-communication" && (
           <CommunicationInteraction
             dayNum={dayNum}
+            trackId={trackId}
             english={placementPlan.english}
             onNext={goToNextStep}
           />
@@ -165,6 +194,7 @@ export function DailyJourneyRunner({
         {currentStep === "placement-aptitude" && (
           <AptitudeChallenge
             dayNum={dayNum}
+            trackId={trackId}
             aptitude={placementPlan.aptitude}
             mcq={placementPlan.practice.mcqs[0]}
             onSuccess={(bonus) => addXp(bonus)}
@@ -175,6 +205,7 @@ export function DailyJourneyRunner({
         {currentStep === "placement-logic" && (
           <LogicChallenge
             dayNum={dayNum}
+            trackId={trackId}
             puzzle={placementPlan.practice.puzzle}
             onNext={async () => {
               if (!isPlacementCompleted) {

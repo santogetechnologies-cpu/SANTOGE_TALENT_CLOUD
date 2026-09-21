@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ArrowRight, Workflow, CheckCircle2, Sparkles, Layers, Info, Cpu, Database, Server, ShieldCheck, Activity, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/lib/app-store";
 
 interface ConceptVisualProps {
+  dayNum?: number;
   trackId: string;
   trackName: string;
   topic: string;
@@ -17,8 +19,23 @@ interface NodeData {
   role: string;
 }
 
-export function ConceptVisual({ trackId, trackName, topic, onNext }: ConceptVisualProps) {
+export function ConceptVisual({ dayNum = 1, trackId, trackName, topic, onNext }: ConceptVisualProps) {
+  const store = useAppStore();
+  const existingRecord = store.getDailyStepRecord(dayNum, trackId, "tech-visual");
+
+  const [isLocked, setIsLocked] = useState(() => Boolean(existingRecord?.isLocked));
+  const isProcessingRef = useRef(Boolean(existingRecord?.isLocked));
+
   const [selectedNode, setSelectedNode] = useState<number>(1);
+
+  const handleNext = async () => {
+    if (!isLocked && !isProcessingRef.current) {
+      isProcessingRef.current = true;
+      setIsLocked(true);
+      await store.recordDailyStepAction(dayNum, trackId, "tech-visual");
+    }
+    onNext();
+  };
 
   // Generate visual pipeline based on track family
   const getPipeline = (): { family: string; nodes: NodeData[] } => {
@@ -281,8 +298,8 @@ export function ConceptVisual({ trackId, trackName, topic, onNext }: ConceptVisu
         </span>
 
         <button
-          onClick={onNext}
-          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+          onClick={handleNext}
+          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors cursor-pointer"
         >
           <span>Continue to Quick Check</span>
           <ArrowRight className="size-4" />

@@ -1,18 +1,42 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { MessageSquare, Video, ArrowRight, CheckCircle2, Sparkles, BookOpen, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AcceleratorDay } from "@/lib/placement-accelerator-data";
+import { useAppStore } from "@/lib/app-store";
 
 export type EnglishLesson = AcceleratorDay["english"];
 
 interface CommunicationInteractionProps {
   dayNum: number;
+  trackId?: string;
   english: EnglishLesson;
   onNext: () => void;
 }
 
-export function CommunicationInteraction({ dayNum, english, onNext }: CommunicationInteractionProps) {
-  const [selectedChoice, setSelectedChoice] = useState<"A" | "B" | null>(null);
+export function CommunicationInteraction({
+  dayNum,
+  trackId = "general",
+  english,
+  onNext,
+}: CommunicationInteractionProps) {
+  const store = useAppStore();
+  const existingRecord = store.getDailyStepRecord(dayNum, trackId, "placement-communication");
+
+  const [selectedChoice, setSelectedChoice] = useState<"A" | "B" | null>(
+    () => (existingRecord?.selectedOption as "A" | "B") || null,
+  );
+  const [isLocked, setIsLocked] = useState(() => Boolean(existingRecord?.isLocked));
+  const isProcessingRef = useRef(Boolean(existingRecord?.isLocked));
+
+  const handleSelectChoice = async (choice: "A" | "B") => {
+    if (isLocked || isProcessingRef.current) return;
+    isProcessingRef.current = true;
+    setSelectedChoice(choice);
+    setIsLocked(true);
+    await store.recordDailyStepAction(dayNum, trackId, "placement-communication", {
+      selectedOption: choice,
+    });
+  };
 
   // Generate an executive framing challenge based on today's lesson
   const scenario = {
@@ -96,9 +120,11 @@ export function CommunicationInteraction({ dayNum, english, onNext }: Communicat
           <div className="grid gap-3 sm:grid-cols-2">
             {/* Option A */}
             <button
-              onClick={() => setSelectedChoice("A")}
+              disabled={isLocked || isProcessingRef.current}
+              onClick={() => handleSelectChoice("A")}
               className={cn(
-                "group flex flex-col justify-between rounded-xl border p-4 text-left transition-all cursor-pointer",
+                "group flex flex-col justify-between rounded-xl border p-4 text-left transition-all",
+                isLocked ? "cursor-not-allowed" : "cursor-pointer",
                 selectedChoice === "A"
                   ? "border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/30"
                   : selectedChoice === "B"
@@ -124,9 +150,11 @@ export function CommunicationInteraction({ dayNum, english, onNext }: Communicat
 
             {/* Option B */}
             <button
-              onClick={() => setSelectedChoice("B")}
+              disabled={isLocked || isProcessingRef.current}
+              onClick={() => handleSelectChoice("B")}
               className={cn(
-                "group flex flex-col justify-between rounded-xl border p-4 text-left transition-all cursor-pointer",
+                "group flex flex-col justify-between rounded-xl border p-4 text-left transition-all",
+                isLocked ? "cursor-not-allowed" : "cursor-pointer",
                 selectedChoice === "B"
                   ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/30"
                   : selectedChoice === "A"
@@ -161,7 +189,8 @@ export function CommunicationInteraction({ dayNum, english, onNext }: Communicat
 
         <button
           onClick={onNext}
-          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+          disabled={!selectedChoice}
+          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-40 transition-colors cursor-pointer"
         >
           <span>Continue to Aptitude Challenge</span>
           <ArrowRight className="size-4" />
