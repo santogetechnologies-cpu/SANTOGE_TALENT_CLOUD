@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Chip, Console, Meter, PageHeader, Panel, Stat } from "@/components/kit";
@@ -143,21 +143,93 @@ function DailyExercisesPage() {
   const currentTechDay = currentWeekPlan.days[dayInWeekIdx] || currentWeekPlan.days[0]!;
 
   // Interactive Workout State
+  // Atomic processing click ref to synchronously eliminate race conditions on rapid multi-clicks
+  const isProcessingClickRef = useRef<Record<string, boolean>>({});
+
+  // Aptitude MCQs from currentPlan
+  const aptitudeMcqs = useMemo(() => {
+    return currentPlan.practice.mcqs.filter(
+      (m) => m.category === "Aptitude" || m.category === "Logic",
+    );
+  }, [currentPlan]);
+
+  // English MCQs from currentPlan
+  const englishMcqs = useMemo(() => {
+    return currentPlan.practice.mcqs.filter((m) => m.category === "English");
+  }, [currentPlan]);
+
+  // Retrieve any previously persisted locked answers for this day from store/localStorage
+  const initialAnswers = useMemo(() => {
+    return store.getDailyExerciseAnswersForDay(
+      selectedDayNum,
+      aptitudeMcqs.length,
+      englishMcqs.length,
+      Boolean(currentPlan.practice.puzzle),
+    );
+  }, [store, selectedDayNum, aptitudeMcqs.length, englishMcqs.length, currentPlan.practice.puzzle]);
+
   // 1. Aptitude state
-  const [aptitudeAnswers, setAptitudeAnswers] = useState<Record<number, number>>({});
-  const [puzzleAnswer, setPuzzleAnswer] = useState<number | null>(null);
-  const [aptitudeSubmitted, setAptitudeSubmitted] = useState<boolean>(false);
+  const [aptitudeAnswers, setAptitudeAnswers] = useState<Record<number, number>>(
+    () => initialAnswers.aptitudeAnswers,
+  );
+  const [puzzleAnswer, setPuzzleAnswer] = useState<number | null>(
+    () => initialAnswers.puzzleAnswer,
+  );
+  const [aptitudeSubmitted, setAptitudeSubmitted] = useState<boolean>(() => {
+    return (
+      attendance.includes(cohortDay) ||
+      Boolean(liveProgressData?.daily?.aptitude) ||
+      Boolean(store.daily?.aptitude) ||
+      (aptitudeMcqs.length > 0 &&
+        Object.keys(initialAnswers.aptitudeAnswers).length >= aptitudeMcqs.length &&
+        (!currentPlan.practice.puzzle || initialAnswers.puzzleAnswer !== null))
+    );
+  });
   const [aptitudeXpEarned, setAptitudeXpEarned] = useState<number>(() => {
     return attendance.includes(cohortDay) ? 25 : 0;
   });
 
   // 2. English state
-  const [englishAnswers, setEnglishAnswers] = useState<Record<number, number>>({});
-  const [englishSubmitted, setEnglishSubmitted] = useState<boolean>(false);
+  const [englishAnswers, setEnglishAnswers] = useState<Record<number, number>>(
+    () => initialAnswers.englishAnswers,
+  );
+  const [englishSubmitted, setEnglishSubmitted] = useState<boolean>(() => {
+    return (
+      attendance.includes(cohortDay) ||
+      Boolean(liveProgressData?.daily?.english) ||
+      Boolean(store.daily?.english) ||
+      (englishMcqs.length > 0 &&
+        Object.keys(initialAnswers.englishAnswers).length >= englishMcqs.length)
+    );
+  });
   const [englishXpEarned, setEnglishXpEarned] = useState<number>(() => {
     return attendance.includes(cohortDay) ? 25 : 0;
   });
   const [activeVocabIdx, setActiveVocabIdx] = useState<number>(0);
+
+  // Synchronize processing ref and state if store hydrates asynchronously
+  useEffect(() => {
+    const saved = store.getDailyExerciseAnswersForDay(
+      selectedDayNum,
+      aptitudeMcqs.length,
+      englishMcqs.length,
+      Boolean(currentPlan.practice.puzzle),
+    );
+
+    if (Object.keys(saved.aptitudeAnswers).length > 0) {
+      setAptitudeAnswers((prev) => ({ ...saved.aptitudeAnswers, ...prev }));
+    }
+    if (saved.puzzleAnswer !== null) {
+      setPuzzleAnswer(saved.puzzleAnswer);
+    }
+    if (Object.keys(saved.englishAnswers).length > 0) {
+      setEnglishAnswers((prev) => ({ ...saved.englishAnswers, ...prev }));
+    }
+
+    Object.keys(saved.records).forEach((k) => {
+      isProcessingClickRef.current[k] = true;
+    });
+  }, [selectedDayNum, aptitudeMcqs.length, englishMcqs.length, currentPlan.practice.puzzle, store]);
 
   // 3. Technical Code drill state
   const [userCode, setUserCode] = useState<string>(() => {
@@ -181,18 +253,6 @@ console.log(solveChallenge());`;
   const [isCodeVerified, setIsCodeVerified] = useState<boolean>(() => {
     return completedTechDays.includes(selectedDayNum);
   });
-
-  // Aptitude MCQs from currentPlan
-  const aptitudeMcqs = useMemo(() => {
-    return currentPlan.practice.mcqs.filter(
-      (m) => m.category === "Aptitude" || m.category === "Logic",
-    );
-  }, [currentPlan]);
-
-  // English MCQs from currentPlan
-  const englishMcqs = useMemo(() => {
-    return currentPlan.practice.mcqs.filter((m) => m.category === "English");
-  }, [currentPlan]);
 
   // Completion calculation for selected day
   const isAptitudeDone = aptitudeSubmitted || attendance.includes(selectedDayNum);
@@ -240,18 +300,50 @@ console.log(solveChallenge());`;
     });
   }, [dayFilter, currentWeekNumber]);
 
-  // Reset exercise interactive state on day change
+  // Load and hydrate exercise interactive state on day change
   const handleSelectDay = (dayNum: number) => {
     setSelectedDayNum(dayNum);
-    setAptitudeAnswers({});
-    setPuzzleAnswer(null);
-    setAptitudeSubmitted(false);
-    setAptitudeXpEarned(attendance.includes(dayNum) ? 25 : 0);
-    setEnglishAnswers({});
-    setEnglishSubmitted(false);
-    setEnglishXpEarned(attendance.includes(dayNum) ? 25 : 0);
+
+    const targetPlan = getAcceleratorDay(dayNum);
+    const targetAptMcqs = targetPlan.practice.mcqs.filter(
+      (m) => m.category === "Aptitude" || m.category === "Logic",
+    );
+    const targetEngMcqs = targetPlan.practice.mcqs.filter((m) => m.category === "English");
+
+    const savedForDay = store.getDailyExerciseAnswersForDay(
+      dayNum,
+      targetAptMcqs.length,
+      targetEngMcqs.length,
+      Boolean(targetPlan.practice.puzzle),
+    );
+
+    setAptitudeAnswers(savedForDay.aptitudeAnswers);
+    setPuzzleAnswer(savedForDay.puzzleAnswer);
+
+    const isDayAttendanceDone = attendance.includes(dayNum);
+    const isAptitudeFullyAnswered =
+      targetAptMcqs.length > 0 &&
+      Object.keys(savedForDay.aptitudeAnswers).length >= targetAptMcqs.length &&
+      (!targetPlan.practice.puzzle || savedForDay.puzzleAnswer !== null);
+
+    setAptitudeSubmitted(isDayAttendanceDone || isAptitudeFullyAnswered);
+    setAptitudeXpEarned(isDayAttendanceDone ? 25 : 0);
+
+    setEnglishAnswers(savedForDay.englishAnswers);
+    const isEngFullyAnswered =
+      targetEngMcqs.length > 0 &&
+      Object.keys(savedForDay.englishAnswers).length >= targetEngMcqs.length;
+
+    setEnglishSubmitted(isDayAttendanceDone || isEngFullyAnswered);
+    setEnglishXpEarned(isDayAttendanceDone ? 25 : 0);
+
     setActiveVocabIdx(0);
     setActiveTab("aptitude");
+
+    // Populate click guard for answered questions
+    Object.keys(savedForDay.records).forEach((k) => {
+      isProcessingClickRef.current[k] = true;
+    });
 
     const isTechAlreadyDone = completedTechDays.includes(dayNum);
     setIsCodeVerified(isTechAlreadyDone);
@@ -295,6 +387,49 @@ console.log(solveChallenge());`;
     hasEnglishAttempted &&
     answeredEnglishIndices.some((idx) => englishAnswers[idx] !== englishMcqs[idx]?.answer);
 
+  // ---------------------------------------------------------------------------
+  // Atomic Option Click Handlers (Enforces One-Time Answer & Permanent Locking)
+  // ---------------------------------------------------------------------------
+
+  const handleAptitudeOptionClick = async (qIdx: number, optIdx: number, correctIdx: number) => {
+    const qKey = `aptitude_${qIdx}`;
+    // Drop rapid concurrent clicks synchronously
+    if (isProcessingClickRef.current[qKey] || aptitudeAnswers[qIdx] !== undefined) {
+      return;
+    }
+    isProcessingClickRef.current[qKey] = true;
+
+    // Immediately accept first clicked answer
+    setAptitudeAnswers((prev) => ({ ...prev, [qIdx]: optIdx }));
+
+    // Persist permanently in store and storage
+    await store.recordDailyExerciseAnswer(selectedDayNum, "aptitude", qIdx, optIdx, correctIdx);
+  };
+
+  const handlePuzzleOptionClick = async (optIdx: number, correctIdx: number) => {
+    const qKey = "puzzle";
+    if (isProcessingClickRef.current[qKey] || puzzleAnswer !== null) {
+      return;
+    }
+    isProcessingClickRef.current[qKey] = true;
+
+    setPuzzleAnswer(optIdx);
+
+    await store.recordDailyExerciseAnswer(selectedDayNum, "puzzle", 0, optIdx, correctIdx);
+  };
+
+  const handleEnglishOptionClick = async (qIdx: number, optIdx: number, correctIdx: number) => {
+    const qKey = `english_${qIdx}`;
+    if (isProcessingClickRef.current[qKey] || englishAnswers[qIdx] !== undefined) {
+      return;
+    }
+    isProcessingClickRef.current[qKey] = true;
+
+    setEnglishAnswers((prev) => ({ ...prev, [qIdx]: optIdx }));
+
+    await store.recordDailyExerciseAnswer(selectedDayNum, "english", qIdx, optIdx, correctIdx);
+  };
+
   // Actions
   const handleSubmitAptitude = async () => {
     if (totalAptitudeAttempted === 0) {
@@ -307,8 +442,15 @@ console.log(solveChallenge());`;
       // WRONG ANSWER SUBMITTED: DO NOT INCREASE XP!
       setAptitudeXpEarned(0);
       toast.error("Submitted with Incorrect Answer (0 XP Earned)", {
-        description: "No XP points awarded because the answer is incorrect. Click 'Try Again' to re-attempt and earn +25 XP.",
+        description: "No XP points awarded because an answer was incorrect. Proceeding to Corporate English.",
       });
+      setTimeout(() => {
+        setActiveTab("english");
+        const englishEl = document.getElementById("corporate-english-workout");
+        if (englishEl) {
+          englishEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 400);
       return;
     }
 
@@ -334,14 +476,6 @@ console.log(solveChallenge());`;
     }, 350);
   };
 
-  const handleRetryAptitude = () => {
-    setAptitudeAnswers({});
-    setPuzzleAnswer(null);
-    setAptitudeSubmitted(false);
-    setAptitudeXpEarned(0);
-    toast.info("Aptitude drill reset. Choose the correct answers to earn +25 XP!");
-  };
-
   const handleSubmitEnglish = async () => {
     if (totalEnglishAttempted === 0) {
       toast.error("Please answer the verbal exercise question.");
@@ -353,8 +487,15 @@ console.log(solveChallenge());`;
       // WRONG ANSWER SUBMITTED: DO NOT INCREASE XP!
       setEnglishXpEarned(0);
       toast.error("Submitted with Incorrect Answer (0 XP Earned)", {
-        description: "No XP points awarded because the answer is incorrect. Click 'Try Again' to re-attempt and earn +25 XP.",
+        description: "No XP points awarded because an answer was incorrect. Proceeding to Technical Code Drill.",
       });
+      setTimeout(() => {
+        setActiveTab("code");
+        const codeEl = document.getElementById("technical-code-workout");
+        if (codeEl) {
+          codeEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 400);
       return;
     }
 
@@ -378,13 +519,6 @@ console.log(solveChallenge());`;
         codeEl.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }, 350);
-  };
-
-  const handleRetryEnglish = () => {
-    setEnglishAnswers({});
-    setEnglishSubmitted(false);
-    setEnglishXpEarned(0);
-    toast.info("English drill reset. Choose the correct answer to earn +25 XP!");
   };
 
   const handleRunCodeTests = () => {
@@ -803,24 +937,23 @@ console.log(solveChallenge());`;
                           const isOptionSelected = selected === optIdx;
                           const isOptionCorrectAnswer = optIdx === q.answer;
 
-                          let btnStyle = "border-border bg-card hover:bg-muted/50 text-foreground";
+                          let btnStyle = "border-border bg-card hover:bg-muted/50 text-foreground cursor-pointer";
                           if (hasAnswered) {
                             if (isOptionCorrectAnswer) {
-                              btnStyle = "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold";
+                              btnStyle = "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold cursor-not-allowed";
                             } else if (isOptionSelected) {
-                              btnStyle = "border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300";
+                              btnStyle = "border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 cursor-not-allowed";
                             } else {
-                              btnStyle = "opacity-60 border-border bg-card";
+                              btnStyle = "opacity-60 border-border bg-card cursor-not-allowed";
                             }
                           }
 
                           return (
                             <button
                               key={optIdx}
-                              disabled={aptitudeSubmitted}
-                              onClick={() => {
-                                setAptitudeAnswers((prev) => ({ ...prev, [idx]: optIdx }));
-                              }}
+                              type="button"
+                              disabled={hasAnswered || isAptitudeDone}
+                              onClick={() => handleAptitudeOptionClick(idx, optIdx, q.answer)}
                               className={cn(
                                 "flex items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all",
                                 btnStyle,
@@ -845,8 +978,22 @@ console.log(solveChallenge());`;
                               : "bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20",
                           )}
                         >
-                          <p className="font-semibold">{isCorrect ? "✓ Correct!" : "✗ Solution breakdown:"}</p>
-                          <p className="mt-0.5">{q.explanation}</p>
+                          <div className="flex items-center gap-1.5 font-semibold">
+                            {isCorrect ? (
+                              <>
+                                <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span>✓ Correct!</span>
+                              </>
+                            ) : (
+                              <>
+                                <AlertCircle className="size-3.5 text-rose-600 dark:text-rose-400" />
+                                <span>
+                                  ✗ Your answer: {String.fromCharCode(65 + selected)} · Correct answer: {String.fromCharCode(65 + q.answer)}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          <p className="mt-1">{q.explanation}</p>
                         </div>
                       )}
                     </div>
@@ -872,20 +1019,23 @@ console.log(solveChallenge());`;
                         const isPuzzleDone = puzzleAnswer !== null;
                         const isCorrect = optIdx === currentPlan.practice.puzzle.answer;
 
-                        let style = "border-border bg-card text-foreground hover:bg-muted/50";
+                        let style = "border-border bg-card text-foreground hover:bg-muted/50 cursor-pointer";
                         if (isPuzzleDone) {
                           if (isCorrect) {
-                            style = "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold";
+                            style = "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold cursor-not-allowed";
                           } else if (isChosen) {
-                            style = "border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400";
+                            style = "border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400 cursor-not-allowed";
+                          } else {
+                            style = "opacity-60 border-border bg-card cursor-not-allowed";
                           }
                         }
 
                         return (
                           <button
                             key={optIdx}
-                            disabled={aptitudeSubmitted}
-                            onClick={() => setPuzzleAnswer(optIdx)}
+                            type="button"
+                            disabled={isPuzzleDone || isAptitudeDone}
+                            onClick={() => handlePuzzleOptionClick(optIdx, currentPlan.practice.puzzle.answer)}
                             className={cn(
                               "flex items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all",
                               style,
@@ -897,6 +1047,36 @@ console.log(solveChallenge());`;
                         );
                       })}
                     </div>
+
+                    {puzzleAnswer !== null && (
+                      <div
+                        className={cn(
+                          "rounded-md p-2 text-[11px] leading-relaxed mt-2",
+                          puzzleAnswer === currentPlan.practice.puzzle.answer
+                            ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20"
+                            : "bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20",
+                        )}
+                      >
+                        <div className="flex items-center gap-1.5 font-semibold">
+                          {puzzleAnswer === currentPlan.practice.puzzle.answer ? (
+                            <>
+                              <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span>✓ Correct! Logic deduction verified.</span>
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="size-3.5 text-rose-600 dark:text-rose-400" />
+                              <span>
+                                ✗ Your answer: {String.fromCharCode(65 + puzzleAnswer)} · Correct answer: {String.fromCharCode(65 + currentPlan.practice.puzzle.answer)}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        {currentPlan.practice.puzzle.explanation && (
+                          <p className="mt-1">{currentPlan.practice.puzzle.explanation}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -912,16 +1092,6 @@ console.log(solveChallenge());`;
                   : "Formula drill delivered daily via Telegram @ 06:00"}
               </span>
               <div className="flex items-center gap-2">
-                {isAptitudeDone && aptitudeXpEarned === 0 && (
-                  <button
-                    type="button"
-                    onClick={handleRetryAptitude}
-                    className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-all cursor-pointer"
-                  >
-                    <RotateCcw className="size-3.5" />
-                    <span>Try Again for +25 XP</span>
-                  </button>
-                )}
                 {isAptitudeDone ? (
                   <button
                     type="button"
@@ -1099,24 +1269,23 @@ console.log(solveChallenge());`;
                               const isOptionSelected = selected === optIdx;
                               const isOptionCorrectAnswer = optIdx === q.answer;
 
-                              let btnStyle = "border-border bg-card hover:bg-muted/50 text-foreground";
+                              let btnStyle = "border-border bg-card hover:bg-muted/50 text-foreground cursor-pointer";
                               if (hasAnswered) {
                                 if (isOptionCorrectAnswer) {
-                                  btnStyle = "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold";
+                                  btnStyle = "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold cursor-not-allowed";
                                 } else if (isOptionSelected) {
-                                  btnStyle = "border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300";
+                                  btnStyle = "border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 cursor-not-allowed";
                                 } else {
-                                  btnStyle = "opacity-60 border-border bg-card";
+                                  btnStyle = "opacity-60 border-border bg-card cursor-not-allowed";
                                 }
                               }
 
                               return (
                                 <button
                                   key={optIdx}
-                                  disabled={englishSubmitted}
-                                  onClick={() =>
-                                    setEnglishAnswers((prev) => ({ ...prev, [idx]: optIdx }))
-                                  }
+                                  type="button"
+                                  disabled={hasAnswered || isEnglishDone}
+                                  onClick={() => handleEnglishOptionClick(idx, optIdx, q.answer)}
                                   className={cn(
                                     "flex items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all",
                                     btnStyle,
@@ -1140,8 +1309,22 @@ console.log(solveChallenge());`;
                                   : "bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20",
                               )}
                             >
-                              <p className="font-semibold">{isCorrect ? "✓ Well done!" : "Correction:"}</p>
-                              <p className="mt-0.5">{q.explanation}</p>
+                              <div className="flex items-center gap-1.5 font-semibold">
+                                {isCorrect ? (
+                                  <>
+                                    <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                                    <span>✓ Well done!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <AlertCircle className="size-3.5 text-rose-600 dark:text-rose-400" />
+                                    <span>
+                                      ✗ Your answer: {String.fromCharCode(65 + selected)} · Correct answer: {String.fromCharCode(65 + q.answer)}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                              <p className="mt-1">{q.explanation}</p>
                             </div>
                           )}
                         </div>
@@ -1163,16 +1346,6 @@ console.log(solveChallenge());`;
                     : "Timeline: 03m Concept · 04m Demo · 03m Drill"}
                 </span>
                 <div className="flex items-center gap-2">
-                  {isEnglishDone && englishXpEarned === 0 && (
-                    <button
-                      type="button"
-                      onClick={handleRetryEnglish}
-                      className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-all cursor-pointer"
-                    >
-                      <RotateCcw className="size-3.5" />
-                      <span>Try Again for +25 XP</span>
-                    </button>
-                  )}
                   {isEnglishDone ? (
                     <button
                       type="button"

@@ -116,6 +116,18 @@ export type Profile = {
   certifications: string[];
   knowledgeChecks?: Record<string, KnowledgeCheckRecord>;
   dailyStepRecords?: Record<string, DailyFocusStepRecord>;
+  dailyExerciseRecords?: Record<string, DailyExerciseQuestionRecord>;
+};
+
+export type DailyExerciseQuestionRecord = {
+  dayNum: number;
+  category: "aptitude" | "puzzle" | "english";
+  questionIdx: number;
+  selectedOption: number;
+  correctOption: number;
+  isCorrect: boolean;
+  isLocked: boolean;
+  submittedAt: string;
 };
 
 export type JourneyStepId =
@@ -223,6 +235,7 @@ const DEFAULT_PROFILE: Profile = {
   certifications: [],
   knowledgeChecks: {},
   dailyStepRecords: {},
+  dailyExerciseRecords: {},
 };
 
 type AppStoreState = {
@@ -329,6 +342,34 @@ type AppStoreContextValue = AppStoreState & {
     dayNum: number,
     trackId: string,
   ) => KnowledgeCheckRecord | null;
+  recordDailyExerciseAnswer: (
+    dayNum: number,
+    category: "aptitude" | "puzzle" | "english",
+    questionIdx: number,
+    selectedOption: number,
+    correctOption: number,
+  ) => Promise<{
+    ok: boolean;
+    alreadyAnswered?: boolean;
+    isCorrect: boolean;
+    record: DailyExerciseQuestionRecord;
+  }>;
+  getDailyExerciseRecord: (
+    dayNum: number,
+    category: "aptitude" | "puzzle" | "english",
+    questionIdx: number,
+  ) => DailyExerciseQuestionRecord | null;
+  getDailyExerciseAnswersForDay: (
+    dayNum: number,
+    aptitudeCount: number,
+    englishCount: number,
+    hasPuzzle: boolean,
+  ) => {
+    aptitudeAnswers: Record<number, number>;
+    puzzleAnswer: number | null;
+    englishAnswers: Record<number, number>;
+    records: Record<string, DailyExerciseQuestionRecord>;
+  };
 };
 
 const AppStoreContext = createContext<AppStoreContextValue | null>(null);
@@ -1444,7 +1485,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         selectedOption,
         isCorrect,
       });
-      return { ok: res.ok, alreadyAnswered: res.alreadyCompleted, xpAwarded: res.xpAwarded };
+      return {
+        ok: res.ok,
+        alreadyAnswered: res.alreadyCompleted ?? false,
+        xpAwarded: res.xpAwarded ?? false,
+      };
     },
     [recordDailyStepAction],
   );
@@ -1462,6 +1507,169 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       };
     },
     [getDailyStepRecord],
+  );
+
+  const recordDailyExerciseAnswer = useCallback(
+    async (
+      dayNum: number,
+      category: "aptitude" | "puzzle" | "english",
+      questionIdx: number,
+      selectedOption: number,
+      correctOption: number,
+    ): Promise<{
+      ok: boolean;
+      alreadyAnswered?: boolean;
+      isCorrect: boolean;
+      record: DailyExerciseQuestionRecord;
+    }> => {
+      const userKey = state.liveStudentId || state.sessionEmail || "anon";
+      const qKey = `day_${dayNum}_${category}_${questionIdx}`;
+      const storageKey = `santoge_exercise_record_${userKey}_${qKey}`;
+
+      // Check in-memory store
+      const existingInMemory = state.profile.dailyExerciseRecords?.[qKey];
+      if (existingInMemory?.isLocked) {
+        return {
+          ok: true,
+          alreadyAnswered: true,
+          isCorrect: existingInMemory.isCorrect,
+          record: existingInMemory,
+        };
+      }
+
+      // Check persistent localStorage
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem(storageKey);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.isLocked) {
+              return {
+                ok: true,
+                alreadyAnswered: true,
+                isCorrect: Boolean(parsed.isCorrect),
+                record: parsed as DailyExerciseQuestionRecord,
+              };
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
+      const isCorrect = selectedOption === correctOption;
+      const record: DailyExerciseQuestionRecord = {
+        dayNum,
+        category,
+        questionIdx,
+        selectedOption,
+        correctOption,
+        isCorrect,
+        isLocked: true,
+        submittedAt: new Date().toISOString(),
+      };
+
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(record));
+        } catch {
+          /* ignore */
+        }
+      }
+
+      setState((s) => ({
+        ...s,
+        profile: {
+          ...s.profile,
+          dailyExerciseRecords: {
+            ...(s.profile.dailyExerciseRecords || {}),
+            [qKey]: record,
+          },
+        },
+      }));
+
+      return { ok: true, alreadyAnswered: false, isCorrect, record };
+    },
+    [state.liveStudentId, state.sessionEmail, state.profile.dailyExerciseRecords],
+  );
+
+  const getDailyExerciseRecord = useCallback(
+    (
+      dayNum: number,
+      category: "aptitude" | "puzzle" | "english",
+      questionIdx: number,
+    ): DailyExerciseQuestionRecord | null => {
+      const userKey = state.liveStudentId || state.sessionEmail || "anon";
+      const qKey = `day_${dayNum}_${category}_${questionIdx}`;
+      const storageKey = `santoge_exercise_record_${userKey}_${qKey}`;
+
+      if (state.profile.dailyExerciseRecords?.[qKey]?.isLocked) {
+        return state.profile.dailyExerciseRecords[qKey]!;
+      }
+
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem(storageKey);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.isLocked) {
+              return parsed as DailyExerciseQuestionRecord;
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
+      return null;
+    },
+    [state.liveStudentId, state.sessionEmail, state.profile.dailyExerciseRecords],
+  );
+
+  const getDailyExerciseAnswersForDay = useCallback(
+    (
+      dayNum: number,
+      aptitudeCount: number,
+      englishCount: number,
+      hasPuzzle: boolean,
+    ): {
+      aptitudeAnswers: Record<number, number>;
+      puzzleAnswer: number | null;
+      englishAnswers: Record<number, number>;
+      records: Record<string, DailyExerciseQuestionRecord>;
+    } => {
+      const aptitudeAnswers: Record<number, number> = {};
+      let puzzleAnswer: number | null = null;
+      const englishAnswers: Record<number, number> = {};
+      const records: Record<string, DailyExerciseQuestionRecord> = {};
+
+      for (let i = 0; i < aptitudeCount; i++) {
+        const rec = getDailyExerciseRecord(dayNum, "aptitude", i);
+        if (rec) {
+          aptitudeAnswers[i] = rec.selectedOption;
+          records[`aptitude_${i}`] = rec;
+        }
+      }
+
+      if (hasPuzzle) {
+        const rec = getDailyExerciseRecord(dayNum, "puzzle", 0);
+        if (rec) {
+          puzzleAnswer = rec.selectedOption;
+          records["puzzle"] = rec;
+        }
+      }
+
+      for (let i = 0; i < englishCount; i++) {
+        const rec = getDailyExerciseRecord(dayNum, "english", i);
+        if (rec) {
+          englishAnswers[i] = rec.selectedOption;
+          records[`english_${i}`] = rec;
+        }
+      }
+
+      return { aptitudeAnswers, puzzleAnswer, englishAnswers, records };
+    },
+    [getDailyExerciseRecord],
   );
 
   const resetProgress = useCallback(() => {
@@ -1592,6 +1800,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     isDailyStepLocked,
     recordKnowledgeCheck,
     getKnowledgeCheck,
+    recordDailyExerciseAnswer,
+    getDailyExerciseRecord,
+    getDailyExerciseAnswersForDay,
   };
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;
