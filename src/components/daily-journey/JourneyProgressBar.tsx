@@ -9,7 +9,6 @@ export type JourneyStepId =
   | "placement-communication"
   | "placement-aptitude"
   | "placement-logic"
-  | "placement-voice"
   | "complete";
 
 export interface JourneyStepMeta {
@@ -27,7 +26,6 @@ export const JOURNEY_STEPS: JourneyStepMeta[] = [
   { id: "placement-communication", label: "Communication", phase: "placement", duration: "2m" },
   { id: "placement-aptitude", label: "Aptitude", phase: "placement", duration: "3m" },
   { id: "placement-logic", label: "Logic Puzzle", phase: "placement", duration: "2m" },
-  { id: "placement-voice", label: "Voice Pitch", phase: "placement", duration: "3m" },
 ];
 
 interface JourneyProgressBarProps {
@@ -83,7 +81,7 @@ export function JourneyProgressBar({
               <span className="text-xs font-medium text-foreground">{currentPhase}</span>
             </div>
             <p className="text-[11px] text-muted-foreground hidden sm:block">
-              {isComplete ? "All 20 minutes completed" : `Step ${currentIndex + 1} of 8: ${activeStep.label}`}
+              {isComplete ? "All 17 minutes completed" : `Step ${currentIndex + 1} of ${JOURNEY_STEPS.length}: ${activeStep.label}`}
             </p>
           </div>
         </div>

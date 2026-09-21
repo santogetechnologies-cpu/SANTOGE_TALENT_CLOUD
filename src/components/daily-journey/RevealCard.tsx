@@ -50,7 +50,7 @@ export function RevealCard({
 
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-mono text-muted-foreground">
-            Step 1 of 8 · 2 min
+            Step 1 of 7 · 2 min
           </span>
           <button
             onClick={() => setShowTutor(true)}

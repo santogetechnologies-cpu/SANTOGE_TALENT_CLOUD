@@ -13,7 +13,6 @@ import { GuidedSandbox } from "./GuidedSandbox";
 import { CommunicationInteraction } from "./CommunicationInteraction";
 import { AptitudeChallenge } from "./AptitudeChallenge";
 import { LogicChallenge } from "./LogicChallenge";
-import { VoicePractice } from "./VoicePractice";
 import { DailyCompletion } from "./DailyCompletion";
 
 interface DailyJourneyRunnerProps {
@@ -32,7 +31,8 @@ interface DailyJourneyRunnerProps {
   streak: number;
   talentScore: number;
   onCompleteTechnicalLab: () => Promise<void>;
-  onRecordVoicePitch: () => Promise<void>;
+  onCompletePlacement?: () => Promise<void>;
+  onRecordVoicePitch?: () => Promise<void>;
   onExit: () => void;
 }
 
@@ -52,6 +52,7 @@ export function DailyJourneyRunner({
   streak,
   talentScore,
   onCompleteTechnicalLab,
+  onCompletePlacement,
   onRecordVoicePitch,
   onExit,
 }: DailyJourneyRunnerProps) {
@@ -173,22 +174,13 @@ export function DailyJourneyRunner({
           <LogicChallenge
             dayNum={dayNum}
             puzzle={placementPlan.practice.puzzle}
-            onNext={goToNextStep}
-          />
-        )}
-
-        {currentStep === "placement-voice" && (
-          <VoicePractice
-            dayNum={dayNum}
-            voicePrompt={placementPlan.practice.voicePrompt}
-            isPitchCompleted={isPlacementCompleted}
-            onRecordPitch={async () => {
-              await onRecordVoicePitch();
-              addXp(25);
-            }}
-            onFinishJourney={() => {
-              setCurrentStep("complete");
-              window.scrollTo({ top: 0, behavior: "smooth" });
+            onNext={async () => {
+              if (!isPlacementCompleted) {
+                const completeFn = onCompletePlacement || onRecordVoicePitch;
+                if (completeFn) await completeFn();
+                addXp(25);
+              }
+              goToNextStep();
             }}
           />
         )}

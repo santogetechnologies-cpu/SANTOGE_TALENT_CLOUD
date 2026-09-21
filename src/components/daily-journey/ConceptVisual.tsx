@@ -184,7 +184,7 @@ export function ConceptVisual({ trackId, trackName, topic, onNext }: ConceptVisu
         </div>
 
         <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-mono text-muted-foreground">
-          Step 2 of 8 · 2 min
+          Step 2 of 7 · 2 min
         </span>
       </div>
 

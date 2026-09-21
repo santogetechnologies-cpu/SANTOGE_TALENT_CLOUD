@@ -110,7 +110,7 @@ export function DailyCompletion({
                   Engine 2: Placement Accelerator Drill
                 </span>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Theme: {placementTheme} · 60s Voice Pitch &amp; STAR Cadence recorded (+25 XP)
+                  Theme: {placementTheme} · Communication &amp; Analytical reasoning drill completed (+25 XP)
                 </p>
               </div>
             </div>
