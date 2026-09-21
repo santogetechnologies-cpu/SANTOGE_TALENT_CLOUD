@@ -9,8 +9,9 @@ import {
   Search,
   Terminal,
   CheckCircle2,
-  Sparkles,
   ShieldCheck,
+  ShieldAlert,
+  ArrowRight,
   FlaskConical,
   Award,
   Zap,
@@ -56,28 +57,49 @@ function LabsPage() {
   const activeTracks: TrackId[] = liveProfileData?.tracks || store.activeTracks || [];
   const completedLabs: string[] = liveProgressData?.completedLabs || store.completedLabs || [];
 
-  const [selected, setSelected] = useState<TrackId>(() => {
-    if (searchTrack && TRACKS.some((t) => t.id === searchTrack)) {
+  // Scoped strictly to the logged-in student's admin-assigned tracks
+  const assignedTracks = useMemo(() => {
+    return TRACKS.filter((t) => isStudentTrackAssigned(activeTracks, t.id));
+  }, [activeTracks]);
+
+  const completedAssignedLabs = useMemo(() => {
+    return completedLabs.filter((id) => isStudentTrackAssigned(activeTracks, id as TrackId));
+  }, [completedLabs, activeTracks]);
+
+  // Access validation: verify if requested URL track is assigned
+  const isSearchUnassigned = Boolean(searchTrack && !isStudentTrackAssigned(activeTracks, searchTrack));
+
+  const [selected, setSelected] = useState<TrackId | null>(() => {
+    if (searchTrack && isStudentTrackAssigned(activeTracks, searchTrack)) {
       return searchTrack;
     }
     if (activeTracks.length > 0 && TRACKS.some((t) => t.id === activeTracks[0])) {
       return activeTracks[0]!;
     }
-    return "java";
+    return null;
   });
   const [query, setQuery] = useState("");
   const [filterMode, setFilterMode] = useState<"all" | "assigned" | "verified">("all");
 
-  // Keep selected in sync if search param changes
+  // Keep selected in sync if search param or activeTracks change
   useEffect(() => {
-    if (searchTrack && TRACKS.some((t) => t.id === searchTrack)) {
-      setSelected(searchTrack);
+    if (searchTrack) {
+      if (isStudentTrackAssigned(activeTracks, searchTrack)) {
+        setSelected(searchTrack);
+      }
+    } else if (activeTracks.length > 0 && (!selected || !isStudentTrackAssigned(activeTracks, selected))) {
+      setSelected(activeTracks[0]!);
+    } else if (activeTracks.length === 0) {
+      setSelected(null);
     }
-  }, [searchTrack]);
+  }, [searchTrack, activeTracks, selected]);
+
+  const isSelectedAssigned = Boolean(selected && isStudentTrackAssigned(activeTracks, selected));
+  const showAccessDenied = isSearchUnassigned || (Boolean(selected) && !isSelectedAssigned);
 
   const filteredTracks = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return TRACKS.filter((t) => {
+    return assignedTracks.filter((t) => {
       const matchesQuery =
         !q ||
         t.name.toLowerCase().includes(q) ||
@@ -88,19 +110,18 @@ function LabsPage() {
       if (!matchesQuery) return false;
 
       if (filterMode === "assigned") {
-        return isStudentTrackAssigned(activeTracks, t.id);
+        return true;
       }
       if (filterMode === "verified") {
         return completedLabs.includes(t.id);
       }
       return true;
     });
-  }, [query, filterMode, activeTracks, completedLabs]);
+  }, [assignedTracks, query, filterMode, completedLabs]);
 
-  const currentTrack = trackById(selected);
-  const isSelectedAssigned = isStudentTrackAssigned(activeTracks, selected);
-  const isSelectedCompleted = completedLabs.includes(selected);
-  const Lab = selected ? LAB_COMPONENTS[selected] : null;
+  const currentTrack = selected ? trackById(selected) : null;
+  const isCurrentCompleted = selected ? completedLabs.includes(selected) : false;
+  const Lab = !showAccessDenied && selected ? LAB_COMPONENTS[selected] : null;
 
   return (
     <div className="space-y-6">
@@ -111,11 +132,11 @@ function LabsPage() {
           <div className="flex items-center gap-2">
             <Chip tone="emerald">
               <CheckCircle2 className="size-3 mr-1 inline" />
-              {completedLabs.length} / {TRACKS.length} Labs Verified
+              {completedAssignedLabs.length} / {assignedTracks.length} Labs Verified
             </Chip>
             <Chip tone="amber">
               <Zap className="size-3 mr-1 inline" />
-              +{completedLabs.length * 50} XP Earned
+              +{completedAssignedLabs.length * 50} XP Earned
             </Chip>
           </div>
         }
@@ -130,7 +151,7 @@ function LabsPage() {
             </span>
             <ShieldCheck className="size-4 text-primary" />
           </div>
-          <p className="mt-1.5 text-xl font-bold text-foreground">{activeTracks.length}</p>
+          <p className="mt-1.5 text-xl font-bold text-foreground">{assignedTracks.length}</p>
           <p className="text-[11px] text-muted-foreground mt-0.5">Admin-provisioned tracks</p>
         </div>
 
@@ -142,7 +163,7 @@ function LabsPage() {
             <CheckCircle2 className="size-4 text-emerald-500" />
           </div>
           <p className="mt-1.5 text-xl font-bold text-emerald-600 dark:text-emerald-400">
-            {completedLabs.length} <span className="text-xs font-normal text-muted-foreground">/ {TRACKS.length}</span>
+            {completedAssignedLabs.length} <span className="text-xs font-normal text-muted-foreground">/ {assignedTracks.length}</span>
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">Passed test suites</p>
         </div>
@@ -155,7 +176,7 @@ function LabsPage() {
             <Award className="size-4 text-amber-500" />
           </div>
           <p className="mt-1.5 text-xl font-bold text-amber-600 dark:text-amber-400">
-            +{completedLabs.length * 50}
+            +{completedAssignedLabs.length * 50}
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">Hands-on practice credit</p>
         </div>
@@ -179,7 +200,7 @@ function LabsPage() {
         {/* Left Sidebar: Lab Selector */}
         <Panel
           title="Sandbox Engines"
-          subtitle={`${TRACKS.length} domain environments`}
+          subtitle={`${assignedTracks.length} domain environment${assignedTracks.length !== 1 ? "s" : ""}`}
         >
           {/* Search bar */}
           <label className="mb-2.5 flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-1.5">
@@ -203,7 +224,7 @@ function LabsPage() {
                   : "bg-muted text-muted-foreground hover:bg-muted/80",
               )}
             >
-              All ({TRACKS.length})
+              All ({assignedTracks.length})
             </button>
             <button
               onClick={() => setFilterMode("assigned")}
@@ -214,7 +235,7 @@ function LabsPage() {
                   : "bg-muted text-muted-foreground hover:bg-muted/80",
               )}
             >
-              Assigned ({activeTracks.length})
+              Assigned ({assignedTracks.length})
             </button>
             <button
               onClick={() => setFilterMode("verified")}
@@ -225,16 +246,15 @@ function LabsPage() {
                   : "bg-muted text-muted-foreground hover:bg-muted/80",
               )}
             >
-              Verified ({completedLabs.length})
+              Verified ({completedAssignedLabs.length})
             </button>
           </div>
 
           {/* Labs List */}
           <div className="max-h-[560px] space-y-2 overflow-y-auto pr-1">
             {filteredTracks.map((t) => {
-              const isAssigned = isStudentTrackAssigned(activeTracks, t.id);
               const isDone = completedLabs.includes(t.id);
-              const isCurrent = selected === t.id;
+              const isCurrent = selected === t.id && !showAccessDenied;
 
               return (
                 <button
@@ -265,13 +285,9 @@ function LabsPage() {
                           <CheckCircle2 className="size-2.5" />
                           Passed
                         </span>
-                      ) : isAssigned ? (
+                      ) : (
                         <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary border border-primary/20">
                           Enrolled
-                        </span>
-                      ) : (
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground border border-border">
-                          Practice
                         </span>
                       )}
                     </div>
@@ -289,7 +305,9 @@ function LabsPage() {
 
             {filteredTracks.length === 0 && (
               <div className="p-4 text-center text-xs text-muted-foreground">
-                No sandbox labs match "{query}".
+                {assignedTracks.length === 0
+                  ? "No assigned sandbox environments."
+                  : `No sandbox labs match "${query}".`}
               </div>
             )}
           </div>
@@ -297,58 +315,89 @@ function LabsPage() {
 
         {/* Right Sandbox Engine Container */}
         <div className="min-w-0 space-y-4">
-          {/* Active Lab Header Banner */}
-          <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex size-11 items-center justify-center rounded-xl text-white shadow-xs font-bold text-xs shrink-0"
-                  style={{ background: currentTrack.accent }}
-                >
-                  <FlaskConical className="size-5 text-white" />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-sm font-bold text-foreground">{currentTrack.name}</h2>
-                    {isSelectedAssigned ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary border border-primary/20">
-                        <ShieldCheck className="size-3" />
-                        Assigned Track
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground border border-border">
-                        <Sparkles className="size-3" />
-                        Practice Mode
-                      </span>
-                    )}
-                    {isSelectedCompleted && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                        <CheckCircle2 className="size-3" />
-                        Verified (+50 XP)
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {currentTrack.labTitle} — {currentTrack.tagline}
-                  </p>
-                </div>
+          {showAccessDenied ? (
+            <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-8 text-center shadow-xs">
+              <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                <ShieldAlert className="size-6" />
               </div>
-
-              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                <div className="rounded-md border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-mono text-muted-foreground flex items-center gap-1.5">
-                  <Terminal className="size-3 text-emerald-500" />
-                  <span>runtime: isolated-v8</span>
+              <h3 className="text-sm font-semibold text-foreground">Access Denied: Unassigned Course Lab</h3>
+              <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground leading-relaxed">
+                This technical sandbox lab belongs to a course that is not assigned to your profile. Students are strictly restricted to Admin-provisioned technical courses.
+              </p>
+              {assignedTracks.length > 0 && (
+                <div className="mt-4 flex justify-center">
+                  <button
+                    onClick={() => {
+                      if (assignedTracks[0]) {
+                        setSelected(assignedTracks[0].id);
+                        void navigate({ to: "/student/labs", search: { track: assignedTracks[0].id } as any });
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90"
+                  >
+                    Switch to {assignedTracks[0] ? assignedTracks[0].short : "Assigned Course"}
+                    <ArrowRight className="size-3.5" />
+                  </button>
                 </div>
-              </div>
+              )}
             </div>
-          </div>
+          ) : assignedTracks.length === 0 ? (
+            <div className="rounded-xl border border-border bg-card p-8 text-center text-xs text-muted-foreground shadow-xs">
+              No assigned sandbox environments. Your account has not yet been provisioned with technical courses.
+            </div>
+          ) : currentTrack && isSelectedAssigned ? (
+            <>
+              {/* Active Lab Header Banner */}
+              <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="flex size-11 items-center justify-center rounded-xl text-white shadow-xs font-bold text-xs shrink-0"
+                      style={{ background: currentTrack.accent }}
+                    >
+                      <FlaskConical className="size-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-sm font-bold text-foreground">{currentTrack.name}</h2>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary border border-primary/20">
+                          <ShieldCheck className="size-3" />
+                          Assigned Track
+                        </span>
+                        {isCurrentCompleted && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            <CheckCircle2 className="size-3" />
+                            Verified (+50 XP)
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {currentTrack.labTitle} — {currentTrack.tagline}
+                      </p>
+                    </div>
+                  </div>
 
-          {/* Active Lab Component */}
-          {Lab ? (
-            <Lab />
+                  <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                    <div className="rounded-md border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-mono text-muted-foreground flex items-center gap-1.5">
+                      <Terminal className="size-3 text-emerald-500" />
+                      <span>runtime: isolated-v8</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Lab Component */}
+              {Lab ? (
+                <Lab />
+              ) : (
+                <div className="rounded-xl border border-border bg-card p-8 text-center text-xs text-muted-foreground shadow-xs">
+                  Select an assigned sandbox lab from the sidebar to launch the environment.
+                </div>
+              )}
+            </>
           ) : (
             <div className="rounded-xl border border-border bg-card p-8 text-center text-xs text-muted-foreground shadow-xs">
-              Select a sandbox lab from the sidebar to launch the environment.
+              Select an assigned sandbox lab from the sidebar to launch the environment.
             </div>
           )}
         </div>

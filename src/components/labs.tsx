@@ -4,7 +4,7 @@ import { Play, RotateCcw, Loader2, CheckCircle2, AlertCircle, Sparkles } from "l
 import { Console, CodeEditor, Chip } from "@/components/kit";
 import { useAppStore } from "@/lib/app-store";
 import { TRACKS, type TrackId } from "@/lib/tracks";
-import { useLiveStudentProfile, useLiveStudentProgress, completeLiveLab } from "@/lib/data";
+import { useLiveStudentProfile, useLiveStudentProgress, completeLiveLab, isStudentTrackAssigned } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -35,6 +35,9 @@ function LabFrame({
     !!liveStudentId,
   );
 
+  const activeTracks: TrackId[] = liveProfileData?.tracks || store.activeTracks || [];
+  const isAssigned = isStudentTrackAssigned(activeTracks, id as TrackId);
+
   const [lines, setLines] = useState<string[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionResult, setExecutionResult] = useState<"idle" | "passed" | "failed">("idle");
@@ -43,6 +46,12 @@ function LabFrame({
   const done = completedLabs.includes(id as any);
 
   const run = (out: string[], passed: boolean = true) => {
+    if (!isAssigned) {
+      toast.error("Access Denied: Unassigned Course Lab", {
+        description: "You cannot execute or verify sandbox environments not assigned to your student profile.",
+      });
+      return;
+    }
     setIsExecuting(true);
     setExecutionResult("idle");
     setLines([

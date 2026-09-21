@@ -161,7 +161,7 @@ export async function fetchLiveStudentProfile(
   }
 
   const rawTracks = (tracksData || []).map((t: { track_id: string }) => t.track_id as TrackId);
-  const tracks: TrackId[] = rawTracks.length > 0 ? rawTracks : (["java", "aiml", "datascience"] as TrackId[]);
+  const tracks: TrackId[] = rawTracks;
 
   return { profile, tracks };
 }
@@ -566,6 +566,48 @@ export function isStudentTrackAssigned(
 ): boolean {
   if (!assignedTracks || !trackId) return false;
   return assignedTracks.includes(trackId as TrackId);
+}
+
+/**
+ * Authoritatively verifies whether a student is assigned to a specific lab/sandbox environment.
+ * Queries the backend database / RPC with RLS protection.
+ */
+export async function verifyLiveLabAccess(
+  studentId: string,
+  labId: string,
+): Promise<{ allowed: boolean; error?: string }> {
+  const supabase = getSupabaseClient();
+
+  try {
+    const { data, error } = await supabase.rpc("verify_student_lab_access", {
+      p_student_id: studentId,
+      p_lab_id: labId,
+    });
+
+    if (!error && data) {
+      const res = data as { allowed?: boolean; error?: string };
+      return { allowed: Boolean(res.allowed), error: res.error };
+    }
+  } catch {
+    // Fall through to direct table check
+  }
+
+  // Direct database check with RLS enforcement on student_tracks
+  const { data: trackRow, error: trackErr } = await supabase
+    .from("student_tracks")
+    .select("track_id")
+    .eq("student_id", studentId)
+    .eq("track_id", labId)
+    .maybeSingle();
+
+  if (trackErr || !trackRow) {
+    return {
+      allowed: false,
+      error: `Access Denied: Student is not assigned to course lab ${labId}`,
+    };
+  }
+
+  return { allowed: true };
 }
 
 export async function updateLiveReadiness(
