@@ -83,7 +83,7 @@ export function CommunicationInteraction({
             Today's Communication Broadcast
           </span>
           <p className="text-sm font-medium text-foreground leading-relaxed">
-            {english.lesson}
+            {english.instructorBrief}
           </p>
         </div>
 

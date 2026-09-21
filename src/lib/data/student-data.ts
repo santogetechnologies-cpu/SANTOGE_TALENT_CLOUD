@@ -586,7 +586,10 @@ export async function verifyLiveLabAccess(
 
     if (!error && data) {
       const res = data as { allowed?: boolean; error?: string };
-      return { allowed: Boolean(res.allowed), error: res.error };
+      return {
+        allowed: Boolean(res.allowed),
+        ...(res.error !== undefined ? { error: res.error } : {}),
+      };
     }
   } catch {
     // Fall through to direct table check
