@@ -129,6 +129,8 @@ export function DailyJourneyRunner({
 
         {currentStep === "tech-check" && (
           <KnowledgeCheck
+            dayNum={dayNum}
+            trackId={trackId}
             topic={techTopic}
             trackName={trackName}
             onSuccess={(bonus) => addXp(bonus)}
