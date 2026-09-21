@@ -115,6 +115,26 @@ export type Profile = {
   mocks: Record<string, number>;
   certifications: string[];
   knowledgeChecks?: Record<string, KnowledgeCheckRecord>;
+  dailyStepRecords?: Record<string, DailyFocusStepRecord>;
+};
+
+export type JourneyStepId =
+  | "tech-concept"
+  | "tech-visual"
+  | "tech-check"
+  | "tech-sandbox"
+  | "placement-communication"
+  | "placement-aptitude"
+  | "placement-logic"
+  | "complete";
+
+export type DailyFocusStepRecord = {
+  stepId: JourneyStepId;
+  isLocked: boolean;
+  completedAt: string;
+  selectedOption?: number | string | null;
+  isCorrect?: boolean | null;
+  xpAwarded?: boolean;
 };
 
 export type KnowledgeCheckRecord = {
@@ -202,6 +222,7 @@ const DEFAULT_PROFILE: Profile = {
   mocks: {},
   certifications: [],
   knowledgeChecks: {},
+  dailyStepRecords: {},
 };
 
 type AppStoreState = {
@@ -281,6 +302,22 @@ type AppStoreContextValue = AppStoreState & {
     email: string,
     newPassword?: string,
   ) => Promise<{ ok: boolean; message: string }>;
+  recordDailyStepAction: (
+    dayNum: number,
+    trackId: string,
+    stepId: JourneyStepId,
+    actionData?: { selectedOption?: number | string; isCorrect?: boolean },
+  ) => Promise<{ ok: boolean; alreadyCompleted?: boolean; xpAwarded?: boolean }>;
+  getDailyStepRecord: (
+    dayNum: number,
+    trackId: string,
+    stepId: JourneyStepId,
+  ) => DailyFocusStepRecord | null;
+  isDailyStepLocked: (
+    dayNum: number,
+    trackId: string,
+    stepId: JourneyStepId,
+  ) => boolean;
   recordKnowledgeCheck: (
     dayNum: number,
     trackId: string,
@@ -1126,26 +1163,25 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [state.liveStudentId, state.profile.certifications],
   );
 
-  const recordKnowledgeCheck = useCallback(
+  const recordDailyStepAction = useCallback(
     async (
       dayNum: number,
       trackId: string,
-      topic: string,
-      selectedOption: number,
-      isCorrect: boolean,
-    ): Promise<{ ok: boolean; alreadyAnswered?: boolean; xpAwarded?: boolean }> => {
+      stepId: JourneyStepId,
+      actionData?: { selectedOption?: number | string; isCorrect?: boolean },
+    ): Promise<{ ok: boolean; alreadyCompleted?: boolean; xpAwarded?: boolean }> => {
       const userKey = state.liveStudentId || state.sessionEmail || "anon";
-      const qKey = `day_${dayNum}_${trackId}`;
-      const storageKey = `santoge_knowledge_check_${userKey}_${qKey}`;
+      const qKey = `day_${dayNum}_${trackId}_${stepId}`;
+      const storageKey = `santoge_daily_step_${userKey}_${qKey}`;
 
-      // Synchronously verify if answer is already locked in storage
+      // 1. Synchronous check: reject duplicate action if already locked in storage
       if (typeof window !== "undefined") {
         try {
           const raw = localStorage.getItem(storageKey);
           if (raw) {
             const parsed = JSON.parse(raw);
             if (parsed && parsed.isLocked) {
-              return { ok: true, alreadyAnswered: true, xpAwarded: false };
+              return { ok: true, alreadyCompleted: true, xpAwarded: false };
             }
           }
         } catch {
@@ -1153,29 +1189,62 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (state.profile.knowledgeChecks?.[qKey]?.isLocked) {
-        return { ok: true, alreadyAnswered: true, xpAwarded: false };
+      if (state.profile.dailyStepRecords?.[qKey]?.isLocked) {
+        return { ok: true, alreadyCompleted: true, xpAwarded: false };
       }
 
-      const shouldAwardXp = isCorrect;
+      let xpAwarded = false;
       let newXp: number | undefined;
       let newTalentScore: number | undefined;
 
-      if (isCorrect && state.liveStudentId) {
-        // Enforce server-side authoritative completion & XP through Supabase flow
-        const res = await completeLiveDailyStep(state.liveStudentId, "english");
-        if (res.ok) {
-          newXp = res.xp;
-          newTalentScore = res.talent_score;
+      // Authoritative backend step progression & XP granting
+      if (stepId === "tech-check") {
+        const isCorrect = Boolean(actionData?.isCorrect);
+        xpAwarded = isCorrect;
+        if (isCorrect && state.liveStudentId) {
+          const res = await completeLiveDailyStep(state.liveStudentId, "english");
+          if (res.ok) {
+            newXp = res.xp;
+            newTalentScore = res.talent_score;
+          }
+        }
+      } else if (stepId === "tech-sandbox") {
+        xpAwarded = true;
+        if (state.liveStudentId) {
+          const res = await completeLiveTechnicalDay(state.liveStudentId, dayNum);
+          if (res.ok) {
+            newXp = res.xp;
+            newTalentScore = res.talent_score;
+          }
+        }
+      } else if (stepId === "placement-aptitude") {
+        const isCorrect = Boolean(actionData?.isCorrect);
+        xpAwarded = isCorrect;
+        if (isCorrect && state.liveStudentId) {
+          const res = await completeLiveDailyStep(state.liveStudentId, "aptitude");
+          if (res.ok) {
+            newXp = res.xp;
+            newTalentScore = res.talent_score;
+          }
+        }
+      } else if (stepId === "placement-logic") {
+        if (state.liveStudentId) {
+          await completeLiveDailyStep(state.liveStudentId, "practice");
+          const res = await completeLivePlacementDay(state.liveStudentId, dayNum);
+          if (res.ok) {
+            newXp = res.xp;
+            newTalentScore = res.talent_score;
+          }
         }
       }
 
-      const record: KnowledgeCheckRecord = {
-        selectedOption,
-        isCorrect,
+      const record: DailyFocusStepRecord = {
+        stepId,
         isLocked: true,
-        xpAwarded: shouldAwardXp,
-        submittedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        selectedOption: actionData?.selectedOption !== undefined ? actionData.selectedOption : null,
+        isCorrect: actionData?.isCorrect !== undefined ? actionData.isCorrect : null,
+        xpAwarded,
       };
 
       if (typeof window !== "undefined") {
@@ -1186,36 +1255,93 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Mirror legacy tech-check keys for backwards compatibility
+      const legacyKnowledgeKey = `day_${dayNum}_${trackId}`;
+      const legacyStorageKey = `santoge_knowledge_check_${userKey}_${legacyKnowledgeKey}`;
+      if (stepId === "tech-check") {
+        try {
+          localStorage.setItem(
+            legacyStorageKey,
+            JSON.stringify({
+              selectedOption: Number(actionData?.selectedOption ?? 0),
+              isCorrect: Boolean(actionData?.isCorrect),
+              isLocked: true,
+              xpAwarded,
+              submittedAt: record.completedAt,
+            }),
+          );
+        } catch {
+          /* ignore */
+        }
+      }
+
       setState((s) => ({
         ...s,
         profile: {
           ...s.profile,
-          knowledgeChecks: {
-            ...(s.profile.knowledgeChecks || {}),
+          dailyStepRecords: {
+            ...(s.profile.dailyStepRecords || {}),
             [qKey]: record,
           },
+          ...(stepId === "tech-check"
+            ? {
+                knowledgeChecks: {
+                  ...(s.profile.knowledgeChecks || {}),
+                  [legacyKnowledgeKey]: {
+                    selectedOption: Number(actionData?.selectedOption ?? 0),
+                    isCorrect: Boolean(actionData?.isCorrect),
+                    isLocked: true,
+                    xpAwarded,
+                    submittedAt: record.completedAt,
+                  },
+                },
+              }
+            : {}),
+          ...(stepId === "tech-sandbox"
+            ? {
+                completedTechDays: s.profile.completedTechDays.includes(dayNum)
+                  ? s.profile.completedTechDays
+                  : [...s.profile.completedTechDays, dayNum],
+              }
+            : {}),
+          ...(stepId === "placement-logic"
+            ? {
+                attendance: s.profile.attendance.includes(dayNum)
+                  ? s.profile.attendance
+                  : [...s.profile.attendance, dayNum],
+                placementDay: Math.min(dayNum + 1, 90),
+              }
+            : {}),
           ...(newXp !== undefined
             ? { xp: newXp }
-            : shouldAwardXp && !s.liveStudentId
-              ? { xp: s.profile.xp + 15 }
+            : xpAwarded && !s.liveStudentId
+              ? {
+                  xp:
+                    s.profile.xp +
+                    (stepId === "tech-sandbox" ? 50 : stepId === "placement-logic" ? 20 : 15),
+                }
               : {}),
           ...(newTalentScore !== undefined ? { talentScore: newTalentScore } : {}),
         },
       }));
 
-      return { ok: true, alreadyAnswered: false, xpAwarded: shouldAwardXp };
+      return { ok: true, alreadyCompleted: false, xpAwarded };
     },
-    [state.liveStudentId, state.sessionEmail, state.profile.knowledgeChecks],
+    [state.liveStudentId, state.sessionEmail, state.profile.dailyStepRecords],
   );
 
-  const getKnowledgeCheck = useCallback(
-    (dayNum: number, trackId: string): KnowledgeCheckRecord | null => {
+  const getDailyStepRecord = useCallback(
+    (
+      dayNum: number,
+      trackId: string,
+      stepId: JourneyStepId,
+    ): DailyFocusStepRecord | null => {
       const userKey = state.liveStudentId || state.sessionEmail || "anon";
-      const qKey = `day_${dayNum}_${trackId}`;
-      const storageKey = `santoge_knowledge_check_${userKey}_${qKey}`;
+      const qKey = `day_${dayNum}_${trackId}_${stepId}`;
+      const storageKey = `santoge_daily_step_${userKey}_${qKey}`;
 
-      if (state.profile.knowledgeChecks?.[qKey]) {
-        return state.profile.knowledgeChecks[qKey]!;
+      if (state.profile.dailyStepRecords?.[qKey]) {
+        return state.profile.dailyStepRecords[qKey]!;
       }
 
       if (typeof window !== "undefined") {
@@ -1223,8 +1349,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           const raw = localStorage.getItem(storageKey);
           if (raw) {
             const parsed = JSON.parse(raw);
-            if (parsed && typeof parsed.selectedOption === "number") {
-              return parsed as KnowledgeCheckRecord;
+            if (parsed && parsed.isLocked) {
+              return parsed as DailyFocusStepRecord;
             }
           }
         } catch {
@@ -1232,9 +1358,110 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Check legacy knowledgeChecks for tech-check
+      if (stepId === "tech-check") {
+        const legacyKey = `day_${dayNum}_${trackId}`;
+        const legacyRecord = state.profile.knowledgeChecks?.[legacyKey];
+        if (legacyRecord && legacyRecord.isLocked) {
+          return {
+            stepId: "tech-check",
+            isLocked: true,
+            completedAt: legacyRecord.submittedAt,
+            selectedOption: legacyRecord.selectedOption,
+            isCorrect: legacyRecord.isCorrect,
+            xpAwarded: legacyRecord.xpAwarded,
+          };
+        }
+        if (typeof window !== "undefined") {
+          try {
+            const legacyRaw = localStorage.getItem(`santoge_knowledge_check_${userKey}_${legacyKey}`);
+            if (legacyRaw) {
+              const parsed = JSON.parse(legacyRaw);
+              if (parsed && parsed.isLocked) {
+                return {
+                  stepId: "tech-check",
+                  isLocked: true,
+                  completedAt: parsed.submittedAt,
+                  selectedOption: parsed.selectedOption,
+                  isCorrect: parsed.isCorrect,
+                  xpAwarded: parsed.xpAwarded,
+                };
+              }
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+
+      // Live backend progress checks fallback
+      if (stepId === "tech-sandbox" && state.profile.completedTechDays.includes(dayNum)) {
+        return {
+          stepId: "tech-sandbox",
+          isLocked: true,
+          completedAt: new Date().toISOString(),
+          xpAwarded: true,
+        };
+      }
+
+      if (stepId === "placement-logic" && state.profile.attendance.includes(dayNum)) {
+        return {
+          stepId: "placement-logic",
+          isLocked: true,
+          completedAt: new Date().toISOString(),
+          xpAwarded: true,
+        };
+      }
+
       return null;
     },
-    [state.liveStudentId, state.sessionEmail, state.profile.knowledgeChecks],
+    [
+      state.liveStudentId,
+      state.sessionEmail,
+      state.profile.dailyStepRecords,
+      state.profile.knowledgeChecks,
+      state.profile.completedTechDays,
+      state.profile.attendance,
+    ],
+  );
+
+  const isDailyStepLocked = useCallback(
+    (dayNum: number, trackId: string, stepId: JourneyStepId): boolean => {
+      return Boolean(getDailyStepRecord(dayNum, trackId, stepId)?.isLocked);
+    },
+    [getDailyStepRecord],
+  );
+
+  const recordKnowledgeCheck = useCallback(
+    async (
+      dayNum: number,
+      trackId: string,
+      topic: string,
+      selectedOption: number,
+      isCorrect: boolean,
+    ): Promise<{ ok: boolean; alreadyAnswered?: boolean; xpAwarded?: boolean }> => {
+      const res = await recordDailyStepAction(dayNum, trackId, "tech-check", {
+        selectedOption,
+        isCorrect,
+      });
+      return { ok: res.ok, alreadyAnswered: res.alreadyCompleted, xpAwarded: res.xpAwarded };
+    },
+    [recordDailyStepAction],
+  );
+
+  const getKnowledgeCheck = useCallback(
+    (dayNum: number, trackId: string): KnowledgeCheckRecord | null => {
+      const rec = getDailyStepRecord(dayNum, trackId, "tech-check");
+      if (!rec) return null;
+      return {
+        selectedOption: Number(rec.selectedOption ?? 0),
+        isCorrect: Boolean(rec.isCorrect),
+        isLocked: rec.isLocked,
+        xpAwarded: Boolean(rec.xpAwarded),
+        submittedAt: rec.completedAt,
+      };
+    },
+    [getDailyStepRecord],
   );
 
   const resetProgress = useCallback(() => {
@@ -1360,6 +1587,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     resetProgress,
     setCompletionRule,
     resetStudentPassword,
+    recordDailyStepAction,
+    getDailyStepRecord,
+    isDailyStepLocked,
     recordKnowledgeCheck,
     getKnowledgeCheck,
   };

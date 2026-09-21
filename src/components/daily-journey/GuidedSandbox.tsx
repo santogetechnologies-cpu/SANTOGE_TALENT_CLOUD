@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Terminal, Check, Play, Bot, ExternalLink, ArrowRight, CheckCircle2, RotateCcw, Sparkles } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { AITutor } from "./AITutor";
 import { XPReward } from "./XPReward";
+import { useAppStore } from "@/lib/app-store";
 
 interface GuidedSandboxProps {
   dayNum: number;
+  trackId?: string;
   topic: string;
   practice: string;
   trackName: string;
@@ -18,6 +20,7 @@ interface GuidedSandboxProps {
 
 export function GuidedSandbox({
   dayNum,
+  trackId = "general",
   topic,
   practice,
   trackName,
@@ -26,9 +29,14 @@ export function GuidedSandbox({
   onCompleteLab,
   onNext,
 }: GuidedSandboxProps) {
+  const store = useAppStore();
+  const existingRecord = store.getDailyStepRecord(dayNum, trackId, "tech-sandbox");
+  const isStepLocked = Boolean(isLabCompleted || existingRecord?.isLocked);
+  const isProcessingRef = useRef(isStepLocked);
+
   const [isRunning, setIsRunning] = useState(false);
   const [runLogs, setRunLogs] = useState<string[]>(
-    isLabCompleted
+    isStepLocked
       ? [
           `[runtime-wasm] Initializing environment for ${trackName}...`,
           `[suite] Loaded Day ${dayNum} verification harness.`,
@@ -39,7 +47,7 @@ export function GuidedSandbox({
         ]
       : [],
   );
-  const [hasRun, setHasRun] = useState(isLabCompleted);
+  const [hasRun, setHasRun] = useState(isStepLocked);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showTutor, setShowTutor] = useState(false);
   const [awardedXp, setAwardedXp] = useState(false);
@@ -70,9 +78,12 @@ export function GuidedSandbox({
   };
 
   const handleConfirmCompletion = async () => {
+    if (isStepLocked || isProcessingRef.current) return;
+    isProcessingRef.current = true;
     setIsSubmitting(true);
     try {
       await onCompleteLab();
+      await store.recordDailyStepAction(dayNum, trackId, "tech-sandbox");
       setAwardedXp(true);
     } finally {
       setIsSubmitting(false);
@@ -182,17 +193,20 @@ export function GuidedSandbox({
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 bg-slate-950/60 p-3">
             <button
               onClick={handleRunSimulation}
-              disabled={isRunning}
-              className="flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-700 disabled:opacity-50 transition-colors cursor-pointer"
+              disabled={isRunning || isStepLocked}
+              className={cn(
+                "flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-700 disabled:opacity-50 transition-colors",
+                isStepLocked ? "cursor-not-allowed" : "cursor-pointer",
+              )}
             >
               <Play className="size-3.5 fill-slate-100" />
               <span>{hasRun ? "Re-run Test Suite" : "Run Automated Tests"}</span>
             </button>
 
-            {hasRun && !isLabCompleted && (
+            {hasRun && !isStepLocked && (
               <button
                 onClick={handleConfirmCompletion}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isProcessingRef.current}
                 className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 transition-colors shadow-xs cursor-pointer"
               >
                 <Check className="size-3.5" />
@@ -200,7 +214,7 @@ export function GuidedSandbox({
               </button>
             )}
 
-            {isLabCompleted && (
+            {isStepLocked && (
               <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
                 <CheckCircle2 className="size-4" />
                 <span>Lab Verified ✓</span>
@@ -215,19 +229,21 @@ export function GuidedSandbox({
       {/* Footer Navigation CTA */}
       <div className="mt-8 flex items-center justify-between border-t border-border/70 pt-6">
         <div className="text-xs text-muted-foreground">
-          {isLabCompleted || hasRun
+          {isStepLocked || hasRun
             ? "Phase 1 Complete! Transitioning to Phase 2: Placement Accelerator."
             : "Run tests to verify your implementation before proceeding."}
         </div>
 
         <button
           onClick={async () => {
-            if (!isLabCompleted) {
+            if (!isStepLocked && !isProcessingRef.current) {
+              isProcessingRef.current = true;
               await onCompleteLab();
+              await store.recordDailyStepAction(dayNum, trackId, "tech-sandbox");
             }
             onNext();
           }}
-          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors cursor-pointer"
         >
           <span>Begin Placement Accelerator (Phase 2)</span>
           <ArrowRight className="size-4" />
