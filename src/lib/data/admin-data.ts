@@ -1072,3 +1072,39 @@ export async function triggerLiveTalentScoreRecalculation(): Promise<{
   }
 }
 
+/**
+ * Update assigned technical tracks for a student in student_tracks.
+ * Enforces admin authorization via Supabase RLS.
+ */
+export async function updateLiveStudentTracks(
+  studentId: string,
+  tracks: TrackId[],
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getSupabaseClient();
+
+  // Delete existing assigned tracks for this student
+  const { error: delErr } = await supabase
+    .from("student_tracks")
+    .delete()
+    .eq("student_id", studentId);
+
+  if (delErr) {
+    return { ok: false, error: delErr.message };
+  }
+
+  if (tracks.length > 0) {
+    const rows = tracks.map((t, idx) => ({
+      student_id: studentId,
+      track_id: t,
+      position: idx + 1,
+    }));
+
+    const { error: insErr } = await supabase.from("student_tracks").insert(rows);
+    if (insErr) {
+      return { ok: false, error: insErr.message };
+    }
+  }
+
+  return { ok: true };
+}
+
