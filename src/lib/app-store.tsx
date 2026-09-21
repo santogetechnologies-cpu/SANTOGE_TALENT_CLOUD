@@ -114,6 +114,15 @@ export type Profile = {
   completedTechDays: number[];
   mocks: Record<string, number>;
   certifications: string[];
+  knowledgeChecks?: Record<string, KnowledgeCheckRecord>;
+};
+
+export type KnowledgeCheckRecord = {
+  selectedOption: number;
+  isCorrect: boolean;
+  isLocked: boolean;
+  xpAwarded: boolean;
+  submittedAt: string;
 };
 
 export type CompletionRule = "all-tracks" | "primary-plus-minimum";
@@ -192,6 +201,7 @@ const DEFAULT_PROFILE: Profile = {
   completedTechDays: [],
   mocks: {},
   certifications: [],
+  knowledgeChecks: {},
 };
 
 type AppStoreState = {
@@ -271,6 +281,17 @@ type AppStoreContextValue = AppStoreState & {
     email: string,
     newPassword?: string,
   ) => Promise<{ ok: boolean; message: string }>;
+  recordKnowledgeCheck: (
+    dayNum: number,
+    trackId: string,
+    topic: string,
+    selectedOption: number,
+    isCorrect: boolean,
+  ) => Promise<{ ok: boolean; alreadyAnswered?: boolean; xpAwarded?: boolean }>;
+  getKnowledgeCheck: (
+    dayNum: number,
+    trackId: string,
+  ) => KnowledgeCheckRecord | null;
 };
 
 const AppStoreContext = createContext<AppStoreContextValue | null>(null);
@@ -1105,6 +1126,117 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [state.liveStudentId, state.profile.certifications],
   );
 
+  const recordKnowledgeCheck = useCallback(
+    async (
+      dayNum: number,
+      trackId: string,
+      topic: string,
+      selectedOption: number,
+      isCorrect: boolean,
+    ): Promise<{ ok: boolean; alreadyAnswered?: boolean; xpAwarded?: boolean }> => {
+      const userKey = state.liveStudentId || state.sessionEmail || "anon";
+      const qKey = `day_${dayNum}_${trackId}`;
+      const storageKey = `santoge_knowledge_check_${userKey}_${qKey}`;
+
+      // Synchronously verify if answer is already locked in storage
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem(storageKey);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.isLocked) {
+              return { ok: true, alreadyAnswered: true, xpAwarded: false };
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
+      if (state.profile.knowledgeChecks?.[qKey]?.isLocked) {
+        return { ok: true, alreadyAnswered: true, xpAwarded: false };
+      }
+
+      const shouldAwardXp = isCorrect;
+      let newXp: number | undefined;
+      let newTalentScore: number | undefined;
+
+      if (isCorrect && state.liveStudentId) {
+        // Enforce server-side authoritative completion & XP through Supabase flow
+        const res = await completeLiveDailyStep(state.liveStudentId, "english");
+        if (res.ok) {
+          newXp = res.xp;
+          newTalentScore = res.talent_score;
+        }
+      }
+
+      const record: KnowledgeCheckRecord = {
+        selectedOption,
+        isCorrect,
+        isLocked: true,
+        xpAwarded: shouldAwardXp,
+        submittedAt: new Date().toISOString(),
+      };
+
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(record));
+        } catch {
+          /* ignore */
+        }
+      }
+
+      setState((s) => ({
+        ...s,
+        profile: {
+          ...s.profile,
+          knowledgeChecks: {
+            ...(s.profile.knowledgeChecks || {}),
+            [qKey]: record,
+          },
+          ...(newXp !== undefined
+            ? { xp: newXp }
+            : shouldAwardXp && !s.liveStudentId
+              ? { xp: s.profile.xp + 15 }
+              : {}),
+          ...(newTalentScore !== undefined ? { talentScore: newTalentScore } : {}),
+        },
+      }));
+
+      return { ok: true, alreadyAnswered: false, xpAwarded: shouldAwardXp };
+    },
+    [state.liveStudentId, state.sessionEmail, state.profile.knowledgeChecks],
+  );
+
+  const getKnowledgeCheck = useCallback(
+    (dayNum: number, trackId: string): KnowledgeCheckRecord | null => {
+      const userKey = state.liveStudentId || state.sessionEmail || "anon";
+      const qKey = `day_${dayNum}_${trackId}`;
+      const storageKey = `santoge_knowledge_check_${userKey}_${qKey}`;
+
+      if (state.profile.knowledgeChecks?.[qKey]) {
+        return state.profile.knowledgeChecks[qKey]!;
+      }
+
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem(storageKey);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed.selectedOption === "number") {
+              return parsed as KnowledgeCheckRecord;
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
+      return null;
+    },
+    [state.liveStudentId, state.sessionEmail, state.profile.knowledgeChecks],
+  );
+
   const resetProgress = useCallback(() => {
     setState((s) => ({
       ...s,
@@ -1228,6 +1360,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     resetProgress,
     setCompletionRule,
     resetStudentPassword,
+    recordKnowledgeCheck,
+    getKnowledgeCheck,
   };
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;

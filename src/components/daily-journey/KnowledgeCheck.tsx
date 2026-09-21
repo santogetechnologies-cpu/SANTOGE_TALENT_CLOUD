@@ -1,19 +1,58 @@
-import { useState } from "react";
-import { CheckCircle2, AlertCircle, ArrowRight, HelpCircle, Sparkles, RefreshCw } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { CheckCircle2, AlertCircle, ArrowRight, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { XPReward } from "./XPReward";
+import { useAppStore } from "@/lib/app-store";
 
 interface KnowledgeCheckProps {
+  dayNum?: number;
+  trackId?: string;
   topic: string;
   trackName: string;
   onSuccess: (xpBonus: number) => void;
   onNext: () => void;
 }
 
-export function KnowledgeCheck({ topic, trackName, onSuccess, onNext }: KnowledgeCheckProps) {
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [hasSubmitted, setHasSubmitted] = useState(false);
-  const [xpAwarded, setXpAwarded] = useState(false);
+export function KnowledgeCheck({
+  dayNum = 1,
+  trackId = "general",
+  topic,
+  trackName,
+  onSuccess,
+  onNext,
+}: KnowledgeCheckProps) {
+  const store = useAppStore();
+
+  // Retrieve any previously persisted lock & answer record
+  const existingRecord = store.getKnowledgeCheck(dayNum, trackId);
+
+  const [selectedOption, setSelectedOption] = useState<number | null>(() => {
+    return existingRecord ? existingRecord.selectedOption : null;
+  });
+  const [hasSubmitted, setHasSubmitted] = useState<boolean>(() => {
+    return existingRecord ? existingRecord.isLocked : false;
+  });
+  const [isLocked, setIsLocked] = useState<boolean>(() => {
+    return existingRecord ? existingRecord.isLocked : false;
+  });
+  const [xpAwarded, setXpAwarded] = useState<boolean>(() => {
+    return existingRecord ? existingRecord.xpAwarded : false;
+  });
+
+  // Ref for synchronous atomic lock against rapid concurrent clicks
+  const isProcessingRef = useRef<boolean>(existingRecord ? existingRecord.isLocked : false);
+
+  // Sync if stored record changes or hydrates
+  useEffect(() => {
+    const record = store.getKnowledgeCheck(dayNum, trackId);
+    if (record && record.isLocked) {
+      setSelectedOption(record.selectedOption);
+      setHasSubmitted(true);
+      setIsLocked(true);
+      setXpAwarded(record.xpAwarded);
+      isProcessingRef.current = true;
+    }
+  }, [dayNum, trackId, store]);
 
   // Contextual question for today's topic
   const questionData = {
@@ -37,11 +76,25 @@ export function KnowledgeCheck({ topic, trackName, onSuccess, onNext }: Knowledg
     ],
   };
 
-  const handleSelect = (idx: number) => {
+  const handleSelect = async (idx: number) => {
+    // 10. Prevent race conditions: rapid clicks only accept the FIRST selected answer
+    if (isLocked || isProcessingRef.current) {
+      return;
+    }
+    isProcessingRef.current = true;
+
+    const opt = questionData.options[idx];
+    const isCorrectChoice = Boolean(opt?.isCorrect);
+
+    // 2. Immediately record selected answer, lock question, and disable options
     setSelectedOption(idx);
     setHasSubmitted(true);
+    setIsLocked(true);
 
-    if (questionData.options[idx]?.isCorrect && !xpAwarded) {
+    // 8 & 9 & 11. Persist to app/backend state and enforce one-attempt & single XP award
+    const res = await store.recordKnowledgeCheck(dayNum, trackId, topic, idx, isCorrectChoice);
+
+    if (isCorrectChoice && res.xpAwarded && !xpAwarded) {
       setXpAwarded(true);
       onSuccess(15);
     }
@@ -91,14 +144,16 @@ export function KnowledgeCheck({ topic, trackName, onSuccess, onNext }: Knowledg
             return (
               <button
                 key={idx}
+                disabled={isLocked || isProcessingRef.current}
                 onClick={() => handleSelect(idx)}
                 className={cn(
-                  "group w-full flex items-start gap-3.5 rounded-xl border p-4 text-left text-xs transition-all cursor-pointer",
+                  "group w-full flex items-start gap-3.5 rounded-xl border p-4 text-left text-xs transition-all",
+                  isLocked ? "cursor-not-allowed" : "cursor-pointer",
                   showSuccess
                     ? "border-emerald-500 bg-emerald-50/70 text-emerald-950 dark:bg-emerald-950/40 dark:text-emerald-200 ring-1 ring-emerald-500/30"
                     : showError
                       ? "border-destructive/50 bg-destructive/10 text-destructive dark:bg-destructive/20"
-                      : isCorrect
+                      : isLocked
                         ? "border-border/60 bg-muted/20 text-muted-foreground opacity-60"
                         : "border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted/30",
                 )}
@@ -162,8 +217,8 @@ export function KnowledgeCheck({ topic, trackName, onSuccess, onNext }: Knowledg
 
         <button
           onClick={onNext}
-          disabled={!isCorrect}
-          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-40 transition-colors"
+          disabled={!hasSubmitted}
+          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-40 transition-colors cursor-pointer"
         >
           <span>Continue to Guided Sandbox</span>
           <ArrowRight className="size-4" />
