@@ -128,7 +128,7 @@ function TodayLearningPage() {
     }
   };
 
-  const handleRecordVoicePitch = async () => {
+  const handleCompletePlacement = async () => {
     await store.completeDailyStep("practice");
     await store.completePlacementDay(cohortDay);
     if (liveStudentId) {
@@ -159,7 +159,7 @@ function TodayLearningPage() {
         streak={streak}
         talentScore={talentScore}
         onCompleteTechnicalLab={handleCompleteTechnicalLab}
-        onRecordVoicePitch={handleRecordVoicePitch}
+        onCompletePlacement={handleCompletePlacement}
         onExit={() => setIsJourneyActive(false)}
       />
     );

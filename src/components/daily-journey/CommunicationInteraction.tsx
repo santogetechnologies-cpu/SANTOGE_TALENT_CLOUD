@@ -48,7 +48,7 @@ export function CommunicationInteraction({ dayNum, english, onNext }: Communicat
         </div>
 
         <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-mono text-muted-foreground">
-          Step 5 of 8 · 2 min
+          Step 5 of 7 · 2 min
         </span>
       </div>
 
@@ -58,19 +58,18 @@ export function CommunicationInteraction({ dayNum, english, onNext }: Communicat
           <span className="text-[11px] font-mono text-primary uppercase font-semibold">
             Today's Communication Broadcast
           </span>
-          <h2 className="text-lg sm:text-xl font-bold text-foreground">{english.title}</h2>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            {english.instructorBrief}
+          <p className="text-sm font-medium text-foreground leading-relaxed">
+            {english.lesson}
           </p>
         </div>
 
-        {/* Vocabulary Power Tags */}
-        <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
+        {/* Vocabulary Focus */}
+        <div className="rounded-xl border border-border bg-card/60 p-4 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-              <BookOpen className="size-3.5 text-primary" /> Key Executive Vocabulary:
+              <Sparkles className="size-3.5 text-primary" /> Key Vocabulary For Today
             </span>
-            <span className="text-[10px] text-muted-foreground font-mono">Use in today's voice pitch</span>
+            <span className="text-[10px] text-muted-foreground font-mono">Executive Presence</span>
           </div>
           <div className="flex flex-wrap gap-1.5 pt-1">
             {english.keyVocabulary.map((word: string) => (

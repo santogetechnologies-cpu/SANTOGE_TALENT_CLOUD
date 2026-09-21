@@ -95,7 +95,7 @@ export function GuidedSandbox({
 
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-mono text-muted-foreground">
-            Step 4 of 8 · 4 min
+            Step 4 of 7 · 4 min
           </span>
           <button
             onClick={() => setShowTutor(true)}

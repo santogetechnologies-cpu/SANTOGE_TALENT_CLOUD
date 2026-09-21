@@ -274,7 +274,7 @@ export function DailyHomeScreen({
                     Phase 2: Placement Accelerator
                   </h3>
                   <span className="text-[10px] text-muted-foreground font-mono">
-                    10 min · Voice &amp; Aptitude
+                    8 min · Aptitude &amp; Reasoning
                   </span>
                 </div>
               </div>
@@ -298,8 +298,8 @@ export function DailyHomeScreen({
             </div>
 
             <div className="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground">
-              <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">STAR</span>
-              <span>60s Voice Pitch Challenge</span>
+              <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">LOGIC</span>
+              <span>Analytical Reasoning &amp; Problem Solving</span>
             </div>
           </div>
         </div>
