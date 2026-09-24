@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Chip, Gauge, Meter, Panel, Stat } from "@/components/kit";
 import { useAppStore, type HiringDrive } from "@/lib/app-store";
-import { TRACKS, type TrackId } from "@/lib/tracks";
+import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
 import {
   fetchLiveAdminAnalytics,
   fetchLiveStudentRoster,
@@ -353,21 +353,7 @@ function AdminAnalytics() {
   };
 
   const toggleNewStudentTrack = (trackId: TrackId) => {
-    setNewStudentTracks((prev) => {
-      if (prev.includes(trackId)) {
-        if (prev.length === 1) {
-          toast.info("Learners must have at least 1 technical track assigned");
-          return prev;
-        }
-        return prev.filter((t) => t !== trackId);
-      } else {
-        if (prev.length >= 3) {
-          toast.warning("Maximum 3 technical tracks can be assigned per learner");
-          return prev;
-        }
-        return [...prev, trackId];
-      }
-    });
+    setNewStudentTracks([trackId]);
   };
 
   const handleAddStudent = async (e: React.FormEvent) => {
@@ -380,8 +366,8 @@ function AdminAnalytics() {
       toast.error("Please enter a valid email address");
       return;
     }
-    if (newStudentTracks.length === 0) {
-      toast.error("Please select at least 1 technical track (max 3)");
+    if (newStudentTracks.length === 0 || !newStudentTracks[0]) {
+      toast.error("Please select a technical course for the learner");
       return;
     }
     if (!newStudentBatchId.trim()) {
@@ -1127,38 +1113,55 @@ function AdminAnalytics() {
                 />
               </div>
 
-              {/* Technical Tracks Picker (1 to 3 tracks) */}
+              {/* Technical Course Picker (Single Course) */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="font-semibold text-foreground">
-                    Assign Technical Learning Tracks ({newStudentTracks.length}/3 selected)
+                  <label className="font-semibold text-foreground flex items-center gap-1.5">
+                    <span>Assign Technical Course</span>
+                    <span className="rounded bg-primary/10 border border-primary/30 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                      Single Course
+                    </span>
                   </label>
-                  <span className="text-[11px] text-muted-foreground">Choose 1 to 3 tracks</span>
+                  <span className="text-[11px] text-muted-foreground">Select 1 course for learner</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-40 overflow-y-auto p-2 rounded-xl border border-border bg-muted/20">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-48 overflow-y-auto p-2 rounded-xl border border-border bg-muted/20">
                   {TRACKS.map((track) => {
-                    const isSelected = newStudentTracks.includes(track.id);
+                    const isSelected = newStudentTracks[0] === track.id;
                     return (
                       <button
                         type="button"
                         key={track.id}
                         onClick={() => toggleNewStudentTrack(track.id)}
                         className={cn(
-                          "flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs transition-all shadow-xs",
+                          "flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left text-xs transition-all shadow-xs cursor-pointer",
                           isSelected
-                            ? "border-primary bg-primary/10 text-primary font-semibold"
+                            ? "border-primary bg-primary/15 text-primary font-semibold ring-1 ring-primary"
                             : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-border/80",
                         )}
                       >
-                        <span
-                          className="size-2 rounded-full shrink-0"
-                          style={{ backgroundColor: track.accent }}
-                        />
-                        <span className="truncate">{track.name}</span>
+                        <div className="flex items-center gap-2 truncate">
+                          <span
+                            className="size-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: track.accent }}
+                          />
+                          <span className="truncate">{track.name}</span>
+                        </div>
+                        {isSelected && (
+                          <CheckCircle2 className="size-3.5 text-primary shrink-0" />
+                        )}
                       </button>
                     );
                   })}
                 </div>
+                {newStudentTracks[0] && (
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    Selected Course:{" "}
+                    <strong className="text-foreground">
+                      {trackById(newStudentTracks[0]).name}
+                    </strong>{" "}
+                    · 1 course assigned
+                  </p>
+                )}
               </div>
 
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-2.5">
