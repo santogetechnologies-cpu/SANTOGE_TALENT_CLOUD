@@ -1,16 +1,15 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Chip, Gauge, Meter, PageHeader, Panel, Stat } from "@/components/kit";
+import { Chip, Gauge, Meter, Panel, Stat } from "@/components/kit";
 import { useAppStore, type HiringDrive } from "@/lib/app-store";
-import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
+import { TRACKS, type TrackId } from "@/lib/tracks";
 import {
   fetchLiveAdminAnalytics,
   fetchLiveStudentRoster,
   fetchLiveHiringDrives,
   createLiveHiringDrive,
   addLiveStudent,
-  deleteLiveStudent,
   updateLiveBatch,
   useLiveBatches,
   useBatchLookup,
@@ -19,32 +18,18 @@ import {
 import {
   Building2,
   Users,
-  Search,
-  Filter,
   GraduationCap,
   Sparkles,
-  ArrowUpRight,
   Briefcase,
   CheckCircle2,
-  AlertCircle,
-  Eye,
   RefreshCw,
-  Award,
-  KeyRound,
-  Trash2,
-  AlertTriangle,
   Plus,
   X,
-  SlidersHorizontal,
   Download,
   Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import {
-  AdminResetPasswordModal,
-  type ResetPasswordStudent,
-} from "@/components/admin-reset-password-modal";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -53,7 +38,7 @@ export const Route = createFileRoute("/admin/")({
       {
         name: "description",
         content:
-          "Platform-wide cohort readiness, bulk placement conversion, recruiter marketplace, and student roster across partner institutions.",
+          "Platform-wide cohort readiness, bulk placement conversion, recruiter marketplace, and institutional analytics across partner institutions.",
       },
       { property: "og:title", content: "Executive Analytics — SantoGe Talent Cloud" },
       { property: "og:description", content: "Platform-wide readiness and placement conversion." },
@@ -64,26 +49,14 @@ export const Route = createFileRoute("/admin/")({
 
 function AdminAnalytics() {
   const store = useAppStore();
+  const navigate = useNavigate();
   const [selectedInst, setSelectedInst] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [trackFilter, setTrackFilter] = useState<string>("all");
-  const [tierFilter, setTierFilter] = useState<"all" | "marketplace" | "ats" | "phase1">("all");
   const [selectedDriveId, setSelectedDriveId] = useState<string | null>(null);
-  const [selectedStudentEmail, setSelectedStudentEmail] = useState<string | null>(null);
-  const [resetTargetStudent, setResetTargetStudent] = useState<ResetPasswordStudent | null>(null);
-  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const [deleteTargetStudent, setDeleteTargetStudent] = useState<{
-    name: string;
-    email: string;
-    rollNo: string;
-    batchId: string;
-  } | null>(null);
 
   // Interactive Grid button & filter states
   const [selectedBatchFilter, setSelectedBatchFilter] = useState<string | null>(null);
   const [selectedFunnelStage, setSelectedFunnelStage] = useState<number | null>(null);
   const [isReadinessModalOpen, setIsReadinessModalOpen] = useState(false);
-  const [activeKpiFilter, setActiveKpiFilter] = useState<"all" | "marketplace" | null>(null);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [isRecalculatingAll, setIsRecalculatingAll] = useState(false);
 
@@ -133,22 +106,10 @@ function AdminAnalytics() {
   }, [activeDrives, selectedDriveId]);
 
   const { data: liveRoster } = useQuery({
-    queryKey: [
-      "live",
-      "student-roster",
-      selectedInst,
-      searchQuery,
-      trackFilter,
-      tierFilter,
-      selectedDriveId,
-    ],
+    queryKey: ["live", "student-roster", selectedInst],
     queryFn: () =>
       fetchLiveStudentRoster({
-        institutionId: selectedInst,
-        searchQuery,
-        trackId: trackFilter !== "all" ? trackFilter : undefined,
-        tier: tierFilter !== "all" ? tierFilter : undefined,
-        driveMinScore: selectedDrive?.minScore,
+        institutionId: selectedInst !== "all" ? selectedInst : undefined,
       }),
     placeholderData: (prev) => prev,
   });
@@ -254,52 +215,9 @@ function AdminAnalytics() {
     };
   }, [liveRoster?.items]);
 
-  // Filtered Students from Live Supabase Roster + Batch & Funnel grid filter interactions
-  const displayedStudents = useMemo(() => {
-    let list = liveRoster?.items || [];
-    if (selectedBatchFilter) {
-      list = list.filter(
-        (s) =>
-          s.batchId === selectedBatchFilter ||
-          s.batchName === selectedBatchFilter ||
-          getBatchName(s.batchId) === selectedBatchFilter,
-      );
-    }
-    if (selectedFunnelStage !== null) {
-      if (selectedFunnelStage === 2) list = list.filter((s) => s.placementDay >= 2);
-      else if (selectedFunnelStage === 3) list = list.filter((s) => s.talentScore >= 500);
-      else if (selectedFunnelStage === 4) list = list.filter((s) => s.gateCleared);
-      else if (selectedFunnelStage === 5) list = list.filter((s) => s.talentScore >= 600);
-      else if (selectedFunnelStage === 6) list = list.filter((s) => s.talentScore >= 700);
-    }
-    return list;
-  }, [liveRoster?.items, selectedBatchFilter, selectedFunnelStage, getBatchName]);
-
-  const filteredStudents = displayedStudents;
-
-  const handleResetAllFilters = () => {
-    setSearchQuery("");
-    setTrackFilter("all");
-    setTierFilter("all");
-    setSelectedDriveId(null);
-    setSelectedBatchFilter(null);
-    setSelectedFunnelStage(null);
-    setActiveKpiFilter(null);
-    toast.info("Cleared all active filters");
-  };
-
-  const hasActiveFilters = Boolean(
-    searchQuery ||
-    trackFilter !== "all" ||
-    tierFilter !== "all" ||
-    selectedDriveId !== null ||
-    selectedBatchFilter !== null ||
-    selectedFunnelStage !== null ||
-    activeKpiFilter !== null
-  );
-
   const handleExportCSV = () => {
-    if (filteredStudents.length === 0) {
+    const list = liveRoster?.items || [];
+    if (list.length === 0) {
       toast.error("No student records available to export");
       return;
     }
@@ -318,7 +236,7 @@ function AdminAnalytics() {
       "Status Tier",
     ];
 
-    const rows = filteredStudents.map((s) => [
+    const rows = list.map((s) => [
       `"${(s.name || "").replace(/"/g, '""')}"`,
       `"${(s.email || "").replace(/"/g, '""')}"`,
       `"${(s.rollNo || "").replace(/"/g, '""')}"`,
@@ -336,16 +254,21 @@ function AdminAnalytics() {
           : "Phase 1 Learning",
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `SantoGe_Cohort_Roster_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute(
+      "download",
+      `SantoGe_Cohort_Roster_${new Date().toISOString().slice(0, 10)}.csv`,
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    toast.success(`Exported ${filteredStudents.length} student records as CSV`);
+    toast.success(`Exported ${list.length} student records as CSV`);
   };
 
   const handleSyncAllBatches = async () => {
@@ -357,13 +280,15 @@ function AdminAnalytics() {
     try {
       const now = new Date().toISOString();
       await Promise.all(
-        activeBatches.map((b) => updateLiveBatch(b.id, { last_sync_at: now }))
+        activeBatches.map((b) => updateLiveBatch(b.id, { last_sync_at: now })),
       );
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
         queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
       ]);
-      toast.success(`Synchronized sync timestamp for all ${activeBatches.length} cohort batches`);
+      toast.success(
+        `Synchronized sync timestamp for all ${activeBatches.length} cohort batches`,
+      );
     } catch {
       toast.error("Failed to sync some batches");
     } finally {
@@ -385,18 +310,6 @@ function AdminAnalytics() {
     } finally {
       setIsRecalculatingAll(false);
     }
-  };
-
-  const activeModalStudent =
-    (liveRoster?.items || []).find((s) => s.email === selectedStudentEmail) || null;
-
-  const modalReadiness = activeModalStudent?.readiness ?? {
-    T: 65,
-    C: 65,
-    A: 60,
-    E: 70,
-    R: 50,
-    M: 35,
   };
 
   const handleCreateHiringDrive = async (e: React.FormEvent) => {
@@ -520,7 +433,7 @@ function AdminAnalytics() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header with Dynamic Institution Selector */}
+      {/* Header with Dynamic Institution Selector & Roster Link */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -532,24 +445,34 @@ function AdminAnalytics() {
           </p>
         </div>
 
-        {/* Institution Selector */}
-        <div className="flex items-center gap-2">
-          <Building2 className="size-4 text-primary shrink-0" />
-          <select
-            value={selectedInst}
-            onChange={(e) => {
-              setSelectedInst(e.target.value);
-              const name = institutions.find((i) => i.id === e.target.value)?.name ?? "Institution";
-              toast.info(`Filtering dashboard for ${name}`);
-            }}
-            className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
+        {/* Institution Selector & Roster Hub Link */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link
+            to="/admin/roster"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors shadow-xs"
           >
-            {institutions.map((inst) => (
-              <option key={inst.id} value={inst.id} className="bg-card text-foreground">
-                {inst.name}
-              </option>
-            ))}
-          </select>
+            <GraduationCap className="size-3.5" />
+            <span>Student Roster Hub →</span>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <Building2 className="size-4 text-primary shrink-0" />
+            <select
+              value={selectedInst}
+              onChange={(e) => {
+                setSelectedInst(e.target.value);
+                const name = institutions.find((i) => i.id === e.target.value)?.name ?? "Institution";
+                toast.info(`Filtering dashboard for ${name}`);
+              }}
+              className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
+            >
+              {institutions.map((inst) => (
+                <option key={inst.id} value={inst.id} className="bg-card text-foreground">
+                  {inst.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -567,13 +490,9 @@ function AdminAnalytics() {
               : "In selected institution"
           }
           onClick={() => {
-            handleResetAllFilters();
-            setActiveKpiFilter("all");
-            toast.info("Displaying all provisioned cohort learners");
-            document.getElementById("student-roster")?.scrollIntoView({ behavior: "smooth" });
+            navigate({ to: "/admin/roster" });
           }}
-          active={activeKpiFilter === "all"}
-          actionLabel="View Roster ↓"
+          actionLabel="View Roster ↗"
         />
         <Stat
           label="Active Cohort Batches"
@@ -602,14 +521,9 @@ function AdminAnalytics() {
           tone="emerald"
           hint={`${marketplacePercent}% direct offer qualified`}
           onClick={() => {
-            setTierFilter("marketplace");
-            setSelectedFunnelStage(6);
-            setActiveKpiFilter("marketplace");
-            toast.success("Filtered for Marketplace Ready learners (Talent Score 700+)");
-            document.getElementById("student-roster")?.scrollIntoView({ behavior: "smooth" });
+            navigate({ to: "/admin/roster" });
           }}
-          active={tierFilter === "marketplace" || activeKpiFilter === "marketplace"}
-          actionLabel="Filter 700+ ↓"
+          actionLabel="View Roster ↗"
         />
       </div>
 
@@ -635,7 +549,7 @@ function AdminAnalytics() {
           className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground hover:bg-muted transition-all shadow-xs"
         >
           <Download className="size-4 text-emerald-600 dark:text-emerald-400" />
-          <span>Export Roster CSV</span>
+          <span>Export All Learners CSV</span>
         </button>
 
         <button
@@ -684,7 +598,7 @@ function AdminAnalytics() {
 
         <Panel
           title="Placement Conversion Funnel"
-          subtitle="Click any milestone stage below to filter student roster"
+          subtitle="6-stage milestone progression across active cohorts"
           action={
             selectedFunnelStage !== null ? (
               <button
@@ -717,8 +631,7 @@ function AdminAnalytics() {
                         toast.info("Cleared funnel stage filter");
                       } else {
                         setSelectedFunnelStage(stageNum);
-                        toast.success(`Filtered for: ${f.label} (${f.count.toLocaleString()} learners)`);
-                        document.getElementById("student-roster")?.scrollIntoView({ behavior: "smooth" });
+                        toast.info(`Filtered for: ${f.label} (${f.count.toLocaleString()} learners)`);
                       }
                     }}
                     className={cn(
@@ -727,7 +640,7 @@ function AdminAnalytics() {
                         ? "border-primary bg-primary/5 ring-1 ring-primary"
                         : "border-transparent hover:border-border hover:bg-muted/30",
                     )}
-                    title={`Click to filter student roster by ${f.label}`}
+                    title={`Milestone ${stageNum}: ${f.label}`}
                   >
                     <div className="mb-1.5 flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
@@ -760,9 +673,15 @@ function AdminAnalytics() {
       <div className="grid gap-4 lg:grid-cols-2" id="active-batches">
         <Panel
           title="Active Placement Batches"
-          subtitle="Synchronized Placement cohorts (100–300 sizing). Click to filter roster."
+          subtitle="Synchronized Placement cohorts (100–300 sizing)"
           action={
             <div className="flex items-center gap-2">
+              <Link
+                to="/admin/batches"
+                className="inline-flex items-center gap-1 rounded-lg border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 transition-colors shadow-xs"
+              >
+                <span>Batches Hub →</span>
+              </Link>
               {selectedBatchFilter && (
                 <button
                   type="button"
@@ -789,8 +708,7 @@ function AdminAnalytics() {
                       toast.info("Cleared batch filter");
                     } else {
                       setSelectedBatchFilter(b.id);
-                      toast.success(`Filtered for cohort batch: ${b.name}`);
-                      document.getElementById("student-roster")?.scrollIntoView({ behavior: "smooth" });
+                      toast.info(`Selected cohort batch: ${b.name}`);
                     }
                   }}
                   className={cn(
@@ -799,7 +717,7 @@ function AdminAnalytics() {
                       ? "border-primary bg-primary/5 ring-1 ring-primary"
                       : "border-border bg-card hover:border-border/80 hover:bg-muted/20",
                   )}
-                  title="Click to filter Student Roster by this cohort batch"
+                  title={`Cohort batch: ${b.name}`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div>
@@ -901,7 +819,7 @@ function AdminAnalytics() {
                         ? "border-primary bg-primary/5 ring-1 ring-primary"
                         : "border-border hover:border-border/80 hover:bg-muted/30",
                     )}
-                    title="Click to filter Student Roster by this requisition"
+                    title={`Requisition: ${d.company} — ${d.roles}`}
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -940,578 +858,6 @@ function AdminAnalytics() {
           </div>
         </Panel>
       </div>
-
-      {/* Comprehensive Student Cohort Roster Table */}
-      <Panel
-        id="student-roster"
-        title="Student Roster & Cohort Management"
-        subtitle="Individual 1–3 technical tracks & placement accelerator progress across all provisioned learners"
-        action={
-          <div className="flex items-center gap-2">
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={handleResetAllFilters}
-                className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shadow-xs"
-                title="Reset all active filters"
-              >
-                <X className="size-3.5" />
-                <span>Reset Filters</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                if (!newStudentBatchId && availableBatches.length > 0) {
-                  setNewStudentBatchId(availableBatches[0]?.id || "BATCH-2026-ABC-CSE-01");
-                }
-                setIsAddStudentModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
-            >
-              <Plus className="size-3.5" />
-              <span>+ Add Student</span>
-            </button>
-            <Chip tone="purple">{filteredStudents.length} Students</Chip>
-          </div>
-        }
-      >
-        {/* Active Hiring Drive Filter Banner */}
-        {selectedDrive && (
-          <div className="mb-4 flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs">
-            <div className="flex items-center gap-2 text-primary font-medium">
-              <Briefcase className="size-4 shrink-0" />
-              <span>
-                Filtered by requisition:{" "}
-                <strong className="text-foreground">{selectedDrive.company}</strong> (
-                {selectedDrive.roles}) · Requiring min Talent Score{" "}
-                <strong className="text-foreground">{selectedDrive.minScore}</strong>
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelectedDriveId(null)}
-              className="inline-flex items-center gap-1 rounded-md bg-card border border-border px-2.5 py-1 text-xs font-semibold text-foreground hover:text-destructive transition-colors shadow-xs"
-            >
-              <X className="size-3.5" />
-              <span>Clear Drive Filter</span>
-            </button>
-          </div>
-        )}
-
-        {/* Active Cohort Batch Filter Banner */}
-        {selectedBatchFilter && (
-          <div className="mb-4 flex items-center justify-between rounded-xl border border-purple-500/30 bg-purple-500/5 p-3 text-xs">
-            <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-medium">
-              <Users className="size-4 shrink-0" />
-              <span>
-                Filtered by cohort batch:{" "}
-                <strong className="text-foreground">{getBatchName(selectedBatchFilter)}</strong>
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelectedBatchFilter(null)}
-              className="inline-flex items-center gap-1 rounded-md bg-card border border-border px-2.5 py-1 text-xs font-semibold text-foreground hover:text-destructive transition-colors shadow-xs"
-            >
-              <X className="size-3.5" />
-              <span>Clear Batch Filter</span>
-            </button>
-          </div>
-        )}
-
-        {/* Active Funnel Stage Filter Banner */}
-        {selectedFunnelStage !== null && (
-          <div className="mb-4 flex items-center justify-between rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-3 text-xs">
-            <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-medium">
-              <Sparkles className="size-4 shrink-0" />
-              <span>
-                Filtered by placement funnel stage:{" "}
-                <strong className="text-foreground">
-                  {cohortFunnel[selectedFunnelStage - 1]?.label ?? `Stage ${selectedFunnelStage}`}
-                </strong>
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelectedFunnelStage(null)}
-              className="inline-flex items-center gap-1 rounded-md bg-card border border-border px-2.5 py-1 text-xs font-semibold text-foreground hover:text-destructive transition-colors shadow-xs"
-            >
-              <X className="size-3.5" />
-              <span>Clear Funnel Filter</span>
-            </button>
-          </div>
-        )}
-
-        {/* Filters */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, roll no, batch, email, dept…"
-              className="w-full rounded-lg border border-border bg-card pl-9 pr-3 py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5">
-              <Filter className="size-3.5 text-muted-foreground" />
-              <select
-                value={trackFilter}
-                onChange={(e) => setTrackFilter(e.target.value)}
-                className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
-              >
-                <option value="all">All Technical Tracks</option>
-                {TRACKS.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <SlidersHorizontal className="size-3.5 text-muted-foreground" />
-              <select
-                value={tierFilter}
-                onChange={(e) => setTierFilter(e.target.value as typeof tierFilter)}
-                className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
-              >
-                <option value="all">All Status Tiers</option>
-                <option value="marketplace">Marketplace Ready (700+)</option>
-                <option value="ats">ATS Unlocked (450–699)</option>
-                <option value="phase1">Phase 1 Learning (&lt;450)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-border bg-muted/40 text-muted-foreground">
-              <tr>
-                <th className="py-2.5 px-3.5 font-semibold">Student Learner</th>
-                <th className="py-2.5 px-3.5 font-semibold">Roll No &amp; Dept</th>
-                <th className="py-2.5 px-3.5 font-semibold">Placement Batch</th>
-                <th className="py-2.5 px-3.5 font-semibold">Assigned Tracks</th>
-                <th className="py-2.5 px-3.5 font-semibold">Talent Score</th>
-                <th className="py-2.5 px-3.5 font-semibold">Status</th>
-                <th className="py-2.5 px-3.5 font-semibold text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border text-foreground">
-              {filteredStudents.map((s) => (
-                <tr key={s.email} className="hover:bg-muted/30 transition-colors">
-                  <td className="py-3 px-3.5">
-                    <p className="font-semibold text-foreground">{s.name}</p>
-                    <p className="text-[11px] font-mono text-muted-foreground">{s.email}</p>
-                  </td>
-                  <td className="py-3 px-3.5">
-                    <p className="font-mono font-medium">{s.rollNo}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {s.dept} · {s.college}
-                    </p>
-                  </td>
-                  <td className="py-3 px-3.5">
-                    <span className="rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground">
-                      {s.batchName || getBatchName(s.batchId)}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3.5">
-                    <div className="flex flex-wrap gap-1">
-                      {Array.from(new Set(s.tracks || [])).map((tid, idx) => {
-                        const track = trackById(tid);
-                        return (
-                          <span
-                            key={`${s.email}-${tid}-${idx}`}
-                            className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-border bg-muted/30 text-muted-foreground"
-                          >
-                            {track.short}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </td>
-                  <td className="py-3 px-3.5 font-mono font-bold text-primary">
-                    {s.talentScore}/1000
-                  </td>
-                  <td className="py-3 px-3.5">
-                    {s.talentScore >= 700 ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                        <CheckCircle2 className="size-3" /> Marketplace
-                      </span>
-                    ) : s.talentScore >= 450 ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
-                        <Sparkles className="size-3" /> ATS Unlocked
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                        <AlertCircle className="size-3" /> Phase 1
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 px-3.5 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => {
-                          setResetTargetStudent({
-                            name: s.name,
-                            email: s.email,
-                            rollNo: s.rollNo,
-                            batchId: s.batchName || getBatchName(s.batchId),
-                            dept: s.dept,
-                            college: s.college,
-                          });
-                          setIsResetModalOpen(true);
-                        }}
-                        className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
-                        title="Reset Student Password"
-                      >
-                        <KeyRound className="size-3" />
-                        <span className="hidden sm:inline">Pass</span>
-                      </button>
-                      <button
-                        onClick={() => setSelectedStudentEmail(s.email)}
-                        className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
-                      >
-                        <Eye className="size-3" /> Details
-                      </button>
-                      <button
-                        onClick={() => {
-                          setDeleteTargetStudent({
-                            name: s.name,
-                            email: s.email,
-                            rollNo: s.rollNo,
-                            batchId: s.batchName || getBatchName(s.batchId),
-                          });
-                        }}
-                        className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shadow-xs"
-                        title="Delete Student from Cohort"
-                      >
-                        <Trash2 className="size-3" />
-                        <span className="hidden sm:inline">Delete</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredStudents.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-xs text-muted-foreground">
-                    <GraduationCap className="mx-auto size-8 text-muted-foreground/50 mb-2" />
-                    <p className="font-semibold text-foreground">
-                      {totalEnrolled === 0
-                        ? "No students have been enrolled or provisioned yet"
-                        : "No learners match the specified search or filter criteria"}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                      {totalEnrolled === 0
-                        ? "Use '+ Add Student' above or import a cohort roster in Bulk CSV Provisioning to activate learners."
-                        : "Try adjusting your search query, technical track filter, or status tier filter."}
-                    </p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
-
-      {/* Student Details Modal (Learner Profile Audit) */}
-      {activeModalStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2">
-                <GraduationCap className="size-5 text-primary" />
-                <h3 className="text-base font-semibold text-foreground">
-                  Learner Profile Audit
-                </h3>
-              </div>
-              <button
-                onClick={() => setSelectedStudentEmail(null)}
-                className="text-muted-foreground hover:text-foreground p-1"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-muted/20 p-3.5">
-                <div>
-                  <p className="text-muted-foreground">Student Name</p>
-                  <p className="font-semibold text-foreground mt-0.5">{activeModalStudent.name}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Roll Number</p>
-                  <p className="font-mono font-semibold text-foreground mt-0.5">
-                    {activeModalStudent.rollNo}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Email Address</p>
-                  <p className="font-mono text-muted-foreground mt-0.5">{activeModalStudent.email}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Placement Batch</p>
-                  <p className="text-foreground font-semibold mt-0.5">
-                    {activeModalStudent.batchName || getBatchName(activeModalStudent.batchId)}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <p className="font-semibold text-foreground mb-1.5">
-                  Assigned Technical Learning Tracks (1–3):
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {Array.from(new Set(activeModalStudent.tracks || [])).map((t, idx) => (
-                    <span
-                      key={`${activeModalStudent.email}-${t}-${idx}`}
-                      className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
-                    >
-                      {trackById(t).name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* T·C·A·E·R·M Readiness Dimensions Audit Breakdown */}
-              <div className="rounded-xl border border-border bg-card p-3.5 space-y-3 shadow-xs">
-                <div className="flex items-center justify-between border-b border-border pb-2">
-                  <span className="font-semibold text-foreground">
-                    T·C·A·E·R·M Composite Breakdown
-                  </span>
-                  <span className="font-mono font-bold text-primary">
-                    {activeModalStudent.talentScore} / 1000
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2.5 text-[11px]">
-                  <div>
-                    <div className="flex justify-between text-muted-foreground mb-1">
-                      <span>Technical (25%):</span>
-                      <span className="font-mono font-bold text-foreground">
-                        {modalReadiness.T}%
-                      </span>
-                    </div>
-                    <Meter value={modalReadiness.T} tone="brand" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-muted-foreground mb-1">
-                      <span>Placement (20%):</span>
-                      <span className="font-mono font-bold text-foreground">
-                        {modalReadiness.C}%
-                      </span>
-                    </div>
-                    <Meter value={modalReadiness.C} tone="brand" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-muted-foreground mb-1">
-                      <span>Aptitude (15%):</span>
-                      <span className="font-mono font-bold text-foreground">
-                        {modalReadiness.A}%
-                      </span>
-                    </div>
-                    <Meter value={modalReadiness.A} tone="brand" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-muted-foreground mb-1">
-                      <span>English (15%):</span>
-                      <span className="font-mono font-bold text-foreground">
-                        {modalReadiness.E}%
-                      </span>
-                    </div>
-                    <Meter value={modalReadiness.E} tone="brand" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-muted-foreground mb-1">
-                      <span>Resume (15%):</span>
-                      <span className="font-mono font-bold text-foreground">
-                        {modalReadiness.R}%
-                      </span>
-                    </div>
-                    <Meter value={modalReadiness.R} tone="brand" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-muted-foreground mb-1">
-                      <span>Mock / Soft (10%):</span>
-                      <span className="font-mono font-bold text-foreground">
-                        {modalReadiness.M}%
-                      </span>
-                    </div>
-                    <Meter value={modalReadiness.M} tone="brand" />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-muted-foreground text-[11px] pt-2 border-t border-border">
-                  <span>Placement Day: Day {activeModalStudent.placementDay}/90</span>
-                  <span>Talent Score: {activeModalStudent.talentScore}/1000</span>
-                  <span
-                    className={
-                      activeModalStudent.gateCleared
-                        ? "text-emerald-600 dark:text-emerald-400 font-semibold"
-                        : "text-amber-600 dark:text-amber-400 font-medium"
-                    }
-                  >
-                    {activeModalStudent.gateCleared ? "Dual Gate Cleared 🔓" : "Phase 1 Active 🔒"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center gap-2 pt-3 border-t border-border">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDeleteTargetStudent({
-                      name: activeModalStudent.name,
-                      email: activeModalStudent.email,
-                      rollNo: activeModalStudent.rollNo,
-                      batchId:
-                        activeModalStudent.batchName || getBatchName(activeModalStudent.batchId),
-                    });
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors"
-                >
-                  <Trash2 className="size-3.5" />
-                  <span>Delete</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setResetTargetStudent({
-                      name: activeModalStudent.name,
-                      email: activeModalStudent.email,
-                      rollNo: activeModalStudent.rollNo,
-                      batchId:
-                        activeModalStudent.batchName || getBatchName(activeModalStudent.batchId),
-                      dept: activeModalStudent.dept,
-                      college: activeModalStudent.college,
-                    });
-                    setIsResetModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
-                >
-                  <KeyRound className="size-3.5 text-primary" />
-                  <span>Reset Pass</span>
-                </button>
-              </div>
-              <button
-                onClick={() => {
-                  store.recalculateStudentScore(activeModalStudent.email);
-                }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
-              >
-                <Sparkles className="size-3.5" />
-                <span>Trigger Recalculation</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Admin Reset Password Modal */}
-      <AdminResetPasswordModal
-        isOpen={isResetModalOpen}
-        student={resetTargetStudent}
-        onClose={() => {
-          setIsResetModalOpen(false);
-          setResetTargetStudent(null);
-        }}
-      />
-
-      {/* Delete Confirmation Modal */}
-      {deleteTargetStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 border-b border-border pb-3">
-              <div className="grid size-10 place-items-center rounded-lg bg-destructive/10 text-destructive border border-destructive/20">
-                <AlertTriangle className="size-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-semibold text-foreground">
-                  Remove Learner from Roster?
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  This action permanently removes the student from this cohort
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground font-medium">Student Name:</span>
-                <span className="font-semibold text-foreground">{deleteTargetStudent.name}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground font-medium">Email Address:</span>
-                <span className="font-mono text-muted-foreground">{deleteTargetStudent.email}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground font-medium">Roll Number:</span>
-                <span className="font-mono font-semibold text-foreground">
-                  {deleteTargetStudent.rollNo}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground font-medium">Cohort Batch:</span>
-                <span className="font-semibold text-foreground">
-                  {getBatchName(deleteTargetStudent.batchId)}
-                </span>
-              </div>
-            </div>
-
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Removing this student will permanently delete their progress, revoke active portal
-              access, update cohort batch headcount, and record the removal in the audit log.
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
-              <button
-                type="button"
-                onClick={() => setDeleteTargetStudent(null)}
-                className="rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const target = (liveRoster?.items || []).find(
-                    (s) => s.email === deleteTargetStudent.email,
-                  );
-                  const identifier = target?.id || deleteTargetStudent.email;
-                  const res = await deleteLiveStudent(identifier);
-                  if (res.ok) {
-                    await Promise.all([
-                      queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
-                      queryClient.invalidateQueries({ queryKey: ["live", "admin-analytics"] }),
-                      queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
-                    ]);
-                    toast.success(`Student profile archived from live database`);
-                  } else {
-                    toast.error(res.error || "Failed to delete student");
-                  }
-
-                  if (selectedStudentEmail === deleteTargetStudent.email) {
-                    setSelectedStudentEmail(null);
-                  }
-                  setDeleteTargetStudent(null);
-                }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 transition-colors shadow-xs"
-              >
-                <Trash2 className="size-3.5" />
-                <span>Confirm Delete</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* New Enterprise Hiring Drive Requisition Modal */}
       {isNewDriveModalOpen && (
