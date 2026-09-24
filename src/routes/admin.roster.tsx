@@ -11,6 +11,7 @@ import {
 } from "@/lib/data/admin-data";
 import { useBatchLookup } from "@/lib/data";
 import { trackById, TRACKS } from "@/lib/tracks";
+import { useAppStore } from "@/lib/app-store";
 import {
   Users,
   Search,
@@ -34,6 +35,8 @@ import {
   BookOpen,
   ShieldCheck,
   Activity,
+  Eye,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -110,6 +113,7 @@ function exportRosterCSV(items: LiveRosterItem[], getBatchName: (id: string, fal
 function RosterPage() {
   const queryClient = useQueryClient();
   const { getBatchName } = useBatchLookup(true);
+  const store = useAppStore();
 
   // ── Data Queries ────────────────────────────────────────────────────────
   const { data: liveRoster, isLoading: rosterLoading, refetch: refetchRoster } = useQuery({
@@ -123,6 +127,7 @@ function RosterPage() {
   });
 
   // ── Modal / Action State ────────────────────────────────────────────────
+  const [selectedStudentEmail, setSelectedStudentEmail] = useState<string | null>(null);
   const [resetTargetStudent, setResetTargetStudent] = useState<ResetPasswordStudent | null>(null);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [deleteTargetStudent, setDeleteTargetStudent] = useState<{
@@ -153,6 +158,20 @@ function RosterPage() {
     () => liveRoster?.items || [],
     [liveRoster],
   );
+
+  const activeModalStudent = useMemo(
+    () => (liveRoster?.items || []).find((s) => s.email === selectedStudentEmail) || null,
+    [liveRoster?.items, selectedStudentEmail],
+  );
+
+  const modalReadiness = activeModalStudent?.readiness ?? {
+    T: 65,
+    C: 65,
+    A: 60,
+    E: 65,
+    R: 60,
+    M: 60,
+  };
 
   const uniqueBatches = useMemo(() => {
     const set = new Map<string, string>();
@@ -262,6 +281,9 @@ function RosterPage() {
       const res = await deleteLiveStudent(deleteTargetStudent.email);
       if (res.ok) {
         toast.success(`Removed ${deleteTargetStudent.name} from roster`);
+        if (selectedStudentEmail === deleteTargetStudent.email) {
+          setSelectedStudentEmail(null);
+        }
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] }),
           queryClient.invalidateQueries({ queryKey: ["live", "batches"] }),
@@ -528,12 +550,18 @@ function RosterPage() {
                     >
                       {/* Name + email */}
                       <td className="px-3 py-2.5">
-                        <p className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                          {student.name}
-                        </p>
-                        <p className="font-mono text-muted-foreground text-[10px] line-clamp-1">
-                          {student.email}
-                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStudentEmail(student.email)}
+                          className="text-left group/name focus:outline-none"
+                        >
+                          <p className="font-semibold text-foreground group-hover/name:text-primary transition-colors line-clamp-1">
+                            {student.name}
+                          </p>
+                          <p className="font-mono text-muted-foreground text-[10px] line-clamp-1">
+                            {student.email}
+                          </p>
+                        </button>
                       </td>
                       {/* Roll No */}
                       <td className="px-3 py-2.5 font-mono text-muted-foreground whitespace-nowrap">
@@ -600,6 +628,16 @@ function RosterPage() {
                       <td className="px-3 py-2.5 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button
+                            type="button"
+                            onClick={() => setSelectedStudentEmail(student.email)}
+                            className="inline-flex size-7 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors shadow-xs"
+                            title="View Learner Profile & Audit"
+                            aria-label={`View profile for ${student.name}`}
+                          >
+                            <Eye className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => {
                               setResetTargetStudent({
                                 name: student.name,
@@ -611,13 +649,14 @@ function RosterPage() {
                               });
                               setIsResetModalOpen(true);
                             }}
-                            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-xs"
+                            className="inline-flex size-7 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors shadow-xs"
                             title="Reset Password"
+                            aria-label={`Reset password for ${student.name}`}
                           >
-                            <KeyRound className="size-3 text-primary" />
-                            <span className="hidden xl:inline">Reset</span>
+                            <KeyRound className="size-3.5 text-primary" />
                           </button>
                           <button
+                            type="button"
                             onClick={() =>
                               setDeleteTargetStudent({
                                 name: student.name,
@@ -626,11 +665,11 @@ function RosterPage() {
                                 batchId: student.batchId,
                               })
                             }
-                            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shadow-xs"
+                            className="inline-flex size-7 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/10 transition-colors shadow-xs"
                             title="Remove Student"
+                            aria-label={`Remove ${student.name} from roster`}
                           >
-                            <Trash2 className="size-3" />
-                            <span className="hidden xl:inline">Delete</span>
+                            <Trash2 className="size-3.5" />
                           </button>
                         </div>
                       </td>
@@ -999,6 +1038,217 @@ function RosterPage() {
           </div>
         )}
       </div>
+
+      {/* ── Student Details Modal (Learner Profile Audit) ────────────────── */}
+      {activeModalStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="size-5 text-primary" />
+                <h3 className="text-base font-semibold text-foreground">
+                  Learner Profile Audit
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedStudentEmail(null)}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-muted transition-colors"
+                title="Close"
+                aria-label="Close"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-muted/20 p-3.5">
+                <div>
+                  <p className="text-muted-foreground">Student Name</p>
+                  <p className="font-semibold text-foreground mt-0.5">{activeModalStudent.name}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Roll Number</p>
+                  <p className="font-mono font-semibold text-foreground mt-0.5">
+                    {activeModalStudent.rollNo}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Email Address</p>
+                  <p className="font-mono text-muted-foreground mt-0.5">{activeModalStudent.email}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Placement Batch</p>
+                  <p className="text-foreground font-semibold mt-0.5">
+                    {getBatchName(activeModalStudent.batchId, activeModalStudent.batchId)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Department</p>
+                  <p className="text-foreground font-semibold mt-0.5">{activeModalStudent.dept}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">College</p>
+                  <p className="text-foreground font-semibold mt-0.5 truncate" title={activeModalStudent.college}>
+                    {activeModalStudent.college}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <p className="font-semibold text-foreground mb-1.5">
+                  Assigned Technical Learning Tracks (1–3):
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {Array.from(new Set(activeModalStudent.tracks || [])).map((t, idx) => (
+                    <span
+                      key={`${activeModalStudent.email}-${t}-${idx}`}
+                      className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
+                    >
+                      {trackById(t as any)?.name || t}
+                    </span>
+                  ))}
+                  {(activeModalStudent.tracks || []).length === 0 && (
+                    <span className="text-xs text-muted-foreground italic">No tracks assigned yet</span>
+                  )}
+                </div>
+              </div>
+
+              {/* T·C·A·E·R·M Readiness Dimensions Audit Breakdown */}
+              <div className="rounded-xl border border-border bg-card p-3.5 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between border-b border-border pb-2">
+                  <span className="font-semibold text-foreground">
+                    T·C·A·E·R·M Composite Breakdown
+                  </span>
+                  <span className="font-mono font-bold text-primary">
+                    {activeModalStudent.talentScore ?? 0} / 1000
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5 text-[11px]">
+                  <div>
+                    <div className="flex justify-between text-muted-foreground mb-1">
+                      <span>Technical (25%):</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {modalReadiness.T}%
+                      </span>
+                    </div>
+                    <Meter value={modalReadiness.T} tone="brand" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-muted-foreground mb-1">
+                      <span>Communication (20%):</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {modalReadiness.C}%
+                      </span>
+                    </div>
+                    <Meter value={modalReadiness.C} tone="brand" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-muted-foreground mb-1">
+                      <span>Aptitude (15%):</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {modalReadiness.A}%
+                      </span>
+                    </div>
+                    <Meter value={modalReadiness.A} tone="brand" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-muted-foreground mb-1">
+                      <span>English (10%):</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {modalReadiness.E}%
+                      </span>
+                    </div>
+                    <Meter value={modalReadiness.E} tone="brand" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-muted-foreground mb-1">
+                      <span>Resume (20%):</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {modalReadiness.R}%
+                      </span>
+                    </div>
+                    <Meter value={modalReadiness.R} tone="brand" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-muted-foreground mb-1">
+                      <span>Mock / Soft (10%):</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {modalReadiness.M}%
+                      </span>
+                    </div>
+                    <Meter value={modalReadiness.M} tone="brand" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-muted-foreground text-[11px] pt-2 border-t border-border">
+                  <span>Placement Day: Day {activeModalStudent.placementDay}/90</span>
+                  <span>Talent Score: {activeModalStudent.talentScore ?? 0}/1000</span>
+                  <span
+                    className={
+                      activeModalStudent.gateCleared
+                        ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                        : "text-amber-600 dark:text-amber-400 font-medium"
+                    }
+                  >
+                    {activeModalStudent.gateCleared ? "Dual Gate Cleared 🔓" : "Phase 1 Active 🔒"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center gap-2 pt-3 border-t border-border">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteTargetStudent({
+                      name: activeModalStudent.name,
+                      email: activeModalStudent.email,
+                      rollNo: activeModalStudent.rollNo,
+                      batchId: activeModalStudent.batchId,
+                    });
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors"
+                >
+                  <Trash2 className="size-3.5" />
+                  <span>Delete</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetTargetStudent({
+                      name: activeModalStudent.name,
+                      email: activeModalStudent.email,
+                      rollNo: activeModalStudent.rollNo,
+                      batchId: getBatchName(activeModalStudent.batchId),
+                      dept: activeModalStudent.dept,
+                      college: activeModalStudent.college,
+                    });
+                    setIsResetModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
+                >
+                  <KeyRound className="size-3.5 text-primary" />
+                  <span>Reset Pass</span>
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  await store.recalculateStudentScore(activeModalStudent.email);
+                  toast.success(`Recalculated talent score for ${activeModalStudent.name}`);
+                  await queryClient.invalidateQueries({ queryKey: ["live", "student-roster"] });
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
+              >
+                <Sparkles className="size-3.5" />
+                <span>Trigger Recalculation</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Admin Reset Password Modal ─────────────────────────────────── */}
       <AdminResetPasswordModal
