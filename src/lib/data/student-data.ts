@@ -640,3 +640,86 @@ export async function updateLiveReadiness(
 
   return { ok: true };
 }
+
+export type DbExerciseSubmission = {
+  question_id: string;
+  category: "Aptitude" | "English" | "Logic" | "Puzzle";
+  selected_option: number;
+  is_correct: boolean | null;
+  submitted_at: string;
+  locked: boolean;
+};
+
+export async function submitLiveExerciseAnswer(
+  studentId: string,
+  day: number,
+  category: "Aptitude" | "English" | "Logic" | "Puzzle",
+  questionId: string,
+  selectedOption: number,
+  isCorrect?: boolean | null,
+): Promise<{
+  ok: boolean;
+  already_submitted?: boolean | undefined;
+  locked?: boolean | undefined;
+  error?: string | undefined;
+  selected_option?: number | undefined;
+  is_correct?: boolean | null | undefined;
+}> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc("submit_student_exercise_answer", {
+    p_student_id: studentId,
+    p_day: day,
+    p_category: category,
+    p_question_id: questionId,
+    p_selected_option: selectedOption,
+    p_is_correct: isCorrect ?? null,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  const res = data as {
+    ok?: boolean;
+    already_submitted?: boolean;
+    locked?: boolean;
+    error?: string;
+    selected_option?: number;
+    is_correct?: boolean | null;
+  } | null;
+
+  if (res && res.ok === false) {
+    return { ok: false, error: res.error || "Failed to submit exercise answer" };
+  }
+
+  return {
+    ok: true,
+    already_submitted: res?.already_submitted,
+    locked: res?.locked ?? true,
+    selected_option: res?.selected_option ?? selectedOption,
+    is_correct: res?.is_correct ?? isCorrect ?? null,
+  };
+}
+
+export async function fetchLiveExerciseSubmissions(
+  studentId: string,
+  day: number,
+): Promise<{ ok: boolean; submissions: DbExerciseSubmission[]; error?: string | undefined }> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc("get_student_exercise_submissions", {
+    p_student_id: studentId,
+    p_day: day,
+  });
+
+  if (error) {
+    return { ok: false, submissions: [], error: error.message };
+  }
+
+  const res = data as { ok?: boolean; submissions?: DbExerciseSubmission[]; error?: string } | null;
+  if (res && res.ok === false) {
+    return { ok: false, submissions: [], error: res.error };
+  }
+
+  return { ok: true, submissions: res?.submissions || [] };
+}
+

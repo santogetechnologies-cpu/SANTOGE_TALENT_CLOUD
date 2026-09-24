@@ -140,19 +140,26 @@ function GatewayPage() {
         ? "[ats] PASS — Profile forwarded to Employer Marketplace"
         : "[ats] REVIEW — Below 70% threshold",
     ]);
-    if (liveStudentId) {
-      await updateLiveReadiness(liveStudentId, { R: atsScore });
+    if (!liveStudentId) {
+      toast.error("Authentication required to update ATS readiness");
+      return;
+    }
+    const res = await store.setReadiness({ R: atsScore });
+    if (res?.ok) {
       queryClient.invalidateQueries({
         queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
       });
+      toast.success(`ATS Score updated to ${atsScore}%`);
     }
-    store.setReadiness({ R: atsScore });
-    toast.success(`ATS Score updated to ${atsScore}%`);
   };
 
   const handleMock = async () => {
-    await store.completeMock("ai-interview-01", mockScore);
-    if (liveStudentId) {
+    if (!liveStudentId) {
+      toast.error("Authentication required to record mock interview");
+      return;
+    }
+    const res = await store.completeMock("ai-interview-01", mockScore);
+    if (res?.ok) {
       queryClient.invalidateQueries({
         queryKey: ["live", "student-progress", liveStudentId],
       });
@@ -163,9 +170,13 @@ function GatewayPage() {
   };
 
   const handleIssueCert = async (trackName: string) => {
+    if (!liveStudentId) {
+      toast.error("Authentication required to issue certificate");
+      return;
+    }
     const label = `SantoGe Certified · ${trackName}`;
-    await store.issueCertificate(label);
-    if (liveStudentId) {
+    const res = await store.issueCertificate(label);
+    if (res?.ok) {
       queryClient.invalidateQueries({
         queryKey: ["live", "student-progress", liveStudentId],
       });

@@ -117,8 +117,12 @@ function TodayLearningPage() {
   const isPlacementDone = attendance.includes(cohortDay);
 
   const handleCompleteTechnicalLab = async () => {
-    await store.completeTechDay(cohortDay);
-    if (liveStudentId) {
+    if (!liveStudentId) {
+      toast.error("Authentication required to verify technical day");
+      return;
+    }
+    const res = await store.completeTechDay(cohortDay);
+    if (res?.ok) {
       queryClient.invalidateQueries({
         queryKey: ["live", "student-progress", liveStudentId],
       });
@@ -129,9 +133,14 @@ function TodayLearningPage() {
   };
 
   const handleCompletePlacement = async () => {
-    await store.completeDailyStep("practice");
-    await store.completePlacementDay(cohortDay);
-    if (liveStudentId) {
+    if (!liveStudentId) {
+      toast.error("Authentication required to complete placement routine");
+      return;
+    }
+    const stepRes = await store.completeDailyStep("practice");
+    if (!stepRes?.ok) return;
+    const dayRes = await store.completePlacementDay(cohortDay);
+    if (dayRes?.ok) {
       queryClient.invalidateQueries({
         queryKey: ["live", "student-progress", liveStudentId],
       });

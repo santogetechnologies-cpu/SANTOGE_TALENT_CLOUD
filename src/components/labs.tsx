@@ -65,21 +65,26 @@ function LabFrame({
       setLines(out);
 
       if (passed) {
-        setExecutionResult("passed");
-        if (liveStudentId) {
-          try {
-            await completeLiveLab(liveStudentId, id, track.labTitle);
-            queryClient.invalidateQueries({
-              queryKey: ["live", "student-progress", liveStudentId],
-            });
-            queryClient.invalidateQueries({
-              queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
-            });
-          } catch {
-            // Handled inside completeLab fallback
-          }
+        if (!liveStudentId) {
+          setExecutionResult("failed");
+          toast.error("Authentication Required (0 XP)", {
+            description: "You must be logged into an active student account to record lab completions.",
+          });
+          return;
         }
-        await store.completeLab(id);
+
+        const res = await store.completeLab(id, track.labTitle);
+        if (res?.ok) {
+          setExecutionResult("passed");
+          queryClient.invalidateQueries({
+            queryKey: ["live", "student-progress", liveStudentId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+          });
+        } else {
+          setExecutionResult("failed");
+        }
       } else {
         setExecutionResult("failed");
         toast.error("Sandbox Test Failed (0 XP)", {

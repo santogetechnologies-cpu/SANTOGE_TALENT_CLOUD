@@ -33,9 +33,14 @@ export function CommunicationInteraction({
     isProcessingRef.current = true;
     setSelectedChoice(choice);
     setIsLocked(true);
-    await store.recordDailyStepAction(dayNum, trackId, "placement-communication", {
+    const res = await store.recordDailyStepAction(dayNum, trackId, "placement-communication", {
       selectedOption: choice,
     });
+    if (!res?.ok) {
+      setIsLocked(false);
+      setSelectedChoice(null);
+      isProcessingRef.current = false;
+    }
   };
 
   // Generate an executive framing challenge based on today's lesson

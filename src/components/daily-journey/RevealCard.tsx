@@ -39,7 +39,12 @@ export function RevealCard({
     if (!isLocked && !isProcessingRef.current) {
       isProcessingRef.current = true;
       setIsLocked(true);
-      await store.recordDailyStepAction(dayNum, trackId, "tech-concept");
+      const res = await store.recordDailyStepAction(dayNum, trackId, "tech-concept");
+      if (!res?.ok) {
+        setIsLocked(false);
+        isProcessingRef.current = false;
+        return;
+      }
     }
     onNext();
   };

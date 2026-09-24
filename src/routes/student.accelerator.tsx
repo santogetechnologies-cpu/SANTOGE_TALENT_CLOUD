@@ -121,20 +121,28 @@ function AcceleratorPage() {
         "[voice] Competency evidence logged to Talent Score engine (+25 XP)",
         ...l,
       ]);
-      if (liveStudentId) {
-        await completeLiveDailyStep(liveStudentId, "practice");
-        await completeLivePlacementDay(liveStudentId, selectedDayNum);
-        queryClient.invalidateQueries({
-          queryKey: ["live", "student-progress", liveStudentId],
+      if (!liveStudentId) {
+        toast.error("Authentication Required (0 XP)", {
+          description: "You must be logged into an active student account to record accelerator progress.",
         });
-        queryClient.invalidateQueries({
-          queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
-        });
+        return;
       }
-      store.setDailyStep("practice", true);
-      store.completePlacementDay(selectedDayNum);
+      const stepRes = await store.completeDailyStep("practice");
+      if (!stepRes?.ok) {
+        return;
+      }
+      const dayRes = await store.completePlacementDay(selectedDayNum);
+      if (!dayRes?.ok) {
+        return;
+      }
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-progress", liveStudentId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+      });
       toast.success("Voice pitch analysed successfully!", {
-        description: "+25 XP awarded · Communication pillar updated",
+        description: "Authoritative progress updated · Communication pillar updated",
       });
     }, 1800);
   };

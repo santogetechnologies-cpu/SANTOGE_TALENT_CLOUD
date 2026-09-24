@@ -6,7 +6,11 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { fetchLiveStudentProfile, fetchLiveStudentProgress } from "./student-data";
+import {
+  fetchLiveStudentProfile,
+  fetchLiveStudentProgress,
+  fetchLiveExerciseSubmissions,
+} from "./student-data";
 import {
   fetchLiveAdminAnalytics,
   fetchLiveStudentRoster,
@@ -153,3 +157,22 @@ export function useLiveTrackDistribution(enabled = true) {
     staleTime: 1000 * 60 * 5,
   });
 }
+
+export function useLiveExerciseSubmissions(
+  studentId: string | null | undefined,
+  day: number,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ["live", "exercise-submissions", studentId, day],
+    queryFn: async () => {
+      if (!studentId) return [];
+      const res = await fetchLiveExerciseSubmissions(studentId, day);
+      if (!res.ok) throw new Error(res.error || "Failed to fetch exercise submissions");
+      return res.submissions;
+    },
+    enabled: Boolean(enabled && studentId && day >= 1 && day <= 90),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+

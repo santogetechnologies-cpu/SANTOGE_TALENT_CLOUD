@@ -51,7 +51,9 @@ import {
   updateLiveContentItem,
   deleteLiveContentItem,
   triggerLiveTalentScoreRecalculation,
+  submitLiveExerciseAnswer,
   type DbStudentProfile,
+  type DbExerciseSubmission,
 } from "./data";
 
 export type Role = "student" | "admin";
@@ -296,17 +298,17 @@ type AppStoreContextValue = AppStoreState & {
   signOut: () => void;
   setRole: (r: Role) => void;
   toggleTheme: () => void;
-  setReadiness: (patch: Partial<ReadinessInputs>) => void;
+  setReadiness: (patch: Partial<ReadinessInputs>) => Promise<{ ok: boolean; error?: string | undefined }>;
   setActiveTracks: (tracks: TrackId[]) => void;
-  setDailyStep: (key: "english" | "aptitude" | "practice", val: boolean) => Promise<void> | void;
-  completeDailyStep: (key: "english" | "aptitude" | "practice") => Promise<void> | void;
-  completeSkill: (trackId: TrackId, skillId: string, name: string) => Promise<void> | void;
-  completePlacementDay: (day: number) => Promise<void> | void;
-  completeTechDay: (day: number) => Promise<void> | void;
-  completeLab: (labId: string) => Promise<void> | void;
-  submitAssessment: (day: number, score: number) => Promise<void> | void;
-  completeMock: (id: string, score: number) => Promise<void> | void;
-  issueCertificate: (label: string) => Promise<void> | void;
+  setDailyStep: (key: "english" | "aptitude" | "practice", val: boolean) => Promise<{ ok: boolean; error?: string | undefined }>;
+  completeDailyStep: (key: "english" | "aptitude" | "practice") => Promise<{ ok: boolean; error?: string | undefined }>;
+  completeSkill: (trackId: TrackId, skillId: string, name: string) => Promise<{ ok: boolean; error?: string | undefined }>;
+  completePlacementDay: (day: number) => Promise<{ ok: boolean; error?: string | undefined }>;
+  completeTechDay: (day: number) => Promise<{ ok: boolean; error?: string | undefined }>;
+  completeLab: (labId: string, label?: string) => Promise<{ ok: boolean; error?: string | undefined }>;
+  submitAssessment: (day: number, score: number) => Promise<{ ok: boolean; error?: string | undefined }>;
+  completeMock: (id: string, score: number, feedback?: string) => Promise<{ ok: boolean; error?: string | undefined }>;
+  issueCertificate: (label: string) => Promise<{ ok: boolean; error?: string | undefined }>;
   recalculateAllScores: () => Promise<void> | void;
   recalculateStudentScore: (emailOrId?: string) => Promise<void> | void;
   resetProgress: () => void;
@@ -320,7 +322,7 @@ type AppStoreContextValue = AppStoreState & {
     trackId: string,
     stepId: JourneyStepId,
     actionData?: { selectedOption?: number | string; isCorrect?: boolean },
-  ) => Promise<{ ok: boolean; alreadyCompleted?: boolean; xpAwarded?: boolean }>;
+  ) => Promise<{ ok: boolean; alreadyCompleted?: boolean | undefined; xpAwarded?: boolean | undefined; error?: string | undefined }>;
   getDailyStepRecord: (
     dayNum: number,
     trackId: string,
@@ -370,6 +372,7 @@ type AppStoreContextValue = AppStoreState & {
     englishAnswers: Record<number, number>;
     records: Record<string, DailyExerciseQuestionRecord>;
   };
+  syncExerciseSubmissions: (dayNum: number, submissions: DbExerciseSubmission[]) => void;
 };
 
 const AppStoreContext = createContext<AppStoreContextValue | null>(null);
@@ -815,18 +818,30 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // Student Mutations (Supabase Live RPCs + Local optimistic cache)
   // -------------------------------------------------------------------------
 
-  const setReadiness = useCallback((patch: Partial<ReadinessInputs>) => {
-    setState((s) => {
-      const nextReadiness = { ...s.profile.readiness, ...patch };
-      const nextProfile = { ...s.profile, readiness: nextReadiness };
-
-      if (s.liveStudentId) {
-        void updateLiveReadiness(s.liveStudentId, patch);
+  const setReadiness = useCallback(
+    async (patch: Partial<ReadinessInputs>): Promise<{ ok: boolean; error?: string | undefined }> => {
+      if (!state.liveStudentId) {
+        toast.error("Authentication required to update readiness");
+        return { ok: false, error: "Authentication required" };
       }
 
-      return { ...s, profile: nextProfile };
-    });
-  }, []);
+      const res = await updateLiveReadiness(state.liveStudentId, patch);
+      if (!res.ok) {
+        toast.error(res.error || "Failed to update readiness inputs in database");
+        return { ok: false, error: res.error };
+      }
+
+      setState((s) => ({
+        ...s,
+        profile: {
+          ...s.profile,
+          readiness: { ...s.profile.readiness, ...patch },
+        },
+      }));
+      return { ok: true };
+    },
+    [state.liveStudentId],
+  );
 
   const setActiveTracks = useCallback((tracks: TrackId[]) => {
     setState((s) => {
@@ -836,227 +851,194 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setDailyStep = useCallback(
-    async (key: "english" | "aptitude" | "practice", val: boolean) => {
+    async (
+      key: "english" | "aptitude" | "practice",
+      val: boolean,
+    ): Promise<{ ok: boolean; error?: string | undefined }> => {
       if (!val) {
-        setState((s) => ({
-          ...s,
-          profile: { ...s.profile, daily: { ...s.profile.daily, [key]: false } },
-        }));
-        return;
+        return { ok: false, error: "Cannot uncomplete daily steps" };
       }
 
-      if (state.liveStudentId) {
-        const res = await completeLiveDailyStep(state.liveStudentId, key);
-        if (!res.ok) {
-          toast.error(res.error || `Failed to complete ${key} daily step`);
-          return;
-        }
-        setState((s) => ({
-          ...s,
-          profile: {
-            ...s.profile,
-            daily: { ...s.profile.daily, [key]: true },
-            xp: res.xp !== undefined ? res.xp : s.profile.xp,
-            talentScore: res.talent_score !== undefined ? res.talent_score : s.profile.talentScore,
-          },
-        }));
-      } else {
-        setState((s) => ({
-          ...s,
-          profile: { ...s.profile, daily: { ...s.profile.daily, [key]: true } },
-        }));
+      if (!state.liveStudentId) {
+        toast.error("Authentication required to complete daily step");
+        return { ok: false, error: "Authentication required" };
       }
+
+      const res = await completeLiveDailyStep(state.liveStudentId, key);
+      if (!res.ok) {
+        toast.error(res.error || `Failed to complete ${key} daily step`);
+        return { ok: false, error: res.error };
+      }
+
+      setState((s) => ({
+        ...s,
+        profile: {
+          ...s.profile,
+          daily: { ...s.profile.daily, [key]: true },
+          xp: res.xp !== undefined ? res.xp : s.profile.xp,
+          talentScore: res.talent_score !== undefined ? res.talent_score : s.profile.talentScore,
+        },
+      }));
+      return { ok: true };
     },
     [state.liveStudentId],
   );
 
   const completeDailyStep = useCallback(
-    async (key: "english" | "aptitude" | "practice") => {
-      await setDailyStep(key, true);
+    async (key: "english" | "aptitude" | "practice"): Promise<{ ok: boolean; error?: string | undefined }> => {
+      return setDailyStep(key, true);
     },
     [setDailyStep],
   );
 
   const completeSkill = useCallback(
-    async (trackId: TrackId, skillId: string, name: string) => {
-      if (state.profile.skills.includes(skillId)) return;
+    async (trackId: TrackId, skillId: string, name: string): Promise<{ ok: boolean; error?: string | undefined }> => {
+      if (state.profile.skills.includes(skillId)) return { ok: true };
 
-      if (state.liveStudentId) {
-        const res = await completeLiveSkill(state.liveStudentId, skillId, trackId);
-        if (!res.ok) {
-          toast.error(res.error || `Failed to verify skill: ${name}`);
-          return;
-        }
-        setState((s) => {
-          const nextSkills = s.profile.skills.includes(skillId)
-            ? s.profile.skills
-            : [...s.profile.skills, skillId];
-          const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
-          const nextTalentScore =
-            res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
-          return {
-            ...s,
-            profile: {
-              ...s.profile,
-              skills: nextSkills,
-              xp: nextXp,
-              talentScore: nextTalentScore,
-            },
-          };
-        });
-        toast.success(`Skill Mastered: ${name} (+30 XP)`);
-      } else {
-        setState((s) => ({
+      if (!state.liveStudentId) {
+        toast.error("Authentication required to master skill");
+        return { ok: false, error: "Authentication required" };
+      }
+
+      const res = await completeLiveSkill(state.liveStudentId, skillId, trackId);
+      if (!res.ok) {
+        toast.error(res.error || `Failed to verify skill: ${name}`);
+        return { ok: false, error: res.error };
+      }
+
+      setState((s) => {
+        const nextSkills = s.profile.skills.includes(skillId)
+          ? s.profile.skills
+          : [...s.profile.skills, skillId];
+        const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
+        const nextTalentScore =
+          res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+        return {
           ...s,
           profile: {
             ...s.profile,
-            skills: [...s.profile.skills, skillId],
-            xp: s.profile.xp + 30,
+            skills: nextSkills,
+            xp: nextXp,
+            talentScore: nextTalentScore,
           },
-        }));
-        toast.success(`Skill Mastered: ${name} (+30 XP)`);
-      }
+        };
+      });
+      toast.success(`Skill Mastered: ${name} (+30 XP)`);
+      return { ok: true };
     },
     [state.liveStudentId, state.profile.skills],
   );
 
   const completePlacementDay = useCallback(
-    async (day: number) => {
-      if (state.liveStudentId) {
-        const res = await completeLivePlacementDay(state.liveStudentId, day);
-        if (!res.ok) {
-          toast.error(res.error || `Failed to complete placement day ${day}`);
-          return;
-        }
-        setState((s) => {
-          const nextAtt = s.profile.attendance.includes(day)
-            ? s.profile.attendance
-            : [...s.profile.attendance, day];
-          const nextDay = res.placement_day ?? Math.min(day + 1, 90);
-          const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
-          const nextTalentScore =
-            res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
-          return {
-            ...s,
-            profile: {
-              ...s.profile,
-              attendance: nextAtt,
-              placementDay: nextDay,
-              xp: nextXp,
-              talentScore: nextTalentScore,
-            },
-          };
-        });
-        toast.success(`Placement Day ${day} completed! (+20 XP)`);
-      } else {
-        setState((s) => {
-          const nextAtt = s.profile.attendance.includes(day)
-            ? s.profile.attendance
-            : [...s.profile.attendance, day];
-          return {
-            ...s,
-            profile: {
-              ...s.profile,
-              attendance: nextAtt,
-              placementDay: Math.min(day + 1, 90),
-              xp: s.profile.xp + 20,
-            },
-          };
-        });
-        toast.success(`Placement Day ${day} completed! (+20 XP)`);
+    async (day: number): Promise<{ ok: boolean; error?: string | undefined }> => {
+      if (!state.liveStudentId) {
+        toast.error("Authentication required to complete placement day");
+        return { ok: false, error: "Authentication required" };
       }
+
+      const res = await completeLivePlacementDay(state.liveStudentId, day);
+      if (!res.ok) {
+        toast.error(res.error || `Failed to complete placement day ${day}`);
+        return { ok: false, error: res.error };
+      }
+
+      setState((s) => {
+        const nextAtt = s.profile.attendance.includes(day)
+          ? s.profile.attendance
+          : [...s.profile.attendance, day];
+        const nextDay = res.placement_day ?? Math.min(day + 1, 90);
+        const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
+        const nextTalentScore =
+          res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+        return {
+          ...s,
+          profile: {
+            ...s.profile,
+            attendance: nextAtt,
+            placementDay: nextDay,
+            xp: nextXp,
+            talentScore: nextTalentScore,
+          },
+        };
+      });
+      toast.success(`Placement Day ${day} completed! (+20 XP)`);
+      return { ok: true };
     },
     [state.liveStudentId],
   );
 
   const completeTechDay = useCallback(
-    async (day: number) => {
-      if (state.profile.completedTechDays.includes(day)) return;
+    async (day: number): Promise<{ ok: boolean; error?: string | undefined }> => {
+      if (state.profile.completedTechDays.includes(day)) return { ok: true };
 
-      if (state.liveStudentId) {
-        const res = await completeLiveTechnicalDay(state.liveStudentId, day);
-        if (!res.ok) {
-          toast.error(res.error || `Failed to verify technical day ${day}`);
-          return;
-        }
-        setState((s) => {
-          const nextTechDays = s.profile.completedTechDays.includes(day)
-            ? s.profile.completedTechDays
-            : [...s.profile.completedTechDays, day];
-          const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
-          const nextTalentScore =
-            res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
-          return {
-            ...s,
-            profile: {
-              ...s.profile,
-              completedTechDays: nextTechDays,
-              xp: nextXp,
-              talentScore: nextTalentScore,
-            },
-          };
-        });
-        toast.success(`Technical Day ${day} verified! (+50 XP)`);
-      } else {
-        setState((s) => ({
+      if (!state.liveStudentId) {
+        toast.error("Authentication required to verify technical day");
+        return { ok: false, error: "Authentication required" };
+      }
+
+      const res = await completeLiveTechnicalDay(state.liveStudentId, day);
+      if (!res.ok) {
+        toast.error(res.error || `Failed to verify technical day ${day}`);
+        return { ok: false, error: res.error };
+      }
+
+      setState((s) => {
+        const nextTechDays = s.profile.completedTechDays.includes(day)
+          ? s.profile.completedTechDays
+          : [...s.profile.completedTechDays, day];
+        const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
+        const nextTalentScore =
+          res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+        return {
           ...s,
           profile: {
             ...s.profile,
-            completedTechDays: [...s.profile.completedTechDays, day],
-            xp: s.profile.xp + 50,
+            completedTechDays: nextTechDays,
+            xp: nextXp,
+            talentScore: nextTalentScore,
           },
-        }));
-        toast.success(`Technical Day ${day} verified! (+50 XP)`);
-      }
+        };
+      });
+      toast.success(`Technical Day ${day} verified! (+50 XP)`);
+      return { ok: true };
     },
     [state.liveStudentId, state.profile.completedTechDays],
   );
 
   const completeLab = useCallback(
-    async (labId: string) => {
-      if (state.profile.completedLabs.includes(labId)) return;
+    async (labId: string, label?: string): Promise<{ ok: boolean; error?: string | undefined }> => {
+      if (state.profile.completedLabs.includes(labId)) return { ok: true };
 
-      if (state.liveStudentId) {
-        try {
-          const res = await completeLiveLab(state.liveStudentId, labId, labId);
-          if (res.ok) {
-            setState((s) => {
-              const nextLabs = s.profile.completedLabs.includes(labId)
-                ? s.profile.completedLabs
-                : [...s.profile.completedLabs, labId];
-              const nextXp = res.xp !== undefined ? res.xp : s.profile.xp + 50;
-              const nextTalentScore =
-                res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
-              return {
-                ...s,
-                profile: {
-                  ...s.profile,
-                  completedLabs: nextLabs,
-                  xp: nextXp,
-                  talentScore: nextTalentScore,
-                },
-              };
-            });
-            toast.success(`Lab Challenge Mastered! (+50 XP)`);
-            return;
-          }
-        } catch {
-          // Fall through to local update
-        }
+      if (!state.liveStudentId) {
+        toast.error("Authentication required to complete lab challenge");
+        return { ok: false, error: "Authentication required" };
       }
 
-      // Local sandbox practice fallback
-      setState((s) => ({
-        ...s,
-        profile: {
-          ...s.profile,
-          completedLabs: s.profile.completedLabs.includes(labId)
-            ? s.profile.completedLabs
-            : [...s.profile.completedLabs, labId],
-          xp: s.profile.xp + 50,
-        },
-      }));
+      const res = await completeLiveLab(state.liveStudentId, labId, label || labId);
+      if (!res.ok) {
+        toast.error(res.error || `Failed to record lab completion: ${labId}`);
+        return { ok: false, error: res.error };
+      }
+
+      setState((s) => {
+        const nextLabs = s.profile.completedLabs.includes(labId)
+          ? s.profile.completedLabs
+          : [...s.profile.completedLabs, labId];
+        const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
+        const nextTalentScore =
+          res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+        return {
+          ...s,
+          profile: {
+            ...s.profile,
+            completedLabs: nextLabs,
+            xp: nextXp,
+            talentScore: nextTalentScore,
+          },
+        };
+      });
       toast.success(`Lab Challenge Mastered! (+50 XP)`);
+      return { ok: true };
     },
     [state.liveStudentId, state.profile.completedLabs],
   );
@@ -1084,122 +1066,111 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const submitAssessment = useCallback(
-    async (day: number, score: number) => {
-      if (state.liveStudentId) {
-        const res = await submitLiveAssessment(state.liveStudentId, day, score);
-        if (!res.ok) {
-          toast.error(res.error || `Failed to submit day ${day} assessment`);
-          return;
-        }
-        setState((s) => {
-          const nextAss = { ...s.profile.assessments, [String(day)]: score };
-          const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
-          const nextTalentScore =
-            res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
-          return {
-            ...s,
-            profile: {
-              ...s.profile,
-              assessments: nextAss,
-              xp: nextXp,
-              talentScore: nextTalentScore,
-            },
-          };
-        });
-        toast.success(`Day ${day} Assessment Submitted: ${score}% (+40 XP)`);
-      } else {
-        setState((s) => ({
+    async (day: number, score: number): Promise<{ ok: boolean; error?: string | undefined }> => {
+      if (!state.liveStudentId) {
+        toast.error("Authentication required to submit assessment");
+        return { ok: false, error: "Authentication required" };
+      }
+
+      const res = await submitLiveAssessment(state.liveStudentId, day, score);
+      if (!res.ok) {
+        toast.error(res.error || `Failed to submit day ${day} assessment`);
+        return { ok: false, error: res.error };
+      }
+
+      setState((s) => {
+        const nextAss = { ...s.profile.assessments, [String(day)]: score };
+        const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
+        const nextTalentScore =
+          res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+        return {
           ...s,
           profile: {
             ...s.profile,
-            assessments: { ...s.profile.assessments, [String(day)]: score },
-            xp: s.profile.xp + 40,
+            assessments: nextAss,
+            xp: nextXp,
+            talentScore: nextTalentScore,
           },
-        }));
-        toast.success(`Day ${day} Assessment Submitted: ${score}% (+40 XP)`);
-      }
+        };
+      });
+      toast.success(`Day ${day} Assessment Submitted: ${score}% (+40 XP)`);
+      return { ok: true };
     },
     [state.liveStudentId],
   );
 
   const completeMock = useCallback(
-    async (id: string, score: number) => {
-      if (state.liveStudentId) {
-        const res = await completeLiveMock(state.liveStudentId, id, score);
-        if (!res.ok) {
-          toast.error(res.error || "Failed to record mock interview");
-          return;
-        }
-        setState((s) => {
-          const nextMocks = { ...s.profile.mocks, [id]: score };
-          const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
-          const nextTalentScore =
-            res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
-          return {
-            ...s,
-            profile: {
-              ...s.profile,
-              mocks: nextMocks,
-              xp: nextXp,
-              talentScore: nextTalentScore,
-            },
-          };
-        });
-        toast.success(`Mock Interview Recorded: ${score}% (+50 XP)`);
-      } else {
-        setState((s) => ({
+    async (
+      id: string,
+      score: number,
+      feedback: string = "",
+    ): Promise<{ ok: boolean; error?: string | undefined }> => {
+      if (!state.liveStudentId) {
+        toast.error("Authentication required to record mock interview");
+        return { ok: false, error: "Authentication required" };
+      }
+
+      const res = await completeLiveMock(state.liveStudentId, id, score, feedback);
+      if (!res.ok) {
+        toast.error(res.error || "Failed to record mock interview");
+        return { ok: false, error: res.error };
+      }
+
+      setState((s) => {
+        const nextMocks = { ...s.profile.mocks, [id]: score };
+        const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
+        const nextTalentScore =
+          res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+        return {
           ...s,
           profile: {
             ...s.profile,
-            mocks: { ...s.profile.mocks, [id]: score },
-            xp: s.profile.xp + 50,
+            mocks: nextMocks,
+            xp: nextXp,
+            talentScore: nextTalentScore,
           },
-        }));
-        toast.success(`Mock Interview Recorded: ${score}% (+50 XP)`);
-      }
+        };
+      });
+      toast.success(`Mock Interview Recorded: ${score}% (+50 XP)`);
+      return { ok: true };
     },
     [state.liveStudentId],
   );
 
   const issueCertificate = useCallback(
-    async (label: string) => {
-      if (state.profile.certifications.includes(label)) return;
+    async (label: string): Promise<{ ok: boolean; error?: string | undefined }> => {
+      if (state.profile.certifications.includes(label)) return { ok: true };
 
-      if (state.liveStudentId) {
-        const res = await issueLiveCertificate(state.liveStudentId, label);
-        if (!res.ok) {
-          toast.error(res.error || `Failed to issue certificate: ${label}`);
-          return;
-        }
-        setState((s) => {
-          const nextCerts = s.profile.certifications.includes(label)
-            ? s.profile.certifications
-            : [...s.profile.certifications, label];
-          const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
-          const nextTalentScore =
-            res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
-          return {
-            ...s,
-            profile: {
-              ...s.profile,
-              certifications: nextCerts,
-              xp: nextXp,
-              talentScore: nextTalentScore,
-            },
-          };
-        });
-        toast.success(`Certification Issued: ${label} (+100 XP)`);
-      } else {
-        setState((s) => ({
+      if (!state.liveStudentId) {
+        toast.error("Authentication required to issue certificate");
+        return { ok: false, error: "Authentication required" };
+      }
+
+      const res = await issueLiveCertificate(state.liveStudentId, label);
+      if (!res.ok) {
+        toast.error(res.error || `Failed to issue certificate: ${label}`);
+        return { ok: false, error: res.error };
+      }
+
+      setState((s) => {
+        const nextCerts = s.profile.certifications.includes(label)
+          ? s.profile.certifications
+          : [...s.profile.certifications, label];
+        const nextXp = res.xp !== undefined ? res.xp : s.profile.xp;
+        const nextTalentScore =
+          res.talent_score !== undefined ? res.talent_score : s.profile.talentScore;
+        return {
           ...s,
           profile: {
             ...s.profile,
-            certifications: [...s.profile.certifications, label],
-            xp: s.profile.xp + 100,
+            certifications: nextCerts,
+            xp: nextXp,
+            talentScore: nextTalentScore,
           },
-        }));
-        toast.success(`Certification Issued: ${label} (+100 XP)`);
-      }
+        };
+      });
+      toast.success(`Certification Issued: ${label} (+100 XP)`);
+      return { ok: true };
     },
     [state.liveStudentId, state.profile.certifications],
   );
@@ -1210,25 +1181,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       trackId: string,
       stepId: JourneyStepId,
       actionData?: { selectedOption?: number | string; isCorrect?: boolean },
-    ): Promise<{ ok: boolean; alreadyCompleted?: boolean; xpAwarded?: boolean }> => {
-      const userKey = state.liveStudentId || state.sessionEmail || "anon";
-      const qKey = `day_${dayNum}_${trackId}_${stepId}`;
-      const storageKey = `santoge_daily_step_${userKey}_${qKey}`;
-
-      // 1. Synchronous check: reject duplicate action if already locked in storage
-      if (typeof window !== "undefined") {
-        try {
-          const raw = localStorage.getItem(storageKey);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed && parsed.isLocked) {
-              return { ok: true, alreadyCompleted: true, xpAwarded: false };
-            }
-          }
-        } catch {
-          /* ignore */
-        }
+    ): Promise<{ ok: boolean; alreadyCompleted?: boolean | undefined; xpAwarded?: boolean | undefined; error?: string | undefined }> => {
+      if (!state.liveStudentId) {
+        toast.error("Authentication required to record daily journey progression");
+        return { ok: false, error: "Authentication required" };
       }
+
+      const qKey = `day_${dayNum}_${trackId}_${stepId}`;
 
       if (state.profile.dailyStepRecords?.[qKey]?.isLocked) {
         return { ok: true, alreadyCompleted: true, xpAwarded: false };
@@ -1242,41 +1201,50 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (stepId === "tech-check") {
         const isCorrect = Boolean(actionData?.isCorrect);
         xpAwarded = isCorrect;
-        if (isCorrect && state.liveStudentId) {
+        if (isCorrect) {
           const res = await completeLiveDailyStep(state.liveStudentId, "english");
-          if (res.ok) {
-            newXp = res.xp;
-            newTalentScore = res.talent_score;
+          if (!res.ok) {
+            toast.error(res.error || "Failed to record tech check completion");
+            return { ok: false, error: res.error };
           }
+          newXp = res.xp;
+          newTalentScore = res.talent_score;
         }
       } else if (stepId === "tech-sandbox") {
-        xpAwarded = true;
-        if (state.liveStudentId) {
-          const res = await completeLiveTechnicalDay(state.liveStudentId, dayNum);
-          if (res.ok) {
-            newXp = res.xp;
-            newTalentScore = res.talent_score;
-          }
+        const res = await completeLiveTechnicalDay(state.liveStudentId, dayNum);
+        if (!res.ok) {
+          toast.error(res.error || `Failed to record technical day ${dayNum}`);
+          return { ok: false, error: res.error };
         }
+        xpAwarded = true;
+        newXp = res.xp;
+        newTalentScore = res.talent_score;
       } else if (stepId === "placement-aptitude") {
         const isCorrect = Boolean(actionData?.isCorrect);
         xpAwarded = isCorrect;
-        if (isCorrect && state.liveStudentId) {
+        if (isCorrect) {
           const res = await completeLiveDailyStep(state.liveStudentId, "aptitude");
-          if (res.ok) {
-            newXp = res.xp;
-            newTalentScore = res.talent_score;
+          if (!res.ok) {
+            toast.error(res.error || "Failed to record aptitude completion");
+            return { ok: false, error: res.error };
           }
+          newXp = res.xp;
+          newTalentScore = res.talent_score;
         }
       } else if (stepId === "placement-logic") {
-        if (state.liveStudentId) {
-          await completeLiveDailyStep(state.liveStudentId, "practice");
-          const res = await completeLivePlacementDay(state.liveStudentId, dayNum);
-          if (res.ok) {
-            newXp = res.xp;
-            newTalentScore = res.talent_score;
-          }
+        const stepRes = await completeLiveDailyStep(state.liveStudentId, "practice");
+        if (!stepRes.ok) {
+          toast.error(stepRes.error || "Failed to record practice step");
+          return { ok: false, error: stepRes.error };
         }
+        const placeRes = await completeLivePlacementDay(state.liveStudentId, dayNum);
+        if (!placeRes.ok) {
+          toast.error(placeRes.error || `Failed to complete placement day ${dayNum}`);
+          return { ok: false, error: placeRes.error };
+        }
+        xpAwarded = true;
+        newXp = placeRes.xp ?? stepRes.xp;
+        newTalentScore = placeRes.talent_score ?? stepRes.talent_score;
       }
 
       const record: DailyFocusStepRecord = {
@@ -1288,33 +1256,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         xpAwarded,
       };
 
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(record));
-        } catch {
-          /* ignore */
-        }
-      }
-
-      // Mirror legacy tech-check keys for backwards compatibility
       const legacyKnowledgeKey = `day_${dayNum}_${trackId}`;
-      const legacyStorageKey = `santoge_knowledge_check_${userKey}_${legacyKnowledgeKey}`;
-      if (stepId === "tech-check") {
-        try {
-          localStorage.setItem(
-            legacyStorageKey,
-            JSON.stringify({
-              selectedOption: Number(actionData?.selectedOption ?? 0),
-              isCorrect: Boolean(actionData?.isCorrect),
-              isLocked: true,
-              xpAwarded,
-              submittedAt: record.completedAt,
-            }),
-          );
-        } catch {
-          /* ignore */
-        }
-      }
 
       setState((s) => ({
         ...s,
@@ -1353,22 +1295,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                 placementDay: Math.min(dayNum + 1, 90),
               }
             : {}),
-          ...(newXp !== undefined
-            ? { xp: newXp }
-            : xpAwarded && !s.liveStudentId
-              ? {
-                  xp:
-                    s.profile.xp +
-                    (stepId === "tech-sandbox" ? 50 : stepId === "placement-logic" ? 20 : 15),
-                }
-              : {}),
+          ...(newXp !== undefined ? { xp: newXp } : {}),
           ...(newTalentScore !== undefined ? { talentScore: newTalentScore } : {}),
         },
       }));
 
       return { ok: true, alreadyCompleted: false, xpAwarded };
     },
-    [state.liveStudentId, state.sessionEmail, state.profile.dailyStepRecords],
+    [state.liveStudentId],
   );
 
   const getDailyStepRecord = useCallback(
@@ -1377,26 +1311,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       trackId: string,
       stepId: JourneyStepId,
     ): DailyFocusStepRecord | null => {
-      const userKey = state.liveStudentId || state.sessionEmail || "anon";
       const qKey = `day_${dayNum}_${trackId}_${stepId}`;
-      const storageKey = `santoge_daily_step_${userKey}_${qKey}`;
 
       if (state.profile.dailyStepRecords?.[qKey]) {
         return state.profile.dailyStepRecords[qKey]!;
-      }
-
-      if (typeof window !== "undefined") {
-        try {
-          const raw = localStorage.getItem(storageKey);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed && parsed.isLocked) {
-              return parsed as DailyFocusStepRecord;
-            }
-          }
-        } catch {
-          /* ignore */
-        }
       }
 
       // Check legacy knowledgeChecks for tech-check
@@ -1413,29 +1331,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             xpAwarded: legacyRecord.xpAwarded,
           };
         }
-        if (typeof window !== "undefined") {
-          try {
-            const legacyRaw = localStorage.getItem(`santoge_knowledge_check_${userKey}_${legacyKey}`);
-            if (legacyRaw) {
-              const parsed = JSON.parse(legacyRaw);
-              if (parsed && parsed.isLocked) {
-                return {
-                  stepId: "tech-check",
-                  isLocked: true,
-                  completedAt: parsed.submittedAt,
-                  selectedOption: parsed.selectedOption,
-                  isCorrect: parsed.isCorrect,
-                  xpAwarded: parsed.xpAwarded,
-                };
-              }
-            }
-          } catch {
-            /* ignore */
-          }
-        }
       }
 
-      // Live backend progress checks fallback
+      // Authoritative Supabase progress checks
       if (stepId === "tech-sandbox" && state.profile.completedTechDays.includes(dayNum)) {
         return {
           stepId: "tech-sandbox",
@@ -1457,8 +1355,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       return null;
     },
     [
-      state.liveStudentId,
-      state.sessionEmail,
       state.profile.dailyStepRecords,
       state.profile.knowledgeChecks,
       state.profile.completedTechDays,
@@ -1522,9 +1418,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       isCorrect: boolean;
       record: DailyExerciseQuestionRecord;
     }> => {
-      const userKey = state.liveStudentId || state.sessionEmail || "anon";
       const qKey = `day_${dayNum}_${category}_${questionIdx}`;
-      const storageKey = `santoge_exercise_record_${userKey}_${qKey}`;
 
       // Check in-memory store
       const existingInMemory = state.profile.dailyExerciseRecords?.[qKey];
@@ -1537,45 +1431,65 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      // Check persistent localStorage
-      if (typeof window !== "undefined") {
-        try {
-          const raw = localStorage.getItem(storageKey);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed && parsed.isLocked) {
-              return {
-                ok: true,
-                alreadyAnswered: true,
-                isCorrect: Boolean(parsed.isCorrect),
-                record: parsed as DailyExerciseQuestionRecord,
-              };
-            }
-          }
-        } catch {
-          /* ignore */
+      const isCorrect = selectedOption === correctOption;
+      const categoryTitle =
+        category === "aptitude"
+          ? "Aptitude"
+          : category === "english"
+            ? "English"
+            : category === "puzzle"
+              ? "Puzzle"
+              : "Logic";
+      const questionId = `${category}_${questionIdx}`;
+
+      let authoritativeCorrect = isCorrect;
+      let alreadySubmitted = false;
+
+      if (state.liveStudentId) {
+        const res = await submitLiveExerciseAnswer(
+          state.liveStudentId,
+          dayNum,
+          categoryTitle as "Aptitude" | "English" | "Logic" | "Puzzle",
+          questionId,
+          selectedOption,
+          isCorrect,
+        );
+
+        if (!res.ok) {
+          toast.error(res.error || "Failed to persist answer in Supabase");
+          return {
+            ok: false,
+            alreadyAnswered: false,
+            isCorrect: false,
+            record: {
+              dayNum,
+              category,
+              questionIdx,
+              selectedOption,
+              correctOption,
+              isCorrect: false,
+              isLocked: false,
+              submittedAt: new Date().toISOString(),
+            },
+          };
         }
+
+        if (res.is_correct !== undefined && res.is_correct !== null) {
+          authoritativeCorrect = res.is_correct;
+        }
+        alreadySubmitted = Boolean(res.already_submitted);
       }
 
-      const isCorrect = selectedOption === correctOption;
       const record: DailyExerciseQuestionRecord = {
         dayNum,
         category,
         questionIdx,
-        selectedOption,
+        selectedOption: selectedOption,
         correctOption,
-        isCorrect,
+        isCorrect: authoritativeCorrect,
         isLocked: true,
         submittedAt: new Date().toISOString(),
       };
-
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(record));
-        } catch {
-          /* ignore */
-        }
-      }
 
       setState((s) => ({
         ...s,
@@ -1588,9 +1502,47 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         },
       }));
 
-      return { ok: true, alreadyAnswered: false, isCorrect, record };
+      return { ok: true, alreadyAnswered: alreadySubmitted, isCorrect: authoritativeCorrect, record };
     },
-    [state.liveStudentId, state.sessionEmail, state.profile.dailyExerciseRecords],
+    [state.liveStudentId, state.profile.dailyExerciseRecords],
+  );
+
+  const syncExerciseSubmissions = useCallback(
+    (dayNum: number, submissions: DbExerciseSubmission[]) => {
+      if (!submissions || submissions.length === 0) return;
+      setState((s) => {
+        const nextRecords = { ...(s.profile.dailyExerciseRecords || {}) };
+        let hasChanges = false;
+        for (const sub of submissions) {
+          const parts = sub.question_id.split("_");
+          const category = (sub.category.toLowerCase() as "aptitude" | "puzzle" | "english");
+          const questionIdx = parts.length > 1 ? Number(parts[1]) : 0;
+          const qKey = `day_${dayNum}_${category}_${questionIdx}`;
+          if (!nextRecords[qKey]) {
+            nextRecords[qKey] = {
+              dayNum,
+              category,
+              questionIdx,
+              selectedOption: sub.selected_option,
+              correctOption: sub.selected_option,
+              isCorrect: sub.is_correct ?? true,
+              isLocked: true,
+              submittedAt: sub.submitted_at,
+            };
+            hasChanges = true;
+          }
+        }
+        if (!hasChanges) return s;
+        return {
+          ...s,
+          profile: {
+            ...s.profile,
+            dailyExerciseRecords: nextRecords,
+          },
+        };
+      });
+    },
+    [],
   );
 
   const getDailyExerciseRecord = useCallback(
@@ -1599,31 +1551,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       category: "aptitude" | "puzzle" | "english",
       questionIdx: number,
     ): DailyExerciseQuestionRecord | null => {
-      const userKey = state.liveStudentId || state.sessionEmail || "anon";
       const qKey = `day_${dayNum}_${category}_${questionIdx}`;
-      const storageKey = `santoge_exercise_record_${userKey}_${qKey}`;
 
       if (state.profile.dailyExerciseRecords?.[qKey]?.isLocked) {
         return state.profile.dailyExerciseRecords[qKey]!;
       }
 
-      if (typeof window !== "undefined") {
-        try {
-          const raw = localStorage.getItem(storageKey);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed && parsed.isLocked) {
-              return parsed as DailyExerciseQuestionRecord;
-            }
-          }
-        } catch {
-          /* ignore */
-        }
-      }
-
       return null;
     },
-    [state.liveStudentId, state.sessionEmail, state.profile.dailyExerciseRecords],
+    [state.profile.dailyExerciseRecords],
   );
 
   const getDailyExerciseAnswersForDay = useCallback(
@@ -1803,6 +1739,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     recordDailyExerciseAnswer,
     getDailyExerciseRecord,
     getDailyExerciseAnswersForDay,
+    syncExerciseSubmissions,
   };
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;

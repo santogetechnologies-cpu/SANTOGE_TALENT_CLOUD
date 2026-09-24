@@ -94,6 +94,13 @@ export function KnowledgeCheck({
     // 8 & 9 & 11. Persist to app/backend state and enforce one-attempt & single XP award
     const res = await store.recordKnowledgeCheck(dayNum, trackId, topic, idx, isCorrectChoice);
 
+    if (!res?.ok) {
+      setIsLocked(false);
+      setHasSubmitted(false);
+      isProcessingRef.current = false;
+      return;
+    }
+
     if (isCorrectChoice && res.xpAwarded && !xpAwarded) {
       setXpAwarded(true);
       onSuccess(15);

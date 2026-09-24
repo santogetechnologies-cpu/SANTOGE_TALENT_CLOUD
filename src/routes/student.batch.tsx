@@ -7,6 +7,7 @@ import { PLACEMENT_DAYS, placementDay } from "@/lib/curriculum";
 import { getSupabaseClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { CalendarDays, CheckCircle2, ClipboardCheck, Megaphone, Send, Users } from "lucide-react";
+import { toast } from "sonner";
 import {
   useLiveStudentProfile,
   useLiveStudentProgress,
@@ -257,8 +258,12 @@ function BatchPage() {
           <div className="mt-4 flex flex-wrap gap-2.5">
             <button
               onClick={async () => {
-                if (liveStudentId) {
-                  await completeLivePlacementDay(liveStudentId, day.day);
+                if (!liveStudentId) {
+                  toast.error("Authentication required to record attendance");
+                  return;
+                }
+                const res = await store.completePlacementDay(day.day);
+                if (res?.ok) {
                   queryClient.invalidateQueries({
                     queryKey: ["live", "student-progress", liveStudentId],
                   });
@@ -266,7 +271,6 @@ function BatchPage() {
                     queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
                   });
                 }
-                store.completePlacementDay(day.day);
               }}
               disabled={attendedToday}
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs disabled:opacity-50 hover:bg-primary/90 transition-colors"
@@ -283,9 +287,13 @@ function BatchPage() {
             {day.assessment && (
               <button
                 onClick={async () => {
+                  if (!liveStudentId) {
+                    toast.error("Authentication required to submit assessment");
+                    return;
+                  }
                   const score = 60 + ((day.day * 7) % 35);
-                  if (liveStudentId) {
-                    await submitLiveAssessment(liveStudentId, day.day, score);
+                  const res = await store.submitAssessment(day.day, score);
+                  if (res?.ok) {
                     queryClient.invalidateQueries({
                       queryKey: ["live", "student-progress", liveStudentId],
                     });
@@ -293,7 +301,6 @@ function BatchPage() {
                       queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
                     });
                   }
-                  store.submitAssessment(day.day, score);
                 }}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
               >

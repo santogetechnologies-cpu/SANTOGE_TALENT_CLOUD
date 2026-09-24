@@ -32,7 +32,12 @@ export function ConceptVisual({ dayNum = 1, trackId, trackName, topic, onNext }:
     if (!isLocked && !isProcessingRef.current) {
       isProcessingRef.current = true;
       setIsLocked(true);
-      await store.recordDailyStepAction(dayNum, trackId, "tech-visual");
+      const res = await store.recordDailyStepAction(dayNum, trackId, "tech-visual");
+      if (!res?.ok) {
+        setIsLocked(false);
+        isProcessingRef.current = false;
+        return;
+      }
     }
     onNext();
   };

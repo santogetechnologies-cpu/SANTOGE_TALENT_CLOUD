@@ -82,9 +82,12 @@ export function GuidedSandbox({
     isProcessingRef.current = true;
     setIsSubmitting(true);
     try {
-      await onCompleteLab();
-      await store.recordDailyStepAction(dayNum, trackId, "tech-sandbox");
-      setAwardedXp(true);
+      const res = await store.recordDailyStepAction(dayNum, trackId, "tech-sandbox");
+      if (res?.ok) {
+        setAwardedXp(true);
+      } else {
+        isProcessingRef.current = false;
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -238,8 +241,11 @@ export function GuidedSandbox({
           onClick={async () => {
             if (!isStepLocked && !isProcessingRef.current) {
               isProcessingRef.current = true;
-              await onCompleteLab();
-              await store.recordDailyStepAction(dayNum, trackId, "tech-sandbox");
+              const res = await store.recordDailyStepAction(dayNum, trackId, "tech-sandbox");
+              if (!res?.ok) {
+                isProcessingRef.current = false;
+                return;
+              }
             }
             onNext();
           }}

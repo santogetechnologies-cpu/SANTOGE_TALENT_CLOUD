@@ -33,10 +33,14 @@ export function LogicChallenge({ dayNum, trackId = "general", puzzle, onNext }: 
     setIsLocked(true);
 
     const isCorrect = Boolean(options[idx]?.isCorrect);
-    await store.recordDailyStepAction(dayNum, trackId, "placement-logic", {
+    const res = await store.recordDailyStepAction(dayNum, trackId, "placement-logic", {
       selectedOption: idx,
       isCorrect,
     });
+    if (!res?.ok) {
+      setIsLocked(false);
+      isProcessingRef.current = false;
+    }
   };
 
   const puzzleText =

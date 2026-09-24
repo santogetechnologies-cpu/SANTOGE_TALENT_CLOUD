@@ -13,6 +13,7 @@ import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
 import {
   useLiveStudentProfile,
   useLiveStudentProgress,
+  useLiveExerciseSubmissions,
   completeLivePlacementDay,
   completeLiveTechnicalDay,
   completeLiveDailyStep,
@@ -158,7 +159,7 @@ function DailyExercisesPage() {
     return currentPlan.practice.mcqs.filter((m) => m.category === "English");
   }, [currentPlan]);
 
-  // Retrieve any previously persisted locked answers for this day from store/localStorage
+  // Retrieve any previously persisted locked answers for this day from store state
   const initialAnswers = useMemo(() => {
     return store.getDailyExerciseAnswersForDay(
       selectedDayNum,
@@ -207,7 +208,19 @@ function DailyExercisesPage() {
   });
   const [activeVocabIdx, setActiveVocabIdx] = useState<number>(0);
 
-  // Synchronize processing ref and state if store hydrates asynchronously
+  // Authoritative Supabase exercise submissions query
+  const { data: dbExerciseSubmissions } = useLiveExerciseSubmissions(
+    liveStudentId,
+    selectedDayNum,
+  );
+
+  useEffect(() => {
+    if (dbExerciseSubmissions && dbExerciseSubmissions.length > 0) {
+      store.syncExerciseSubmissions(selectedDayNum, dbExerciseSubmissions);
+    }
+  }, [dbExerciseSubmissions, selectedDayNum, store]);
+
+  // Synchronize processing ref and state if store hydrates
   useEffect(() => {
     const saved = store.getDailyExerciseAnswersForDay(
       selectedDayNum,
@@ -229,7 +242,7 @@ function DailyExercisesPage() {
     Object.keys(saved.records).forEach((k) => {
       isProcessingClickRef.current[k] = true;
     });
-  }, [selectedDayNum, aptitudeMcqs.length, englishMcqs.length, currentPlan.practice.puzzle, store]);
+  }, [selectedDayNum, aptitudeMcqs.length, englishMcqs.length, currentPlan.practice.puzzle, store, dbExerciseSubmissions]);
 
   // 3. Technical Code drill state
   const [userCode, setUserCode] = useState<string>(() => {
@@ -399,11 +412,13 @@ console.log(solveChallenge());`;
     }
     isProcessingClickRef.current[qKey] = true;
 
-    // Immediately accept first clicked answer
-    setAptitudeAnswers((prev) => ({ ...prev, [qIdx]: optIdx }));
-
-    // Persist permanently in store and storage
-    await store.recordDailyExerciseAnswer(selectedDayNum, "aptitude", qIdx, optIdx, correctIdx);
+    // Persist to authoritative backend via store
+    const res = await store.recordDailyExerciseAnswer(selectedDayNum, "aptitude", qIdx, optIdx, correctIdx);
+    if (res?.ok) {
+      setAptitudeAnswers((prev) => ({ ...prev, [qIdx]: optIdx }));
+    } else {
+      delete isProcessingClickRef.current[qKey];
+    }
   };
 
   const handlePuzzleOptionClick = async (optIdx: number, correctIdx: number) => {
@@ -413,9 +428,12 @@ console.log(solveChallenge());`;
     }
     isProcessingClickRef.current[qKey] = true;
 
-    setPuzzleAnswer(optIdx);
-
-    await store.recordDailyExerciseAnswer(selectedDayNum, "puzzle", 0, optIdx, correctIdx);
+    const res = await store.recordDailyExerciseAnswer(selectedDayNum, "puzzle", 0, optIdx, correctIdx);
+    if (res?.ok) {
+      setPuzzleAnswer(optIdx);
+    } else {
+      delete isProcessingClickRef.current[qKey];
+    }
   };
 
   const handleEnglishOptionClick = async (qIdx: number, optIdx: number, correctIdx: number) => {
@@ -425,9 +443,12 @@ console.log(solveChallenge());`;
     }
     isProcessingClickRef.current[qKey] = true;
 
-    setEnglishAnswers((prev) => ({ ...prev, [qIdx]: optIdx }));
-
-    await store.recordDailyExerciseAnswer(selectedDayNum, "english", qIdx, optIdx, correctIdx);
+    const res = await store.recordDailyExerciseAnswer(selectedDayNum, "english", qIdx, optIdx, correctIdx);
+    if (res?.ok) {
+      setEnglishAnswers((prev) => ({ ...prev, [qIdx]: optIdx }));
+    } else {
+      delete isProcessingClickRef.current[qKey];
+    }
   };
 
   // Actions
@@ -436,10 +457,10 @@ console.log(solveChallenge());`;
       toast.error("Please answer at least one question before submitting.");
       return;
     }
-    setAptitudeSubmitted(true);
 
     if (hasAptitudeIncorrect || !isAptitudeAllCorrect) {
       // WRONG ANSWER SUBMITTED: DO NOT INCREASE XP!
+      setAptitudeSubmitted(true);
       setAptitudeXpEarned(0);
       toast.error("Submitted with Incorrect Answer (0 XP Earned)", {
         description: "No XP points awarded because an answer was incorrect. Proceeding to Corporate English.",
@@ -454,14 +475,23 @@ console.log(solveChallenge());`;
       return;
     }
 
-    // ALL ANSWERS CORRECT: INCREASE XP (+25 XP)
-    setAptitudeXpEarned(25);
-    if (liveStudentId) {
-      await completeLiveDailyStep(liveStudentId, "aptitude");
-      queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
-      queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
+    // ALL ANSWERS CORRECT: Authoritative completion via Supabase
+    if (!liveStudentId) {
+      toast.error("Authentication Required", {
+        description: "You must be logged into an active student account to submit workouts.",
+      });
+      return;
     }
-    await store.completeDailyStep("aptitude");
+
+    const res = await store.completeDailyStep("aptitude");
+    if (!res?.ok) {
+      return;
+    }
+
+    setAptitudeSubmitted(true);
+    setAptitudeXpEarned(25);
+    queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
+    queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
     toast.success("Aptitude Drill Mastered! (+25 XP)", {
       description: "Opening Corporate English Workout…",
     });
@@ -481,10 +511,10 @@ console.log(solveChallenge());`;
       toast.error("Please answer the verbal exercise question.");
       return;
     }
-    setEnglishSubmitted(true);
 
     if (hasEnglishIncorrect || !isEnglishAllCorrect) {
       // WRONG ANSWER SUBMITTED: DO NOT INCREASE XP!
+      setEnglishSubmitted(true);
       setEnglishXpEarned(0);
       toast.error("Submitted with Incorrect Answer (0 XP Earned)", {
         description: "No XP points awarded because an answer was incorrect. Proceeding to Technical Code Drill.",
@@ -499,14 +529,23 @@ console.log(solveChallenge());`;
       return;
     }
 
-    // ALL ANSWERS CORRECT: INCREASE XP (+25 XP)
-    setEnglishXpEarned(25);
-    if (liveStudentId) {
-      await completeLiveDailyStep(liveStudentId, "english");
-      queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
-      queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
+    // ALL ANSWERS CORRECT: Authoritative completion via Supabase
+    if (!liveStudentId) {
+      toast.error("Authentication Required", {
+        description: "You must be logged into an active student account to submit workouts.",
+      });
+      return;
     }
-    await store.completeDailyStep("english");
+
+    const res = await store.completeDailyStep("english");
+    if (!res?.ok) {
+      return;
+    }
+
+    setEnglishSubmitted(true);
+    setEnglishXpEarned(25);
+    queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
+    queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
     toast.success("Corporate English Mastered! (+25 XP)", {
       description: "Opening Technical Code Drill…",
     });
@@ -544,16 +583,21 @@ console.log(solveChallenge());`;
   };
 
   const handleVerifyCode = async () => {
-    setIsCodeVerified(true);
-    if (liveStudentId) {
-      await completeLiveTechnicalDay(liveStudentId, selectedDayNum);
-      queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
-      queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
+    if (!liveStudentId) {
+      toast.error("Authentication Required", {
+        description: "You must be logged into an active student account to verify technical exercises.",
+      });
+      return;
     }
-    await store.completeTechDay(selectedDayNum);
-    toast.success("Technical Exercise Verified! (+50 XP)", {
-      description: `${primaryTrack.name} Day ${selectedDayNum} mastered.`,
-    });
+
+    const res = await store.completeTechDay(selectedDayNum);
+    if (!res?.ok) {
+      return;
+    }
+
+    setIsCodeVerified(true);
+    queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
+    queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
   };
 
   return (

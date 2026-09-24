@@ -69,6 +69,13 @@ export function AptitudeChallenge({
       isCorrect: isCorrectChoice,
     });
 
+    if (!res?.ok) {
+      setIsLocked(false);
+      setHasAnswered(false);
+      isProcessingRef.current = false;
+      return;
+    }
+
     if (isCorrectChoice && res.xpAwarded && !xpAwarded) {
       setXpAwarded(true);
       onSuccess(15);
