@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { MessageSquare, Video, ArrowRight, CheckCircle2, Sparkles, BookOpen, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AcceleratorDay } from "@/lib/placement-accelerator-data";
@@ -22,25 +22,28 @@ export function CommunicationInteraction({
   const store = useAppStore();
   const existingRecord = store.getDailyStepRecord(dayNum, trackId, "placement-communication");
 
-  const [selectedChoice, setSelectedChoice] = useState<"A" | "B" | null>(
-    () => (existingRecord?.selectedOption as "A" | "B") || null,
-  );
-  const [isLocked, setIsLocked] = useState(() => Boolean(existingRecord?.isLocked));
-  const isProcessingRef = useRef(Boolean(existingRecord?.isLocked));
+  const [selectedChoice, setSelectedChoice] = useState<"A" | "B" | null>(() => {
+    if (existingRecord?.selectedOption === "A" || existingRecord?.selectedOption === "B") {
+      return existingRecord.selectedOption;
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (existingRecord?.selectedOption === "A" || existingRecord?.selectedOption === "B") {
+      setSelectedChoice(existingRecord.selectedOption);
+    }
+  }, [existingRecord?.selectedOption]);
 
   const handleSelectChoice = async (choice: "A" | "B") => {
-    if (isLocked || isProcessingRef.current) return;
-    isProcessingRef.current = true;
     setSelectedChoice(choice);
-    setIsLocked(true);
-    const res = await store.recordDailyStepAction(dayNum, trackId, "placement-communication", {
-      selectedOption: choice,
-      isCorrect: choice === "B",
-    });
-    if (!res?.ok) {
-      setIsLocked(false);
-      setSelectedChoice(null);
-      isProcessingRef.current = false;
+    try {
+      await store.recordDailyStepAction(dayNum, trackId, "placement-communication", {
+        selectedOption: choice,
+        isCorrect: choice === "B",
+      });
+    } catch (err) {
+      console.warn("Non-fatal communication action error:", err);
     }
   };
 
@@ -131,11 +134,10 @@ export function CommunicationInteraction({
           <div className="grid gap-3 sm:grid-cols-2">
             {/* Option A */}
             <button
-              disabled={isLocked || isProcessingRef.current}
+              type="button"
               onClick={() => handleSelectChoice("A")}
               className={cn(
-                "group flex flex-col justify-between rounded-xl border p-4 text-left transition-all",
-                isLocked ? "cursor-not-allowed" : "cursor-pointer",
+                "group flex flex-col justify-between rounded-xl border p-4 text-left transition-all cursor-pointer",
                 selectedChoice === "A"
                   ? "border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/30"
                   : selectedChoice === "B"
@@ -161,11 +163,10 @@ export function CommunicationInteraction({
 
             {/* Option B */}
             <button
-              disabled={isLocked || isProcessingRef.current}
+              type="button"
               onClick={() => handleSelectChoice("B")}
               className={cn(
-                "group flex flex-col justify-between rounded-xl border p-4 text-left transition-all",
-                isLocked ? "cursor-not-allowed" : "cursor-pointer",
+                "group flex flex-col justify-between rounded-xl border p-4 text-left transition-all cursor-pointer",
                 selectedChoice === "B"
                   ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/30"
                   : selectedChoice === "A"

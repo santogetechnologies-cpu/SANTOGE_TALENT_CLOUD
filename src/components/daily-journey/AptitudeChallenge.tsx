@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Calculator, ArrowRight, CheckCircle2, AlertCircle, Sparkles, Timer, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AcceleratorDay } from "@/lib/placement-accelerator-data";
@@ -31,12 +31,20 @@ export function AptitudeChallenge({
   const [selectedIdx, setSelectedIdx] = useState<number | null>(() =>
     typeof existingRecord?.selectedOption === "number" ? existingRecord.selectedOption : null,
   );
-  const [hasAnswered, setHasAnswered] = useState<boolean>(() => Boolean(existingRecord?.isLocked));
-  const [isLocked, setIsLocked] = useState<boolean>(() => Boolean(existingRecord?.isLocked));
+  const [hasAnswered, setHasAnswered] = useState<boolean>(
+    () => typeof existingRecord?.selectedOption === "number",
+  );
   const [xpAwarded, setXpAwarded] = useState<boolean>(() => Boolean(existingRecord?.xpAwarded));
-  const isProcessingRef = useRef<boolean>(Boolean(existingRecord?.isLocked));
 
   const [secondsLeft, setSecondsLeft] = useState(60);
+
+  // Sync if existing record hydrates or updates
+  useEffect(() => {
+    if (typeof existingRecord?.selectedOption === "number") {
+      setSelectedIdx(existingRecord.selectedOption);
+      setHasAnswered(true);
+    }
+  }, [existingRecord?.selectedOption]);
 
   // Fallback MCQ if not provided
   const activeMcq: PlacementMCQ = mcq || {
@@ -56,29 +64,22 @@ export function AptitudeChallenge({
   }, [hasAnswered, secondsLeft]);
 
   const handleSelect = async (idx: number) => {
-    if (isLocked || isProcessingRef.current) return;
-    isProcessingRef.current = true;
-
     setSelectedIdx(idx);
     setHasAnswered(true);
-    setIsLocked(true);
 
     const isCorrectChoice = idx === activeMcq.answer;
-    const res = await store.recordDailyStepAction(dayNum, trackId, "placement-aptitude", {
-      selectedOption: idx,
-      isCorrect: isCorrectChoice,
-    });
+    try {
+      const res = await store.recordDailyStepAction(dayNum, trackId, "placement-aptitude", {
+        selectedOption: idx,
+        isCorrect: isCorrectChoice,
+      });
 
-    if (!res?.ok) {
-      setIsLocked(false);
-      setHasAnswered(false);
-      isProcessingRef.current = false;
-      return;
-    }
-
-    if (isCorrectChoice && res.xpAwarded && !xpAwarded) {
-      setXpAwarded(true);
-      onSuccess(15);
+      if (isCorrectChoice && res?.xpAwarded && !xpAwarded) {
+        setXpAwarded(true);
+        onSuccess(15);
+      }
+    } catch (err) {
+      console.warn("Non-fatal aptitude step error:", err);
     }
   };
 
@@ -140,18 +141,15 @@ export function AptitudeChallenge({
             return (
               <button
                 key={idx}
-                disabled={isLocked || isProcessingRef.current}
+                type="button"
                 onClick={() => handleSelect(idx)}
                 className={cn(
-                  "group flex items-center gap-3 rounded-xl border p-3.5 text-left text-xs transition-all",
-                  isLocked ? "cursor-not-allowed" : "cursor-pointer",
+                  "group flex items-center gap-3 rounded-xl border p-3.5 text-left text-xs transition-all cursor-pointer",
                   showSuccess
                     ? "border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200 font-semibold ring-1 ring-emerald-500/30"
                     : showError
                       ? "border-destructive bg-destructive/10 text-destructive"
-                      : isLocked
-                        ? "border-border/60 bg-muted/20 opacity-60 text-muted-foreground"
-                        : "border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted/30",
+                      : "border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted/30",
                 )}
               >
                 <div

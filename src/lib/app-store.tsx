@@ -1334,6 +1334,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const qKey = `day_${dayNum}_${trackId}_${stepId}`;
 
       if (state.profile.dailyStepRecords?.[qKey]?.isLocked) {
+        if (actionData?.selectedOption !== undefined) {
+          setState((s) => ({
+            ...s,
+            profile: {
+              ...s.profile,
+              dailyStepRecords: {
+                ...(s.profile.dailyStepRecords || {}),
+                [qKey]: {
+                  ...s.profile.dailyStepRecords?.[qKey]!,
+                  selectedOption: actionData.selectedOption ?? null,
+                  isCorrect: actionData.isCorrect !== undefined ? actionData.isCorrect : s.profile.dailyStepRecords?.[qKey]?.isCorrect ?? null,
+                },
+              },
+            },
+          }));
+        }
         return { ok: true, alreadyCompleted: true, xpAwarded: false };
       }
 
@@ -1601,10 +1617,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     (dayNum: number, trackId: string): KnowledgeCheckRecord | null => {
       const rec = getDailyStepRecord(dayNum, trackId, "tech-check");
       if (!rec) return null;
+      const hasAnswer = rec.selectedOption !== undefined && rec.selectedOption !== null;
       return {
         selectedOption: Number(rec.selectedOption ?? 0),
         isCorrect: Boolean(rec.isCorrect),
-        isLocked: rec.isLocked,
+        isLocked: hasAnswer ? rec.isLocked : false,
         xpAwarded: Boolean(rec.xpAwarded),
         submittedAt: rec.completedAt,
       };

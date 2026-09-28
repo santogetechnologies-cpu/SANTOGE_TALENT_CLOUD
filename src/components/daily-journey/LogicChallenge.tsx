@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Puzzle, ArrowRight, CheckCircle2, Eye, Sparkles, BrainCircuit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AcceleratorDay } from "@/lib/placement-accelerator-data";
@@ -20,26 +20,29 @@ export function LogicChallenge({ dayNum, trackId = "general", puzzle, onNext }: 
   const [selectedGuess, setSelectedGuess] = useState<number | null>(() =>
     typeof existingRecord?.selectedOption === "number" ? existingRecord.selectedOption : null,
   );
-  const [showDeduction, setShowDeduction] = useState<boolean>(() => Boolean(existingRecord?.isLocked));
-  const [isLocked, setIsLocked] = useState<boolean>(() => Boolean(existingRecord?.isLocked));
-  const isProcessingRef = useRef<boolean>(Boolean(existingRecord?.isLocked));
+  const [showDeduction, setShowDeduction] = useState<boolean>(() =>
+    typeof existingRecord?.selectedOption === "number" || Boolean(existingRecord?.isLocked),
+  );
+
+  useEffect(() => {
+    if (typeof existingRecord?.selectedOption === "number") {
+      setSelectedGuess(existingRecord.selectedOption);
+      setShowDeduction(true);
+    }
+  }, [existingRecord?.selectedOption]);
 
   const handleSelect = async (idx: number) => {
-    if (isLocked || isProcessingRef.current) return;
-    isProcessingRef.current = true;
-
     setSelectedGuess(idx);
     setShowDeduction(true);
-    setIsLocked(true);
 
     const isCorrect = Boolean(options[idx]?.isCorrect);
-    const res = await store.recordDailyStepAction(dayNum, trackId, "placement-logic", {
-      selectedOption: idx,
-      isCorrect,
-    });
-    if (!res?.ok) {
-      setIsLocked(false);
-      isProcessingRef.current = false;
+    try {
+      await store.recordDailyStepAction(dayNum, trackId, "placement-logic", {
+        selectedOption: idx,
+        isCorrect,
+      });
+    } catch (err) {
+      console.warn("Non-fatal logic step error:", err);
     }
   };
 
@@ -102,18 +105,15 @@ export function LogicChallenge({ dayNum, trackId = "general", puzzle, onNext }: 
               return (
                 <button
                   key={idx}
-                  disabled={isLocked || isProcessingRef.current}
+                  type="button"
                   onClick={() => handleSelect(idx)}
                   className={cn(
-                    "flex flex-col items-start rounded-xl border p-3.5 text-left text-xs transition-all",
-                    isLocked ? "cursor-not-allowed" : "cursor-pointer",
+                    "flex flex-col items-start rounded-xl border p-3.5 text-left text-xs transition-all cursor-pointer",
                     isSelected
                       ? opt.isCorrect
                         ? "border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200 ring-1 ring-emerald-500/30"
                         : "border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-200"
-                      : isLocked
-                        ? "border-border/60 bg-muted/20 opacity-60 text-muted-foreground"
-                        : "border-border bg-card text-foreground hover:border-primary/40",
+                      : "border-border bg-card text-foreground hover:border-primary/40",
                   )}
                 >
                   <span className="font-mono text-[10px] text-muted-foreground">Option {idx + 1}</span>
