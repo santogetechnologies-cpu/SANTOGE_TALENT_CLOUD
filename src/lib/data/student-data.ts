@@ -322,7 +322,13 @@ export async function completeLivePlacementDay(
     return { ok: false, error: error.message };
   }
 
-  const res = data as { ok?: boolean; placement_day?: number; xp?: number; talent_score?: number; error?: string } | null;
+  const res = data as {
+    ok?: boolean;
+    placement_day?: number;
+    xp?: number;
+    talent_score?: number;
+    error?: string;
+  } | null;
   if (res && res.ok === false) {
     return { ok: false, error: res.error || "Failed to complete placement day" };
   }
@@ -384,15 +390,13 @@ export async function completeLiveTechnicalDay(
         error.code === "PGRST202" ||
         error.message?.includes("schema cache") ||
         error.message?.includes("function") ||
-        (error as any).status === 404
+        (error as unknown as { status?: number }).status === 404
       ) {
-        const { error: insertErr } = await supabase
-          .from("student_technical_days")
-          .insert({
-            student_id: studentId,
-            day,
-            completed_at: new Date().toISOString(),
-          });
+        const { error: insertErr } = await supabase.from("student_technical_days").insert({
+          student_id: studentId,
+          day,
+          completed_at: new Date().toISOString(),
+        });
 
         if (!insertErr) {
           return { ok: true, day };
@@ -405,7 +409,13 @@ export async function completeLiveTechnicalDay(
       return { ok: false, error: error.message };
     }
 
-    const res = data as { ok?: boolean; day?: number; xp?: number; talent_score?: number; error?: string } | null;
+    const res = data as {
+      ok?: boolean;
+      day?: number;
+      xp?: number;
+      talent_score?: number;
+      error?: string;
+    } | null;
     if (res && res.ok === false) {
       return { ok: false, error: res.error || "Failed to complete technical day" };
     }
@@ -466,7 +476,13 @@ export async function completeLiveDailyStep(
     return { ok: false, error: error.message };
   }
 
-  const res = data as { ok?: boolean; step?: string; xp?: number; talent_score?: number; error?: string } | null;
+  const res = data as {
+    ok?: boolean;
+    step?: string;
+    xp?: number;
+    talent_score?: number;
+    error?: string;
+  } | null;
   if (res && res.ok === false) {
     return { ok: false, error: res.error || "Failed to complete daily step" };
   }
@@ -496,7 +512,14 @@ export async function submitLiveAssessment(
     return { ok: false, error: error.message };
   }
 
-  const res = data as { ok?: boolean; day?: number; score?: number; xp?: number; talent_score?: number; error?: string } | null;
+  const res = data as {
+    ok?: boolean;
+    day?: number;
+    score?: number;
+    xp?: number;
+    talent_score?: number;
+    error?: string;
+  } | null;
   if (res && res.ok === false) {
     return { ok: false, error: res.error || "Failed to submit assessment" };
   }
@@ -528,7 +551,14 @@ export async function completeLiveMock(
     return { ok: false, error: error.message };
   }
 
-  const res = data as { ok?: boolean; mock_id?: string; score?: number; xp?: number; talent_score?: number; error?: string } | null;
+  const res = data as {
+    ok?: boolean;
+    mock_id?: string;
+    score?: number;
+    xp?: number;
+    talent_score?: number;
+    error?: string;
+  } | null;
   if (res && res.ok === false) {
     return { ok: false, error: res.error || "Failed to complete mock interview" };
   }
@@ -555,7 +585,13 @@ export async function issueLiveCertificate(
     return { ok: false, error: error.message };
   }
 
-  const res = data as { ok?: boolean; label?: string; xp?: number; talent_score?: number; error?: string } | null;
+  const res = data as {
+    ok?: boolean;
+    label?: string;
+    xp?: number;
+    talent_score?: number;
+    error?: string;
+  } | null;
   if (res && res.ok === false) {
     return { ok: false, error: res.error || "Failed to issue certificate" };
   }
@@ -670,163 +706,119 @@ export async function updateLiveReadiness(
 
 export type DbExerciseSubmission = {
   question_id: string;
-  category: "Aptitude" | "English" | "Logic" | "Puzzle";
+  category: string;
   selected_option: number;
   is_correct: boolean | null;
+  xp_earned?: number;
   submitted_at: string;
   locked: boolean;
 };
 
-export async function submitLiveExerciseAnswer(
-  studentId: string,
-  day: number,
-  category: "Aptitude" | "English" | "Logic" | "Puzzle",
-  questionId: string,
-  selectedOption: number,
-  isCorrect?: boolean | null,
-): Promise<{
+export type ExerciseSubmissionResult = {
   ok: boolean;
   already_submitted?: boolean | undefined;
   locked?: boolean | undefined;
   error?: string | undefined;
+  question_id?: string | undefined;
+  category?: string | undefined;
   selected_option?: number | undefined;
-  is_correct?: boolean | null | undefined;
-}> {
+  is_correct?: boolean | undefined;
+  xp_earned?: number | undefined;
+  total_xp?: number | undefined;
+  talent_score?: number | undefined;
+  submitted_at?: string | undefined;
+};
+
+export type ExerciseSubmissionsSummary = {
+  total_completed: number;
+  total_xp: number;
+  aptitude_completed: number;
+  aptitude_xp: number;
+  english_completed: number;
+  english_xp: number;
+};
+
+export async function submitLiveExerciseAnswer(
+  studentId: string,
+  questionId: string,
+  selectedOption: number,
+  day = 1,
+  category?: string,
+): Promise<ExerciseSubmissionResult> {
   const supabase = getSupabaseClient();
-  try {
-    const { data, error } = await supabase.rpc("submit_student_exercise_answer", {
-      p_student_id: studentId,
-      p_day: day,
-      p_category: category,
-      p_question_id: questionId,
-      p_selected_option: selectedOption,
-      p_is_correct: isCorrect ?? null,
-    });
 
-    if (error) {
-      // If RPC is missing in schema cache (404 / PGRST202), gracefully attempt table insert or fallback
-      if (
-        error.code === "PGRST202" ||
-        error.message?.includes("schema cache") ||
-        error.message?.includes("function") ||
-        (error as any).status === 404
-      ) {
-        const { error: insertErr } = await supabase
-          .from("student_exercise_submissions")
-          .insert({
-            student_id: studentId,
-            day,
-            category,
-            question_id: questionId,
-            selected_option: selectedOption,
-            is_correct: isCorrect ?? null,
-          });
+  const { data, error } = await supabase.rpc("submit_student_exercise_answer", {
+    p_student_id: studentId,
+    p_question_id: questionId,
+    p_selected_option: selectedOption,
+    p_day: day,
+    p_category: category,
+  });
 
-        if (!insertErr) {
-          return {
-            ok: true,
-            already_submitted: false,
-            locked: true,
-            selected_option: selectedOption,
-            is_correct: isCorrect ?? null,
-          };
-        }
-
-        // Migration 022 not yet applied to database; allow client store to persist locally
-        return {
-          ok: true,
-          already_submitted: false,
-          locked: true,
-          selected_option: selectedOption,
-          is_correct: isCorrect ?? null,
-        };
-      }
-
-      return { ok: false, error: error.message };
-    }
-
-    const res = data as {
-      ok?: boolean;
-      already_submitted?: boolean;
-      locked?: boolean;
-      error?: string;
-      selected_option?: number;
-      is_correct?: boolean | null;
-    } | null;
-
-    if (res && res.ok === false) {
-      return { ok: false, error: res.error || "Failed to submit exercise answer" };
-    }
-
-    return {
-      ok: true,
-      already_submitted: res?.already_submitted,
-      locked: res?.locked ?? true,
-      selected_option: res?.selected_option ?? selectedOption,
-      is_correct: res?.is_correct ?? isCorrect ?? null,
-    };
-  } catch (_err) {
-    return {
-      ok: true,
-      already_submitted: false,
-      locked: true,
-      selected_option: selectedOption,
-      is_correct: isCorrect ?? null,
-    };
+  if (error) {
+    return { ok: false, error: error.message };
   }
+
+  const res = data as ExerciseSubmissionResult | null;
+  if (!res || res.ok === false) {
+    return { ok: false, error: res?.error || "Failed to submit exercise answer" };
+  }
+
+  return {
+    ok: true,
+    already_submitted: Boolean(res.already_submitted),
+    locked: res.locked ?? true,
+    question_id: res.question_id || questionId,
+    category: res.category || category,
+    selected_option: res.selected_option ?? selectedOption,
+    is_correct: res.is_correct ?? false,
+    xp_earned: res.xp_earned ?? (res.is_correct ? 1 : 0),
+    total_xp: res.total_xp,
+    talent_score: res.talent_score,
+    submitted_at: res.submitted_at || new Date().toISOString(),
+  };
 }
 
 export async function fetchLiveExerciseSubmissions(
   studentId: string,
-  day: number,
-): Promise<{ ok: boolean; submissions: DbExerciseSubmission[]; error?: string | undefined }> {
+  day?: number,
+  date?: string,
+): Promise<{
+  ok: boolean;
+  submissions: DbExerciseSubmission[];
+  summary?: ExerciseSubmissionsSummary | undefined;
+  error?: string | undefined;
+}> {
   const supabase = getSupabaseClient();
-  try {
-    const { data, error } = await supabase.rpc("get_student_exercise_submissions", {
-      p_student_id: studentId,
-      p_day: day,
-    });
 
-    if (error) {
-      // If RPC is missing in schema cache (404 / PGRST202), gracefully query table directly or return empty list
-      if (
-        error.code === "PGRST202" ||
-        error.message?.includes("schema cache") ||
-        error.message?.includes("function") ||
-        (error as any).status === 404
-      ) {
-        const { data: tableData, error: tableErr } = await supabase
-          .from("student_exercise_submissions")
-          .select("question_id, category, selected_option, is_correct, submitted_at")
-          .eq("student_id", studentId)
-          .eq("day", day);
+  const { data, error } = await supabase.rpc("get_student_exercise_submissions", {
+    p_student_id: studentId,
+    p_day: day ?? null,
+    p_date: date ?? null,
+  });
 
-        if (!tableErr && tableData) {
-          const mapped: DbExerciseSubmission[] = tableData.map((row: any) => ({
-            question_id: row.question_id,
-            category: row.category,
-            selected_option: row.selected_option,
-            is_correct: row.is_correct,
-            submitted_at: row.submitted_at,
-            locked: true,
-          }));
-          return { ok: true, submissions: mapped };
-        }
-
-        return { ok: true, submissions: [] };
-      }
-
-      return { ok: false, submissions: [], error: error.message };
-    }
-
-    const res = data as { ok?: boolean; submissions?: DbExerciseSubmission[]; error?: string } | null;
-    if (res && res.ok === false) {
-      return { ok: false, submissions: [], error: res.error };
-    }
-
-    return { ok: true, submissions: res?.submissions || [] };
-  } catch (_err) {
-    return { ok: true, submissions: [] };
+  if (error) {
+    return { ok: false, submissions: [], error: error.message };
   }
-}
 
+  const res = data as {
+    ok?: boolean;
+    submissions?: DbExerciseSubmission[];
+    summary?: ExerciseSubmissionsSummary;
+    error?: string;
+  } | null;
+
+  if (res && res.ok === false) {
+    return {
+      ok: false,
+      submissions: [],
+      error: res.error || "Failed to load exercise submissions",
+    };
+  }
+
+  return {
+    ok: true,
+    submissions: res?.submissions || [],
+    summary: res?.summary,
+  };
+}

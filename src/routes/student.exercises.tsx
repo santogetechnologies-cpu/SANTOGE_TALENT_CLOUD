@@ -4,12 +4,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Chip, Console, Meter, PageHeader, Panel, Stat } from "@/components/kit";
 import { useAppStore } from "@/lib/app-store";
-import {
-  getAcceleratorDay,
-  type AcceleratorDay,
-} from "@/lib/placement-accelerator-data";
+import { getAcceleratorDay, type AcceleratorDay } from "@/lib/placement-accelerator-data";
 import { getTrackSyllabus } from "@/lib/syllabus-data";
 import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
+import {
+  getDayAptitudeQuestions,
+  getDayCorporateEnglishQuestions,
+  type DailyExerciseQuestion,
+} from "@/lib/daily-exercise-questions";
 import {
   useLiveStudentProfile,
   useLiveStudentProgress,
@@ -132,10 +134,7 @@ function DailyExercisesPage() {
   );
 
   const primaryTrack = trackById(selectedTrackId);
-  const technicalSyllabus = useMemo(
-    () => getTrackSyllabus(selectedTrackId),
-    [selectedTrackId],
-  );
+  const technicalSyllabus = useMemo(() => getTrackSyllabus(selectedTrackId), [selectedTrackId]);
 
   // Technical syllabus day calculation
   const weekIdx = Math.floor((selectedDayNum - 1) / 5);
@@ -147,115 +146,94 @@ function DailyExercisesPage() {
   // Atomic processing click ref to synchronously eliminate race conditions on rapid multi-clicks
   const isProcessingClickRef = useRef<Record<string, boolean>>({});
 
-  // Aptitude MCQs from currentPlan
-  const aptitudeMcqs = useMemo(() => {
-    return currentPlan.practice.mcqs.filter(
-      (m) => m.category === "Aptitude" || m.category === "Logic",
-    );
-  }, [currentPlan]);
-
-  // English MCQs from currentPlan
-  const englishMcqs = useMemo(() => {
-    return currentPlan.practice.mcqs.filter((m) => m.category === "English");
-  }, [currentPlan]);
-
-  // Retrieve any previously persisted locked answers for this day from store state
-  const initialAnswers = useMemo(() => {
-    return store.getDailyExerciseAnswersForDay(
-      selectedDayNum,
-      aptitudeMcqs.length,
-      englishMcqs.length,
-      Boolean(currentPlan.practice.puzzle),
-    );
-  }, [store, selectedDayNum, aptitudeMcqs.length, englishMcqs.length, currentPlan.practice.puzzle]);
-
-  // 1. Aptitude state
-  const [aptitudeAnswers, setAptitudeAnswers] = useState<Record<number, number>>(
-    () => initialAnswers.aptitudeAnswers,
+  const dayAptitudeQuestions = useMemo(
+    () => getDayAptitudeQuestions(selectedDayNum),
+    [selectedDayNum],
   );
-  const [puzzleAnswer, setPuzzleAnswer] = useState<number | null>(
-    () => initialAnswers.puzzleAnswer,
-  );
-  const [aptitudeSubmitted, setAptitudeSubmitted] = useState<boolean>(() => {
-    return (
-      attendance.includes(cohortDay) ||
-      Boolean(liveProgressData?.daily?.aptitude) ||
-      Boolean(store.daily?.aptitude) ||
-      (aptitudeMcqs.length > 0 &&
-        Object.keys(initialAnswers.aptitudeAnswers).length >= aptitudeMcqs.length &&
-        (!currentPlan.practice.puzzle || initialAnswers.puzzleAnswer !== null))
-    );
-  });
-  const [aptitudeXpEarned, setAptitudeXpEarned] = useState<number>(() => {
-    return attendance.includes(cohortDay) ? 25 : 0;
-  });
 
-  // 2. English state
-  const [englishAnswers, setEnglishAnswers] = useState<Record<number, number>>(
-    () => initialAnswers.englishAnswers,
+  const dayEnglishQuestions = useMemo(
+    () => getDayCorporateEnglishQuestions(selectedDayNum),
+    [selectedDayNum],
   );
-  const [englishSubmitted, setEnglishSubmitted] = useState<boolean>(() => {
-    return (
-      attendance.includes(cohortDay) ||
-      Boolean(liveProgressData?.daily?.english) ||
-      Boolean(store.daily?.english) ||
-      (englishMcqs.length > 0 &&
-        Object.keys(initialAnswers.englishAnswers).length >= englishMcqs.length)
-    );
-  });
-  const [englishXpEarned, setEnglishXpEarned] = useState<number>(() => {
-    return attendance.includes(cohortDay) ? 25 : 0;
-  });
+
+  // 1. Aptitude & Logic (Exactly 10 questions for selected day)
+  const aptitudeCompletedCount = useMemo(() => {
+    return dayAptitudeQuestions.filter((q) => {
+      const rec =
+        store.profile.dailyExerciseRecords?.[q.id] ||
+        (selectedDayNum === 1
+          ? store.profile.dailyExerciseRecords?.[q.id.replace("D1-", "")]
+          : undefined);
+      return Boolean(rec?.isLocked);
+    }).length;
+  }, [dayAptitudeQuestions, store.profile.dailyExerciseRecords, selectedDayNum]);
+
+  const aptitudeXpEarned = useMemo(() => {
+    return dayAptitudeQuestions.reduce((sum, q) => {
+      const rec =
+        store.profile.dailyExerciseRecords?.[q.id] ||
+        (selectedDayNum === 1
+          ? store.profile.dailyExerciseRecords?.[q.id.replace("D1-", "")]
+          : undefined);
+      return sum + (rec?.isLocked && rec.isCorrect ? 1 : 0);
+    }, 0);
+  }, [dayAptitudeQuestions, store.profile.dailyExerciseRecords, selectedDayNum]);
+
+  // 2. Corporate English (Exactly 10 questions for selected day)
+  const englishCompletedCount = useMemo(() => {
+    return dayEnglishQuestions.filter((q) => {
+      const rec =
+        store.profile.dailyExerciseRecords?.[q.id] ||
+        (selectedDayNum === 1
+          ? store.profile.dailyExerciseRecords?.[q.id.replace("D1-", "")]
+          : undefined);
+      return Boolean(rec?.isLocked);
+    }).length;
+  }, [dayEnglishQuestions, store.profile.dailyExerciseRecords, selectedDayNum]);
+
+  const englishXpEarned = useMemo(() => {
+    return dayEnglishQuestions.reduce((sum, q) => {
+      const rec =
+        store.profile.dailyExerciseRecords?.[q.id] ||
+        (selectedDayNum === 1
+          ? store.profile.dailyExerciseRecords?.[q.id.replace("D1-", "")]
+          : undefined);
+      return sum + (rec?.isLocked && rec.isCorrect ? 1 : 0);
+    }, 0);
+  }, [dayEnglishQuestions, store.profile.dailyExerciseRecords, selectedDayNum]);
+
+  // Total Daily Exercise stats (Exactly 20 questions = Max 20 XP)
+  const totalCompletedCount = aptitudeCompletedCount + englishCompletedCount;
+  const totalDailyExerciseXp = aptitudeXpEarned + englishXpEarned;
+
   const [activeVocabIdx, setActiveVocabIdx] = useState<number>(0);
 
   // Authoritative Supabase exercise submissions query
-  const { data: dbExerciseSubmissions } = useLiveExerciseSubmissions(
-    liveStudentId,
-    selectedDayNum,
-  );
+  const { data: dbExerciseSubmissions } = useLiveExerciseSubmissions(liveStudentId, selectedDayNum);
 
   useEffect(() => {
     if (dbExerciseSubmissions && dbExerciseSubmissions.length > 0) {
       store.syncExerciseSubmissions(selectedDayNum, dbExerciseSubmissions);
+      for (const sub of dbExerciseSubmissions) {
+        isProcessingClickRef.current[sub.question_id] = true;
+      }
     }
   }, [dbExerciseSubmissions, selectedDayNum, store]);
 
-  // Synchronize processing ref and state if store hydrates
+  // Synchronize processing ref if store hydrates
   useEffect(() => {
-    const saved = store.getDailyExerciseAnswersForDay(
-      selectedDayNum,
-      aptitudeMcqs.length,
-      englishMcqs.length,
-      Boolean(currentPlan.practice.puzzle),
-    );
-
-    if (Object.keys(saved.aptitudeAnswers).length > 0) {
-      setAptitudeAnswers((prev) => ({ ...saved.aptitudeAnswers, ...prev }));
+    if (store.profile.dailyExerciseRecords) {
+      Object.keys(store.profile.dailyExerciseRecords).forEach((k) => {
+        if (store.profile.dailyExerciseRecords?.[k]?.isLocked) {
+          isProcessingClickRef.current[k] = true;
+        }
+      });
     }
-    if (saved.puzzleAnswer !== null) {
-      setPuzzleAnswer(saved.puzzleAnswer);
-    }
-    if (Object.keys(saved.englishAnswers).length > 0) {
-      setEnglishAnswers((prev) => ({ ...saved.englishAnswers, ...prev }));
-    }
-
-    Object.keys(saved.records).forEach((k) => {
-      isProcessingClickRef.current[k] = true;
-    });
-  }, [selectedDayNum, aptitudeMcqs.length, englishMcqs.length, currentPlan.practice.puzzle, store, dbExerciseSubmissions]);
+  }, [store.profile.dailyExerciseRecords]);
 
   // 3. Technical Code drill state
   const [userCode, setUserCode] = useState<string>(() => {
-    return `// ${primaryTrack.name} · Day ${selectedDayNum} Exercise
-// Objective: ${currentTechDay.practice}
-
-function solveChallenge() {
-  // TODO: Implement solution logic for ${currentTechDay.topic}
-  const status = "OPTIMIZED";
-  return status;
-}
-
-console.log(solveChallenge());`;
+    return `// ${primaryTrack.name} · Day ${selectedDayNum} Exercise\n// Objective: ${currentTechDay.practice}\n\nfunction solveChallenge() {\n  // TODO: Implement solution logic for ${currentTechDay.topic}\n  const status = "OPTIMIZED";\n  return status;\n}\n\nconsole.log(solveChallenge());`;
   });
   const [consoleOutput, setConsoleOutput] = useState<string[]>([
     `[ready] Sandbox environment initialized for ${primaryTrack.name}.`,
@@ -268,14 +246,12 @@ console.log(solveChallenge());`;
   });
 
   // Completion calculation for selected day
-  const isAptitudeDone = aptitudeSubmitted || attendance.includes(selectedDayNum);
-  const isEnglishDone = englishSubmitted || attendance.includes(selectedDayNum);
+  const isAptitudeDone = aptitudeCompletedCount === 10 || attendance.includes(selectedDayNum);
+  const isEnglishDone = englishCompletedCount === 10 || attendance.includes(selectedDayNum);
   const isCodeDone = isCodeVerified || completedTechDays.includes(selectedDayNum);
 
   const completedModulesCount =
-    (isAptitudeDone ? 1 : 0) +
-    (isEnglishDone ? 1 : 0) +
-    (isCodeDone ? 1 : 0);
+    (isAptitudeDone ? 1 : 0) + (isEnglishDone ? 1 : 0) + (isCodeDone ? 1 : 0);
 
   // Authoritative day completion evaluation across the 90-day cadence
   const isDayCompleted = useCallback(
@@ -314,18 +290,15 @@ console.log(solveChallenge());`;
 
   // Helper to persist authoritative dual completion when all 3 workouts are finished
   const checkAndFinalizeDayCompletion = useCallback(
-    async (
-      dayNum: number,
-      aptDone: boolean,
-      engDone: boolean,
-      codeDone: boolean,
-    ) => {
+    async (dayNum: number, aptDone: boolean, engDone: boolean, codeDone: boolean) => {
       if (aptDone && engDone && codeDone) {
         if (liveStudentId) {
           await store.completePlacementDay(dayNum);
           await store.completeTechDay(dayNum);
           queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
-          queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
+          queryClient.invalidateQueries({
+            queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+          });
         }
         toast.success(`🎉 Day ${dayNum} Completed! (3/3 Workouts Mastered)`, {
           description:
@@ -339,23 +312,8 @@ console.log(solveChallenge());`;
   );
 
   // Overall workout accuracy
-  const totalQuestionsAnswered =
-    Object.keys(aptitudeAnswers).length +
-    (puzzleAnswer !== null ? 1 : 0) +
-    Object.keys(englishAnswers).length;
-
-  const correctAnswersCount = useMemo(() => {
-    let count = 0;
-    aptitudeMcqs.forEach((m, idx) => {
-      if (aptitudeAnswers[idx] === m.answer) count++;
-    });
-    if (puzzleAnswer === currentPlan.practice.puzzle.answer) count++;
-    englishMcqs.forEach((m, idx) => {
-      if (englishAnswers[idx] === m.answer) count++;
-    });
-    return count;
-  }, [aptitudeMcqs, aptitudeAnswers, puzzleAnswer, currentPlan, englishMcqs, englishAnswers]);
-
+  const totalQuestionsAnswered = totalCompletedCount;
+  const correctAnswersCount = totalDailyExerciseXp;
   const accuracyPct =
     totalQuestionsAnswered > 0
       ? Math.round((correctAnswersCount / totalQuestionsAnswered) * 100)
@@ -383,47 +341,8 @@ console.log(solveChallenge());`;
       return;
     }
     setSelectedDayNum(dayNum);
-
-    const targetPlan = getAcceleratorDay(dayNum);
-    const targetAptMcqs = targetPlan.practice.mcqs.filter(
-      (m) => m.category === "Aptitude" || m.category === "Logic",
-    );
-    const targetEngMcqs = targetPlan.practice.mcqs.filter((m) => m.category === "English");
-
-    const savedForDay = store.getDailyExerciseAnswersForDay(
-      dayNum,
-      targetAptMcqs.length,
-      targetEngMcqs.length,
-      Boolean(targetPlan.practice.puzzle),
-    );
-
-    setAptitudeAnswers(savedForDay.aptitudeAnswers);
-    setPuzzleAnswer(savedForDay.puzzleAnswer);
-
-    const isDayAttendanceDone = attendance.includes(dayNum);
-    const isAptitudeFullyAnswered =
-      targetAptMcqs.length > 0 &&
-      Object.keys(savedForDay.aptitudeAnswers).length >= targetAptMcqs.length &&
-      (!targetPlan.practice.puzzle || savedForDay.puzzleAnswer !== null);
-
-    setAptitudeSubmitted(isDayAttendanceDone || isAptitudeFullyAnswered);
-    setAptitudeXpEarned(isDayAttendanceDone ? 25 : 0);
-
-    setEnglishAnswers(savedForDay.englishAnswers);
-    const isEngFullyAnswered =
-      targetEngMcqs.length > 0 &&
-      Object.keys(savedForDay.englishAnswers).length >= targetEngMcqs.length;
-
-    setEnglishSubmitted(isDayAttendanceDone || isEngFullyAnswered);
-    setEnglishXpEarned(isDayAttendanceDone ? 25 : 0);
-
     setActiveVocabIdx(0);
     setActiveTab("aptitude");
-
-    // Populate click guard for answered questions
-    Object.keys(savedForDay.records).forEach((k) => {
-      isProcessingClickRef.current[k] = true;
-    });
 
     const isTechAlreadyDone = completedTechDays.includes(dayNum);
     setIsCodeVerified(isTechAlreadyDone);
@@ -444,191 +363,74 @@ console.log(solveChallenge());`;
     ]);
   };
 
-  // Evaluate correctness of submitted answers
-  const answeredAptitudeIndices = Object.keys(aptitudeAnswers).map(Number);
-  const totalAptitudeAttempted = answeredAptitudeIndices.length + (puzzleAnswer !== null ? 1 : 0);
-  const hasAptitudeAttempted = totalAptitudeAttempted > 0;
-  const isAptitudeAllCorrect =
-    hasAptitudeAttempted &&
-    answeredAptitudeIndices.every((idx) => aptitudeAnswers[idx] === aptitudeMcqs[idx]?.answer) &&
-    (puzzleAnswer === null || puzzleAnswer === currentPlan.practice.puzzle?.answer);
-  const hasAptitudeIncorrect =
-    hasAptitudeAttempted &&
-    (answeredAptitudeIndices.some((idx) => aptitudeAnswers[idx] !== aptitudeMcqs[idx]?.answer) ||
-      (puzzleAnswer !== null && puzzleAnswer !== currentPlan.practice.puzzle?.answer));
-
-  const answeredEnglishIndices = Object.keys(englishAnswers).map(Number);
-  const totalEnglishAttempted = answeredEnglishIndices.length;
-  const hasEnglishAttempted = totalEnglishAttempted > 0;
-  const isEnglishAllCorrect =
-    hasEnglishAttempted &&
-    answeredEnglishIndices.every((idx) => englishAnswers[idx] === englishMcqs[idx]?.answer);
-  const hasEnglishIncorrect =
-    hasEnglishAttempted &&
-    answeredEnglishIndices.some((idx) => englishAnswers[idx] !== englishMcqs[idx]?.answer);
-
   // ---------------------------------------------------------------------------
   // Atomic Option Click Handlers (Enforces One-Time Answer & Permanent Locking)
   // ---------------------------------------------------------------------------
-
-  const handleAptitudeOptionClick = async (qIdx: number, optIdx: number, correctIdx: number) => {
-    const qKey = `aptitude_${qIdx}`;
-    // Drop rapid concurrent clicks synchronously
-    if (isProcessingClickRef.current[qKey] || aptitudeAnswers[qIdx] !== undefined) {
+  const handleQuestionOptionClick = async (q: DailyExerciseQuestion, optIdx: number) => {
+    const qId = q.id;
+    const existingRec =
+      store.profile.dailyExerciseRecords?.[qId] ||
+      (selectedDayNum === 1
+        ? store.profile.dailyExerciseRecords?.[qId.replace("D1-", "")]
+        : undefined);
+    if (isProcessingClickRef.current[qId] || existingRec?.isLocked) {
       return;
     }
-    isProcessingClickRef.current[qKey] = true;
+    isProcessingClickRef.current[qId] = true;
 
-    // Persist to authoritative backend via store
-    const res = await store.recordDailyExerciseAnswer(selectedDayNum, "aptitude", qIdx, optIdx, correctIdx);
-    if (res?.ok) {
-      setAptitudeAnswers((prev) => ({ ...prev, [qIdx]: optIdx }));
-    } else {
-      delete isProcessingClickRef.current[qKey];
-    }
-  };
-
-  const handlePuzzleOptionClick = async (optIdx: number, correctIdx: number) => {
-    const qKey = "puzzle";
-    if (isProcessingClickRef.current[qKey] || puzzleAnswer !== null) {
-      return;
-    }
-    isProcessingClickRef.current[qKey] = true;
-
-    const res = await store.recordDailyExerciseAnswer(selectedDayNum, "puzzle", 0, optIdx, correctIdx);
-    if (res?.ok) {
-      setPuzzleAnswer(optIdx);
-    } else {
-      delete isProcessingClickRef.current[qKey];
-    }
-  };
-
-  const handleEnglishOptionClick = async (qIdx: number, optIdx: number, correctIdx: number) => {
-    const qKey = `english_${qIdx}`;
-    if (isProcessingClickRef.current[qKey] || englishAnswers[qIdx] !== undefined) {
-      return;
-    }
-    isProcessingClickRef.current[qKey] = true;
-
-    const res = await store.recordDailyExerciseAnswer(selectedDayNum, "english", qIdx, optIdx, correctIdx);
-    if (res?.ok) {
-      setEnglishAnswers((prev) => ({ ...prev, [qIdx]: optIdx }));
-    } else {
-      delete isProcessingClickRef.current[qKey];
-    }
-  };
-
-  // Actions
-  const handleSubmitAptitude = async () => {
-    if (totalAptitudeAttempted === 0) {
-      toast.error("Please answer at least one question before submitting.");
-      return;
-    }
-
-    if (hasAptitudeIncorrect || !isAptitudeAllCorrect) {
-      // WRONG ANSWER SUBMITTED: DO NOT INCREASE XP!
-      setAptitudeSubmitted(true);
-      setAptitudeXpEarned(0);
-      toast.error("Submitted with Incorrect Answer (0 XP Earned)", {
-        description: "No XP points awarded because an answer was incorrect. Proceeding to Corporate English.",
-      });
-      setTimeout(() => {
-        setActiveTab("english");
-        const englishEl = document.getElementById("corporate-english-workout");
-        if (englishEl) {
-          englishEl.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }, 400);
-      return;
-    }
-
-    // ALL ANSWERS CORRECT: Authoritative completion via Supabase
     if (!liveStudentId) {
       toast.error("Authentication Required", {
-        description: "You must be logged into an active student account to submit workouts.",
+        description:
+          "You must be logged into an active student account to submit exercise answers.",
       });
+      delete isProcessingClickRef.current[qId];
       return;
     }
 
-    const res = await store.completeDailyStep("aptitude");
-    if (!res?.ok) {
-      return;
-    }
+    try {
+      const res = await store.recordDailyExerciseAnswer(
+        selectedDayNum,
+        q.category,
+        q.id,
+        optIdx,
+        q.correct_option,
+      );
 
-    setAptitudeSubmitted(true);
-    setAptitudeXpEarned(25);
-    queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
-    queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
-    toast.success("Aptitude Drill Mastered! (+25 XP)", {
-      description: "Opening Corporate English Workout…",
-    });
-
-    await checkAndFinalizeDayCompletion(selectedDayNum, true, isEnglishDone, isCodeDone);
-
-    // Automatically open Corporate English workout
-    setTimeout(() => {
-      setActiveTab("english");
-      const englishEl = document.getElementById("corporate-english-workout");
-      if (englishEl) {
-        englishEl.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }, 350);
-  };
-
-  const handleSubmitEnglish = async () => {
-    if (totalEnglishAttempted === 0) {
-      toast.error("Please answer the verbal exercise question.");
-      return;
-    }
-
-    if (hasEnglishIncorrect || !isEnglishAllCorrect) {
-      // WRONG ANSWER SUBMITTED: DO NOT INCREASE XP!
-      setEnglishSubmitted(true);
-      setEnglishXpEarned(0);
-      toast.error("Submitted with Incorrect Answer (0 XP Earned)", {
-        description: "No XP points awarded because an answer was incorrect. Proceeding to Technical Code Drill.",
-      });
-      setTimeout(() => {
-        setActiveTab("code");
-        const codeEl = document.getElementById("technical-code-workout");
-        if (codeEl) {
-          codeEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (res?.ok) {
+        if (res.isCorrect) {
+          toast.success("Correct Answer! (+1 XP)", {
+            description: `Awarded 1 XP for question ${q.id}. Total Daily XP: ${totalDailyExerciseXp + 1} / 20 XP.`,
+          });
+        } else {
+          toast.error("Incorrect Answer (0 XP)", {
+            description: `0 XP for ${q.id}. Correct option was ${String.fromCharCode(65 + q.correct_option)}.`,
+          });
         }
-      }, 400);
-      return;
-    }
 
-    // ALL ANSWERS CORRECT: Authoritative completion via Supabase
-    if (!liveStudentId) {
-      toast.error("Authentication Required", {
-        description: "You must be logged into an active student account to submit workouts.",
-      });
-      return;
-    }
+        queryClient.invalidateQueries({
+          queryKey: ["live", "exercise-submissions", liveStudentId, selectedDayNum],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-progress", liveStudentId],
+        });
 
-    const res = await store.completeDailyStep("english");
-    if (!res?.ok) {
-      return;
-    }
+        const nextAptCount =
+          q.category === "aptitude_logic" ? aptitudeCompletedCount + 1 : aptitudeCompletedCount;
+        const nextEngCount =
+          q.category === "corporate_english" ? englishCompletedCount + 1 : englishCompletedCount;
 
-    setEnglishSubmitted(true);
-    setEnglishXpEarned(25);
-    queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
-    queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
-    toast.success("Corporate English Mastered! (+25 XP)", {
-      description: "Opening Technical Code Drill…",
-    });
-
-    await checkAndFinalizeDayCompletion(selectedDayNum, isAptitudeDone, true, isCodeDone);
-
-    // Automatically open Technical Code Drill
-    setTimeout(() => {
-      setActiveTab("code");
-      const codeEl = document.getElementById("technical-code-workout");
-      if (codeEl) {
-        codeEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (nextAptCount === 10 && nextEngCount === 10 && isCodeDone) {
+          await checkAndFinalizeDayCompletion(selectedDayNum, true, true, true);
+        }
+      } else {
+        delete isProcessingClickRef.current[qId];
       }
-    }, 350);
+    } catch (_err) {
+      delete isProcessingClickRef.current[qId];
+    }
   };
 
   const handleRunCodeTests = () => {
@@ -656,7 +458,8 @@ console.log(solveChallenge());`;
   const handleVerifyCode = async () => {
     if (!liveStudentId) {
       toast.error("Authentication Required", {
-        description: "You must be logged into an active student account to verify technical exercises.",
+        description:
+          "You must be logged into an active student account to verify technical exercises.",
       });
       return;
     }
@@ -668,7 +471,9 @@ console.log(solveChallenge());`;
 
     setIsCodeVerified(true);
     queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
-    queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
+    queryClient.invalidateQueries({
+      queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+    });
 
     await checkAndFinalizeDayCompletion(selectedDayNum, isAptitudeDone, isEnglishDone, true);
   };
@@ -697,8 +502,8 @@ console.log(solveChallenge());`;
               <Flame className="size-3.5 fill-amber-500 text-amber-500" />
               <span>{streak} Day Streak</span>
             </div>
-            <Chip tone={completedModulesCount === 3 ? "emerald" : "cyan"}>
-              {completedModulesCount} / 3 Workouts Completed
+            <Chip tone={totalCompletedCount === 20 ? "emerald" : "cyan"}>
+              {totalCompletedCount} / 20 Questions Done ({totalDailyExerciseXp} / 20 XP)
             </Chip>
           </div>
         }
@@ -707,32 +512,32 @@ console.log(solveChallenge());`;
       {/* KPI Stats Row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
-          label="Daily Workout Progress"
-          value={`${completedModulesCount} / 3 Done`}
-          tone={completedModulesCount === 3 ? "emerald" : "brand"}
+          label="Daily Exercise Progress"
+          value={`${totalCompletedCount} / 20 Done`}
+          tone={totalCompletedCount === 20 ? "emerald" : "brand"}
           hint={
-            completedModulesCount === 3
-              ? "All 3 daily modules finished! 🎉"
-              : "Aptitude + English + Code"
+            totalCompletedCount === 20
+              ? "All 20 daily questions finished! 🎉"
+              : `${20 - totalCompletedCount} questions remaining today`
           }
         />
         <Stat
-          label="Exercise Accuracy Rate"
-          value={`${accuracyPct}%`}
-          tone="cyan"
-          hint={`${correctAnswersCount} correct of ${totalQuestionsAnswered || 0} attempted`}
+          label="Aptitude & Logic"
+          value={`${aptitudeCompletedCount} / 10 Done`}
+          tone={aptitudeCompletedCount === 10 ? "emerald" : "cyan"}
+          hint={`${aptitudeXpEarned} / 10 XP earned`}
         />
         <Stat
-          label="Today's XP Unlocked"
-          value={`+${aptitudeXpEarned + englishXpEarned + (isCodeDone ? 50 : 0)} XP`}
-          tone="purple"
-          hint="+25 to +50 XP per verified workout"
+          label="Corporate English"
+          value={`${englishCompletedCount} / 10 Done`}
+          tone={englishCompletedCount === 10 ? "emerald" : "purple"}
+          hint={`${englishXpEarned} / 10 XP earned`}
         />
         <Stat
-          label="Current Cadence"
-          value={`Day ${selectedDayNum} / 90`}
+          label="Daily Exercise XP"
+          value={`${totalDailyExerciseXp} / 20 XP`}
           tone="amber"
-          hint={`Week ${currentPlan.week} · ${currentPlan.theme.slice(0, 24)}…`}
+          hint="Max 20 XP per day (1 XP per correct answer)"
         />
       </div>
 
@@ -849,7 +654,11 @@ console.log(solveChallenge());`;
                 }}
                 disabled={selectedDayNum >= 90 || !isDayUnlocked(selectedDayNum + 1)}
                 className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 transition-colors cursor-pointer"
-                title={!isDayUnlocked(selectedDayNum + 1) ? `Day ${selectedDayNum + 1} Locked` : "Next Day"}
+                title={
+                  !isDayUnlocked(selectedDayNum + 1)
+                    ? `Day ${selectedDayNum + 1} Locked`
+                    : "Next Day"
+                }
               >
                 <ChevronRight className="size-4" />
               </button>
@@ -865,7 +674,10 @@ console.log(solveChallenge());`;
             const isFriday = dayNum % 5 === 0;
             const isCompleted = isDayCompleted(dayNum);
             const isUnlocked = isDayUnlocked(dayNum);
-            const isPartiallyDone = isUnlocked && !isCompleted && (attendance.includes(dayNum) || completedTechDays.includes(dayNum));
+            const isPartiallyDone =
+              isUnlocked &&
+              !isCompleted &&
+              (attendance.includes(dayNum) || completedTechDays.includes(dayNum));
 
             return (
               <button
@@ -884,18 +696,39 @@ console.log(solveChallenge());`;
                 className={cn(
                   "flex flex-col items-center justify-center min-w-[62px] rounded-lg border p-2 text-center transition-all text-xs relative select-none",
                   !isUnlocked && "opacity-40 bg-muted/20 border-border/40 cursor-not-allowed",
-                  isUnlocked && isCurrent && "border-primary bg-primary/10 text-primary font-bold shadow-xs ring-1 ring-primary cursor-pointer",
-                  isUnlocked && !isCurrent && isCompleted && "border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer",
-                  isUnlocked && !isCurrent && !isCompleted && isToday && "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold cursor-pointer",
-                  isUnlocked && !isCurrent && !isCompleted && !isToday && isFriday && "border-purple-500/30 bg-purple-500/5 text-purple-600 dark:text-purple-400 hover:bg-muted/40 cursor-pointer",
-                  isUnlocked && !isCurrent && !isCompleted && !isToday && !isFriday && "border-border/70 bg-card text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/40 cursor-pointer",
+                  isUnlocked &&
+                    isCurrent &&
+                    "border-primary bg-primary/10 text-primary font-bold shadow-xs ring-1 ring-primary cursor-pointer",
+                  isUnlocked &&
+                    !isCurrent &&
+                    isCompleted &&
+                    "border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer",
+                  isUnlocked &&
+                    !isCurrent &&
+                    !isCompleted &&
+                    isToday &&
+                    "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold cursor-pointer",
+                  isUnlocked &&
+                    !isCurrent &&
+                    !isCompleted &&
+                    !isToday &&
+                    isFriday &&
+                    "border-purple-500/30 bg-purple-500/5 text-purple-600 dark:text-purple-400 hover:bg-muted/40 cursor-pointer",
+                  isUnlocked &&
+                    !isCurrent &&
+                    !isCompleted &&
+                    !isToday &&
+                    !isFriday &&
+                    "border-border/70 bg-card text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/40 cursor-pointer",
                 )}
-                title={!isUnlocked ? `Day ${dayNum} Locked (Finish Day ${dayNum - 1} first)` : `Day ${dayNum}`}
+                title={
+                  !isUnlocked
+                    ? `Day ${dayNum} Locked (Finish Day ${dayNum - 1} first)`
+                    : `Day ${dayNum}`
+                }
               >
                 <div className="flex items-center gap-1 text-[9px] font-mono uppercase tracking-wider opacity-75">
-                  {!isUnlocked ? (
-                    <Lock className="size-2.5 text-muted-foreground" />
-                  ) : null}
+                  {!isUnlocked ? <Lock className="size-2.5 text-muted-foreground" /> : null}
                   <span>{isFriday ? "Milestone" : `D${dayNum}`}</span>
                 </div>
                 <span className="font-mono text-xs font-bold mt-0.5 flex items-center gap-1">
@@ -927,128 +760,90 @@ console.log(solveChallenge());`;
             )}
           >
             <Calculator className="size-3.5" />
-            1. Aptitude &amp; Logic
-            {isAptitudeDone && <Check className="size-3 text-emerald-400 ml-0.5" />}
+            1. Aptitude &amp; Logic ({aptitudeCompletedCount}/10)
+            {aptitudeCompletedCount === 10 && <Check className="size-3 text-emerald-400 ml-0.5" />}
           </button>
           <button
-            onClick={() => {
-              if (!isAptitudeDone) {
-                toast.info("Complete Aptitude & Logic first to unlock Corporate English.");
-                setActiveTab("aptitude");
-                return;
-              }
-              setActiveTab("english");
-            }}
+            onClick={() => setActiveTab("english")}
             className={cn(
               "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all cursor-pointer",
               activeTab === "english"
                 ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-              !isAptitudeDone && "opacity-75",
             )}
           >
             <BookOpen className="size-3.5" />
-            2. Corporate English
-            {!isAptitudeDone ? (
-              <Lock className="size-3 text-muted-foreground ml-0.5" />
-            ) : isEnglishDone ? (
-              <Check className="size-3 text-emerald-400 ml-0.5" />
-            ) : null}
+            2. Corporate English ({englishCompletedCount}/10)
+            {englishCompletedCount === 10 && <Check className="size-3 text-emerald-400 ml-0.5" />}
           </button>
           <button
-            onClick={() => {
-              if (!isEnglishDone) {
-                toast.info(
-                  !isAptitudeDone
-                    ? "Complete Aptitude & Logic first."
-                    : "Complete Corporate English first to unlock Technical Code Drill.",
-                );
-                if (!isAptitudeDone) {
-                  setActiveTab("aptitude");
-                } else {
-                  setActiveTab("english");
-                }
-                return;
-              }
-              setActiveTab("code");
-            }}
+            onClick={() => setActiveTab("code")}
             className={cn(
               "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all cursor-pointer",
               activeTab === "code"
                 ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-              !isEnglishDone && "opacity-75",
             )}
           >
             <Code2 className="size-3.5" />
             3. Technical Code Drill
-            {!isEnglishDone ? (
-              <Lock className="size-3 text-muted-foreground ml-0.5" />
-            ) : isCodeDone ? (
-              <Check className="size-3 text-emerald-400 ml-0.5" />
-            ) : null}
+            {isCodeDone && <Check className="size-3 text-emerald-400 ml-0.5" />}
           </button>
         </div>
 
         {/* Completion Progress Bar */}
         <div className="flex items-center gap-3">
           <div className="w-28 hidden sm:block">
-            <Meter value={(completedModulesCount / 3) * 100} tone="emerald" />
+            <Meter value={(totalCompletedCount / 20) * 100} tone="emerald" />
           </div>
           <span className="text-xs font-mono font-medium text-muted-foreground">
-            {completedModulesCount}/3 Complete
+            {totalCompletedCount}/20 Questions ({totalDailyExerciseXp}/20 XP)
           </span>
         </div>
       </div>
 
-      {/* Celebration Banner when all 3 completed */}
-      {completedModulesCount === 3 && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-900 dark:text-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+      {/* Daily Exercise Completion Banner when all 20 questions completed */}
+      {totalCompletedCount === 20 && (
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-900 dark:text-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
           <div className="flex items-center gap-3">
             <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-              <Sparkles className="size-5" />
+              <Trophy className="size-5" />
             </div>
             <div>
               <p className="text-sm font-bold text-foreground">
-                Day {selectedDayNum} Daily Workout Fully Mastered! 🌟
+                Daily Exercise Mastered! (20 / 20 Questions Completed) 🌟
               </p>
               <p className="text-xs text-muted-foreground">
-                All 3 modules passed. Daily streak maintained and +100 XP added to your Talent Score ledger.
+                Aptitude &amp; Logic: {aptitudeXpEarned} / 10 XP · Corporate English:{" "}
+                {englishXpEarned} / 10 XP · Total Daily Exercise: {totalDailyExerciseXp} / 20 XP
+                earned.
               </p>
             </div>
           </div>
-          <button
-            onClick={() => handleSelectDay(Math.min(90, selectedDayNum + 1))}
-            className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all self-start sm:self-auto"
-          >
-            <span>Next Workout (Day {Math.min(90, selectedDayNum + 1)})</span>
-            <ArrowRight className="size-3.5" />
-          </button>
+          <Chip tone="emerald">
+            Daily Exercise 20 / 20 Completed ({totalDailyExerciseXp} / 20 XP)
+          </Chip>
         </div>
       )}
 
       {/* WORKOUT CONTENT SECTIONS */}
       <div className="space-y-6">
-        {/* PILLAR 1: APTITUDE & LOGICAL REASONING WORKOUT */}
+        {/* PILLAR 1: APTITUDE & LOGICAL REASONING WORKOUT (10 QUESTIONS · 10 XP) */}
         {activeTab === "aptitude" && (
           <Panel
             id="aptitude-workout"
             title={
               <div className="flex items-center gap-2">
                 <Calculator className="size-4 text-primary" />
-                <span>1. Quantitative & Speed Math Workout</span>
+                <span>1. Aptitude &amp; Logic (10 Questions · 10 XP Maximum)</span>
               </div>
             }
-            subtitle={`Day ${selectedDayNum} · ${currentPlan.aptitude.title}`}
+            subtitle={`Aptitude & Logic Workout · ${aptitudeCompletedCount} / 10 Completed · ${aptitudeXpEarned} / 10 XP Earned`}
             action={
-              isAptitudeDone ? (
-                aptitudeXpEarned > 0 ? (
-                  <Chip tone="emerald">Drill Mastered (+25 XP)</Chip>
-                ) : (
-                  <Chip tone="rose">Incorrect (0 XP)</Chip>
-                )
+              aptitudeCompletedCount === 10 ? (
+                <Chip tone="emerald">Completed ({aptitudeXpEarned} / 10 XP)</Chip>
               ) : (
-                <Chip tone="cyan">10 Min Workout</Chip>
+                <Chip tone="cyan">{aptitudeCompletedCount} / 10 Completed</Chip>
               )
             }
             className="flex flex-col justify-between"
@@ -1080,45 +875,68 @@ console.log(solveChallenge());`;
                 </p>
               </div>
 
-              {/* Interactive MCQs */}
+              {/* 10 Aptitude & Logic Questions */}
               <div className="space-y-3 pt-2">
-                <p className="text-xs font-bold text-foreground flex items-center justify-between">
-                  <span>Interactive Practice Drills ({aptitudeMcqs.length} Questions)</span>
-                  <span className="text-[11px] font-normal text-muted-foreground">Instant Answer & XP</span>
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-foreground">
+                    Aptitude &amp; Logic Questions (10 Questions · 10 XP Max)
+                  </p>
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    {aptitudeCompletedCount} / 10 Completed · {aptitudeXpEarned} / 10 XP
+                  </span>
+                </div>
 
-                {aptitudeMcqs.map((q, idx) => {
-                  const selected = aptitudeAnswers[idx];
-                  const hasAnswered = selected !== undefined;
-                  const isCorrect = selected === q.answer;
+                {dayAptitudeQuestions.map((q, idx) => {
+                  const rec =
+                    store.profile.dailyExerciseRecords?.[q.id] ||
+                    (selectedDayNum === 1
+                      ? store.profile.dailyExerciseRecords?.[q.id.replace("D1-", "")]
+                      : undefined);
+                  const hasAnswered = Boolean(rec?.isLocked);
+                  const selected = rec?.selectedOption;
+                  const isCorrect = rec?.isCorrect ?? false;
 
                   return (
                     <div
-                      key={idx}
+                      key={q.id}
+                      id={`question-card-${q.id}`}
                       className="rounded-lg border border-border bg-card/70 p-3.5 space-y-2.5 shadow-xs"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-medium text-foreground text-xs leading-relaxed">
-                          <span className="font-mono text-primary font-semibold mr-1.5">Q{idx + 1}.</span>
-                          {q.q}
+                          <span className="font-mono text-primary font-semibold mr-1.5">
+                            Q{idx + 1}.
+                          </span>
+                          {q.question}
                         </p>
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-                          {q.category}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground uppercase">
+                            {q.id}
+                          </span>
+                          <span className="rounded bg-muted/80 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground capitalize">
+                            {q.difficulty}
+                          </span>
+                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono text-primary font-semibold">
+                            {hasAnswered ? (isCorrect ? "+1 XP" : "0 XP") : "1 XP"}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Options Grid */}
                       <div className="grid gap-1.5 sm:grid-cols-2">
                         {q.options.map((opt, optIdx) => {
                           const isOptionSelected = selected === optIdx;
-                          const isOptionCorrectAnswer = optIdx === q.answer;
+                          const isOptionCorrectAnswer = optIdx === q.correct_option;
 
-                          let btnStyle = "border-border bg-card hover:bg-muted/50 text-foreground cursor-pointer";
+                          let btnStyle =
+                            "border-border bg-card hover:bg-muted/50 text-foreground cursor-pointer";
                           if (hasAnswered) {
                             if (isOptionCorrectAnswer) {
-                              btnStyle = "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold cursor-not-allowed";
+                              btnStyle =
+                                "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold cursor-not-allowed";
                             } else if (isOptionSelected) {
-                              btnStyle = "border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 cursor-not-allowed";
+                              btnStyle =
+                                "border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 cursor-not-allowed";
                             } else {
                               btnStyle = "opacity-60 border-border bg-card cursor-not-allowed";
                             }
@@ -1128,8 +946,9 @@ console.log(solveChallenge());`;
                             <button
                               key={optIdx}
                               type="button"
-                              disabled={hasAnswered || isAptitudeDone}
-                              onClick={() => handleAptitudeOptionClick(idx, optIdx, q.answer)}
+                              id={`btn-${q.id}-opt-${optIdx}`}
+                              disabled={hasAnswered}
+                              onClick={() => handleQuestionOptionClick(q, optIdx)}
                               className={cn(
                                 "flex items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all",
                                 btnStyle,
@@ -1148,416 +967,315 @@ console.log(solveChallenge());`;
                       {hasAnswered && (
                         <div
                           className={cn(
-                            "rounded-md p-2 text-[11px] leading-relaxed",
+                            "rounded-md p-2.5 text-[11px] leading-relaxed",
                             isCorrect
                               ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20"
                               : "bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20",
                           )}
                         >
-                          <div className="flex items-center gap-1.5 font-semibold">
-                            {isCorrect ? (
-                              <>
-                                <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                                <span>✓ Correct!</span>
-                              </>
-                            ) : (
-                              <>
-                                <AlertCircle className="size-3.5 text-rose-600 dark:text-rose-400" />
-                                <span>
-                                  ✗ Your answer: {String.fromCharCode(65 + selected)} · Correct answer: {String.fromCharCode(65 + q.answer)}
-                                </span>
-                              </>
-                            )}
+                          <div className="flex items-center justify-between font-semibold">
+                            <div className="flex items-center gap-1.5">
+                              {isCorrect ? (
+                                <>
+                                  <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                                  <span>✓ Correct! (+1 XP)</span>
+                                </>
+                              ) : (
+                                <>
+                                  <AlertCircle className="size-3.5 text-rose-600 dark:text-rose-400" />
+                                  <span>
+                                    ✗ Incorrect (0 XP) · Correct:{" "}
+                                    {String.fromCharCode(65 + q.correct_option)} ({q.correct_answer}
+                                    )
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            <span className="font-mono text-[10px]">
+                              {isCorrect ? "+1 XP" : "+0 XP"}
+                            </span>
                           </div>
-                          <p className="mt-1">{q.explanation}</p>
+                          <p className="mt-1 text-muted-foreground">{q.explanation}</p>
                         </div>
                       )}
                     </div>
                   );
                 })}
-
-                {/* Logic Brainteaser Challenge */}
-                {currentPlan.practice.puzzle && (
-                  <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3.5 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                        <BrainCircuit className="size-3.5 text-purple-500" />
-                        Daily Logic Brainteaser
-                      </span>
-                      <span className="text-[10px] font-mono text-purple-600 dark:text-purple-400">
-                        Rapid Inference
-                      </span>
-                    </div>
-                    <p className="text-xs text-foreground">{currentPlan.practice.puzzle.q}</p>
-                    <div className="grid gap-1.5 sm:grid-cols-2">
-                      {currentPlan.practice.puzzle.options.map((opt, optIdx) => {
-                        const isChosen = puzzleAnswer === optIdx;
-                        const isPuzzleDone = puzzleAnswer !== null;
-                        const isCorrect = optIdx === currentPlan.practice.puzzle.answer;
-
-                        let style = "border-border bg-card text-foreground hover:bg-muted/50 cursor-pointer";
-                        if (isPuzzleDone) {
-                          if (isCorrect) {
-                            style = "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold cursor-not-allowed";
-                          } else if (isChosen) {
-                            style = "border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400 cursor-not-allowed";
-                          } else {
-                            style = "opacity-60 border-border bg-card cursor-not-allowed";
-                          }
-                        }
-
-                        return (
-                          <button
-                            key={optIdx}
-                            type="button"
-                            disabled={isPuzzleDone || isAptitudeDone}
-                            onClick={() => handlePuzzleOptionClick(optIdx, currentPlan.practice.puzzle.answer)}
-                            className={cn(
-                              "flex items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all",
-                              style,
-                            )}
-                          >
-                            <span className="font-mono text-[10px]">{String.fromCharCode(65 + optIdx)}.</span>
-                            <span>{opt}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {puzzleAnswer !== null && (
-                      <div
-                        className={cn(
-                          "rounded-md p-2 text-[11px] leading-relaxed mt-2",
-                          puzzleAnswer === currentPlan.practice.puzzle.answer
-                            ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20"
-                            : "bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20",
-                        )}
-                      >
-                        <div className="flex items-center gap-1.5 font-semibold">
-                          {puzzleAnswer === currentPlan.practice.puzzle.answer ? (
-                            <>
-                              <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                              <span>✓ Correct! Logic deduction verified.</span>
-                            </>
-                          ) : (
-                            <>
-                              <AlertCircle className="size-3.5 text-rose-600 dark:text-rose-400" />
-                              <span>
-                                ✗ Your answer: {String.fromCharCode(65 + puzzleAnswer)} · Correct answer: {String.fromCharCode(65 + currentPlan.practice.puzzle.answer)}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                        {currentPlan.practice.puzzle.explanation && (
-                          <p className="mt-1">{currentPlan.practice.puzzle.explanation}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
 
             {/* Aptitude Action Footer */}
             <div className="mt-4 pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
-              <span className="text-[11px] text-muted-foreground">
-                {isAptitudeDone
-                  ? aptitudeXpEarned > 0
-                    ? "✓ Aptitude logic completed (+25 XP)"
-                    : "✗ Aptitude submitted with incorrect answer (0 XP)"
-                  : "Formula drill delivered daily via Telegram @ 06:00"}
-              </span>
               <div className="flex items-center gap-2">
-                {isAptitudeDone ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab("english");
-                      setTimeout(() => {
-                        document.getElementById("corporate-english-workout")?.scrollIntoView({ behavior: "smooth" });
-                      }, 50);
-                    }}
-                    className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
-                  >
-                    <span>Next: Open Corporate English Workout</span>
-                    <ArrowRight className="size-3.5" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSubmitAptitude}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-xs transition-all cursor-pointer",
-                      hasAptitudeIncorrect
-                        ? "bg-rose-600 hover:bg-rose-700 text-white"
-                        : "bg-primary hover:bg-primary/90 text-primary-foreground",
-                    )}
-                  >
-                    <Check className="size-3.5" />
-                    <span>
-                      {hasAptitudeIncorrect
-                        ? "Submit Workout (0 XP — Incorrect Answer)"
-                        : "Submit Aptitude Workout (+25 XP)"}
-                    </span>
-                  </button>
-                )}
+                <div className="w-24 hidden sm:block">
+                  <Meter value={(aptitudeCompletedCount / 10) * 100} tone="emerald" />
+                </div>
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  {aptitudeCompletedCount === 10
+                    ? `✓ Completed (10 / 10 · ${aptitudeXpEarned} / 10 XP)`
+                    : `${aptitudeCompletedCount} / 10 Completed · ${aptitudeXpEarned} / 10 XP`}
+                </span>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("english");
+                  setTimeout(() => {
+                    document
+                      .getElementById("corporate-english-workout")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }, 50);
+                }}
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+              >
+                <span>Next: Corporate English Workout (10 Questions)</span>
+                <ArrowRight className="size-3.5" />
+              </button>
             </div>
           </Panel>
         )}
 
-        {/* PILLAR 2: CORPORATE ENGLISH & VERBAL WORKOUT */}
+        {/* PILLAR 2: CORPORATE ENGLISH & VERBAL WORKOUT (10 QUESTIONS · 10 XP) */}
         {activeTab === "english" && (
           <Panel
             id="corporate-english-workout"
             title={
               <div className="flex items-center gap-2">
                 <BookOpen className="size-4 text-primary" />
-                <span>2. Corporate English & Verbal Workout</span>
+                <span>2. Corporate English (10 Questions · 10 XP Maximum)</span>
               </div>
             }
-            subtitle={`Day ${selectedDayNum} · ${currentPlan.english.title}`}
+            subtitle={`Corporate English Workout · ${englishCompletedCount} / 10 Completed · ${englishXpEarned} / 10 XP Earned`}
             action={
-              !isAptitudeDone ? (
-                <Chip tone="muted">🔒 Complete Aptitude to Open</Chip>
-              ) : isEnglishDone ? (
-                englishXpEarned > 0 ? (
-                  <Chip tone="emerald">Verbal Mastered (+25 XP)</Chip>
-                ) : (
-                  <Chip tone="rose">Incorrect (0 XP)</Chip>
-                )
+              englishCompletedCount === 10 ? (
+                <Chip tone="emerald">Completed ({englishXpEarned} / 10 XP)</Chip>
               ) : (
-                <Chip tone="cyan">10 Min Workout</Chip>
+                <Chip tone="cyan">{englishCompletedCount} / 10 Completed</Chip>
               )
             }
             className="flex flex-col justify-between"
           >
-            {!isAptitudeDone ? (
-              <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center space-y-3.5 my-auto">
-                <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-500">
-                  <Lock className="size-6" />
+            <div className="space-y-4 text-xs">
+              {/* Grammar Rule Card */}
+              <div className="rounded-lg border border-border bg-card p-3.5 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-foreground font-semibold text-xs">
+                  <BookmarkCheck className="size-3.5 text-primary" />
+                  <span>Grammar &amp; Corporate Etiquette Rule</span>
                 </div>
-                <div className="space-y-1">
-                  <h4 className="text-sm font-semibold text-foreground">
-                    Locked: Complete Aptitude &amp; Logic Drill First
-                  </h4>
-                  <p className="mx-auto max-w-sm text-xs text-muted-foreground leading-relaxed">
-                    Corporate English will open automatically as soon as you finish and submit your Quantitative Aptitude &amp; Logic workout on the left.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab("aptitude");
-                    setTimeout(() => {
-                      document.getElementById("aptitude-workout")?.scrollIntoView({ behavior: "smooth" });
-                    }, 50);
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
-                >
-                  <Calculator className="size-3.5" />
-                  <span>Start Aptitude &amp; Logic Workout</span>
-                  <ArrowRight className="size-3.5" />
-                </button>
+                <p className="text-xs text-foreground font-medium bg-muted/30 p-2 rounded border border-border/50">
+                  {currentPlan.english.grammarRule}
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  <strong className="text-foreground">Instructor Context: </strong>
+                  {currentPlan.english.instructorBrief}
+                </p>
               </div>
-            ) : (
-              <div className="space-y-4 text-xs">
-                {/* Grammar Rule Card */}
-                <div className="rounded-lg border border-border bg-card p-3.5 space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-foreground font-semibold text-xs">
-                    <BookmarkCheck className="size-3.5 text-primary" />
-                    <span>Grammar & Corporate Etiquette Rule</span>
-                  </div>
-                  <p className="text-xs text-foreground font-medium bg-muted/30 p-2 rounded border border-border/50">
-                    {currentPlan.english.grammarRule}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    <strong className="text-foreground">Instructor Context: </strong>
-                    {currentPlan.english.instructorBrief}
-                  </p>
+
+              {/* 4 Vocabulary Flashcards */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground">
+                    Corporate Vocabulary Drill (4 Flashcards)
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">Click word to study</span>
                 </div>
 
-                {/* 4 Vocabulary Flashcards */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-foreground">
-                      Corporate Vocabulary Drill (4 Flashcards)
-                    </span>
-                    <span className="text-[11px] text-muted-foreground">Click word to study</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                    {currentPlan.english.keyVocabulary.map((word, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setActiveVocabIdx(idx)}
-                        className={cn(
-                          "rounded-lg border p-2 text-center transition-all",
-                          activeVocabIdx === idx
-                            ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                            : "border-border bg-card text-foreground hover:bg-muted/50",
-                        )}
-                      >
-                        <span className="block text-xs font-mono capitalize">{word}</span>
-                        <span className="text-[9px] text-muted-foreground">Card #{idx + 1}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Expanded Vocabulary Preview */}
-                  <div className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-foreground text-xs uppercase font-mono">
-                        "{currentPlan.english.keyVocabulary[activeVocabIdx]}"
-                      </span>
-                      <span className="text-[10px] text-primary font-semibold">Corporate Context</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Used to demonstrate professional precision during interviews and status updates.
-                      Example: <em>"We leveraged {currentPlan.english.keyVocabulary[activeVocabIdx]} to optimize the client deliverable."</em>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Interactive English MCQs */}
-                {englishMcqs.length > 0 && (
-                  <div className="space-y-2.5 pt-2">
-                    <p className="text-xs font-bold text-foreground">
-                      Verbal Reasoning & Grammar Accuracy
-                    </p>
-                    {englishMcqs.map((q, idx) => {
-                      const selected = englishAnswers[idx];
-                      const hasAnswered = selected !== undefined;
-                      const isCorrect = selected === q.answer;
-
-                      return (
-                        <div
-                          key={idx}
-                          className="rounded-lg border border-border bg-card/70 p-3 space-y-2 shadow-xs"
-                        >
-                          <p className="font-medium text-foreground text-xs leading-relaxed">
-                            <span className="font-mono text-primary font-semibold mr-1.5">Q.</span>
-                            {q.q}
-                          </p>
-
-                          <div className="grid gap-1.5 sm:grid-cols-2">
-                            {q.options.map((opt, optIdx) => {
-                              const isOptionSelected = selected === optIdx;
-                              const isOptionCorrectAnswer = optIdx === q.answer;
-
-                              let btnStyle = "border-border bg-card hover:bg-muted/50 text-foreground cursor-pointer";
-                              if (hasAnswered) {
-                                if (isOptionCorrectAnswer) {
-                                  btnStyle = "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold cursor-not-allowed";
-                                } else if (isOptionSelected) {
-                                  btnStyle = "border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 cursor-not-allowed";
-                                } else {
-                                  btnStyle = "opacity-60 border-border bg-card cursor-not-allowed";
-                                }
-                              }
-
-                              return (
-                                <button
-                                  key={optIdx}
-                                  type="button"
-                                  disabled={hasAnswered || isEnglishDone}
-                                  onClick={() => handleEnglishOptionClick(idx, optIdx, q.answer)}
-                                  className={cn(
-                                    "flex items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all",
-                                    btnStyle,
-                                  )}
-                                >
-                                  <span className="font-mono text-[10px]">
-                                    {String.fromCharCode(65 + optIdx)}.
-                                  </span>
-                                  <span className="truncate">{opt}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-
-                          {hasAnswered && (
-                            <div
-                              className={cn(
-                                "rounded-md p-2 text-[11px] leading-relaxed",
-                                isCorrect
-                                  ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20"
-                                  : "bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20",
-                              )}
-                            >
-                              <div className="flex items-center gap-1.5 font-semibold">
-                                {isCorrect ? (
-                                  <>
-                                    <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                                    <span>✓ Well done!</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <AlertCircle className="size-3.5 text-rose-600 dark:text-rose-400" />
-                                    <span>
-                                      ✗ Your answer: {String.fromCharCode(65 + selected)} · Correct answer: {String.fromCharCode(65 + q.answer)}
-                                    </span>
-                                  </>
-                                )}
-                              </div>
-                              <p className="mt-1">{q.explanation}</p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* English Action Footer */}
-            {isAptitudeDone && (
-              <div className="mt-4 pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[11px] text-muted-foreground">
-                  {isEnglishDone
-                    ? englishXpEarned > 0
-                      ? "✓ Corporate English completed (+25 XP)"
-                      : "✗ Corporate English submitted with incorrect answer (0 XP)"
-                    : "Timeline: 03m Concept · 04m Demo · 03m Drill"}
-                </span>
-                <div className="flex items-center gap-2">
-                  {isEnglishDone ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {currentPlan.english.keyVocabulary.map((word, idx) => (
                     <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab("code");
-                        setTimeout(() => {
-                          document.getElementById("technical-code-workout")?.scrollIntoView({ behavior: "smooth" });
-                        }, 50);
-                      }}
-                      className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
-                    >
-                      <span>Next: Open Technical Code Drill</span>
-                      <ArrowRight className="size-3.5" />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSubmitEnglish}
+                      key={idx}
+                      onClick={() => setActiveVocabIdx(idx)}
                       className={cn(
-                        "flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-xs transition-all cursor-pointer",
-                        hasEnglishIncorrect
-                          ? "bg-rose-600 hover:bg-rose-700 text-white"
-                          : "bg-primary hover:bg-primary/90 text-primary-foreground",
+                        "rounded-lg border p-2 text-center transition-all cursor-pointer",
+                        activeVocabIdx === idx
+                          ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
+                          : "border-border bg-card text-foreground hover:bg-muted/50",
                       )}
                     >
-                      <Check className="size-3.5" />
-                      <span>
-                        {hasEnglishIncorrect
-                          ? "Submit Workout (0 XP — Incorrect Answer)"
-                          : "Submit English Workout (+25 XP)"}
-                      </span>
+                      <span className="block text-xs font-mono capitalize">{word}</span>
+                      <span className="text-[9px] text-muted-foreground">Card #{idx + 1}</span>
                     </button>
-                  )}
+                  ))}
+                </div>
+
+                {/* Expanded Vocabulary Preview */}
+                <div className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-foreground text-xs uppercase font-mono">
+                      "{currentPlan.english.keyVocabulary[activeVocabIdx]}"
+                    </span>
+                    <span className="text-[10px] text-primary font-semibold">
+                      Corporate Context
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Used to demonstrate professional precision during interviews and status updates.
+                    Example:{" "}
+                    <em>
+                      "We leveraged {currentPlan.english.keyVocabulary[activeVocabIdx]} to optimize
+                      the client deliverable."
+                    </em>
+                  </p>
                 </div>
               </div>
-            )}
+
+              {/* 10 Corporate English Questions */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-foreground">
+                    Corporate English Questions (10 Questions · 10 XP Max)
+                  </p>
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    {englishCompletedCount} / 10 Completed · {englishXpEarned} / 10 XP
+                  </span>
+                </div>
+
+                {dayEnglishQuestions.map((q, idx) => {
+                  const rec =
+                    store.profile.dailyExerciseRecords?.[q.id] ||
+                    (selectedDayNum === 1
+                      ? store.profile.dailyExerciseRecords?.[q.id.replace("D1-", "")]
+                      : undefined);
+                  const hasAnswered = Boolean(rec?.isLocked);
+                  const selected = rec?.selectedOption;
+                  const isCorrect = rec?.isCorrect ?? false;
+
+                  return (
+                    <div
+                      key={q.id}
+                      id={`question-card-${q.id}`}
+                      className="rounded-lg border border-border bg-card/70 p-3.5 space-y-2.5 shadow-xs"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-medium text-foreground text-xs leading-relaxed">
+                          <span className="font-mono text-primary font-semibold mr-1.5">
+                            Q{idx + 1}.
+                          </span>
+                          {q.question}
+                        </p>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground uppercase">
+                            {q.id}
+                          </span>
+                          <span className="rounded bg-muted/80 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground capitalize">
+                            {q.difficulty}
+                          </span>
+                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono text-primary font-semibold">
+                            {hasAnswered ? (isCorrect ? "+1 XP" : "0 XP") : "1 XP"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Options Grid */}
+                      <div className="grid gap-1.5 sm:grid-cols-2">
+                        {q.options.map((opt, optIdx) => {
+                          const isOptionSelected = selected === optIdx;
+                          const isOptionCorrectAnswer = optIdx === q.correct_option;
+
+                          let btnStyle =
+                            "border-border bg-card hover:bg-muted/50 text-foreground cursor-pointer";
+                          if (hasAnswered) {
+                            if (isOptionCorrectAnswer) {
+                              btnStyle =
+                                "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold cursor-not-allowed";
+                            } else if (isOptionSelected) {
+                              btnStyle =
+                                "border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 cursor-not-allowed";
+                            } else {
+                              btnStyle = "opacity-60 border-border bg-card cursor-not-allowed";
+                            }
+                          }
+
+                          return (
+                            <button
+                              key={optIdx}
+                              type="button"
+                              id={`btn-${q.id}-opt-${optIdx}`}
+                              disabled={hasAnswered}
+                              onClick={() => handleQuestionOptionClick(q, optIdx)}
+                              className={cn(
+                                "flex items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all",
+                                btnStyle,
+                              )}
+                            >
+                              <span className="flex size-4.5 shrink-0 items-center justify-center rounded-full border text-[10px] font-mono">
+                                {String.fromCharCode(65 + optIdx)}
+                              </span>
+                              <span className="truncate">{opt}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Explanation Drawer */}
+                      {hasAnswered && (
+                        <div
+                          className={cn(
+                            "rounded-md p-2.5 text-[11px] leading-relaxed",
+                            isCorrect
+                              ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20"
+                              : "bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20",
+                          )}
+                        >
+                          <div className="flex items-center justify-between font-semibold">
+                            <div className="flex items-center gap-1.5">
+                              {isCorrect ? (
+                                <>
+                                  <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                                  <span>✓ Correct! (+1 XP)</span>
+                                </>
+                              ) : (
+                                <>
+                                  <AlertCircle className="size-3.5 text-rose-600 dark:text-rose-400" />
+                                  <span>
+                                    ✗ Incorrect (0 XP) · Correct:{" "}
+                                    {String.fromCharCode(65 + q.correct_option)} ({q.correct_answer}
+                                    )
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            <span className="font-mono text-[10px]">
+                              {isCorrect ? "+1 XP" : "+0 XP"}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-muted-foreground">{q.explanation}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* English Action Footer */}
+            <div className="mt-4 pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-24 hidden sm:block">
+                  <Meter value={(englishCompletedCount / 10) * 100} tone="emerald" />
+                </div>
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  {englishCompletedCount === 10
+                    ? `✓ Completed (10 / 10 · ${englishXpEarned} / 10 XP)`
+                    : `${englishCompletedCount} / 10 Completed · ${englishXpEarned} / 10 XP`}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("code");
+                  setTimeout(() => {
+                    document
+                      .getElementById("technical-code-workout")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }, 50);
+                }}
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+              >
+                <span>Next: Technical Code Drill</span>
+                <ArrowRight className="size-3.5" />
+              </button>
+            </div>
           </Panel>
         )}
 
@@ -1593,7 +1311,8 @@ console.log(solveChallenge());`;
                     Locked: Complete Corporate English Workout First
                   </h4>
                   <p className="mx-auto max-w-sm text-xs text-muted-foreground leading-relaxed">
-                    The Technical Code Drill will unlock and open automatically as soon as you finish and submit your Corporate English workout.
+                    The Technical Code Drill will unlock and open automatically as soon as you
+                    finish and submit your Corporate English workout.
                   </p>
                 </div>
                 <button
@@ -1602,19 +1321,25 @@ console.log(solveChallenge());`;
                     if (!isAptitudeDone) {
                       setActiveTab("aptitude");
                       setTimeout(() => {
-                        document.getElementById("aptitude-workout")?.scrollIntoView({ behavior: "smooth" });
+                        document
+                          .getElementById("aptitude-workout")
+                          ?.scrollIntoView({ behavior: "smooth" });
                       }, 50);
                     } else {
                       setActiveTab("english");
                       setTimeout(() => {
-                        document.getElementById("corporate-english-workout")?.scrollIntoView({ behavior: "smooth" });
+                        document
+                          .getElementById("corporate-english-workout")
+                          ?.scrollIntoView({ behavior: "smooth" });
                       }, 50);
                     }
                   }}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
                 >
                   <BookOpen className="size-3.5" />
-                  <span>{!isAptitudeDone ? "Go to Aptitude & Logic" : "Open Corporate English Workout"}</span>
+                  <span>
+                    {!isAptitudeDone ? "Go to Aptitude & Logic" : "Open Corporate English Workout"}
+                  </span>
                   <ArrowRight className="size-3.5" />
                 </button>
               </div>
@@ -1623,7 +1348,9 @@ console.log(solveChallenge());`;
                 {/* Course Selector Tabs (If student has multiple assigned tracks) */}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2.5">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-muted-foreground text-[11px] font-medium">Assigned Course:</span>
+                    <span className="text-muted-foreground text-[11px] font-medium">
+                      Assigned Course:
+                    </span>
                     <div className="flex gap-1">
                       {activeTracks.map((tId) => {
                         const t = trackById(tId);
@@ -1640,7 +1367,9 @@ console.log(solveChallenge());`;
                               setUserCode(
                                 `// ${t.name} · Day ${selectedDayNum} Exercise\n// Objective: ${dP.practice}\n\nfunction solveChallenge() {\n  // TODO: Implement solution logic for ${dP.topic}\n  const status = "OPTIMIZED";\n  return status;\n}\n\nconsole.log(solveChallenge());`,
                               );
-                              setConsoleOutput([`[ready] Switched sandbox to ${t.name} (Day ${selectedDayNum})`]);
+                              setConsoleOutput([
+                                `[ready] Switched sandbox to ${t.name} (Day ${selectedDayNum})`,
+                              ]);
                             }}
                             className={cn(
                               "rounded-md px-2 py-0.5 text-xs font-semibold transition-all",
@@ -1700,9 +1429,14 @@ console.log(solveChallenge());`;
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                     <span>Execution Output Console</span>
-                    {isTestRunning && <span className="text-primary animate-pulse">Running test cases…</span>}
+                    {isTestRunning && (
+                      <span className="text-primary animate-pulse">Running test cases…</span>
+                    )}
                   </div>
-                  <Console lines={consoleOutput} empty="Click 'Run Test Cases' to compile and execute." />
+                  <Console
+                    lines={consoleOutput}
+                    empty="Click 'Run Test Cases' to compile and execute."
+                  />
                 </div>
               </div>
             )}
@@ -1736,7 +1470,6 @@ console.log(solveChallenge());`;
             )}
           </Panel>
         )}
-
       </div>
 
       {/* Daily Routine Summary Checklist Card */}
@@ -1747,7 +1480,8 @@ console.log(solveChallenge());`;
               Day {selectedDayNum} Exercise Workout Checklist
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Complete each daily module to advance your streak and maintain 100% attendance readiness for Day 90.
+              Complete each daily module to advance your streak and maintain 100% attendance
+              readiness for Day 90.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -1761,13 +1495,11 @@ console.log(solveChallenge());`;
           <div
             className={cn(
               "rounded-lg border p-3.5 space-y-1.5 transition-all",
-              isAptitudeDone
-                ? "border-emerald-500/30 bg-emerald-500/5"
-                : "border-border bg-card",
+              isAptitudeDone ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-card",
             )}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-foreground">1. Aptitude & Speed Math</span>
+              <span className="text-xs font-bold text-foreground">1. Aptitude &amp; Logic</span>
               {isAptitudeDone ? (
                 <CheckCircle2 className="size-4 text-emerald-500" />
               ) : (
@@ -1776,19 +1508,15 @@ console.log(solveChallenge());`;
             </div>
             <p className="text-[11px] text-muted-foreground">
               {isAptitudeDone
-                ? aptitudeXpEarned > 0
-                  ? "Formula + MCQs logged (+25 XP)"
-                  : "Submitted with incorrect answer (0 XP)"
-                : "Pending practice submission"}
+                ? `10 Questions completed (${aptitudeXpEarned} / 10 XP)`
+                : `${aptitudeCompletedCount} / 10 questions completed (${aptitudeXpEarned} / 10 XP)`}
             </p>
           </div>
 
           <div
             className={cn(
               "rounded-lg border p-3.5 space-y-1.5 transition-all",
-              isEnglishDone
-                ? "border-emerald-500/30 bg-emerald-500/5"
-                : "border-border bg-card",
+              isEnglishDone ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-card",
             )}
           >
             <div className="flex items-center justify-between">
@@ -1801,19 +1529,15 @@ console.log(solveChallenge());`;
             </div>
             <p className="text-[11px] text-muted-foreground">
               {isEnglishDone
-                ? englishXpEarned > 0
-                  ? "Grammar + 4 Vocab cards (+25 XP)"
-                  : "Submitted with incorrect answer (0 XP)"
-                : "Pending practice submission"}
+                ? `10 Questions completed (${englishXpEarned} / 10 XP)`
+                : `${englishCompletedCount} / 10 questions completed (${englishXpEarned} / 10 XP)`}
             </p>
           </div>
 
           <div
             className={cn(
               "rounded-lg border p-3.5 space-y-1.5 transition-all",
-              isCodeDone
-                ? "border-emerald-500/30 bg-emerald-500/5"
-                : "border-border bg-card",
+              isCodeDone ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-card",
             )}
           >
             <div className="flex items-center justify-between">
@@ -1825,7 +1549,9 @@ console.log(solveChallenge());`;
               )}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              {isCodeDone ? `${primaryTrack.short} Test cases verified (+50 XP)` : "Pending sandbox execution"}
+              {isCodeDone
+                ? `${primaryTrack.short} Test cases verified (+50 XP)`
+                : "Pending sandbox execution"}
             </p>
           </div>
         </div>

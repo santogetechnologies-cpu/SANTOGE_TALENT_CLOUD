@@ -123,11 +123,13 @@ export type Profile = {
 
 export type DailyExerciseQuestionRecord = {
   dayNum: number;
-  category: "aptitude" | "puzzle" | "english";
+  category: "aptitude" | "puzzle" | "english" | "aptitude_logic" | "corporate_english";
   questionIdx: number;
+  questionId?: string | undefined;
   selectedOption: number;
   correctOption: number;
   isCorrect: boolean;
+  xpEarned?: number | undefined;
   isLocked: boolean;
   submittedAt: string;
 };
@@ -298,16 +300,37 @@ type AppStoreContextValue = AppStoreState & {
   signOut: () => void;
   setRole: (r: Role) => void;
   toggleTheme: () => void;
-  setReadiness: (patch: Partial<ReadinessInputs>) => Promise<{ ok: boolean; error?: string | undefined }>;
+  setReadiness: (
+    patch: Partial<ReadinessInputs>,
+  ) => Promise<{ ok: boolean; error?: string | undefined }>;
   setActiveTracks: (tracks: TrackId[]) => void;
-  setDailyStep: (key: "english" | "aptitude" | "practice", val: boolean) => Promise<{ ok: boolean; error?: string | undefined }>;
-  completeDailyStep: (key: "english" | "aptitude" | "practice") => Promise<{ ok: boolean; error?: string | undefined }>;
-  completeSkill: (trackId: TrackId, skillId: string, name: string) => Promise<{ ok: boolean; error?: string | undefined }>;
+  setDailyStep: (
+    key: "english" | "aptitude" | "practice",
+    val: boolean,
+  ) => Promise<{ ok: boolean; error?: string | undefined }>;
+  completeDailyStep: (
+    key: "english" | "aptitude" | "practice",
+  ) => Promise<{ ok: boolean; error?: string | undefined }>;
+  completeSkill: (
+    trackId: TrackId,
+    skillId: string,
+    name: string,
+  ) => Promise<{ ok: boolean; error?: string | undefined }>;
   completePlacementDay: (day: number) => Promise<{ ok: boolean; error?: string | undefined }>;
   completeTechDay: (day: number) => Promise<{ ok: boolean; error?: string | undefined }>;
-  completeLab: (labId: string, label?: string) => Promise<{ ok: boolean; error?: string | undefined }>;
-  submitAssessment: (day: number, score: number) => Promise<{ ok: boolean; error?: string | undefined }>;
-  completeMock: (id: string, score: number, feedback?: string) => Promise<{ ok: boolean; error?: string | undefined }>;
+  completeLab: (
+    labId: string,
+    label?: string,
+  ) => Promise<{ ok: boolean; error?: string | undefined }>;
+  submitAssessment: (
+    day: number,
+    score: number,
+  ) => Promise<{ ok: boolean; error?: string | undefined }>;
+  completeMock: (
+    id: string,
+    score: number,
+    feedback?: string,
+  ) => Promise<{ ok: boolean; error?: string | undefined }>;
   issueCertificate: (label: string) => Promise<{ ok: boolean; error?: string | undefined }>;
   recalculateAllScores: () => Promise<void> | void;
   recalculateStudentScore: (emailOrId?: string) => Promise<void> | void;
@@ -326,17 +349,18 @@ type AppStoreContextValue = AppStoreState & {
     trackId: string,
     stepId: JourneyStepId,
     actionData?: { selectedOption?: number | string; isCorrect?: boolean },
-  ) => Promise<{ ok: boolean; alreadyCompleted?: boolean | undefined; xpAwarded?: boolean | undefined; error?: string | undefined }>;
+  ) => Promise<{
+    ok: boolean;
+    alreadyCompleted?: boolean | undefined;
+    xpAwarded?: boolean | undefined;
+    error?: string | undefined;
+  }>;
   getDailyStepRecord: (
     dayNum: number,
     trackId: string,
     stepId: JourneyStepId,
   ) => DailyFocusStepRecord | null;
-  isDailyStepLocked: (
-    dayNum: number,
-    trackId: string,
-    stepId: JourneyStepId,
-  ) => boolean;
+  isDailyStepLocked: (dayNum: number, trackId: string, stepId: JourneyStepId) => boolean;
   recordKnowledgeCheck: (
     dayNum: number,
     trackId: string,
@@ -344,26 +368,26 @@ type AppStoreContextValue = AppStoreState & {
     selectedOption: number,
     isCorrect: boolean,
   ) => Promise<{ ok: boolean; alreadyAnswered?: boolean; xpAwarded?: boolean }>;
-  getKnowledgeCheck: (
-    dayNum: number,
-    trackId: string,
-  ) => KnowledgeCheckRecord | null;
+  getKnowledgeCheck: (dayNum: number, trackId: string) => KnowledgeCheckRecord | null;
   recordDailyExerciseAnswer: (
     dayNum: number,
-    category: "aptitude" | "puzzle" | "english",
-    questionIdx: number,
+    category: "aptitude" | "puzzle" | "english" | "aptitude_logic" | "corporate_english",
+    questionIdOrIdx: number | string,
     selectedOption: number,
-    correctOption: number,
+    correctOption?: number | undefined,
   ) => Promise<{
     ok: boolean;
-    alreadyAnswered?: boolean;
+    alreadyAnswered?: boolean | undefined;
     isCorrect: boolean;
     record: DailyExerciseQuestionRecord;
+    totalXp?: number | undefined;
+    talentScore?: number | undefined;
+    error?: string | undefined;
   }>;
   getDailyExerciseRecord: (
     dayNum: number,
-    category: "aptitude" | "puzzle" | "english",
-    questionIdx: number,
+    category: "aptitude" | "puzzle" | "english" | "aptitude_logic" | "corporate_english",
+    questionIdOrIdx: number | string,
   ) => DailyExerciseQuestionRecord | null;
   getDailyExerciseAnswersForDay: (
     dayNum: number,
@@ -390,7 +414,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       const hash = window.location.hash || "";
       const search = window.location.search || "";
-      return hash.includes("type=recovery") || search.includes("reset=true") || search.includes("type=recovery");
+      return (
+        hash.includes("type=recovery") ||
+        search.includes("reset=true") ||
+        search.includes("type=recovery")
+      );
     }
     return false;
   });
@@ -698,7 +726,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
         return {
           ok: false,
-          error: "This student account has been removed or deactivated by the institutional administrator. Login access is revoked.",
+          error:
+            "This student account has been removed or deactivated by the institutional administrator. Login access is revoked.",
         };
       }
 
@@ -707,7 +736,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
         return {
           ok: false,
-          error: "This student account is currently suspended. Please contact your institution administrator.",
+          error:
+            "This student account is currently suspended. Please contact your institution administrator.",
         };
       }
 
@@ -716,7 +746,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
         return {
           ok: false,
-          error: "No active student account found for this login. Please contact your college administrator to be provisioned.",
+          error:
+            "No active student account found for this login. Please contact your college administrator to be provisioned.",
         };
       }
 
@@ -853,7 +884,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // -------------------------------------------------------------------------
 
   const setReadiness = useCallback(
-    async (patch: Partial<ReadinessInputs>): Promise<{ ok: boolean; error?: string | undefined }> => {
+    async (
+      patch: Partial<ReadinessInputs>,
+    ): Promise<{ ok: boolean; error?: string | undefined }> => {
       if (!state.liveStudentId) {
         toast.error("Authentication required to update readiness");
         return { ok: false, error: "Authentication required" };
@@ -919,14 +952,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const completeDailyStep = useCallback(
-    async (key: "english" | "aptitude" | "practice"): Promise<{ ok: boolean; error?: string | undefined }> => {
+    async (
+      key: "english" | "aptitude" | "practice",
+    ): Promise<{ ok: boolean; error?: string | undefined }> => {
       return setDailyStep(key, true);
     },
     [setDailyStep],
   );
 
   const completeSkill = useCallback(
-    async (trackId: TrackId, skillId: string, name: string): Promise<{ ok: boolean; error?: string | undefined }> => {
+    async (
+      trackId: TrackId,
+      skillId: string,
+      name: string,
+    ): Promise<{ ok: boolean; error?: string | undefined }> => {
       if (state.profile.skills.includes(skillId)) return { ok: true };
 
       if (!state.liveStudentId) {
@@ -1215,7 +1254,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       trackId: string,
       stepId: JourneyStepId,
       actionData?: { selectedOption?: number | string; isCorrect?: boolean },
-    ): Promise<{ ok: boolean; alreadyCompleted?: boolean | undefined; xpAwarded?: boolean | undefined; error?: string | undefined }> => {
+    ): Promise<{
+      ok: boolean;
+      alreadyCompleted?: boolean | undefined;
+      xpAwarded?: boolean | undefined;
+      error?: string | undefined;
+    }> => {
       if (!state.liveStudentId) {
         toast.error("Authentication required to record daily journey progression");
         return { ok: false, error: "Authentication required" };
@@ -1340,11 +1384,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const getDailyStepRecord = useCallback(
-    (
-      dayNum: number,
-      trackId: string,
-      stepId: JourneyStepId,
-    ): DailyFocusStepRecord | null => {
+    (dayNum: number, trackId: string, stepId: JourneyStepId): DailyFocusStepRecord | null => {
       const qKey = `day_${dayNum}_${trackId}_${stepId}`;
 
       if (state.profile.dailyStepRecords?.[qKey]) {
@@ -1442,20 +1482,30 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const recordDailyExerciseAnswer = useCallback(
     async (
       dayNum: number,
-      category: "aptitude" | "puzzle" | "english",
-      questionIdx: number,
+      category: "aptitude" | "puzzle" | "english" | "aptitude_logic" | "corporate_english",
+      questionIdOrIdx: number | string,
       selectedOption: number,
-      correctOption: number,
+      correctOption: number = 0,
     ): Promise<{
       ok: boolean;
-      alreadyAnswered?: boolean;
+      alreadyAnswered?: boolean | undefined;
       isCorrect: boolean;
       record: DailyExerciseQuestionRecord;
+      totalXp?: number | undefined;
+      talentScore?: number | undefined;
+      error?: string | undefined;
     }> => {
-      const qKey = `day_${dayNum}_${category}_${questionIdx}`;
+      const questionId =
+        typeof questionIdOrIdx === "string" ? questionIdOrIdx : `${category}_${questionIdOrIdx}`;
+      const qKey =
+        typeof questionIdOrIdx === "string"
+          ? questionIdOrIdx
+          : `day_${dayNum}_${category}_${questionIdOrIdx}`;
 
       // Check in-memory store
-      const existingInMemory = state.profile.dailyExerciseRecords?.[qKey];
+      const existingInMemory =
+        state.profile.dailyExerciseRecords?.[qKey] ||
+        state.profile.dailyExerciseRecords?.[questionId];
       if (existingInMemory?.isLocked) {
         return {
           ok: true,
@@ -1466,27 +1516,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }
 
       const isCorrect = selectedOption === correctOption;
-      const categoryTitle =
-        category === "aptitude"
-          ? "Aptitude"
-          : category === "english"
-            ? "English"
-            : category === "puzzle"
-              ? "Puzzle"
-              : "Logic";
-      const questionId = `${category}_${questionIdx}`;
-
       let authoritativeCorrect = isCorrect;
+      let authoritativeXp = isCorrect ? 1 : 0;
       let alreadySubmitted = false;
+      let serverTotalXp: number | undefined;
+      let serverTalentScore: number | undefined;
 
       if (state.liveStudentId) {
         const res = await submitLiveExerciseAnswer(
           state.liveStudentId,
-          dayNum,
-          categoryTitle as "Aptitude" | "English" | "Logic" | "Puzzle",
           questionId,
           selectedOption,
-          isCorrect,
+          dayNum,
+          category,
         );
 
         if (!res.ok) {
@@ -1498,29 +1540,39 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             record: {
               dayNum,
               category,
-              questionIdx,
+              questionIdx: typeof questionIdOrIdx === "number" ? questionIdOrIdx : 0,
+              questionId,
               selectedOption,
               correctOption,
               isCorrect: false,
+              xpEarned: 0,
               isLocked: false,
               submittedAt: new Date().toISOString(),
             },
+            error: res.error,
           };
         }
 
         if (res.is_correct !== undefined && res.is_correct !== null) {
           authoritativeCorrect = res.is_correct;
         }
+        if (res.xp_earned !== undefined && res.xp_earned !== null) {
+          authoritativeXp = res.xp_earned;
+        }
         alreadySubmitted = Boolean(res.already_submitted);
+        serverTotalXp = res.total_xp;
+        serverTalentScore = res.talent_score;
       }
 
       const record: DailyExerciseQuestionRecord = {
         dayNum,
         category,
-        questionIdx,
+        questionIdx: typeof questionIdOrIdx === "number" ? questionIdOrIdx : 0,
+        questionId,
         selectedOption: selectedOption,
         correctOption,
         isCorrect: authoritativeCorrect,
+        xpEarned: authoritativeXp,
         isLocked: true,
         submittedAt: new Date().toISOString(),
       };
@@ -1532,11 +1584,25 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           dailyExerciseRecords: {
             ...(s.profile.dailyExerciseRecords || {}),
             [qKey]: record,
+            [questionId]: record,
+            ...(questionId.startsWith("D1-") ? { [questionId.replace("D1-", "")]: record } : {}),
+            ...(questionId.startsWith("AL-") || questionId.startsWith("CE-")
+              ? { [`D1-${questionId}`]: record }
+              : {}),
           },
+          ...(serverTotalXp !== undefined ? { xp: serverTotalXp } : {}),
+          ...(serverTalentScore !== undefined ? { talentScore: serverTalentScore } : {}),
         },
       }));
 
-      return { ok: true, alreadyAnswered: alreadySubmitted, isCorrect: authoritativeCorrect, record };
+      return {
+        ok: true,
+        alreadyAnswered: alreadySubmitted,
+        isCorrect: authoritativeCorrect,
+        record,
+        totalXp: serverTotalXp,
+        talentScore: serverTalentScore,
+      };
     },
     [state.liveStudentId, state.profile.dailyExerciseRecords],
   );
@@ -1548,22 +1614,51 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const nextRecords = { ...(s.profile.dailyExerciseRecords || {}) };
         let hasChanges = false;
         for (const sub of submissions) {
-          const parts = sub.question_id.split("_");
-          const category = (sub.category.toLowerCase() as "aptitude" | "puzzle" | "english");
-          const questionIdx = parts.length > 1 ? Number(parts[1]) : 0;
-          const qKey = `day_${dayNum}_${category}_${questionIdx}`;
-          if (!nextRecords[qKey]) {
-            nextRecords[qKey] = {
-              dayNum,
-              category,
-              questionIdx,
-              selectedOption: sub.selected_option,
-              correctOption: sub.selected_option,
-              isCorrect: sub.is_correct ?? true,
-              isLocked: true,
-              submittedAt: sub.submitted_at,
-            };
+          const qId = sub.question_id;
+          const category =
+            (sub.category as DailyExerciseQuestionRecord["category"]) || "aptitude_logic";
+          const isCorrect = sub.is_correct ?? false;
+          const xpEarned = sub.xp_earned ?? (isCorrect ? 1 : 0);
+
+          const record: DailyExerciseQuestionRecord = {
+            dayNum,
+            category,
+            questionIdx: 0,
+            questionId: qId,
+            selectedOption: sub.selected_option,
+            correctOption: sub.selected_option,
+            isCorrect,
+            xpEarned,
+            isLocked: true,
+            submittedAt: sub.submitted_at,
+          };
+
+          if (!nextRecords[qId]) {
+            nextRecords[qId] = record;
             hasChanges = true;
+          }
+
+          if (qId.startsWith("D1-")) {
+            const alias = qId.replace("D1-", "");
+            if (!nextRecords[alias]) {
+              nextRecords[alias] = record;
+              hasChanges = true;
+            }
+          } else if (qId.startsWith("AL-") || qId.startsWith("CE-")) {
+            const alias = `D1-${qId}`;
+            if (!nextRecords[alias]) {
+              nextRecords[alias] = record;
+              hasChanges = true;
+            }
+          }
+
+          const parts = qId.split("_");
+          if (parts.length > 1) {
+            const legacyKey = `day_${dayNum}_${parts[0]}_${parts[1]}`;
+            if (!nextRecords[legacyKey]) {
+              nextRecords[legacyKey] = record;
+              hasChanges = true;
+            }
           }
         }
         if (!hasChanges) return s;
@@ -1582,13 +1677,23 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const getDailyExerciseRecord = useCallback(
     (
       dayNum: number,
-      category: "aptitude" | "puzzle" | "english",
-      questionIdx: number,
+      category: "aptitude" | "puzzle" | "english" | "aptitude_logic" | "corporate_english",
+      questionIdOrIdx: number | string,
     ): DailyExerciseQuestionRecord | null => {
-      const qKey = `day_${dayNum}_${category}_${questionIdx}`;
+      const qKey =
+        typeof questionIdOrIdx === "string"
+          ? questionIdOrIdx
+          : `day_${dayNum}_${category}_${questionIdOrIdx}`;
 
       if (state.profile.dailyExerciseRecords?.[qKey]?.isLocked) {
         return state.profile.dailyExerciseRecords[qKey]!;
+      }
+
+      if (
+        typeof questionIdOrIdx === "string" &&
+        state.profile.dailyExerciseRecords?.[questionIdOrIdx]?.isLocked
+      ) {
+        return state.profile.dailyExerciseRecords[questionIdOrIdx]!;
       }
 
       return null;
