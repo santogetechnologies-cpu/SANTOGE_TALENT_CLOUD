@@ -976,31 +976,52 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       completedTechDays?: number[],
       attendance?: number[],
     ) => {
-      setState((s) => ({
-        ...s,
-        profile: {
-          ...s.profile,
-          daily: {
-            english: Boolean(daily.english || s.profile.daily.english),
-            aptitude: Boolean(daily.aptitude || s.profile.daily.aptitude),
-            practice: Boolean(daily.practice || s.profile.daily.practice),
+      setState((s) => {
+        const newEnglish = Boolean(daily.english || s.profile.daily.english);
+        const newAptitude = Boolean(daily.aptitude || s.profile.daily.aptitude);
+        const newPractice = Boolean(daily.practice || s.profile.daily.practice);
+
+        const newCompletedTechDays = completedTechDays
+          ? Array.from(new Set([...s.profile.completedTechDays, ...completedTechDays])).sort((a, b) => a - b)
+          : s.profile.completedTechDays;
+
+        const newAttendance = attendance
+          ? Array.from(new Set([...s.profile.attendance, ...attendance])).sort((a, b) => a - b)
+          : s.profile.attendance;
+
+        const dailyChanged =
+          newEnglish !== s.profile.daily.english ||
+          newAptitude !== s.profile.daily.aptitude ||
+          newPractice !== s.profile.daily.practice;
+
+        const currentTechSorted = [...s.profile.completedTechDays].sort((a, b) => a - b);
+        const techDaysChanged =
+          newCompletedTechDays.length !== currentTechSorted.length ||
+          newCompletedTechDays.some((d, i) => d !== currentTechSorted[i]);
+
+        const currentAttendanceSorted = [...s.profile.attendance].sort((a, b) => a - b);
+        const attendanceChanged =
+          newAttendance.length !== currentAttendanceSorted.length ||
+          newAttendance.some((d, i) => d !== currentAttendanceSorted[i]);
+
+        if (!dailyChanged && !techDaysChanged && !attendanceChanged) {
+          return s; // No mutation needed; avoids re-render loop
+        }
+
+        return {
+          ...s,
+          profile: {
+            ...s.profile,
+            daily: {
+              english: newEnglish,
+              aptitude: newAptitude,
+              practice: newPractice,
+            },
+            completedTechDays: newCompletedTechDays,
+            attendance: newAttendance,
           },
-          ...(completedTechDays
-            ? {
-                completedTechDays: Array.from(
-                  new Set([...s.profile.completedTechDays, ...completedTechDays]),
-                ),
-              }
-            : {}),
-          ...(attendance
-            ? {
-                attendance: Array.from(
-                  new Set([...s.profile.attendance, ...attendance]),
-                ),
-              }
-            : {}),
-        },
-      }));
+        };
+      });
     },
     [],
   );

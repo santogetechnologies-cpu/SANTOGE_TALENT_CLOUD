@@ -55,16 +55,18 @@ function TodayLearningPage() {
     !!liveStudentId,
   );
 
+  const syncDailyProgress = store.syncDailyProgress;
+
   // Authoritative realtime synchronization into store
   useEffect(() => {
     if (liveProgressData) {
-      store.syncDailyProgress(
+      syncDailyProgress(
         liveProgressData.daily,
         liveProgressData.completedTechDays,
         liveProgressData.attendance,
       );
     }
-  }, [liveProgressData, store]);
+  }, [liveProgressData, syncDailyProgress]);
 
   const cohortDay = liveProfileData?.profile?.placement_day ?? store.placementDay ?? 1;
 
