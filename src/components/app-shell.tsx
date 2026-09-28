@@ -385,21 +385,23 @@ export function AppShell({ portal }: { portal: Role }) {
             ))}
           </nav>
 
-          {/* Bottom Talent Score Indicator */}
-          <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-medium text-muted-foreground">
-                Talent Score
-              </p>
-              <span className="font-mono text-xs font-bold text-foreground">
-                {talentScore}/1000
-              </span>
+          {/* Bottom Talent Score Indicator (Students Only) */}
+          {portal === "student" && (
+            <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-medium text-muted-foreground">
+                  Talent Score
+                </p>
+                <span className="font-mono text-xs font-bold text-foreground">
+                  {talentScore}/1000
+                </span>
+              </div>
+              <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>{gateUnlocked ? "Unlocked 🔓" : "In Progress 🔒"}</span>
+                <span className="font-medium text-foreground">{eligibleCompanies} Companies</span>
+              </div>
             </div>
-            <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>{gateUnlocked ? "Unlocked 🔓" : "In Progress 🔒"}</span>
-              <span className="font-medium text-foreground">{eligibleCompanies} Companies</span>
-            </div>
-          </div>
+          )}
         </aside>
 
         {open && (

@@ -165,12 +165,12 @@ function RosterPage() {
   );
 
   const modalReadiness = activeModalStudent?.readiness ?? {
-    T: 65,
-    C: 65,
-    A: 60,
-    E: 65,
-    R: 60,
-    M: 60,
+    T: 0,
+    C: 0,
+    A: 0,
+    E: 0,
+    R: 0,
+    M: 0,
   };
 
   const uniqueBatches = useMemo(() => {

@@ -178,12 +178,12 @@ function AdminHiringDrivesPage() {
   }, [allStudents, auditStudentEmail]);
 
   const modalReadiness = activeModalStudent?.readiness ?? {
-    T: 65,
-    C: 65,
-    A: 60,
-    E: 70,
-    R: 50,
-    M: 35,
+    T: 0,
+    C: 0,
+    A: 0,
+    E: 0,
+    R: 0,
+    M: 0,
   };
 
   // Handlers

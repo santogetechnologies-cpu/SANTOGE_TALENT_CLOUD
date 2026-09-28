@@ -190,16 +190,16 @@ function AdminAnalytics() {
   const cohortAverages = useMemo(() => {
     const list = liveRoster?.items || [];
     if (list.length === 0) {
-      return { T: 65, C: 60, A: 58, E: 72, R: 54, M: 40 };
+      return { T: 0, C: 0, A: 0, E: 0, R: 0, M: 0 };
     }
     const sum = list.reduce(
       (acc, s) => {
-        acc.T += s.readiness?.T ?? 60;
-        acc.C += s.readiness?.C ?? 60;
-        acc.A += s.readiness?.A ?? 55;
-        acc.E += s.readiness?.E ?? 70;
-        acc.R += s.readiness?.R ?? 50;
-        acc.M += s.readiness?.M ?? 40;
+        acc.T += s.readiness?.T ?? 0;
+        acc.C += s.readiness?.C ?? 0;
+        acc.A += s.readiness?.A ?? 0;
+        acc.E += s.readiness?.E ?? 0;
+        acc.R += s.readiness?.R ?? 0;
+        acc.M += s.readiness?.M ?? 0;
         return acc;
       },
       { T: 0, C: 0, A: 0, E: 0, R: 0, M: 0 },

@@ -1042,12 +1042,12 @@ export async function triggerLiveTalentScoreRecalculation(): Promise<{
       }
 
       // If calculate_talent_score is also missing, compute score directly via authoritative formula
-      const t = student.readiness_t ?? 65;
-      const c = student.readiness_c ?? 65;
-      const a = student.readiness_a ?? 60;
-      const e = student.readiness_e ?? 70;
-      const r = student.readiness_r ?? 50;
-      const m = student.readiness_m ?? 35;
+      const t = student.readiness_t ?? 0;
+      const c = student.readiness_c ?? 0;
+      const a = student.readiness_a ?? 0;
+      const e = student.readiness_e ?? 0;
+      const r = student.readiness_r ?? 0;
+      const m = student.readiness_m ?? 0;
 
       const raw = (t * 0.25 + c * 0.20 + a * 0.15 + e * 0.15 + r * 0.15 + m * 0.10) * 9.5;
       const calculatedScore = Math.min(1000, Math.max(0, Math.round(raw)));
