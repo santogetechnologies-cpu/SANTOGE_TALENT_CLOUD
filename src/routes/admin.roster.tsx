@@ -807,10 +807,18 @@ function RosterPage() {
                   className="rounded-xl border border-border bg-card shadow-xs overflow-hidden transition-all"
                 >
                   {/* Cohort Header Row (always visible) */}
-                  <button
+                  <div
                     id={`cohort-card-${cohort.id}`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setExpandedBatch(isExpanded ? null : cohort.id)}
-                    className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-muted/30 transition-colors"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setExpandedBatch(isExpanded ? null : cohort.id);
+                      }
+                    }}
+                    className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-muted/30 transition-colors cursor-pointer select-none"
                   >
                     {/* Expand icon */}
                     <div className="shrink-0 text-muted-foreground">
@@ -871,12 +879,13 @@ function RosterPage() {
                         setRosterPage(0);
                         document.getElementById("student-roster")?.scrollIntoView({ behavior: "smooth" });
                       }}
+                      onKeyDown={(e) => e.stopPropagation()}
                       className="hidden lg:inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors shadow-xs shrink-0"
                       title="Filter roster to this cohort"
                     >
                       <Users className="size-3" /> View Roster
                     </button>
-                  </button>
+                  </div>
 
                   {/* Expanded Detail Section */}
                   {isExpanded && (
