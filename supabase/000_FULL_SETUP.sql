@@ -2191,29 +2191,31 @@ NOTIFY pgrst, 'reload schema';
 -- SantoGe Talent Cloud (STC) — Migration 024: Authoritative Daily Exercise System
 -- ============================================================================
 
--- Ensure columns exist if table was previously created with different columns
+-- Ensure columns exist if table was previously created with different columns (e.g. Migration 022)
 ALTER TABLE public.student_exercise_submissions
     ADD COLUMN IF NOT EXISTS exercise_date DATE NOT NULL DEFAULT CURRENT_DATE,
     ADD COLUMN IF NOT EXISTS xp_earned INT NOT NULL DEFAULT 0;
 
--- Create Unique Constraint on (student_id, question_id)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'uq_student_exercise_student_question'
-    ) THEN
-        -- Drop older constraints if exist
-        ALTER TABLE public.student_exercise_submissions
-            DROP CONSTRAINT IF EXISTS uq_student_exercise_submission;
-        ALTER TABLE public.student_exercise_submissions
-            DROP CONSTRAINT IF EXISTS uq_student_exercise_daily_submission;
+-- Drop older check constraints on category and replace with permissive enum constraint
+ALTER TABLE public.student_exercise_submissions
+    DROP CONSTRAINT IF EXISTS student_exercise_submissions_category_check;
 
-        ALTER TABLE public.student_exercise_submissions
-            ADD CONSTRAINT uq_student_exercise_student_question UNIQUE (student_id, question_id);
-    END IF;
-EXCEPTION WHEN OTHERS THEN
-    NULL;
-END $$;
+ALTER TABLE public.student_exercise_submissions
+    ADD CONSTRAINT student_exercise_submissions_category_check
+    CHECK (category IN ('aptitude_logic', 'corporate_english', 'Aptitude', 'English', 'Logic', 'Puzzle'));
+
+-- Drop older unique constraints to standardize on (student_id, question_id)
+ALTER TABLE public.student_exercise_submissions
+    DROP CONSTRAINT IF EXISTS uq_student_exercise_submission;
+
+ALTER TABLE public.student_exercise_submissions
+    DROP CONSTRAINT IF EXISTS uq_student_exercise_daily_submission;
+
+ALTER TABLE public.student_exercise_submissions
+    DROP CONSTRAINT IF EXISTS uq_student_exercise_student_question;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_student_exercise_student_question
+    ON public.student_exercise_submissions(student_id, question_id);
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_student_exercise_daily_lookup
@@ -2225,13 +2227,17 @@ CREATE INDEX IF NOT EXISTS idx_student_exercise_day_lookup
 CREATE INDEX IF NOT EXISTS idx_student_exercise_question_lookup
     ON public.student_exercise_submissions(student_id, question_id);
 
+-- Clean up all existing overloads to eliminate postgrest 400 candidate function ambiguity
+DROP FUNCTION IF EXISTS public.submit_student_exercise_answer(UUID, TEXT, INT, INT, TEXT, BOOLEAN);
+DROP FUNCTION IF EXISTS public.submit_student_exercise_answer(UUID, INT, TEXT, TEXT, INT, BOOLEAN);
+
 -- Authoritative Exercise Answer Submission RPC
 CREATE OR REPLACE FUNCTION public.submit_student_exercise_answer(
     p_student_id UUID,
-    p_question_id TEXT,
-    p_selected_option INT,
     p_day INT DEFAULT 1,
-    p_category TEXT DEFAULT NULL,
+    p_category TEXT DEFAULT 'Aptitude',
+    p_question_id TEXT DEFAULT '',
+    p_selected_option INT DEFAULT 0,
     p_is_correct BOOLEAN DEFAULT NULL
 )
 RETURNS JSONB
@@ -2248,7 +2254,6 @@ DECLARE
     v_correct_option INT;
     v_is_correct BOOLEAN;
     v_xp_to_award INT := 0;
-    v_row_count INT := 0;
     v_existing_option INT;
     v_existing_correct BOOLEAN;
     v_existing_xp INT;
@@ -2277,21 +2282,25 @@ BEGIN
         v_q_idx := (regexp_match(p_question_id, '^D([0-9]+)-(AL|CE)-([0-9]+)$'))[3]::INT;
 
         IF v_cat_code = 'AL' THEN
-            v_category := 'aptitude_logic';
+            v_category := 'Aptitude';
         ELSE
-            v_category := 'corporate_english';
+            v_category := 'English';
         END IF;
     ELSIF p_question_id ~ '^AL-([0-9]+)$' THEN
         v_day := coalesce(p_day, 1);
-        v_category := 'aptitude_logic';
+        v_category := 'Aptitude';
         v_q_idx := (regexp_match(p_question_id, '^AL-([0-9]+)$'))[1]::INT;
     ELSIF p_question_id ~ '^CE-([0-9]+)$' THEN
         v_day := coalesce(p_day, 1);
-        v_category := 'corporate_english';
+        v_category := 'English';
         v_q_idx := (regexp_match(p_question_id, '^CE-([0-9]+)$'))[1]::INT;
     ELSE
         v_day := coalesce(p_day, 1);
-        v_category := coalesce(p_category, 'aptitude_logic');
+        IF p_category IN ('corporate_english', 'English') OR p_question_id LIKE '%CE%' THEN
+            v_category := 'English';
+        ELSE
+            v_category := 'Aptitude';
+        END IF;
         v_q_idx := 1;
     END IF;
 
@@ -2312,14 +2321,14 @@ BEGIN
         ELSIF p_question_id IN ('CE-09','D1-CE-09') THEN
             v_correct_option := 0;
         ELSE
-            IF v_category = 'aptitude_logic' THEN
+            IF v_category = 'Aptitude' THEN
                 v_correct_option := (v_day * 3 + v_q_idx * 7 + 1) % 4;
             ELSE
                 v_correct_option := (v_day * 5 + v_q_idx * 11 + 2) % 4;
             END IF;
         END IF;
     ELSE
-        IF v_category = 'aptitude_logic' THEN
+        IF v_category = 'Aptitude' THEN
             v_correct_option := (v_day * 3 + v_q_idx * 7 + 1) % 4;
         ELSE
             v_correct_option := (v_day * 5 + v_q_idx * 11 + 2) % 4;
@@ -2330,35 +2339,62 @@ BEGIN
     v_is_correct := (p_selected_option = v_correct_option);
     v_xp_to_award := CASE WHEN v_is_correct THEN 1 ELSE 0 END;
 
-    -- 6. Idempotent Insert into student_exercise_submissions
-    INSERT INTO public.student_exercise_submissions (
-        student_id,
-        exercise_date,
-        day,
-        category,
-        question_id,
-        selected_option,
-        is_correct,
-        xp_earned,
-        submitted_at
-    )
-    VALUES (
-        p_student_id,
-        v_today,
-        v_day,
-        v_category,
-        p_question_id,
-        p_selected_option,
-        v_is_correct,
-        v_xp_to_award,
-        now()
-    )
-    ON CONFLICT (student_id, question_id) DO NOTHING;
+    -- 6. Check if already answered first to guarantee idempotency
+    SELECT selected_option, is_correct, xp_earned, submitted_at
+    INTO v_existing_option, v_existing_correct, v_existing_xp, v_existing_at
+    FROM public.student_exercise_submissions
+    WHERE student_id = p_student_id
+      AND question_id = p_question_id;
 
-    GET DIAGNOSTICS v_row_count = ROW_COUNT;
+    IF v_existing_option IS NOT NULL THEN
+        SELECT xp, talent_score
+        INTO v_new_xp, v_talent_score
+        FROM public.student_profiles
+        WHERE id = p_student_id;
 
-    -- 7. Duplicate Submission Handler
-    IF v_row_count = 0 THEN
+        RETURN jsonb_build_object(
+            'ok', true,
+            'already_submitted', true,
+            'locked', true,
+            'student_id', p_student_id,
+            'date', v_today,
+            'day', v_day,
+            'question_id', p_question_id,
+            'category', CASE WHEN v_category = 'English' THEN 'corporate_english' ELSE 'aptitude_logic' END,
+            'selected_option', v_existing_option,
+            'is_correct', v_existing_correct,
+            'xp_earned', coalesce(v_existing_xp, 0),
+            'total_xp', coalesce(v_new_xp, 0),
+            'talent_score', coalesce(v_talent_score, 0),
+            'submitted_at', v_existing_at
+        );
+    END IF;
+
+    -- 7. Insert submission with unique violation handling
+    BEGIN
+        INSERT INTO public.student_exercise_submissions (
+            student_id,
+            exercise_date,
+            day,
+            category,
+            question_id,
+            selected_option,
+            is_correct,
+            xp_earned,
+            submitted_at
+        )
+        VALUES (
+            p_student_id,
+            v_today,
+            v_day,
+            v_category,
+            p_question_id,
+            p_selected_option,
+            v_is_correct,
+            v_xp_to_award,
+            now()
+        );
+    EXCEPTION WHEN unique_violation THEN
         SELECT selected_option, is_correct, xp_earned, submitted_at
         INTO v_existing_option, v_existing_correct, v_existing_xp, v_existing_at
         FROM public.student_exercise_submissions
@@ -2378,22 +2414,22 @@ BEGIN
             'date', v_today,
             'day', v_day,
             'question_id', p_question_id,
-            'category', v_category,
+            'category', CASE WHEN v_category = 'English' THEN 'corporate_english' ELSE 'aptitude_logic' END,
             'selected_option', v_existing_option,
             'is_correct', v_existing_correct,
-            'xp_earned', v_existing_xp,
+            'xp_earned', coalesce(v_existing_xp, 0),
             'total_xp', coalesce(v_new_xp, 0),
             'talent_score', coalesce(v_talent_score, 0),
             'submitted_at', v_existing_at
         );
-    END IF;
+    END;
 
     -- 8. New Submission: Award 1 XP if correct & recalculate talent score
     IF v_xp_to_award > 0 THEN
         UPDATE public.student_profiles
         SET xp = xp + 1,
-            readiness_a = CASE WHEN v_category = 'aptitude_logic' THEN LEAST(100, readiness_a + 1) ELSE readiness_a END,
-            readiness_c = CASE WHEN v_category = 'corporate_english' THEN LEAST(100, readiness_c + 1) ELSE readiness_c END,
+            readiness_a = CASE WHEN v_category = 'Aptitude' THEN LEAST(100, coalesce(readiness_a, 0) + 1) ELSE readiness_a END,
+            readiness_c = CASE WHEN v_category = 'English' THEN LEAST(100, coalesce(readiness_c, 0) + 1) ELSE readiness_c END,
             updated_at = now()
         WHERE id = p_student_id
         RETURNING xp INTO v_new_xp;
@@ -2411,8 +2447,9 @@ BEGIN
         'locked', true,
         'student_id', p_student_id,
         'date', v_today,
+        'day', v_day,
         'question_id', p_question_id,
-        'category', v_category,
+        'category', CASE WHEN v_category = 'English' THEN 'corporate_english' ELSE 'aptitude_logic' END,
         'selected_option', p_selected_option,
         'is_correct', v_is_correct,
         'xp_earned', v_xp_to_award,
@@ -2423,13 +2460,16 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.submit_student_exercise_answer(UUID, TEXT, INT, INT, TEXT, BOOLEAN) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.submit_student_exercise_answer(UUID, TEXT, INT, INT, TEXT, BOOLEAN) TO authenticated, service_role;
+REVOKE EXECUTE ON FUNCTION public.submit_student_exercise_answer(UUID, INT, TEXT, TEXT, INT, BOOLEAN) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.submit_student_exercise_answer(UUID, INT, TEXT, TEXT, INT, BOOLEAN) TO authenticated, service_role;
 
--- Batch Submissions Query RPC with Date and Day support
+-- Batch Submissions Query RPC
+DROP FUNCTION IF EXISTS public.get_student_exercise_submissions(UUID, INT, DATE);
+DROP FUNCTION IF EXISTS public.get_student_exercise_submissions(UUID, INT);
+
 CREATE OR REPLACE FUNCTION public.get_student_exercise_submissions(
     p_student_id UUID,
-    p_day INT DEFAULT NULL,
+    p_day INT DEFAULT 1,
     p_date DATE DEFAULT NULL
 )
 RETURNS JSONB
@@ -2452,17 +2492,17 @@ BEGIN
     SELECT
         coalesce(jsonb_agg(jsonb_build_object(
             'question_id', question_id,
-            'category', category,
+            'category', CASE WHEN category IN ('corporate_english', 'English') THEN 'corporate_english' ELSE 'aptitude_logic' END,
             'selected_option', selected_option,
             'is_correct', is_correct,
-            'xp_earned', xp_earned,
+            'xp_earned', coalesce(xp_earned, CASE WHEN is_correct THEN 1 ELSE 0 END),
             'submitted_at', submitted_at,
             'locked', true
         )), '[]'::JSONB),
         coalesce(count(*) FILTER (WHERE category IN ('aptitude_logic', 'Aptitude', 'Logic')), 0),
-        coalesce(sum(xp_earned) FILTER (WHERE category IN ('aptitude_logic', 'Aptitude', 'Logic')), 0),
+        coalesce(sum(coalesce(xp_earned, CASE WHEN is_correct THEN 1 ELSE 0 END)) FILTER (WHERE category IN ('aptitude_logic', 'Aptitude', 'Logic')), 0),
         coalesce(count(*) FILTER (WHERE category IN ('corporate_english', 'English')), 0),
-        coalesce(sum(xp_earned) FILTER (WHERE category IN ('corporate_english', 'English')), 0)
+        coalesce(sum(coalesce(xp_earned, CASE WHEN is_correct THEN 1 ELSE 0 END)) FILTER (WHERE category IN ('corporate_english', 'English')), 0)
     INTO
         v_results,
         v_aptitude_count,
@@ -2498,4 +2538,5 @@ REVOKE EXECUTE ON FUNCTION public.get_student_exercise_submissions(UUID, INT, DA
 GRANT EXECUTE ON FUNCTION public.get_student_exercise_submissions(UUID, INT, DATE) TO authenticated, service_role;
 
 NOTIFY pgrst, 'reload schema';
+
 

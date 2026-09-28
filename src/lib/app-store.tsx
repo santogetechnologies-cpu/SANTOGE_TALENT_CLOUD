@@ -1590,7 +1590,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               ? { [`D1-${questionId}`]: record }
               : {}),
           },
-          ...(serverTotalXp !== undefined ? { xp: serverTotalXp } : {}),
+          xp:
+            serverTotalXp !== undefined
+              ? serverTotalXp
+              : authoritativeCorrect && !alreadySubmitted
+              ? s.profile.xp + 1
+              : s.profile.xp,
           ...(serverTalentScore !== undefined ? { talentScore: serverTalentScore } : {}),
         },
       }));
@@ -1600,7 +1605,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         alreadyAnswered: alreadySubmitted,
         isCorrect: authoritativeCorrect,
         record,
-        totalXp: serverTotalXp,
+        totalXp: serverTotalXp ?? (authoritativeCorrect && !alreadySubmitted ? state.profile.xp + 1 : state.profile.xp),
         talentScore: serverTalentScore,
       };
     },
