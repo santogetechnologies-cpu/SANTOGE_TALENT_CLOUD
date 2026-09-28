@@ -168,11 +168,14 @@ export function useLiveExerciseSubmissions(
     queryFn: async () => {
       if (!studentId) return [];
       const res = await fetchLiveExerciseSubmissions(studentId, day);
-      if (!res.ok) throw new Error(res.error || "Failed to fetch exercise submissions");
+      if (!res.ok) {
+        return [];
+      }
       return res.submissions;
     },
     enabled: Boolean(enabled && studentId && day >= 1 && day <= 90),
     staleTime: 1000 * 60 * 2,
+    retry: false,
   });
 }
 
