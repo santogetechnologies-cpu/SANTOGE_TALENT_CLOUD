@@ -277,6 +277,67 @@ console.log(solveChallenge());`;
     (isEnglishDone ? 1 : 0) +
     (isCodeDone ? 1 : 0);
 
+  // Authoritative day completion evaluation across the 90-day cadence
+  const isDayCompleted = useCallback(
+    (d: number) => {
+      if (d === selectedDayNum && completedModulesCount === 3) return true;
+      if (attendance.includes(d) && completedTechDays.includes(d)) return true;
+      if (attendance.includes(d) && d < cohortDay) return true;
+      return false;
+    },
+    [selectedDayNum, completedModulesCount, attendance, completedTechDays, cohortDay],
+  );
+
+  // Maximum unlocked day: Day 1 is always unlocked. Completing Day d unlocks Day d + 1.
+  const maxUnlockedDay = useMemo(() => {
+    let highest = Math.max(1, cohortDay);
+    for (let d = 1; d <= 90; d++) {
+      if (isDayCompleted(d)) {
+        if (d + 1 > highest) {
+          highest = Math.min(90, d + 1);
+        }
+      }
+    }
+    return highest;
+  }, [cohortDay, isDayCompleted]);
+
+  // A day is unlocked if it's Day 1, <= cohortDay, <= maxUnlockedDay, or if previous day was finished
+  const isDayUnlocked = useCallback(
+    (d: number) => {
+      if (d === 1) return true;
+      if (d <= cohortDay) return true;
+      if (d <= maxUnlockedDay) return true;
+      return isDayCompleted(d - 1);
+    },
+    [cohortDay, maxUnlockedDay, isDayCompleted],
+  );
+
+  // Helper to persist authoritative dual completion when all 3 workouts are finished
+  const checkAndFinalizeDayCompletion = useCallback(
+    async (
+      dayNum: number,
+      aptDone: boolean,
+      engDone: boolean,
+      codeDone: boolean,
+    ) => {
+      if (aptDone && engDone && codeDone) {
+        if (liveStudentId) {
+          await store.completePlacementDay(dayNum);
+          await store.completeTechDay(dayNum);
+          queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
+          queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
+        }
+        toast.success(`🎉 Day ${dayNum} Completed! (3/3 Workouts Mastered)`, {
+          description:
+            dayNum < 90
+              ? `Day ${dayNum + 1} is now unlocked! Great job advancing your cadence.`
+              : "Outstanding! You have completed all 90 days of the accelerator!",
+        });
+      }
+    },
+    [liveStudentId, store, queryClient],
+  );
+
   // Overall workout accuracy
   const totalQuestionsAnswered =
     Object.keys(aptitudeAnswers).length +
@@ -315,6 +376,12 @@ console.log(solveChallenge());`;
 
   // Load and hydrate exercise interactive state on day change
   const handleSelectDay = (dayNum: number) => {
+    if (!isDayUnlocked(dayNum)) {
+      toast.info(`Day ${dayNum} is Locked`, {
+        description: `Complete all 3 workouts on Day ${dayNum - 1} to unlock Day ${dayNum}.`,
+      });
+      return;
+    }
     setSelectedDayNum(dayNum);
 
     const targetPlan = getAcceleratorDay(dayNum);
@@ -496,6 +563,8 @@ console.log(solveChallenge());`;
       description: "Opening Corporate English Workout…",
     });
 
+    await checkAndFinalizeDayCompletion(selectedDayNum, true, isEnglishDone, isCodeDone);
+
     // Automatically open Corporate English workout
     setTimeout(() => {
       setActiveTab("english");
@@ -550,6 +619,8 @@ console.log(solveChallenge());`;
       description: "Opening Technical Code Drill…",
     });
 
+    await checkAndFinalizeDayCompletion(selectedDayNum, isAptitudeDone, true, isCodeDone);
+
     // Automatically open Technical Code Drill
     setTimeout(() => {
       setActiveTab("code");
@@ -598,6 +669,8 @@ console.log(solveChallenge());`;
     setIsCodeVerified(true);
     queryClient.invalidateQueries({ queryKey: ["live", "student-progress", liveStudentId] });
     queryClient.invalidateQueries({ queryKey: ["live", "student-profile", store.supabaseSession?.user?.id] });
+
+    await checkAndFinalizeDayCompletion(selectedDayNum, isAptitudeDone, isEnglishDone, true);
   };
 
   return (
@@ -663,6 +736,37 @@ console.log(solveChallenge());`;
         />
       </div>
 
+      {/* Day Completion & Unlocked Next Day Banner */}
+      {completedModulesCount === 3 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-foreground shadow-xs animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-500 text-white shrink-0 shadow-xs">
+              <CheckCircle2 className="size-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                Day {selectedDayNum} Completed! (3/3 Workouts Mastered)
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {selectedDayNum < 90
+                  ? `Day ${selectedDayNum + 1} is now unlocked and available in your 90-Day Cadence!`
+                  : "All 90 days completed! You have mastered the entire placement and technical cadence!"}
+              </p>
+            </div>
+          </div>
+          {selectedDayNum < 90 && (
+            <button
+              type="button"
+              onClick={() => handleSelectDay(selectedDayNum + 1)}
+              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+            >
+              Continue to Day {selectedDayNum + 1}
+              <ChevronRight className="size-4" />
+            </button>
+          )}
+        </div>
+      )}
+
       {/* 90-Day Exercise Navigator Bar */}
       <div className="rounded-xl border border-border bg-card p-4 shadow-xs space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -684,9 +788,10 @@ console.log(solveChallenge());`;
           <div className="flex items-center gap-2">
             <div className="flex rounded-lg border border-border bg-muted/40 p-0.5 text-xs">
               <button
+                type="button"
                 onClick={() => setDayFilter("current-week")}
                 className={cn(
-                  "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
+                  "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer",
                   dayFilter === "current-week"
                     ? "bg-card text-foreground shadow-xs font-semibold"
                     : "text-muted-foreground hover:text-foreground",
@@ -695,9 +800,10 @@ console.log(solveChallenge());`;
                 Week {currentWeekNumber}
               </button>
               <button
+                type="button"
                 onClick={() => setDayFilter("fridays")}
                 className={cn(
-                  "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
+                  "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer",
                   dayFilter === "fridays"
                     ? "bg-card text-foreground shadow-xs font-semibold"
                     : "text-muted-foreground hover:text-foreground",
@@ -706,9 +812,10 @@ console.log(solveChallenge());`;
                 Fridays (Tests)
               </button>
               <button
+                type="button"
                 onClick={() => setDayFilter("all")}
                 className={cn(
-                  "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
+                  "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer",
                   dayFilter === "all"
                     ? "bg-card text-foreground shadow-xs font-semibold"
                     : "text-muted-foreground hover:text-foreground",
@@ -720,18 +827,29 @@ console.log(solveChallenge());`;
 
             <div className="flex items-center gap-1 border-l border-border/70 pl-2">
               <button
+                type="button"
                 onClick={() => handleSelectDay(Math.max(1, selectedDayNum - 1))}
                 disabled={selectedDayNum <= 1}
-                className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 transition-colors"
+                className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 transition-colors cursor-pointer"
                 title="Previous Day"
               >
                 <ChevronLeft className="size-4" />
               </button>
               <button
-                onClick={() => handleSelectDay(Math.min(90, selectedDayNum + 1))}
-                disabled={selectedDayNum >= 90}
-                className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 transition-colors"
-                title="Next Day"
+                type="button"
+                onClick={() => {
+                  const nextDay = Math.min(90, selectedDayNum + 1);
+                  if (!isDayUnlocked(nextDay)) {
+                    toast.info(`Day ${nextDay} is Locked`, {
+                      description: `Complete all 3 workouts on Day ${selectedDayNum} to unlock Day ${nextDay}.`,
+                    });
+                    return;
+                  }
+                  handleSelectDay(nextDay);
+                }}
+                disabled={selectedDayNum >= 90 || !isDayUnlocked(selectedDayNum + 1)}
+                className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 transition-colors cursor-pointer"
+                title={!isDayUnlocked(selectedDayNum + 1) ? `Day ${selectedDayNum + 1} Locked` : "Next Day"}
               >
                 <ChevronRight className="size-4" />
               </button>
@@ -745,34 +863,48 @@ console.log(solveChallenge());`;
             const isCurrent = dayNum === selectedDayNum;
             const isToday = dayNum === cohortDay;
             const isFriday = dayNum % 5 === 0;
-            const isCompleted = attendance.includes(dayNum) && completedTechDays.includes(dayNum);
-            const isPartiallyDone = attendance.includes(dayNum) || completedTechDays.includes(dayNum);
+            const isCompleted = isDayCompleted(dayNum);
+            const isUnlocked = isDayUnlocked(dayNum);
+            const isPartiallyDone = isUnlocked && !isCompleted && (attendance.includes(dayNum) || completedTechDays.includes(dayNum));
 
             return (
               <button
                 key={dayNum}
-                onClick={() => handleSelectDay(dayNum)}
+                type="button"
+                onClick={() => {
+                  if (!isUnlocked) {
+                    toast.info(`Day ${dayNum} is Locked`, {
+                      description: `Complete all 3 workouts on Day ${dayNum - 1} to unlock Day ${dayNum}.`,
+                    });
+                    return;
+                  }
+                  handleSelectDay(dayNum);
+                }}
+                disabled={!isUnlocked}
                 className={cn(
-                  "flex flex-col items-center justify-center min-w-[58px] rounded-lg border p-2 text-center transition-all text-xs relative",
-                  isCurrent
-                    ? "border-primary bg-primary/10 text-primary font-bold shadow-xs ring-1 ring-primary"
-                    : isToday
-                      ? "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold"
-                      : isCompleted
-                        ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400"
-                        : isFriday
-                          ? "border-purple-500/30 bg-purple-500/5 text-purple-600 dark:text-purple-400"
-                          : "border-border/70 bg-card text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/40",
+                  "flex flex-col items-center justify-center min-w-[62px] rounded-lg border p-2 text-center transition-all text-xs relative select-none",
+                  !isUnlocked && "opacity-40 bg-muted/20 border-border/40 cursor-not-allowed",
+                  isUnlocked && isCurrent && "border-primary bg-primary/10 text-primary font-bold shadow-xs ring-1 ring-primary cursor-pointer",
+                  isUnlocked && !isCurrent && isCompleted && "border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer",
+                  isUnlocked && !isCurrent && !isCompleted && isToday && "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold cursor-pointer",
+                  isUnlocked && !isCurrent && !isCompleted && !isToday && isFriday && "border-purple-500/30 bg-purple-500/5 text-purple-600 dark:text-purple-400 hover:bg-muted/40 cursor-pointer",
+                  isUnlocked && !isCurrent && !isCompleted && !isToday && !isFriday && "border-border/70 bg-card text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/40 cursor-pointer",
                 )}
+                title={!isUnlocked ? `Day ${dayNum} Locked (Finish Day ${dayNum - 1} first)` : `Day ${dayNum}`}
               >
-                <span className="text-[9px] font-mono uppercase tracking-wider opacity-75">
-                  {isFriday ? "Milestone" : `D${dayNum}`}
-                </span>
+                <div className="flex items-center gap-1 text-[9px] font-mono uppercase tracking-wider opacity-75">
+                  {!isUnlocked ? (
+                    <Lock className="size-2.5 text-muted-foreground" />
+                  ) : null}
+                  <span>{isFriday ? "Milestone" : `D${dayNum}`}</span>
+                </div>
                 <span className="font-mono text-xs font-bold mt-0.5 flex items-center gap-1">
                   {isCompleted ? (
                     <CheckCircle2 className="size-3 text-emerald-500" />
                   ) : isPartiallyDone ? (
                     <Circle className="size-2.5 fill-amber-500 text-amber-500" />
+                  ) : !isUnlocked ? (
+                    <Lock className="size-2.5 text-muted-foreground/60" />
                   ) : null}
                   Day {dayNum}
                 </span>
