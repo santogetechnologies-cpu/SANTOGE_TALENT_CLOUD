@@ -318,9 +318,33 @@ function LoginPage() {
   const navigate = useNavigate();
 
   // Form states
+  const [authMode, setAuthMode] = useState<"signin" | "forgot" | "reset">(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash || "";
+      const search = window.location.search || "";
+      if (
+        hash.includes("type=recovery") ||
+        search.includes("reset=true") ||
+        search.includes("type=recovery")
+      ) {
+        return "reset";
+      }
+    }
+    return "signin";
+  });
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // Password reset states
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -330,6 +354,13 @@ function LoginPage() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   const isConfigured = isSupabaseConfigured();
+
+  // Watch store password recovery trigger
+  useEffect(() => {
+    if (store.isPasswordRecovery) {
+      setAuthMode("reset");
+    }
+  }, [store.isPasswordRecovery]);
 
   // Global mouse position tracking
   useEffect(() => {
@@ -366,6 +397,80 @@ function LoginPage() {
       res.role === "admin" ? "Signed in as Administrator" : "Signed in successfully",
     );
     void navigate({ to: res.role === "admin" ? "/admin" : "/student" });
+  };
+
+  // Live Supabase password reset request handler
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isConfigured) {
+      setError("Supabase backend is not configured.");
+      return;
+    }
+    if (!email.trim() || !email.includes("@")) {
+      setError("Please enter a valid institutional email address.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+
+    const res = await store.requestPasswordReset(email.trim());
+    setLoading(false);
+    if (!res.ok) {
+      if (res.message?.toLowerCase().includes("rate limit")) {
+        setError(
+          "For security, password reset requests are rate-limited. Please wait a few moments before requesting another link, or contact your institutional administrator.",
+        );
+      } else {
+        setError(res.message || "Failed to dispatch password recovery email.");
+      }
+      return;
+    }
+
+    setForgotSuccess(true);
+    toast.success("Password recovery email dispatched. Please check your inbox.");
+  };
+
+  // Live Supabase new password update handler
+  const handleUpdatePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isConfigured) {
+      setError("Supabase backend is not configured.");
+      return;
+    }
+    if (!newPassword || newPassword.length < 6) {
+      setError("Password must be at least 6 characters long.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match. Please re-enter.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+
+    const res = await store.updateUserPassword(newPassword);
+    setLoading(false);
+    if (!res.ok) {
+      if (
+        res.error?.toLowerCase().includes("expired") ||
+        res.error?.toLowerCase().includes("invalid") ||
+        res.error?.toLowerCase().includes("jwt")
+      ) {
+        setError(
+          "Your password recovery link has expired or has already been used. Please request a new recovery link.",
+        );
+      } else {
+        setError(res.error || "Failed to update password in Supabase Auth.");
+      }
+      return;
+    }
+
+    setResetSuccess(true);
+    setPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setAuthMode("signin");
+    toast.success("Password successfully updated! You can now log in.");
   };
 
   return (
@@ -429,19 +534,33 @@ function LoginPage() {
             </div>
           </div>
 
-          {/* Right Column: Clean Login Form Area */}
+          {/* Right Column: Clean Auth Form Area */}
           <div className="lg:col-span-6 p-5 sm:p-7 lg:p-8 flex flex-col justify-center bg-[#0c1222]/95 relative">
             <div className="w-full max-w-[360px] mx-auto space-y-4 sm:space-y-5">
               
               {/* Form Title & Subtitle */}
               <div className="space-y-1">
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                  Welcome back!
+                  {authMode === "signin" && "Welcome back!"}
+                  {authMode === "forgot" && "Reset Password"}
+                  {authMode === "reset" && "Set New Password"}
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                  Sign in to continue to your Talent Cloud account.
+                  {authMode === "signin" && "Sign in to continue to your Talent Cloud account."}
+                  {authMode === "forgot" &&
+                    "Enter your registered institutional email to receive a recovery link."}
+                  {authMode === "reset" &&
+                    "Create a new password for your SantoGe account."}
                 </p>
               </div>
+
+              {/* Reset Success Banner */}
+              {resetSuccess && authMode === "signin" && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-3 text-xs text-emerald-300 animate-in fade-in">
+                  <ShieldCheck className="size-4 shrink-0 mt-0.5 text-emerald-400" />
+                  <p>Password updated successfully in Supabase Auth. Please sign in with your new password.</p>
+                </div>
+              )}
 
               {/* Supabase backend warning if unconfigured */}
               {!isConfigured && (
@@ -453,97 +572,322 @@ function LoginPage() {
                 </div>
               )}
 
-              {/* Login Form */}
-              <form onSubmit={handleSupabaseSubmit} className="space-y-3.5 sm:space-y-4">
-                
-                {/* Institutional Email Field */}
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-300">
-                    Institutional Email
-                  </label>
-                  <div className="relative">
-                    <Mail className="size-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="email"
-                      required
-                      autoFocus
-                      value={email}
-                      autoComplete="email"
-                      onFocus={() => setFocusedField("email")}
-                      onBlur={() => setFocusedField(null)}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setIsTyping(true);
-                        setTimeout(() => setIsTyping(false), 800);
-                      }}
-                      placeholder="student@college.edu or admin@domain.com"
-                      className="w-full h-10 sm:h-11 pl-10 pr-3.5 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
-                    />
+              {/* ------------------------------------------------------------- */}
+              {/* MODE 1: Standard Sign In Form                                 */}
+              {/* ------------------------------------------------------------- */}
+              {authMode === "signin" && (
+                <form onSubmit={handleSupabaseSubmit} className="space-y-3.5 sm:space-y-4">
+                  {/* Institutional Email Field */}
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-300">
+                      Institutional Email
+                    </label>
+                    <div className="relative">
+                      <Mail className="size-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="email"
+                        required
+                        autoFocus
+                        value={email}
+                        autoComplete="email"
+                        onFocus={() => setFocusedField("email")}
+                        onBlur={() => setFocusedField(null)}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setIsTyping(true);
+                          setTimeout(() => setIsTyping(false), 800);
+                        }}
+                        placeholder="student@college.edu or admin@domain.com"
+                        className="w-full h-10 sm:h-11 pl-10 pr-3.5 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                {/* Password Field with Reveal Toggle */}
-                <div>
-                  <div className="mb-1 flex items-center justify-between">
-                    <label className="text-xs font-medium text-slate-300">Password</label>
+                  {/* Password Field with Reveal Toggle & Forgot Password Link */}
+                  <div>
+                    <div className="mb-1 flex items-center justify-between">
+                      <label className="text-xs font-medium text-slate-300">Password</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setError("");
+                          setForgotSuccess(false);
+                          setAuthMode("forgot");
+                        }}
+                        className="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Lock className="size-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        value={password}
+                        autoComplete="current-password"
+                        onFocus={() => setFocusedField("password")}
+                        onBlur={() => setFocusedField(null)}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          setIsTyping(true);
+                          setTimeout(() => setIsTyping(false), 800);
+                        }}
+                        placeholder="••••••••••••"
+                        className="w-full h-10 sm:h-11 pl-10 pr-10 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded-md transition-colors cursor-pointer"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                  <div className="relative">
-                    <Lock className="size-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={password}
-                      autoComplete="current-password"
-                      onFocus={() => setFocusedField("password")}
-                      onBlur={() => setFocusedField(null)}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        setIsTyping(true);
-                        setTimeout(() => setIsTyping(false), 800);
-                      }}
-                      placeholder="••••••••••••"
-                      className="w-full h-10 sm:h-11 pl-10 pr-10 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
-                    />
+
+                  {/* Inline Error Message */}
+                  {error && (
+                    <div className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-2 text-xs text-rose-300 animate-in fade-in">
+                      <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-400" />
+                      <span className="leading-relaxed">{error}</span>
+                    </div>
+                  )}
+
+                  {/* Submit Primary CTA */}
+                  <button
+                    type="submit"
+                    disabled={loading || !isConfigured}
+                    className="group flex w-full h-10 sm:h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                  >
+                    {loading ? (
+                      <RefreshCw className="size-4 animate-spin" />
+                    ) : (
+                      <LogIn className="size-4" />
+                    )}
+                    {loading ? "Signing in..." : "Sign In"}
+                    {!loading && (
+                      <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                    )}
+                  </button>
+                </form>
+              )}
+
+              {/* ------------------------------------------------------------- */}
+              {/* MODE 2: Forgot Password Form                                  */}
+              {/* ------------------------------------------------------------- */}
+              {authMode === "forgot" && (
+                <div className="space-y-4">
+                  {forgotSuccess ? (
+                    <div className="space-y-4 animate-in fade-in">
+                      <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-3.5 text-xs text-emerald-300 space-y-2">
+                        <div className="flex items-center gap-2 font-semibold text-emerald-400 text-sm">
+                          <ShieldCheck className="size-4" />
+                          <span>Recovery Email Sent</span>
+                        </div>
+                        <p className="leading-relaxed text-slate-300">
+                          We've sent a password recovery link to{" "}
+                          <strong className="text-white font-mono">{email}</strong>.
+                          Please check your inbox (and spam folder) and open the link to set a new password.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForgotSuccess(false);
+                          setAuthMode("signin");
+                        }}
+                        className="w-full h-10 sm:h-11 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700/80 text-sm font-semibold text-white transition-colors cursor-pointer"
+                      >
+                        Return to Sign In
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleForgotPasswordSubmit} className="space-y-3.5 sm:space-y-4">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-300">
+                          Registered Institutional Email
+                        </label>
+                        <div className="relative">
+                          <Mail className="size-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <input
+                            type="email"
+                            required
+                            autoFocus
+                            value={email}
+                            autoComplete="email"
+                            onFocus={() => setFocusedField("email")}
+                            onBlur={() => setFocusedField(null)}
+                            onChange={(e) => {
+                              setEmail(e.target.value);
+                              setIsTyping(true);
+                              setTimeout(() => setIsTyping(false), 800);
+                            }}
+                            placeholder="student@college.edu"
+                            className="w-full h-10 sm:h-11 pl-10 pr-3.5 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Inline Error Message */}
+                      {error && (
+                        <div className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-2 text-xs text-rose-300 animate-in fade-in">
+                          <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-400" />
+                          <span className="leading-relaxed">{error}</span>
+                        </div>
+                      )}
+
+                      <button
+                        type="submit"
+                        disabled={loading || !isConfigured}
+                        className="flex w-full h-10 sm:h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+                      >
+                        {loading ? (
+                          <RefreshCw className="size-4 animate-spin" />
+                        ) : (
+                          <Mail className="size-4" />
+                        )}
+                        {loading ? "Sending link..." : "Send Recovery Link"}
+                      </button>
+
+                      <div className="text-center pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setError("");
+                            setAuthMode("signin");
+                          }}
+                          className="text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                        >
+                          ← Back to Sign In
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              {/* ------------------------------------------------------------- */}
+              {/* MODE 3: Set New Password Form (Recovery Session)             */}
+              {/* ------------------------------------------------------------- */}
+              {authMode === "reset" && (
+                <form onSubmit={handleUpdatePasswordSubmit} className="space-y-3.5 sm:space-y-4">
+                  {/* New Password */}
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-300">
+                      New Password (min 6 characters)
+                    </label>
+                    <div className="relative">
+                      <Lock className="size-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        required
+                        autoFocus
+                        value={newPassword}
+                        autoComplete="new-password"
+                        onFocus={() => setFocusedField("password")}
+                        onBlur={() => setFocusedField(null)}
+                        onChange={(e) => {
+                          setNewPassword(e.target.value);
+                          setIsTyping(true);
+                          setTimeout(() => setIsTyping(false), 800);
+                        }}
+                        placeholder="••••••••••••"
+                        className="w-full h-10 sm:h-11 pl-10 pr-10 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded-md transition-colors cursor-pointer"
+                        aria-label={showNewPassword ? "Hide password" : "Show password"}
+                      >
+                        {showNewPassword ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Confirm New Password */}
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-300">
+                      Confirm New Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="size-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        required
+                        value={confirmPassword}
+                        autoComplete="new-password"
+                        onFocus={() => setFocusedField("password")}
+                        onBlur={() => setFocusedField(null)}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          setIsTyping(true);
+                          setTimeout(() => setIsTyping(false), 800);
+                        }}
+                        placeholder="••••••••••••"
+                        className="w-full h-10 sm:h-11 pl-10 pr-10 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded-md transition-colors cursor-pointer"
+                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Inline Error Message */}
+                  {error && (
+                    <div className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-2 text-xs text-rose-300 animate-in fade-in">
+                      <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-400" />
+                      <span className="leading-relaxed">{error}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading || !isConfigured}
+                    className="flex w-full h-10 sm:h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+                  >
+                    {loading ? (
+                      <RefreshCw className="size-4 animate-spin" />
+                    ) : (
+                      <ShieldCheck className="size-4" />
+                    )}
+                    {loading ? "Updating password..." : "Update Password"}
+                  </button>
+
+                  <div className="text-center pt-1">
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded-md transition-colors cursor-pointer"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      onClick={() => {
+                        setError("");
+                        setAuthMode("signin");
+                      }}
+                      className="text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
                     >
-                      {showPassword ? (
-                        <EyeOff className="size-4" />
-                      ) : (
-                        <Eye className="size-4" />
-                      )}
+                      ← Back to Sign In
                     </button>
                   </div>
-                </div>
-
-                {/* Inline Error Message */}
-                {error && (
-                  <div className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-2 text-xs text-rose-300 animate-in fade-in">
-                    <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-400" />
-                    <span className="leading-relaxed">{error}</span>
-                  </div>
-                )}
-
-                {/* Submit Primary CTA */}
-                <button
-                  type="submit"
-                  disabled={loading || !isConfigured}
-                  className="group flex w-full h-10 sm:h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
-                >
-                  {loading ? (
-                    <RefreshCw className="size-4 animate-spin" />
-                  ) : (
-                    <LogIn className="size-4" />
-                  )}
-                  {loading ? "Signing in..." : "Sign In"}
-                  {!loading && (
-                    <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-                  )}
-                </button>
-              </form>
+                </form>
+              )}
 
               {/* Supporting Institutional Provisioning Notice */}
               <div className="pt-1 text-center text-xs text-slate-400">

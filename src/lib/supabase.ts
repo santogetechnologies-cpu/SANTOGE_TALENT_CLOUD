@@ -155,7 +155,7 @@ export function getSupabaseClient(): SupabaseClient {
     auth: {
       autoRefreshToken: true, // Standard auth token refresh
       persistSession: true, // Session stored in localStorage
-      detectSessionInUrl: false, // No URL scanning on every navigation
+      detectSessionInUrl: true, // Detect and parse recovery and auth tokens in URL
     },
     global: {
       headers: {
@@ -397,11 +397,12 @@ export const supabaseAuth = {
   },
 
   /**
-   * Trigger a password recovery email for a user via Supabase Auth.
-   * MANUAL only — called when Platform Super Admin explicitly requests password reset email.
-   * NEVER called automatically or on a schedule.
+    * Trigger a password recovery email for a user via Supabase Auth.
    */
-  async resetPasswordForEmail(email: string): Promise<{ ok: boolean; message: string }> {
+  async resetPasswordForEmail(
+    email: string,
+    redirectTo?: string,
+  ): Promise<{ ok: boolean; message: string }> {
     const config = getSupabaseConfig();
     const cleanUrl = config.url.replace(/\/+$/, "");
 
@@ -411,7 +412,16 @@ export const supabaseAuth = {
 
     try {
       const client = getSupabaseClient();
-      const { error } = await client.auth.resetPasswordForEmail(email.trim().toLowerCase());
+      const redirectUrl =
+        redirectTo ||
+        (typeof window !== "undefined"
+          ? `${window.location.origin}/login?reset=true`
+          : undefined);
+
+      const { error } = await client.auth.resetPasswordForEmail(
+        email.trim().toLowerCase(),
+        redirectUrl ? { redirectTo: redirectUrl } : undefined,
+      );
       if (error) {
         return { ok: false, message: error.message };
       }
@@ -420,6 +430,31 @@ export const supabaseAuth = {
       return {
         ok: false,
         message: err instanceof Error ? err.message : "Network error during Supabase recovery",
+      };
+    }
+  },
+
+  /**
+   * Update the authenticated user's password in real Supabase Auth.
+   * Used during recovery session or password change.
+   */
+  async updateUserPassword(newPassword: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const client = getSupabaseClient();
+      const { data, error } = await client.auth.updateUser({
+        password: newPassword,
+      });
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+      if (!data.user) {
+        return { ok: false, error: "Failed to update password in Supabase Auth" };
+      }
+      return { ok: true };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : "Failed to update password in Supabase Auth",
       };
     }
   },

@@ -317,6 +317,10 @@ type AppStoreContextValue = AppStoreState & {
     email: string,
     newPassword?: string,
   ) => Promise<{ ok: boolean; message: string }>;
+  isPasswordRecovery: boolean;
+  setIsPasswordRecovery: (val: boolean) => void;
+  requestPasswordReset: (email: string) => Promise<{ ok: boolean; message: string }>;
+  updateUserPassword: (newPassword: string) => Promise<{ ok: boolean; error?: string }>;
   recordDailyStepAction: (
     dayNum: number,
     trackId: string,
@@ -382,6 +386,14 @@ const THEME_STORAGE_KEY = "santoge-theme";
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [cronLogs, setCronLogs] = useState<CronLog[]>([]);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash || "";
+      const search = window.location.search || "";
+      return hash.includes("type=recovery") || search.includes("reset=true") || search.includes("type=recovery");
+    }
+    return false;
+  });
 
   const [state, setState] = useState<AppStoreState>(() => {
     if (typeof window !== "undefined") {
@@ -598,7 +610,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT" || !session) {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsPasswordRecovery(true);
+        if (session) {
+          setState((prev) => ({
+            ...prev,
+            supabaseSession: session as unknown as SupabaseSession,
+            sessionEmail: session.user?.email ?? prev.sessionEmail,
+          }));
+        }
+      } else if (event === "SIGNED_OUT" || !session) {
+        setIsPasswordRecovery(false);
         void syncSession(null);
       } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
         void syncSession(session);
@@ -812,6 +834,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const resetStudentPassword = useCallback(async (studentEmail: string, newPassword?: string) => {
     return resetLiveStudentPassword(studentEmail, newPassword);
+  }, []);
+
+  const requestPasswordReset = useCallback(async (email: string) => {
+    return supabaseAuth.resetPasswordForEmail(email);
+  }, []);
+
+  const updateUserPassword = useCallback(async (newPassword: string) => {
+    const res = await supabaseAuth.updateUserPassword(newPassword);
+    if (res.ok) {
+      setIsPasswordRecovery(false);
+    }
+    return res;
   }, []);
 
   // -------------------------------------------------------------------------
@@ -1731,6 +1765,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     resetProgress,
     setCompletionRule,
     resetStudentPassword,
+    isPasswordRecovery,
+    setIsPasswordRecovery,
+    requestPasswordReset,
+    updateUserPassword,
     recordDailyStepAction,
     getDailyStepRecord,
     isDailyStepLocked,
