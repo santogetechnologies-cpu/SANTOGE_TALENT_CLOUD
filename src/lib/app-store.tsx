@@ -311,6 +311,11 @@ type AppStoreContextValue = AppStoreState & {
   completeDailyStep: (
     key: "english" | "aptitude" | "practice",
   ) => Promise<{ ok: boolean; error?: string | undefined }>;
+  syncDailyProgress: (
+    daily: DailySteps,
+    completedTechDays?: number[],
+    attendance?: number[],
+  ) => void;
   completeSkill: (
     trackId: TrackId,
     skillId: string,
@@ -554,34 +559,39 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               },
             };
 
-            const liveProfile: Profile = {
-              activeTracks: liveData.tracks,
-              xp: liveData.profile.xp,
-              streak: liveData.profile.streak,
-              talentScore: liveData.profile.talent_score,
-              completedLabs: progress.completedLabs,
-              daily: progress.daily,
-              readiness: studentInfo.readiness!,
-              skills: progress.skills,
-              placementDay: liveData.profile.placement_day,
-              attendance: progress.attendance,
-              assessments: progress.assessments,
-              completedTechDays: progress.completedTechDays,
-              mocks: progress.mocks,
-              certifications: progress.certifications,
-            };
+            setState((prev) => {
+              const liveProfile: Profile = {
+                activeTracks: liveData.tracks,
+                xp: liveData.profile.xp,
+                streak: liveData.profile.streak,
+                talentScore: liveData.profile.talent_score,
+                completedLabs: progress.completedLabs,
+                daily: progress.daily,
+                readiness: studentInfo.readiness!,
+                skills: progress.skills,
+                placementDay: liveData.profile.placement_day,
+                attendance: progress.attendance,
+                assessments: progress.assessments,
+                completedTechDays: progress.completedTechDays,
+                mocks: progress.mocks,
+                certifications: progress.certifications,
+                knowledgeChecks: prev.profile?.knowledgeChecks || {},
+                dailyStepRecords: prev.profile?.dailyStepRecords || {},
+                dailyExerciseRecords: prev.profile?.dailyExerciseRecords || {},
+              };
 
-            setState((prev) => ({
-              ...prev,
-              role: "student",
-              sessionEmail: userEmail,
-              supabaseSession: session as unknown as SupabaseSession,
-              liveStudentId: liveData.profile.id,
-              student: studentInfo,
-              profile: liveProfile,
-              completionRule,
-              secondaryMinimum,
-            }));
+              return {
+                ...prev,
+                role: "student",
+                sessionEmail: userEmail,
+                supabaseSession: session as unknown as SupabaseSession,
+                liveStudentId: liveData.profile.id,
+                student: studentInfo,
+                profile: liveProfile,
+                completionRule,
+                secondaryMinimum,
+              };
+            });
           } else if (isMounted) {
             await supabase.auth.signOut();
             setState((prev) => ({
@@ -960,6 +970,41 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [setDailyStep],
   );
 
+  const syncDailyProgress = useCallback(
+    (
+      daily: DailySteps,
+      completedTechDays?: number[],
+      attendance?: number[],
+    ) => {
+      setState((s) => ({
+        ...s,
+        profile: {
+          ...s.profile,
+          daily: {
+            english: Boolean(daily.english || s.profile.daily.english),
+            aptitude: Boolean(daily.aptitude || s.profile.daily.aptitude),
+            practice: Boolean(daily.practice || s.profile.daily.practice),
+          },
+          ...(completedTechDays
+            ? {
+                completedTechDays: Array.from(
+                  new Set([...s.profile.completedTechDays, ...completedTechDays]),
+                ),
+              }
+            : {}),
+          ...(attendance
+            ? {
+                attendance: Array.from(
+                  new Set([...s.profile.attendance, ...attendance]),
+                ),
+              }
+            : {}),
+        },
+      }));
+    },
+    [],
+  );
+
   const completeSkill = useCallback(
     async (
       trackId: TrackId,
@@ -1280,13 +1325,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const isCorrect = Boolean(actionData?.isCorrect);
         xpAwarded = isCorrect;
         if (isCorrect) {
-          const res = await completeLiveDailyStep(state.liveStudentId, "english");
-          if (!res.ok) {
-            toast.error(res.error || "Failed to record tech check completion");
-            return { ok: false, error: res.error };
-          }
-          newXp = res.xp;
-          newTalentScore = res.talent_score;
+          // Technical knowledge check awards 15 XP
+          newXp = (state.profile.xp || 0) + 15;
         }
       } else if (stepId === "tech-sandbox") {
         const res = await completeLiveTechnicalDay(state.liveStudentId, dayNum);
@@ -1297,18 +1337,25 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         xpAwarded = true;
         newXp = res.xp;
         newTalentScore = res.talent_score;
+      } else if (stepId === "placement-communication") {
+        const res = await completeLiveDailyStep(state.liveStudentId, "english");
+        if (!res.ok) {
+          toast.error(res.error || "Failed to record corporate communication step");
+          return { ok: false, error: res.error };
+        }
+        xpAwarded = true;
+        newXp = res.xp;
+        newTalentScore = res.talent_score;
       } else if (stepId === "placement-aptitude") {
         const isCorrect = Boolean(actionData?.isCorrect);
         xpAwarded = isCorrect;
-        if (isCorrect) {
-          const res = await completeLiveDailyStep(state.liveStudentId, "aptitude");
-          if (!res.ok) {
-            toast.error(res.error || "Failed to record aptitude completion");
-            return { ok: false, error: res.error };
-          }
-          newXp = res.xp;
-          newTalentScore = res.talent_score;
+        const res = await completeLiveDailyStep(state.liveStudentId, "aptitude");
+        if (!res.ok) {
+          toast.error(res.error || "Failed to record aptitude completion");
+          return { ok: false, error: res.error };
         }
+        newXp = res.xp;
+        newTalentScore = res.talent_score;
       } else if (stepId === "placement-logic") {
         const stepRes = await completeLiveDailyStep(state.liveStudentId, "practice");
         if (!stepRes.ok) {
@@ -1365,8 +1412,28 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                   : [...s.profile.completedTechDays, dayNum],
               }
             : {}),
+          ...(stepId === "placement-communication"
+            ? {
+                daily: {
+                  ...s.profile.daily,
+                  english: true,
+                },
+              }
+            : {}),
+          ...(stepId === "placement-aptitude"
+            ? {
+                daily: {
+                  ...s.profile.daily,
+                  aptitude: true,
+                },
+              }
+            : {}),
           ...(stepId === "placement-logic"
             ? {
+                daily: {
+                  ...s.profile.daily,
+                  practice: true,
+                },
                 attendance: s.profile.attendance.includes(dayNum)
                   ? s.profile.attendance
                   : [...s.profile.attendance, dayNum],
@@ -1408,16 +1475,60 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }
 
       // Authoritative Supabase progress checks
-      if (stepId === "tech-sandbox" && state.profile.completedTechDays.includes(dayNum)) {
+      const isTechDone = state.profile.completedTechDays.includes(dayNum);
+      const isPlacementDone = state.profile.attendance.includes(dayNum);
+
+      if (isTechDone) {
+        if (
+          stepId === "tech-concept" ||
+          stepId === "tech-visual" ||
+          stepId === "tech-check" ||
+          stepId === "tech-sandbox"
+        ) {
+          return {
+            stepId,
+            isLocked: true,
+            completedAt: new Date().toISOString(),
+            xpAwarded: stepId === "tech-sandbox" || stepId === "tech-check",
+          };
+        }
+      }
+
+      if (isPlacementDone) {
+        if (
+          stepId === "placement-communication" ||
+          stepId === "placement-aptitude" ||
+          stepId === "placement-logic"
+        ) {
+          return {
+            stepId,
+            isLocked: true,
+            completedAt: new Date().toISOString(),
+            xpAwarded: true,
+          };
+        }
+      }
+
+      // Check individual Supabase daily steps
+      if (stepId === "placement-communication" && state.profile.daily?.english) {
         return {
-          stepId: "tech-sandbox",
+          stepId: "placement-communication",
           isLocked: true,
           completedAt: new Date().toISOString(),
           xpAwarded: true,
         };
       }
 
-      if (stepId === "placement-logic" && state.profile.attendance.includes(dayNum)) {
+      if (stepId === "placement-aptitude" && state.profile.daily?.aptitude) {
+        return {
+          stepId: "placement-aptitude",
+          isLocked: true,
+          completedAt: new Date().toISOString(),
+          xpAwarded: true,
+        };
+      }
+
+      if (stepId === "placement-logic" && state.profile.daily?.practice) {
         return {
           stepId: "placement-logic",
           isLocked: true,
@@ -1433,6 +1544,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       state.profile.knowledgeChecks,
       state.profile.completedTechDays,
       state.profile.attendance,
+      state.profile.daily,
     ],
   );
 
@@ -1863,6 +1975,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setActiveTracks,
     setDailyStep,
     completeDailyStep,
+    syncDailyProgress,
     completeSkill,
     completePlacementDay,
     completeTechDay,

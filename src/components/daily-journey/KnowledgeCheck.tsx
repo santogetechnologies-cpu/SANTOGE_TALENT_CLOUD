@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { CheckCircle2, AlertCircle, ArrowRight, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { XPReward } from "./XPReward";
 import { useAppStore } from "@/lib/app-store";
+import { getTechnicalCheckQuestion } from "@/lib/data/technical-checks";
 
 interface KnowledgeCheckProps {
   dayNum?: number;
   trackId?: string;
   topic: string;
+  practice?: string;
   trackName: string;
   onSuccess: (xpBonus: number) => void;
   onNext: () => void;
@@ -17,6 +19,7 @@ export function KnowledgeCheck({
   dayNum = 1,
   trackId = "general",
   topic,
+  practice = "",
   trackName,
   onSuccess,
   onNext,
@@ -54,27 +57,10 @@ export function KnowledgeCheck({
     }
   }, [dayNum, trackId, store]);
 
-  // Contextual question for today's topic
-  const questionData = {
-    question: `What is the primary architectural advantage of implementing "${topic}" in ${trackName}?`,
-    options: [
-      {
-        text: `It isolates operational state and enforces predictable data contracts to reduce production regressions.`,
-        isCorrect: true,
-        explanation: `Correct! By enforcing modular boundaries and deterministic contracts, this pattern eliminates unexpected side-effects and simplifies automated regression testing.`,
-      },
-      {
-        text: `It replaces all database indexes and completely eliminates the need for caching.`,
-        isCorrect: false,
-        explanation: `Not quite. This pattern does not eliminate datastores or caching; rather, it coordinates logic and data access safely.`,
-      },
-      {
-        text: `It bypasses network authentication to minimize HTTP request latency.`,
-        isCorrect: false,
-        explanation: `Careful! Security and authentication boundaries must never be bypassed for performance gains.`,
-      },
-    ],
-  };
+  // Generate deterministic contextual question for today's topic & practice
+  const questionData = useMemo(() => {
+    return getTechnicalCheckQuestion(dayNum, trackId, trackName, topic, practice || topic);
+  }, [dayNum, trackId, trackName, topic, practice]);
 
   const handleSelect = async (idx: number) => {
     // 10. Prevent race conditions: rapid clicks only accept the FIRST selected answer

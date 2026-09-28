@@ -84,10 +84,13 @@ export function GuidedSandbox({
     try {
       const res = await store.recordDailyStepAction(dayNum, trackId, "tech-sandbox");
       if (res?.ok) {
+        await onCompleteLab();
         setAwardedXp(true);
       } else {
         isProcessingRef.current = false;
       }
+    } catch (_err) {
+      isProcessingRef.current = false;
     } finally {
       setIsSubmitting(false);
     }
@@ -246,6 +249,7 @@ export function GuidedSandbox({
                 isProcessingRef.current = false;
                 return;
               }
+              await onCompleteLab();
             }
             onNext();
           }}

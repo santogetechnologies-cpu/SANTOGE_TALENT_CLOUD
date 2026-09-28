@@ -1,5 +1,5 @@
 import { createFileRoute, useLocation } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/app-store";
@@ -13,6 +13,7 @@ import {
 } from "@/lib/data";
 import { DailyHomeScreen } from "@/components/daily-journey/DailyHomeScreen";
 import { DailyJourneyRunner } from "@/components/daily-journey/DailyJourneyRunner";
+import type { JourneyStepId } from "@/components/daily-journey/JourneyProgressBar";
 
 export const Route = createFileRoute("/student/")({
   head: () => ({
@@ -41,6 +42,7 @@ function TodayLearningPage() {
   const queryClient = useQueryClient();
 
   const [isJourneyActive, setIsJourneyActive] = useState(false);
+  const [targetStep, setTargetStep] = useState<JourneyStepId | undefined>(undefined);
 
   // Live Supabase student profile & progress
   const { data: liveProfileData } = useLiveStudentProfile(
@@ -52,6 +54,17 @@ function TodayLearningPage() {
     liveStudentId || undefined,
     !!liveStudentId,
   );
+
+  // Authoritative realtime synchronization into store
+  useEffect(() => {
+    if (liveProgressData) {
+      store.syncDailyProgress(
+        liveProgressData.daily,
+        liveProgressData.completedTechDays,
+        liveProgressData.attendance,
+      );
+    }
+  }, [liveProgressData, store]);
 
   const cohortDay = liveProfileData?.profile?.placement_day ?? store.placementDay ?? 1;
 
@@ -150,6 +163,11 @@ function TodayLearningPage() {
     }
   };
 
+  const handleStartJourney = (stepId?: JourneyStepId) => {
+    setTargetStep(stepId);
+    setIsJourneyActive(true);
+  };
+
   if (isJourneyActive) {
     return (
       <DailyJourneyRunner
@@ -167,9 +185,13 @@ function TodayLearningPage() {
         isPlacementCompleted={isPlacementDone}
         streak={streak}
         talentScore={talentScore}
+        initialStepOverride={targetStep}
         onCompleteTechnicalLab={handleCompleteTechnicalLab}
         onCompletePlacement={handleCompletePlacement}
-        onExit={() => setIsJourneyActive(false)}
+        onExit={() => {
+          setIsJourneyActive(false);
+          setTargetStep(undefined);
+        }}
       />
     );
   }
@@ -189,7 +211,7 @@ function TodayLearningPage() {
       talentScore={talentScore}
       assignedTracks={activeTracks}
       onSelectTrack={handleSelectTrack}
-      onStartJourney={() => setIsJourneyActive(true)}
+      onStartJourney={handleStartJourney}
     />
   );
 }

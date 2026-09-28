@@ -31,6 +31,7 @@ interface DailyJourneyRunnerProps {
   isPlacementCompleted: boolean;
   streak: number;
   talentScore: number;
+  initialStepOverride?: JourneyStepId | undefined;
   onCompleteTechnicalLab: () => Promise<void>;
   onCompletePlacement?: () => Promise<void>;
   onRecordVoicePitch?: () => Promise<void>;
@@ -52,6 +53,7 @@ export function DailyJourneyRunner({
   isPlacementCompleted,
   streak,
   talentScore,
+  initialStepOverride,
   onCompleteTechnicalLab,
   onCompletePlacement,
   onRecordVoicePitch,
@@ -59,8 +61,9 @@ export function DailyJourneyRunner({
 }: DailyJourneyRunnerProps) {
   const store = useAppStore();
 
-  // Determine initial step based on the earliest incomplete step
+  // Determine initial step based on override or earliest incomplete step
   const initialStep: JourneyStepId = useMemo(() => {
+    if (initialStepOverride) return initialStepOverride;
     if (isLabCompleted && isPlacementCompleted) return "complete";
 
     const steps: JourneyStepId[] = [
@@ -159,6 +162,7 @@ export function DailyJourneyRunner({
             dayNum={dayNum}
             trackId={trackId}
             topic={techTopic}
+            practice={techPractice}
             trackName={trackName}
             onSuccess={(bonus) => addXp(bonus)}
             onNext={goToNextStep}

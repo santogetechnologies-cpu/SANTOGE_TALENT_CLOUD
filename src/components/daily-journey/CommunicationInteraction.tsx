@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { MessageSquare, Video, ArrowRight, CheckCircle2, Sparkles, BookOpen, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AcceleratorDay } from "@/lib/placement-accelerator-data";
@@ -35,6 +35,7 @@ export function CommunicationInteraction({
     setIsLocked(true);
     const res = await store.recordDailyStepAction(dayNum, trackId, "placement-communication", {
       selectedOption: choice,
+      isCorrect: choice === "B",
     });
     if (!res?.ok) {
       setIsLocked(false);
@@ -43,20 +44,25 @@ export function CommunicationInteraction({
     }
   };
 
-  // Generate an executive framing challenge based on today's lesson
-  const scenario = {
-    context: `Scenario: A senior stakeholder asks during a project sync: "What is the status of the module delivery and why were there delays?"`,
-    optionA: {
-      text: `"We had some unexpected issues and bugs last week, so we couldn't finish in time. But we are working on it now and will try to wrap it up soon."`,
-      isStrong: false,
-      critique: `Passive and vague. Focuses on excuses and lacks clear ownership, timeline certainty, or mitigation metrics.`,
-    },
-    optionB: {
-      text: `"We identified an edge-case regression during integration testing on Thursday. We patched the core issue, reinforced unit coverage, and are on track to ship to staging by 3:00 PM today with zero blocker debt."`,
-      isStrong: true,
-      critique: `Executive & STAR aligned. Directly states the situation, specific action taken, and commitments with a firm delivery timestamp.`,
-    },
-  };
+  // Generate a dynamic executive framing challenge based on today's lesson & vocabulary
+  const scenario = useMemo(() => {
+    const vocab1 = english.keyVocabulary[0] || "Articulate";
+    const vocab2 = english.keyVocabulary[1] || "Competency";
+
+    return {
+      context: `Workplace Scenario (Day ${dayNum}): In a leadership review regarding "${english.title}", how do you best communicate progress while following "${english.grammarRule}"?`,
+      optionA: {
+        text: `"Yeah, we ran into some unexpected difficulties earlier. We couldn't finish things yet, but we'll try to work on it and hopefully wrap up whenever possible."`,
+        isStrong: false,
+        critique: `Passive and vague. Fails to leverage key professional terminology and lacks actionable commitments or clear ownership.`,
+      },
+      optionB: {
+        text: `"To ${vocab1.toLowerCase()} our deliverable status: our team demonstrated core ${vocab2.toLowerCase()} by resolving the critical path constraints. In line with our milestone commitments, deliverables are aligned for sign-off today."`,
+        isStrong: true,
+        critique: `Executive & STAR aligned. Directly applies "${english.grammarRule}", seamlessly incorporates "${vocab1}" and "${vocab2}", and projects confidence and accountability.`,
+      },
+    };
+  }, [dayNum, english]);
 
   return (
     <div className="journey-card mx-auto max-w-3xl overflow-hidden p-6 sm:p-8 phase-enter">

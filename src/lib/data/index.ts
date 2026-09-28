@@ -11,3 +11,4 @@ export * from "./curriculum-data";
 export * from "./placement-data";
 export * from "./hooks";
 export * from "./batch-lookup";
+export * from "./technical-checks";

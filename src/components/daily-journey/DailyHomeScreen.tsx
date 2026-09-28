@@ -18,10 +18,16 @@ import {
   Calendar,
   BookOpen,
   Dumbbell,
+  Workflow,
+  Video,
+  Calculator,
+  BrainCircuit,
 } from "lucide-react";
 import { cn, getScoreTier } from "@/lib/utils";
 import { trackById, type TrackId, type Track } from "@/lib/tracks";
 import type { AcceleratorDay } from "@/lib/placement-accelerator-data";
+import type { JourneyStepId } from "./JourneyProgressBar";
+import { useAppStore } from "@/lib/app-store";
 
 interface DailyHomeScreenProps {
   studentName: string;
@@ -35,7 +41,7 @@ interface DailyHomeScreenProps {
   isPlacementDone: boolean;
   streak: number;
   talentScore: number;
-  onStartJourney: () => void;
+  onStartJourney: (stepId?: JourneyStepId) => void;
   assignedTracks?: TrackId[] | undefined;
   onSelectTrack?: ((trackId: TrackId) => void) | undefined;
 }
@@ -65,9 +71,145 @@ export function DailyHomeScreen({
   }, []);
 
   const firstName = studentName ? studentName.split(" ")[0] : "Student";
-  const isFullyComplete = isTechDone && isPlacementDone;
-  const isPartiallyDone = isTechDone || isPlacementDone;
   const tier = getScoreTier(talentScore);
+  const store = useAppStore();
+
+  // Compute realtime status for each of the 7 daily steps
+  const stepRecords = useMemo(() => {
+    const s1Done = Boolean(store.getDailyStepRecord(cohortDay, primaryTrack.id, "tech-concept")?.isLocked || isTechDone);
+    const s2Done = Boolean(store.getDailyStepRecord(cohortDay, primaryTrack.id, "tech-visual")?.isLocked || isTechDone);
+    const s3Done = Boolean(store.getDailyStepRecord(cohortDay, primaryTrack.id, "tech-check")?.isLocked || isTechDone);
+    const s4Done = Boolean(store.getDailyStepRecord(cohortDay, primaryTrack.id, "tech-sandbox")?.isLocked || isTechDone);
+
+    const s5Done = Boolean(
+      store.profile.daily?.english ||
+      isPlacementDone ||
+      store.getDailyStepRecord(cohortDay, primaryTrack.id, "placement-communication")?.isLocked
+    );
+    const s6Done = Boolean(
+      store.profile.daily?.aptitude ||
+      isPlacementDone ||
+      store.getDailyStepRecord(cohortDay, primaryTrack.id, "placement-aptitude")?.isLocked
+    );
+    const s7Done = Boolean(
+      store.profile.daily?.practice ||
+      isPlacementDone ||
+      store.getDailyStepRecord(cohortDay, primaryTrack.id, "placement-logic")?.isLocked
+    );
+
+    const stepsRaw = [
+      {
+        id: "tech-concept" as JourneyStepId,
+        stepNum: 1,
+        label: "Core Concept",
+        phase: "tech" as const,
+        duration: "2m",
+        xp: "Base",
+        isDone: s1Done,
+        icon: BookOpen,
+        summary: techTopic,
+      },
+      {
+        id: "tech-visual" as JourneyStepId,
+        stepNum: 2,
+        label: "Architecture",
+        phase: "tech" as const,
+        duration: "2m",
+        xp: "Flow",
+        isDone: s2Done,
+        icon: Workflow,
+        summary: "Pipeline Visualizer",
+      },
+      {
+        id: "tech-check" as JourneyStepId,
+        stepNum: 3,
+        label: "Quick Check",
+        phase: "tech" as const,
+        duration: "2m",
+        xp: "+15 XP",
+        isDone: s3Done,
+        icon: HelpCircle,
+        summary: "Technical MCQ",
+      },
+      {
+        id: "tech-sandbox" as JourneyStepId,
+        stepNum: 4,
+        label: "Guided Lab",
+        phase: "tech" as const,
+        duration: "4m",
+        xp: "+50 XP",
+        isDone: s4Done,
+        icon: Terminal,
+        summary: "WASM Test Suite",
+      },
+      {
+        id: "placement-communication" as JourneyStepId,
+        stepNum: 5,
+        label: "Communication",
+        phase: "placement" as const,
+        duration: "2m",
+        xp: "+10 XP",
+        isDone: s5Done,
+        icon: Video,
+        summary: placementPlan.english.title,
+      },
+      {
+        id: "placement-aptitude" as JourneyStepId,
+        stepNum: 6,
+        label: "Aptitude Drill",
+        phase: "placement" as const,
+        duration: "3m",
+        xp: "+15 XP",
+        isDone: s6Done,
+        icon: Calculator,
+        summary: placementPlan.aptitude.title,
+      },
+      {
+        id: "placement-logic" as JourneyStepId,
+        stepNum: 7,
+        label: "Logic Puzzle",
+        phase: "placement" as const,
+        duration: "2m",
+        xp: "+25 XP",
+        isDone: s7Done,
+        icon: BrainCircuit,
+        summary: "Analytical Reasoning",
+      },
+    ];
+
+    let foundFirstIncomplete = false;
+    return stepsRaw.map((st) => {
+      let status: "completed" | "current" | "pending" = "pending";
+      if (st.isDone) {
+        status = "completed";
+      } else if (!foundFirstIncomplete) {
+        status = "current";
+        foundFirstIncomplete = true;
+      } else {
+        status = "pending";
+      }
+      return { ...st, status };
+    });
+  }, [cohortDay, primaryTrack.id, isTechDone, isPlacementDone, techTopic, placementPlan, store]);
+
+  const completedStepsCount = useMemo(
+    () => stepRecords.filter((s) => s.status === "completed").length,
+    [stepRecords],
+  );
+
+  const activeStep = useMemo(
+    () => stepRecords.find((s) => s.status === "current") || stepRecords[0]!,
+    [stepRecords],
+  );
+
+  const isFullyComplete = completedStepsCount === 7 || (isTechDone && isPlacementDone);
+  const isPartiallyDone = completedStepsCount > 0 || isTechDone || isPlacementDone;
+
+  const ctaButtonText = useMemo(() => {
+    if (isFullyComplete) return "Review Today's 7 Steps (100% ✓)";
+    if (completedStepsCount === 0) return "START TODAY (STEP 1: CORE CONCEPT)";
+    return `RESUME STEP ${activeStep.stepNum}: ${activeStep.label.toUpperCase()}`;
+  }, [isFullyComplete, completedStepsCount, activeStep]);
 
   return (
     <div className="w-full space-y-6 pb-12 phase-enter">
@@ -162,7 +304,7 @@ export function DailyHomeScreen({
                 <Clock className="size-3 text-primary" /> 20 Minutes
               </span>
               <span className="flex items-center gap-1 text-xs text-amber-500 font-mono font-semibold">
-                <Zap className="size-3 fill-amber-500" /> +75 XP
+                <Zap className="size-3 fill-amber-500" /> +75 XP Max
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
@@ -175,34 +317,140 @@ export function DailyHomeScreen({
 
           {/* Action CTA Button */}
           <button
-            onClick={onStartJourney}
+            onClick={() => onStartJourney(activeStep.id)}
             className={cn(
               "flex items-center justify-center gap-2.5 rounded-xl px-6 py-3.5 text-sm font-semibold transition-all shadow-md cursor-pointer shrink-0",
               isFullyComplete
                 ? "bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-500/20"
                 : isPartiallyDone
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20"
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20 hover:scale-[1.01]"
                   : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20 hover:scale-[1.02]",
             )}
           >
             {isFullyComplete ? (
               <>
                 <CheckCircle2 className="size-4" />
-                <span>Review Today's Journey</span>
-              </>
-            ) : isPartiallyDone ? (
-              <>
-                <Play className="size-4 fill-current" />
-                <span>Resume Today's Drill</span>
+                <span>Review Today's 7 Steps</span>
               </>
             ) : (
               <>
                 <Play className="size-4 fill-current" />
-                <span>START TODAY (20 MIN)</span>
+                <span>{ctaButtonText}</span>
               </>
             )}
             <ArrowRight className="size-4" />
           </button>
+        </div>
+
+        {/* 7-Step Daily Cadence Flow */}
+        <div className="mt-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                Today's 7-Step Cadence
+              </span>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold text-primary">
+                {completedStepsCount} / 7 Completed
+              </span>
+            </div>
+            <span className="text-xs font-mono text-muted-foreground">
+              {Math.round((completedStepsCount / 7) * 100)}% Complete Today
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+            {stepRecords.map((step) => {
+              const Icon = step.icon;
+              const isCurrent = step.status === "current";
+              const isCompleted = step.status === "completed";
+
+              return (
+                <button
+                  key={step.id}
+                  type="button"
+                  onClick={() => onStartJourney(step.id)}
+                  className={cn(
+                    "group relative flex flex-col justify-between rounded-xl border p-3 text-left transition-all cursor-pointer",
+                    isCompleted
+                      ? "border-emerald-500/40 bg-emerald-500/5 hover:border-emerald-500 hover:bg-emerald-500/10 shadow-2xs"
+                      : isCurrent
+                        ? "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-xs hover:bg-primary/15"
+                        : "border-border/70 bg-card/60 opacity-80 hover:opacity-100 hover:border-primary/40 hover:bg-muted/40",
+                  )}
+                >
+                  {/* Top Row: Step # and Status Badge */}
+                  <div className="flex items-center justify-between gap-1 w-full">
+                    <span
+                      className={cn(
+                        "flex size-5 items-center justify-center rounded-md font-mono text-[10px] font-bold",
+                        isCompleted
+                          ? "bg-emerald-500 text-white"
+                          : isCurrent
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {isCompleted ? "✓" : step.stepNum}
+                    </span>
+
+                    <span
+                      className={cn(
+                        "rounded px-1.5 py-0.5 text-[9px] font-mono font-semibold",
+                        isCompleted
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                          : isCurrent
+                            ? "bg-primary/20 text-primary animate-pulse"
+                            : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {isCompleted ? "Done" : isCurrent ? "Active" : step.duration}
+                    </span>
+                  </div>
+
+                  {/* Icon & Label */}
+                  <div className="mt-2.5 space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <Icon
+                        className={cn(
+                          "size-3.5 shrink-0",
+                          isCompleted
+                            ? "text-emerald-500"
+                            : isCurrent
+                              ? "text-primary"
+                              : "text-muted-foreground group-hover:text-foreground",
+                        )}
+                      />
+                      <span className="font-semibold text-xs text-foreground line-clamp-1">
+                        {step.label}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground line-clamp-1 leading-tight">
+                      {step.summary}
+                    </p>
+                  </div>
+
+                  {/* Bottom XP Badge */}
+                  <div className="mt-2 pt-1.5 border-t border-border/50 flex items-center justify-between text-[10px]">
+                    <span className="font-mono text-muted-foreground text-[9px] uppercase">
+                      {step.phase === "tech" ? "Tech" : "Placement"}
+                    </span>
+                    <span
+                      className={cn(
+                        "font-mono font-medium text-[10px]",
+                        isCompleted
+                          ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                          : isCurrent
+                            ? "text-primary font-semibold"
+                            : "text-muted-foreground",
+                      )}
+                    >
+                      {step.xp}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Twin Phase Breakdown: 10m Tech + 10m Placement */}
