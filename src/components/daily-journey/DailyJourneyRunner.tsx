@@ -19,6 +19,7 @@ import { LogicChallenge } from "./LogicChallenge";
 import { DailyCompletion } from "./DailyCompletion";
 import { useAppStore } from "@/lib/app-store";
 import { getLessonForDay } from "@/lib/course-curricula";
+import { getCoursePlacementDay } from "@/lib/placement-curricula";
 
 interface DailyJourneyRunnerProps {
   dayNum: number;
@@ -30,7 +31,7 @@ interface DailyJourneyRunnerProps {
   techPractice: string;
   weekTheme: string;
   workplaceSkill: string;
-  placementPlan: AcceleratorDay;
+  placementPlan?: AcceleratorDay | undefined;
   isLabCompleted: boolean;
   isPlacementCompleted: boolean;
   streak: number;
@@ -73,6 +74,11 @@ export function DailyJourneyRunner({
   const curriculumLesson = useMemo(() => {
     return getLessonForDay(trackId, dayNum);
   }, [trackId, dayNum]);
+
+  // Load the authoritative course-specific placement accelerator plan
+  const resolvedPlacementPlan = useMemo(() => {
+    return placementPlan || getCoursePlacementDay(trackId, dayNum);
+  }, [placementPlan, trackId, dayNum]);
 
   // Build the exact sequence of steps for this day based on mode and curriculum
   const effectiveSteps: JourneyStepMeta[] = useMemo(() => {
@@ -323,7 +329,7 @@ export function DailyJourneyRunner({
           <CommunicationInteraction
             dayNum={dayNum}
             trackId={trackId}
-            english={placementPlan.english}
+            english={resolvedPlacementPlan.english}
             onNext={goToNextStep}
           />
         )}
@@ -332,8 +338,8 @@ export function DailyJourneyRunner({
           <AptitudeChallenge
             dayNum={dayNum}
             trackId={trackId}
-            aptitude={placementPlan.aptitude}
-            mcq={placementPlan.practice.mcqs[0]}
+            aptitude={resolvedPlacementPlan.aptitude}
+            mcq={resolvedPlacementPlan.practice.mcqs[0]}
             onSuccess={(bonus) => addXp(bonus)}
             onNext={goToNextStep}
           />
@@ -343,7 +349,7 @@ export function DailyJourneyRunner({
           <LogicChallenge
             dayNum={dayNum}
             trackId={trackId}
-            puzzle={placementPlan.practice.puzzle}
+            puzzle={resolvedPlacementPlan.practice.puzzle}
             onNext={async () => {
               if (!isPlacementCompleted) {
                 const completeFn = onCompletePlacement || onRecordVoicePitch;
@@ -361,7 +367,7 @@ export function DailyJourneyRunner({
             trackName={trackName}
             topic={curriculumLesson?.title || techTopic}
             theme={curriculumLesson ? `${curriculumLesson.phaseName} (Phase ${curriculumLesson.phase})` : weekTheme}
-            placementTheme={placementPlan.theme}
+            placementTheme={resolvedPlacementPlan.theme}
             streak={streak}
             talentScore={talentScore}
             sessionXp={sessionXp}

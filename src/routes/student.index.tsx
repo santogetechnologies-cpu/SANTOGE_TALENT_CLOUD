@@ -233,7 +233,7 @@ function TodayLearningPage() {
 
   if (journeyConfig.isActive) {
     const activeLesson = getLessonForDay(selectedTrackId, journeyConfig.dayNum);
-    const activePlacementPlan: AcceleratorDay = getAcceleratorDay(journeyConfig.dayNum);
+    const activePlacementPlan: AcceleratorDay = getAcceleratorDay(journeyConfig.dayNum, selectedTrackId);
     const isLabDone = completedTechDays.includes(journeyConfig.dayNum);
     const isPlacementComplete = attendance.includes(journeyConfig.dayNum);
 

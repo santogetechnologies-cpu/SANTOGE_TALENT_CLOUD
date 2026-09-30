@@ -519,10 +519,9 @@ export function generateAccelerator90Days(): AcceleratorWeek[] {
 }
 
 export const ACCELERATOR_90_DAYS = generateAccelerator90Days();
-export const getAcceleratorDay = (dayNum: number): AcceleratorDay => {
-  const clamped = Math.max(1, Math.min(90, dayNum));
-  const weekIdx = Math.floor((clamped - 1) / 5);
-  const dayIdx = (clamped - 1) % 5;
-  const week = ACCELERATOR_90_DAYS[weekIdx] ?? ACCELERATOR_90_DAYS[0]!;
-  return week.days[dayIdx] ?? week.days[0]!;
+
+import { getCoursePlacementDay } from "./placement-curricula";
+
+export const getAcceleratorDay = (dayNum: number, trackId?: string): AcceleratorDay => {
+  return getCoursePlacementDay(trackId, dayNum);
 };

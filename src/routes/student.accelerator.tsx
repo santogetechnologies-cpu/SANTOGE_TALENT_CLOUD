@@ -93,9 +93,11 @@ function AcceleratorPage() {
   ]);
   const [pitch, setPitch] = useState(false);
 
+  const assignedTrack = (liveProfileData?.tracks?.[0] || store.activeTracks?.[0] || "java") as string;
+
   const currentPlan: AcceleratorDay = useMemo(
-    () => getAcceleratorDay(selectedDayNum),
-    [selectedDayNum],
+    () => getAcceleratorDay(selectedDayNum, assignedTrack),
+    [selectedDayNum, assignedTrack],
   );
 
   const correctMcqs = currentPlan.practice.mcqs.filter((m, i) => answers[i] === m.answer).length;

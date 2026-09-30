@@ -47,8 +47,13 @@ export function CommunicationInteraction({
     }
   };
 
-  // Generate a dynamic executive framing challenge based on today's lesson & vocabulary
+  // Use course-specific scenario if attached, otherwise fallback
   const scenario = useMemo(() => {
+    const customScenario = (english as any)?.scenario;
+    if (customScenario && customScenario.optionA && customScenario.optionB) {
+      return customScenario;
+    }
+
     const vocab1 = english.keyVocabulary[0] || "Articulate";
     const vocab2 = english.keyVocabulary[1] || "Competency";
 
@@ -190,6 +195,16 @@ export function CommunicationInteraction({
               )}
             </button>
           </div>
+
+          {selectedChoice && scenario.coachTip && (
+            <div className="mt-4 rounded-xl border border-purple-500/20 bg-purple-500/5 p-3.5 flex items-start gap-2.5">
+              <Sparkles className="size-4 text-purple-500 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <span className="text-[11px] font-semibold text-purple-600 dark:text-purple-400">Executive Coach Note</span>
+                <p className="text-xs text-muted-foreground leading-relaxed">{scenario.coachTip}</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

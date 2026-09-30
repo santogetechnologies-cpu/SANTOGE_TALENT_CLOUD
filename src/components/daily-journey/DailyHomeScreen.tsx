@@ -120,10 +120,10 @@ export function DailyHomeScreen({
     return getLessonForDay(primaryTrack.id, selectedDay);
   }, [primaryTrack.id, selectedDay]);
 
-  // Load the synchronized placement accelerator day plan
+  // Load the synchronized course-specific placement accelerator day plan
   const placementPlan: AcceleratorDay = useMemo(() => {
-    return getAcceleratorDay(cohortDay);
-  }, [cohortDay]);
+    return getAcceleratorDay(cohortDay, primaryTrack.id);
+  }, [cohortDay, primaryTrack.id]);
 
   // Day locking & completion states
   const isDayCompleted = completedTechDays.includes(selectedDay);

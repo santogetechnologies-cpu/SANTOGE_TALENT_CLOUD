@@ -129,8 +129,8 @@ function DailyExercisesPage() {
   }, [activeTracks, selectedTrackId]);
 
   const currentPlan: AcceleratorDay = useMemo(
-    () => getAcceleratorDay(selectedDayNum),
-    [selectedDayNum],
+    () => getAcceleratorDay(selectedDayNum, selectedTrackId),
+    [selectedDayNum, selectedTrackId],
   );
 
   const primaryTrack = trackById(selectedTrackId);
