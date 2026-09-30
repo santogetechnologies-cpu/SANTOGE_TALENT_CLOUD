@@ -28,6 +28,7 @@ import {
   BookOpen,
   Briefcase,
   Dumbbell,
+  Calendar,
 } from "lucide-react";
 import { useAppStore, type Role } from "@/lib/app-store";
 import { TRACKS, trackById, type TrackId } from "@/lib/tracks";
@@ -183,6 +184,11 @@ export function AppShell({ portal }: { portal: Role }) {
     portal === "student"
       ? (liveProfileData?.profile?.talent_score ?? store.talentScore)
       : store.talentScore;
+
+  const currentLearningDay =
+    portal === "student"
+      ? Math.max(1, liveProfileData?.profile?.placement_day ?? store.placementDay ?? 1)
+      : 1;
 
   const gateUnlocked = store.gateUnlocked;
 
@@ -449,8 +455,11 @@ export function AppShell({ portal }: { portal: Role }) {
             <div className="ml-auto flex items-center gap-2">
               {portal === "student" && (
                 <>
+                  <span className="hidden items-center gap-1.5 rounded-md border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary sm:inline-flex">
+                    <Calendar className="size-3.5" /> Day {currentLearningDay} of 90
+                  </span>
                   <span className="hidden items-center gap-1.5 rounded-md border border-amber-200/60 bg-amber-50/70 dark:bg-amber-950/30 dark:border-amber-900/40 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400 md:inline-flex">
-                    <Flame className="size-3.5" /> Day {streak}
+                    <Flame className="size-3.5 fill-amber-500/20" /> {streak}d Streak
                   </span>
                   <span className="hidden items-center gap-1.5 rounded-md border border-blue-200/60 bg-blue-50/70 dark:bg-blue-950/30 dark:border-blue-900/40 px-2.5 py-1 text-xs font-medium text-blue-700 dark:text-blue-400 sm:inline-flex">
                     <Zap className="size-3.5" /> {xp} XP

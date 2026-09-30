@@ -14,6 +14,7 @@ import {
   Trophy,
   Sparkles,
   ChevronRight,
+  ChevronLeft,
   HelpCircle,
   Calendar,
   BookOpen,
@@ -22,46 +23,88 @@ import {
   Video,
   Calculator,
   BrainCircuit,
+  Lock,
+  Gamepad2,
+  Award,
+  FolderGit2,
+  GraduationCap,
+  Check,
 } from "lucide-react";
 import { cn, getScoreTier } from "@/lib/utils";
 import { trackById, type TrackId, type Track } from "@/lib/tracks";
-import type { AcceleratorDay } from "@/lib/placement-accelerator-data";
-import type { JourneyStepId } from "./JourneyProgressBar";
+import { getAcceleratorDay, type AcceleratorDay } from "@/lib/placement-accelerator-data";
 import { useAppStore } from "@/lib/app-store";
+import {
+  getLessonForDay,
+  type CourseDayLesson,
+  type LessonStep,
+  type LessonStepType,
+} from "@/lib/course-curricula";
 
-interface DailyHomeScreenProps {
+export interface DailyHomeScreenProps {
   studentName: string;
+  selectedDay: number;
+  currentTechnicalDay: number;
   cohortDay: number;
   primaryTrack: Track;
-  techTopic: string;
-  techPractice: string;
-  weekTheme: string;
-  placementPlan: AcceleratorDay;
-  isTechDone: boolean;
-  isPlacementDone: boolean;
+  completedTechDays: number[];
+  attendance: number[];
   streak: number;
   talentScore: number;
-  onStartJourney: (stepId?: JourneyStepId) => void;
   assignedTracks?: TrackId[] | undefined;
   onSelectTrack?: ((trackId: TrackId) => void) | undefined;
+  onSelectDay: (day: number) => void;
+  onStartTechnicalLesson: (stepType?: string) => void;
+  onStartPlacementDrill: (drillType: "english" | "aptitude" | "logic" | "all") => void;
+}
+
+function getStepIcon(type: LessonStepType) {
+  switch (type) {
+    case "animated-intro":
+      return Play;
+    case "concept-explanation":
+    case "reveal-card":
+      return BookOpen;
+    case "concept-visual":
+      return Workflow;
+    case "mini-game":
+      return Gamepad2;
+    case "knowledge-check":
+      return HelpCircle;
+    case "guided-sandbox":
+    case "practical-challenge":
+      return Terminal;
+    case "ai-tutor":
+      return BrainCircuit;
+    case "real-world-example":
+      return Layers;
+    case "xp-reward":
+      return Zap;
+    case "daily-completion":
+      return Award;
+    default:
+      return Sparkles;
+  }
 }
 
 export function DailyHomeScreen({
   studentName,
+  selectedDay,
+  currentTechnicalDay,
   cohortDay,
   primaryTrack,
-  techTopic,
-  techPractice,
-  weekTheme,
-  placementPlan,
-  isTechDone,
-  isPlacementDone,
+  completedTechDays,
+  attendance,
   streak,
   talentScore,
-  onStartJourney,
   assignedTracks,
   onSelectTrack,
+  onSelectDay,
+  onStartTechnicalLesson,
+  onStartPlacementDrill,
 }: DailyHomeScreenProps) {
+  const store = useAppStore();
+
   // Compute greeting from local time
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -71,116 +114,56 @@ export function DailyHomeScreen({
   }, []);
 
   const firstName = studentName ? studentName.split(" ")[0] : "Student";
-  const tier = getScoreTier(talentScore);
-  const store = useAppStore();
 
-  // Compute realtime status for each of the 7 daily steps
-  const stepRecords = useMemo(() => {
-    const s1Done = Boolean(store.getDailyStepRecord(cohortDay, primaryTrack.id, "tech-concept")?.isLocked || isTechDone);
-    const s2Done = Boolean(store.getDailyStepRecord(cohortDay, primaryTrack.id, "tech-visual")?.isLocked || isTechDone);
-    const s3Done = Boolean(store.getDailyStepRecord(cohortDay, primaryTrack.id, "tech-check")?.isLocked || isTechDone);
-    const s4Done = Boolean(store.getDailyStepRecord(cohortDay, primaryTrack.id, "tech-sandbox")?.isLocked || isTechDone);
+  // Load the authoritative 90-day technical curriculum lesson
+  const curriculumLesson: CourseDayLesson | null = useMemo(() => {
+    return getLessonForDay(primaryTrack.id, selectedDay);
+  }, [primaryTrack.id, selectedDay]);
 
-    const s5Done = Boolean(
-      store.profile.daily?.english ||
-      isPlacementDone ||
-      store.getDailyStepRecord(cohortDay, primaryTrack.id, "placement-communication")?.isLocked
-    );
-    const s6Done = Boolean(
-      store.profile.daily?.aptitude ||
-      isPlacementDone ||
-      store.getDailyStepRecord(cohortDay, primaryTrack.id, "placement-aptitude")?.isLocked
-    );
-    const s7Done = Boolean(
-      store.profile.daily?.practice ||
-      isPlacementDone ||
-      store.getDailyStepRecord(cohortDay, primaryTrack.id, "placement-logic")?.isLocked
-    );
+  // Load the synchronized placement accelerator day plan
+  const placementPlan: AcceleratorDay = useMemo(() => {
+    return getAcceleratorDay(cohortDay);
+  }, [cohortDay]);
 
-    const stepsRaw = [
-      {
-        id: "tech-concept" as JourneyStepId,
-        stepNum: 1,
-        label: "Core Concept",
-        phase: "tech" as const,
-        duration: "2m",
-        xp: "Base",
-        isDone: s1Done,
-        icon: BookOpen,
-        summary: techTopic,
-      },
-      {
-        id: "tech-visual" as JourneyStepId,
-        stepNum: 2,
-        label: "Architecture",
-        phase: "tech" as const,
-        duration: "2m",
-        xp: "Flow",
-        isDone: s2Done,
-        icon: Workflow,
-        summary: "Pipeline Visualizer",
-      },
-      {
-        id: "tech-check" as JourneyStepId,
-        stepNum: 3,
-        label: "Quick Check",
-        phase: "tech" as const,
-        duration: "2m",
-        xp: "+15 XP",
-        isDone: s3Done,
-        icon: HelpCircle,
-        summary: "Technical MCQ",
-      },
-      {
-        id: "tech-sandbox" as JourneyStepId,
-        stepNum: 4,
-        label: "Guided Lab",
-        phase: "tech" as const,
-        duration: "4m",
-        xp: "+50 XP",
-        isDone: s4Done,
-        icon: Terminal,
-        summary: "WASM Test Suite",
-      },
-      {
-        id: "placement-communication" as JourneyStepId,
-        stepNum: 5,
-        label: "Communication",
-        phase: "placement" as const,
-        duration: "2m",
-        xp: "+10 XP",
-        isDone: s5Done,
-        icon: Video,
-        summary: placementPlan.english.title,
-      },
-      {
-        id: "placement-aptitude" as JourneyStepId,
-        stepNum: 6,
-        label: "Aptitude Drill",
-        phase: "placement" as const,
-        duration: "3m",
-        xp: "+15 XP",
-        isDone: s6Done,
-        icon: Calculator,
-        summary: placementPlan.aptitude.title,
-      },
-      {
-        id: "placement-logic" as JourneyStepId,
-        stepNum: 7,
-        label: "Logic Puzzle",
-        phase: "placement" as const,
-        duration: "2m",
-        xp: "+25 XP",
-        isDone: s7Done,
-        icon: BrainCircuit,
-        summary: "Analytical Reasoning",
-      },
-    ];
+  // Day locking & completion states
+  const isDayCompleted = completedTechDays.includes(selectedDay);
+  const isDayLocked = selectedDay > currentTechnicalDay;
+  const isDayCurrent = selectedDay === currentTechnicalDay;
+
+  // Placement completion states for cohortDay
+  const isPlacementDone = attendance.includes(cohortDay);
+  const isEnglishDone = Boolean(store.profile.daily?.english || isPlacementDone);
+  const isAptitudeDone = Boolean(store.profile.daily?.aptitude || isPlacementDone);
+  const isLogicDone = Boolean(store.profile.daily?.practice || isPlacementDone);
+
+  // Compute realtime status for each dynamic lesson step
+  const dynamicSteps = useMemo(() => {
+    if (!curriculumLesson?.steps || curriculumLesson.steps.length === 0) {
+      return [];
+    }
+
+    const s1Done = Boolean(store.getDailyStepRecord(selectedDay, primaryTrack.id, "tech-concept")?.isLocked || isDayCompleted);
+    const s2Done = Boolean(store.getDailyStepRecord(selectedDay, primaryTrack.id, "tech-visual")?.isLocked || isDayCompleted);
+    const s3Done = Boolean(store.getDailyStepRecord(selectedDay, primaryTrack.id, "tech-minigame")?.isLocked || isDayCompleted);
+    const s4Done = Boolean(store.getKnowledgeCheck(selectedDay, primaryTrack.id)?.isLocked || store.getDailyStepRecord(selectedDay, primaryTrack.id, "tech-check")?.isLocked || isDayCompleted);
+    const s5Done = Boolean(store.getDailyStepRecord(selectedDay, primaryTrack.id, "tech-sandbox")?.isLocked || isDayCompleted);
 
     let foundFirstIncomplete = false;
-    return stepsRaw.map((st) => {
-      let status: "completed" | "current" | "pending" = "pending";
-      if (st.isDone) {
+
+    return curriculumLesson.steps.map((st, idx) => {
+      let isDone = isDayCompleted;
+      if (!isDone) {
+        if (st.type === "concept-explanation" || st.type === "reveal-card") isDone = s1Done;
+        else if (st.type === "concept-visual" || st.type === "animated-intro") isDone = s2Done;
+        else if (st.type === "mini-game") isDone = s3Done;
+        else if (st.type === "knowledge-check") isDone = s4Done;
+        else if (st.type === "guided-sandbox" || st.type === "practical-challenge") isDone = s5Done;
+      }
+
+      let status: "completed" | "current" | "pending" | "locked" = "pending";
+      if (isDayLocked) {
+        status = "locked";
+      } else if (isDone) {
         status = "completed";
       } else if (!foundFirstIncomplete) {
         status = "current";
@@ -188,28 +171,61 @@ export function DailyHomeScreen({
       } else {
         status = "pending";
       }
-      return { ...st, status };
+
+      return {
+        ...st,
+        stepNum: idx + 1,
+        isDone,
+        status,
+        IconComponent: getStepIcon(st.type),
+      };
     });
-  }, [cohortDay, primaryTrack.id, isTechDone, isPlacementDone, techTopic, placementPlan, store]);
+  }, [curriculumLesson, selectedDay, primaryTrack.id, isDayCompleted, isDayLocked, store]);
 
   const completedStepsCount = useMemo(
-    () => stepRecords.filter((s) => s.status === "completed").length,
-    [stepRecords],
+    () => dynamicSteps.filter((s) => s.isDone).length,
+    [dynamicSteps],
   );
 
   const activeStep = useMemo(
-    () => stepRecords.find((s) => s.status === "current") || stepRecords[0]!,
-    [stepRecords],
+    () => dynamicSteps.find((s) => s.status === "current") || dynamicSteps[0],
+    [dynamicSteps],
   );
 
-  const isFullyComplete = completedStepsCount === 7 || (isTechDone && isPlacementDone);
-  const isPartiallyDone = completedStepsCount > 0 || isTechDone || isPlacementDone;
+  const lessonXp = useMemo(() => {
+    if (selectedDay === 90) return 200;
+    if (curriculumLesson?.isProjectDay) return 100;
+    return 75;
+  }, [selectedDay, curriculumLesson]);
 
+  // CTA Button Text
   const ctaButtonText = useMemo(() => {
-    if (isFullyComplete) return "Review Today's 7 Steps (100% ✓)";
-    if (completedStepsCount === 0) return "START TODAY (STEP 1: CORE CONCEPT)";
-    return `RESUME STEP ${activeStep.stepNum}: ${activeStep.label.toUpperCase()}`;
-  }, [isFullyComplete, completedStepsCount, activeStep]);
+    if (isDayLocked) {
+      return `Complete Day ${selectedDay - 1} First`;
+    }
+    if (isDayCompleted) {
+      return `Review Day ${selectedDay} Lesson (100% ✓)`;
+    }
+    if (selectedDay === 90) {
+      return `Begin Day 90 Final Assessment (+200 XP)`;
+    }
+    if (curriculumLesson?.isProjectDay) {
+      return `Launch Capstone Workspace (+100 XP)`;
+    }
+    if (completedStepsCount === 0) {
+      return `Start Day ${selectedDay} Lesson (+${lessonXp} XP)`;
+    }
+    return `Continue Step ${activeStep?.stepNum ?? 1}: ${activeStep?.label ?? "Lesson"}`;
+  }, [isDayLocked, isDayCompleted, selectedDay, curriculumLesson, completedStepsCount, activeStep, lessonXp]);
+
+  // Dual Completion Gate Status
+  const isDualGateCleared = completedTechDays.length >= 90 && attendance.length >= 90;
+
+  // 90-Day rail display window (shows 9 adjacent days centered around selectedDay)
+  const dayWindow = useMemo(() => {
+    const start = Math.max(1, Math.min(82, selectedDay - 4));
+    return Array.from({ length: 9 }, (_, i) => start + i);
+  }, [selectedDay]);
 
   return (
     <div className="w-full space-y-6 pb-12 phase-enter">
@@ -218,15 +234,27 @@ export function DailyHomeScreen({
         <div>
           <div className="flex items-center gap-2">
             <span className="rounded-md bg-primary/10 border border-primary/20 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
-              Day {cohortDay} of 90
+              Day {selectedDay} of 90
             </span>
-            <span className="text-xs text-muted-foreground">· Synchronized Cohort</span>
+            <span className="text-xs text-muted-foreground font-medium">
+              · {primaryTrack.name}
+            </span>
+            {isDayCompleted && (
+              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                ✓ Completed
+              </span>
+            )}
+            {isDayLocked && (
+              <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <Lock className="size-2.5" /> Locked
+              </span>
+            )}
           </div>
           <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             {greeting}, {firstName} 👋
           </h1>
           <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
-            Your single unified 20-minute daily routine for career readiness and technical mastery.
+            Specialized 90-day technical curriculum with evidence-based workplace mastery.
           </p>
         </div>
 
@@ -238,12 +266,12 @@ export function DailyHomeScreen({
           </div>
           <div className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
             <Trophy className="size-3.5 text-primary" />
-            <span>Score: {talentScore}/1000</span>
+            <span>Talent Score: {talentScore}/1000</span>
           </div>
         </div>
       </div>
 
-      {/* Course Switcher: If multiple courses are assigned */}
+      {/* Course Switcher: If multiple courses are assigned to this student */}
       {assignedTracks && assignedTracks.length > 1 && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3.5 shadow-2xs">
           <div className="flex items-center gap-2.5">
@@ -252,10 +280,10 @@ export function DailyHomeScreen({
             </div>
             <div>
               <h4 className="text-xs font-semibold text-foreground">
-                Assigned Technical Specializations ({assignedTracks.length})
+                Assigned Technical Tracks ({assignedTracks.length})
               </h4>
               <p className="text-[11px] text-muted-foreground">
-                Select which specialization to study &amp; practice today:
+                Switch technical specialization to learn &amp; build today:
               </p>
             </div>
           </div>
@@ -289,100 +317,371 @@ export function DailyHomeScreen({
         </div>
       )}
 
-      {/* Main Focus Card: The 20-Minute Daily Journey */}
-      <div className="journey-card relative overflow-hidden p-6 sm:p-8">
-        {/* Subtle accent glow top border */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-indigo-500 to-emerald-500" />
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/70 pb-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary uppercase tracking-wider">
-                Daily Focus
-              </span>
-              <span className="flex items-center gap-1 text-xs text-muted-foreground font-mono">
-                <Clock className="size-3 text-primary" /> 20 Minutes
-              </span>
-              <span className="flex items-center gap-1 text-xs text-amber-500 font-mono font-semibold">
-                <Zap className="size-3 fill-amber-500" /> +75 XP Max
-              </span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-              Day {cohortDay}: {techTopic}
-            </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Specialization: <strong className="text-foreground">{primaryTrack.name}</strong> · Placement Module: <strong className="text-foreground">{placementPlan.theme}</strong>
-            </p>
-          </div>
-
-          {/* Action CTA Button */}
-          <button
-            onClick={() => onStartJourney(activeStep.id)}
-            className={cn(
-              "flex items-center justify-center gap-2.5 rounded-xl px-6 py-3.5 text-sm font-semibold transition-all shadow-md cursor-pointer shrink-0",
-              isFullyComplete
-                ? "bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-500/20"
-                : isPartiallyDone
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20 hover:scale-[1.01]"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20 hover:scale-[1.02]",
-            )}
-          >
-            {isFullyComplete ? (
-              <>
-                <CheckCircle2 className="size-4" />
-                <span>Review Today's 7 Steps</span>
-              </>
-            ) : (
-              <>
-                <Play className="size-4 fill-current" />
-                <span>{ctaButtonText}</span>
-              </>
-            )}
-            <ArrowRight className="size-4" />
-          </button>
-        </div>
-
-        {/* 7-Step Daily Cadence Flow */}
-        <div className="mt-6 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                Today's 7-Step Cadence
-              </span>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold text-primary">
-                {completedStepsCount} / 7 Completed
-              </span>
-            </div>
-            <span className="text-xs font-mono text-muted-foreground">
-              {Math.round((completedStepsCount / 7) * 100)}% Complete Today
+      {/* 90-Day Progression Track & Day Picker */}
+      <div className="rounded-xl border border-border bg-card/80 p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-foreground">
+              90-Day Technical Progression
+            </span>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono">
+              {completedTechDays.length} / 90 Days Completed ({Math.round((completedTechDays.length / 90) * 100)}%)
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
-            {stepRecords.map((step) => {
-              const Icon = step.icon;
-              const isCurrent = step.status === "current";
+          <div className="flex items-center gap-2 text-xs">
+            {selectedDay !== currentTechnicalDay && (
+              <button
+                onClick={() => onSelectDay(currentTechnicalDay)}
+                className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                Jump to Current Day ({currentTechnicalDay}) →
+              </button>
+            )}
+            <span className="text-muted-foreground">
+              Phase {curriculumLesson?.phase ?? 1} of 6: <strong className="text-foreground">{curriculumLesson?.phaseName ?? "Foundation"}</strong>
+            </span>
+          </div>
+        </div>
+
+        {/* Days Rail / Mini Navigator */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1">
+          {selectedDay > 5 && (
+            <button
+              onClick={() => onSelectDay(Math.max(1, selectedDay - 5))}
+              className="px-2 py-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted text-[11px] font-medium shrink-0"
+              title="Previous days"
+            >
+              <ChevronLeft className="size-3.5" />
+            </button>
+          )}
+
+          {dayWindow.map((d) => {
+            const isCompleted = completedTechDays.includes(d);
+            const isCurrent = d === currentTechnicalDay;
+            const isSelected = d === selectedDay;
+            const isLocked = d > currentTechnicalDay;
+
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() => onSelectDay(d)}
+                className={cn(
+                  "flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer",
+                  isSelected
+                    ? "bg-primary text-primary-foreground shadow-xs ring-2 ring-primary/40 font-bold"
+                    : isCompleted
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
+                      : isCurrent
+                        ? "bg-primary/10 text-primary border border-primary/30 animate-pulse hover:bg-primary/20"
+                        : isLocked
+                          ? "bg-muted/40 text-muted-foreground/60 border border-border/40 hover:bg-muted/70 cursor-not-allowed"
+                          : "bg-muted/60 text-muted-foreground border border-border hover:bg-muted hover:text-foreground",
+                )}
+                title={isLocked ? `Day ${d} is locked. Complete Day ${d - 1} first.` : `Day ${d}`}
+              >
+                {isCompleted ? (
+                  <Check className="size-3 stroke-[3]" />
+                ) : isLocked ? (
+                  <Lock className="size-2.5 opacity-60" />
+                ) : null}
+                <span>Day {d}</span>
+                {isCurrent && !isCompleted && !isSelected && (
+                  <span className="size-1.5 rounded-full bg-primary" />
+                )}
+              </button>
+            );
+          })}
+
+          {selectedDay < 85 && (
+            <button
+              onClick={() => onSelectDay(Math.min(90, selectedDay + 5))}
+              className="px-2 py-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted text-[11px] font-medium shrink-0"
+              title="Next days"
+            >
+              <ChevronRight className="size-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ========================================================
+          HERO CARD: DAY N OF 90 (PRIMARY TECHNICAL LEARNING)
+          ======================================================== */}
+      <div className="journey-card relative overflow-hidden p-6 sm:p-8">
+        {/* Subtle accent glow top border */}
+        <div
+          className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-indigo-500 to-emerald-500"
+          style={{ background: primaryTrack.accent ? `linear-gradient(90deg, ${primaryTrack.accent}, var(--color-primary))` : undefined }}
+        />
+
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-border/70 pb-6">
+          <div className="space-y-2 max-w-3xl">
+            {/* Phase & Topic Chips */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[11px] font-semibold text-primary uppercase tracking-wider">
+                Phase {curriculumLesson?.phase ?? 1}: {curriculumLesson?.phaseName ?? "Foundation"}
+              </span>
+
+              {curriculumLesson?.isProjectDay && selectedDay < 90 && (
+                <span className="rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 px-2.5 py-0.5 text-[10px] font-bold flex items-center gap-1">
+                  <FolderGit2 className="size-3" /> Capstone Milestone
+                </span>
+              )}
+
+              {selectedDay === 90 && (
+                <span className="rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold flex items-center gap-1">
+                  <GraduationCap className="size-3" /> Graduation Certification
+                </span>
+              )}
+
+              <span className="flex items-center gap-1 text-xs text-muted-foreground font-mono">
+                <Clock className="size-3 text-primary" /> {curriculumLesson?.estimatedMinutes ?? 20} Minutes
+              </span>
+
+              <span className="flex items-center gap-1 text-xs text-amber-500 font-mono font-semibold">
+                <Zap className="size-3 fill-amber-500" /> +{lessonXp} XP Max
+              </span>
+
+              {curriculumLesson?.difficulty && (
+                <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground uppercase">
+                  {curriculumLesson.difficulty}
+                </span>
+              )}
+            </div>
+
+            {/* Lesson Title & Course */}
+            <div>
+              <p className="text-xs font-semibold text-primary uppercase tracking-wider">
+                Day {selectedDay} of 90 · {primaryTrack.name}
+              </p>
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground mt-0.5">
+                {curriculumLesson?.title || `Day ${selectedDay} Technical Lesson`}
+              </h2>
+            </div>
+
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              {curriculumLesson?.description || "Master core production architecture and workplace execution."}
+            </p>
+
+            {/* Learning Objectives tags */}
+            {curriculumLesson?.learningObjectives && curriculumLesson.learningObjectives.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                {curriculumLesson.learningObjectives.slice(0, 3).map((obj, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1 rounded-md bg-muted/60 border border-border/60 px-2 py-0.5 text-[11px] text-muted-foreground"
+                  >
+                    <CheckCircle2 className="size-2.5 text-primary" /> {obj}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Action CTA Button */}
+          <div className="flex flex-col items-start lg:items-end gap-2 shrink-0">
+            <button
+              onClick={() => {
+                if (isDayLocked) return;
+                onStartTechnicalLesson(activeStep?.type);
+              }}
+              disabled={isDayLocked}
+              className={cn(
+                "flex items-center justify-center gap-2.5 rounded-xl px-6 py-3.5 text-sm font-semibold transition-all shadow-md cursor-pointer shrink-0",
+                isDayLocked
+                  ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60 shadow-none"
+                  : isDayCompleted
+                    ? "bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-500/20 hover:scale-[1.01]"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20 hover:scale-[1.02]",
+              )}
+            >
+              {isDayLocked ? (
+                <>
+                  <Lock className="size-4" />
+                  <span>{ctaButtonText}</span>
+                </>
+              ) : isDayCompleted ? (
+                <>
+                  <CheckCircle2 className="size-4" />
+                  <span>{ctaButtonText}</span>
+                  <ArrowRight className="size-4" />
+                </>
+              ) : (
+                <>
+                  <Play className="size-4 fill-current" />
+                  <span>{ctaButtonText}</span>
+                  <ArrowRight className="size-4" />
+                </>
+              )}
+            </button>
+
+            {isDayLocked ? (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                Complete Day {selectedDay - 1} to unlock this lesson.
+              </p>
+            ) : isDayCompleted ? (
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                Day {selectedDay} verified! Review any step anytime.
+              </p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground font-mono">
+                {completedStepsCount} of {dynamicSteps.length} steps completed
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Progress Bar through Today's Lesson Steps */}
+        <div className="mt-6 pt-2 space-y-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">
+              Today's Technical Mastery Progress
+            </span>
+            <span className="font-mono font-medium text-foreground">
+              {isDayCompleted ? 100 : Math.round((completedStepsCount / Math.max(1, dynamicSteps.length)) * 100)}% Complete
+            </span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                isDayCompleted ? "bg-emerald-500" : "bg-primary",
+              )}
+              style={{
+                width: `${isDayCompleted ? 100 : Math.round((completedStepsCount / Math.max(1, dynamicSteps.length)) * 100)}%`,
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================
+          SECTION 1: TODAY'S TECHNICAL MASTERY (DYNAMIC STEPS)
+          ======================================================== */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
+              <Code2 className="size-5 text-primary" />
+              TODAY'S TECHNICAL MASTERY
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {primaryTrack.name} · Day {selectedDay} · Dynamic step-by-step workflow
+            </p>
+          </div>
+
+          <span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-xs font-mono font-bold text-primary">
+            {isDayCompleted ? dynamicSteps.length : completedStepsCount} / {dynamicSteps.length} Done
+          </span>
+        </div>
+
+        {/* Case 1: Capstone Days 76–89 Project Mode Card */}
+        {curriculumLesson?.isProjectDay && selectedDay < 90 && curriculumLesson.projectConfig ? (
+          <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <span className="rounded-full bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30 px-2.5 py-0.5 text-[11px] font-bold">
+                  Capstone Milestone · Day {selectedDay}
+                </span>
+                <h4 className="text-lg font-bold text-foreground">
+                  {curriculumLesson.projectConfig.projectTitle}
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Milestone: <strong className="text-foreground">{curriculumLesson.projectConfig.milestone.title}</strong>
+                </p>
+              </div>
+
+              <button
+                onClick={() => onStartTechnicalLesson("capstone-project")}
+                disabled={isDayLocked}
+                className="flex items-center gap-2 rounded-xl bg-purple-600 text-white px-5 py-2.5 text-xs font-semibold hover:bg-purple-500 transition-colors shadow-xs cursor-pointer shrink-0"
+              >
+                <FolderGit2 className="size-4" />
+                <span>Open Capstone Project Workspace</span>
+              </button>
+            </div>
+
+            <div className="rounded-lg bg-card border border-border p-4 space-y-2">
+              <p className="text-xs font-semibold text-foreground">Required Deliverable:</p>
+              <p className="text-xs text-muted-foreground">{curriculumLesson.projectConfig.milestone.deliverable}</p>
+              <div className="pt-2">
+                <p className="text-[11px] font-semibold text-foreground mb-1.5">Acceptance Criteria Checklist:</p>
+                <ul className="space-y-1">
+                  {curriculumLesson.projectConfig.milestone.acceptanceCriteria.map((c, i) => (
+                    <li key={i} className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                      <span className="size-1.5 rounded-full bg-purple-500" />
+                      <span>{c}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        ) : selectedDay === 90 ? (
+          /* Case 2: Day 90 Final Assessment Card */
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <span className="rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-2.5 py-0.5 text-[11px] font-bold">
+                  Final Assessment · Day 90
+                </span>
+                <h4 className="text-lg font-bold text-foreground">
+                  90-Day Industry Capstone &amp; Certification Exam
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Track: <strong className="text-foreground">{primaryTrack.name}</strong> · Passing threshold: 60% · 200 XP
+                </p>
+              </div>
+
+              <button
+                onClick={() => onStartTechnicalLesson("final-assessment")}
+                disabled={isDayLocked}
+                className="flex items-center gap-2 rounded-xl bg-amber-600 text-white px-5 py-2.5 text-xs font-semibold hover:bg-amber-500 transition-colors shadow-xs cursor-pointer shrink-0"
+              >
+                <GraduationCap className="size-4" />
+                <span>Begin Certification Exam</span>
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This comprehensive assessment covers all phases (Foundations, Core, Applied, Intermediate, Advanced) and unlocks your verified Industry Readiness Certificate.
+            </p>
+          </div>
+        ) : (
+          /* Case 3: Regular Daily Technical Steps Grid */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {dynamicSteps.map((step) => {
+              const Icon = step.IconComponent;
               const isCompleted = step.status === "completed";
+              const isCurrent = step.status === "current";
+              const isLocked = step.status === "locked";
 
               return (
                 <button
-                  key={step.id}
+                  key={`${step.type}-${step.stepNum}`}
                   type="button"
-                  onClick={() => onStartJourney(step.id)}
+                  onClick={() => {
+                    if (isDayLocked) return;
+                    onStartTechnicalLesson(step.type);
+                  }}
+                  disabled={isDayLocked}
                   className={cn(
-                    "group relative flex flex-col justify-between rounded-xl border p-3 text-left transition-all cursor-pointer",
-                    isCompleted
-                      ? "border-emerald-500/40 bg-emerald-500/5 hover:border-emerald-500 hover:bg-emerald-500/10 shadow-2xs"
-                      : isCurrent
-                        ? "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-xs hover:bg-primary/15"
-                        : "border-border/70 bg-card/60 opacity-80 hover:opacity-100 hover:border-primary/40 hover:bg-muted/40",
+                    "group relative flex flex-col justify-between rounded-xl border p-4 text-left transition-all",
+                    isLocked
+                      ? "border-border/40 bg-card/40 opacity-50 cursor-not-allowed"
+                      : isCompleted
+                        ? "border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500 hover:bg-emerald-500/10 cursor-pointer shadow-2xs"
+                        : isCurrent
+                          ? "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-xs hover:bg-primary/15 cursor-pointer"
+                          : "border-border/70 bg-card/70 hover:border-primary/40 hover:bg-muted/40 cursor-pointer",
                   )}
                 >
-                  {/* Top Row: Step # and Status Badge */}
-                  <div className="flex items-center justify-between gap-1 w-full">
+                  {/* Step Top Bar: # and Status */}
+                  <div className="flex items-center justify-between w-full">
                     <span
                       className={cn(
-                        "flex size-5 items-center justify-center rounded-md font-mono text-[10px] font-bold",
+                        "flex size-6 items-center justify-center rounded-md font-mono text-xs font-bold",
                         isCompleted
                           ? "bg-emerald-500 text-white"
                           : isCurrent
@@ -395,7 +694,7 @@ export function DailyHomeScreen({
 
                     <span
                       className={cn(
-                        "rounded px-1.5 py-0.5 text-[9px] font-mono font-semibold",
+                        "rounded px-2 py-0.5 text-[10px] font-mono font-semibold",
                         isCompleted
                           ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                           : isCurrent
@@ -403,16 +702,16 @@ export function DailyHomeScreen({
                             : "bg-muted text-muted-foreground",
                       )}
                     >
-                      {isCompleted ? "Done" : isCurrent ? "Active" : step.duration}
+                      {isCompleted ? "Done" : isCurrent ? "Active" : `${step.durationMinutes}m`}
                     </span>
                   </div>
 
-                  {/* Icon & Label */}
-                  <div className="mt-2.5 space-y-1">
-                    <div className="flex items-center gap-1.5">
+                  {/* Step Icon & Title */}
+                  <div className="mt-3 space-y-1">
+                    <div className="flex items-center gap-2">
                       <Icon
                         className={cn(
-                          "size-3.5 shrink-0",
+                          "size-4 shrink-0",
                           isCompleted
                             ? "text-emerald-500"
                             : isCurrent
@@ -424,147 +723,234 @@ export function DailyHomeScreen({
                         {step.label}
                       </span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground line-clamp-1 leading-tight">
-                      {step.summary}
+
+                    <p className="text-[11px] text-muted-foreground line-clamp-1">
+                      {step.type === "mini-game"
+                        ? curriculumLesson?.miniGame?.title || "Interactive Game Challenge"
+                        : step.type === "concept-visual"
+                          ? "Pipeline Visualizer & Animation"
+                          : step.type === "knowledge-check"
+                            ? "Concept Mastery MCQ"
+                            : step.type === "guided-sandbox" || step.type === "practical-challenge"
+                              ? "Hands-on Practical Lab"
+                              : curriculumLesson?.title || "Core Technical Concept"}
                     </p>
                   </div>
 
-                  {/* Bottom XP Badge */}
-                  <div className="mt-2 pt-1.5 border-t border-border/50 flex items-center justify-between text-[10px]">
-                    <span className="font-mono text-muted-foreground text-[9px] uppercase">
-                      {step.phase === "tech" ? "Tech" : "Placement"}
+                  {/* Step Bottom: XP Badge */}
+                  <div className="mt-3 pt-2 border-t border-border/50 flex items-center justify-between text-[10px]">
+                    <span className="font-mono text-muted-foreground text-[10px] uppercase">
+                      {step.type.replace("-", " ")}
                     </span>
                     <span
                       className={cn(
-                        "font-mono font-medium text-[10px]",
+                        "font-mono font-semibold text-[10px]",
                         isCompleted
-                          ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                          ? "text-emerald-600 dark:text-emerald-400"
                           : isCurrent
-                            ? "text-primary font-semibold"
+                            ? "text-primary"
                             : "text-muted-foreground",
                       )}
                     >
-                      {step.xp}
+                      +{step.xpReward > 0 ? step.xpReward : 15} XP
                     </span>
                   </div>
                 </button>
               );
             })}
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* Twin Phase Breakdown: 10m Tech + 10m Placement */}
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          {/* Phase 1: Technical Mastery */}
-          <div
-            className={cn(
-              "rounded-xl border p-4.5 space-y-3 transition-colors",
-              isTechDone
-                ? "border-emerald-500/30 bg-emerald-500/5"
-                : "border-border bg-card/60",
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Code2 className="size-4" />
-                </div>
-                <div>
-                  <h3 className="text-xs font-semibold text-foreground">
-                    Phase 1: Technical Skill
-                  </h3>
-                  <span className="text-[10px] text-muted-foreground font-mono">
-                    10 min · Hands-on Lab
-                  </span>
-                </div>
+      {/* ========================================================
+          SECTION 2: PLACEMENT ACCELERATOR (SEPARATE & DISTINCT)
+          ======================================================== */}
+      <div className="rounded-2xl border border-purple-500/20 bg-purple-500/[0.02] p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <div className="flex size-6 items-center justify-center rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                <Timer className="size-3.5" />
               </div>
-
-              {isTechDone ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="size-3" /> Done
-                </span>
-              ) : (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
-                  +50 XP
-                </span>
-              )}
-            </div>
-
-            <div className="space-y-1 text-xs">
-              <p className="font-medium text-foreground line-clamp-1">{techTopic}</p>
-              <p className="text-[11px] text-muted-foreground line-clamp-2">{techPractice}</p>
-            </div>
-
-            <div className="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground">
-              <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
-                {primaryTrack.short}
+              <h3 className="text-base sm:text-lg font-bold text-foreground uppercase tracking-wide">
+                PLACEMENT ACCELERATOR
+              </h3>
+              <span className="rounded-full bg-purple-500/10 border border-purple-500/20 px-2.5 py-0.5 text-[10px] font-bold text-purple-600 dark:text-purple-400 font-mono">
+                Cohort Day {cohortDay} of 90
               </span>
-              <span>{weekTheme}</span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Daily 8-minute synchronized cohort routine for verbal communication, aptitude math, and logic readiness.
+            </p>
           </div>
 
-          {/* Phase 2: Placement Accelerator */}
+          <button
+            onClick={() => onStartPlacementDrill("all")}
+            className="flex items-center gap-2 rounded-xl bg-purple-600 text-white px-4 py-2 text-xs font-semibold hover:bg-purple-500 transition-colors shadow-xs cursor-pointer shrink-0"
+          >
+            <Play className="size-3.5 fill-current" />
+            <span>Start Placement Routine (+50 XP)</span>
+          </button>
+        </div>
+
+        {/* 3 Standalone Placement Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          {/* Card 1: Communication */}
           <div
             className={cn(
-              "rounded-xl border p-4.5 space-y-3 transition-colors",
-              isPlacementDone
+              "rounded-xl border p-4 space-y-3 transition-all",
+              isEnglishDone
                 ? "border-emerald-500/30 bg-emerald-500/5"
-                : "border-border bg-card/60",
+                : "border-border bg-card/80 hover:border-purple-500/40",
             )}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="flex size-7 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500">
-                  <Timer className="size-4" />
+                <div className="flex size-7 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
+                  <Video className="size-4" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-semibold text-foreground">
-                    Phase 2: Placement Accelerator
-                  </h3>
-                  <span className="text-[10px] text-muted-foreground font-mono">
-                    8 min · Aptitude &amp; Reasoning
-                  </span>
+                  <h4 className="text-xs font-semibold text-foreground">Communication</h4>
+                  <span className="text-[10px] text-muted-foreground font-mono">2 min · +10 XP</span>
                 </div>
               </div>
 
-              {isPlacementDone ? (
+              {isEnglishDone ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 className="size-3" /> Done
                 </span>
               ) : (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
-                  +25 XP
-                </span>
+                <button
+                  onClick={() => onStartPlacementDrill("english")}
+                  className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary hover:bg-primary/20 cursor-pointer"
+                >
+                  Start Pitch →
+                </button>
               )}
             </div>
 
             <div className="space-y-1 text-xs">
-              <p className="font-medium text-foreground line-clamp-1">{placementPlan.theme}</p>
+              <p className="font-medium text-foreground line-clamp-1">{placementPlan.english.title}</p>
               <p className="text-[11px] text-muted-foreground line-clamp-2">
-                {placementPlan.english.title} &amp; {placementPlan.aptitude.title}
+                {placementPlan.english.instructorBrief}
               </p>
             </div>
+          </div>
 
-            <div className="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground">
-              <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">LOGIC</span>
-              <span>Analytical Reasoning &amp; Problem Solving</span>
+          {/* Card 2: Aptitude */}
+          <div
+            className={cn(
+              "rounded-xl border p-4 space-y-3 transition-all",
+              isAptitudeDone
+                ? "border-emerald-500/30 bg-emerald-500/5"
+                : "border-border bg-card/80 hover:border-purple-500/40",
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+                  <Calculator className="size-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-foreground">Quantitative Aptitude</h4>
+                  <span className="text-[10px] text-muted-foreground font-mono">3 min · +15 XP</span>
+                </div>
+              </div>
+
+              {isAptitudeDone ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="size-3" /> Done
+                </span>
+              ) : (
+                <button
+                  onClick={() => onStartPlacementDrill("aptitude")}
+                  className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary hover:bg-primary/20 cursor-pointer"
+                >
+                  Start Drill →
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-1 text-xs">
+              <p className="font-medium text-foreground line-clamp-1">{placementPlan.aptitude.title}</p>
+              <p className="text-[11px] text-muted-foreground line-clamp-2">
+                {placementPlan.aptitude.instructorBrief}
+              </p>
+            </div>
+          </div>
+
+          {/* Card 3: Logic Puzzle */}
+          <div
+            className={cn(
+              "rounded-xl border p-4 space-y-3 transition-all",
+              isLogicDone
+                ? "border-emerald-500/30 bg-emerald-500/5"
+                : "border-border bg-card/80 hover:border-purple-500/40",
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+                  <BrainCircuit className="size-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-foreground">Analytical Logic</h4>
+                  <span className="text-[10px] text-muted-foreground font-mono">3 min · +25 XP</span>
+                </div>
+              </div>
+
+              {isLogicDone ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="size-3" /> Done
+                </span>
+              ) : (
+                <button
+                  onClick={() => onStartPlacementDrill("logic")}
+                  className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary hover:bg-primary/20 cursor-pointer"
+                >
+                  Solve Puzzle →
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-1 text-xs">
+              <p className="font-medium text-foreground line-clamp-1">{placementPlan.practice.puzzle.q}</p>
+              <p className="text-[11px] text-muted-foreground line-clamp-2">
+                Deductive reasoning and logical constraint solving.
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Progress Bar through 90 Days */}
-        <div className="mt-6 pt-5 border-t border-border/70 space-y-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Overall 90-Day Cohort Journey</span>
-            <span className="font-mono font-medium text-foreground">
-              {Math.round((cohortDay / 90) * 100)}% ({cohortDay} / 90 Days)
-            </span>
+        {/* Dual Completion Gate Tracking Banner */}
+        <div className="rounded-xl border border-border/70 bg-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-foreground">Dual Completion Gate Requirement:</span>
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-bold font-mono",
+                  isDualGateCleared
+                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                    : "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+                )}
+              >
+                {isDualGateCleared ? "GATE CLEARED 🔓" : "IN PROGRESS 🔒"}
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Technical Mastery: <strong className="text-foreground">{completedTechDays.length}/90 Days</strong> + Placement Attendance: <strong className="text-foreground">{attendance.length}/90 Days</strong>
+            </p>
           </div>
-          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-500"
-              style={{ width: `${(cohortDay / 90) * 100}%` }}
-            />
+
+          <div className="flex items-center gap-3">
+            <Link
+              to="/student/gateway"
+              className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+            >
+              <span>View Career Gateway (Phase 2)</span>
+              <ChevronRight className="size-3.5" />
+            </Link>
           </div>
         </div>
       </div>
@@ -598,9 +984,9 @@ export function DailyHomeScreen({
               <Layers className="size-4" />
             </div>
             <div>
-              <h4 className="text-xs font-semibold text-foreground">90-Day Journey &amp; Backlog</h4>
+              <h4 className="text-xs font-semibold text-foreground">90-Day Full Syllabus</h4>
               <p className="text-[11px] text-muted-foreground">
-                Review past days or preview upcoming weeks
+                Review all 18 weeks &amp; portfolio projects
               </p>
             </div>
           </div>
@@ -608,17 +994,17 @@ export function DailyHomeScreen({
         </Link>
 
         <Link
-          to="/student/labs"
+          to="/student/gateway"
           className="group flex items-center justify-between rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:bg-muted/30 shadow-2xs"
         >
           <div className="flex items-center gap-3">
             <div className="flex size-8 items-center justify-center rounded-lg bg-muted text-foreground group-hover:text-primary transition-colors">
-              <Terminal className="size-4" />
+              <GraduationCap className="size-4" />
             </div>
             <div>
-              <h4 className="text-xs font-semibold text-foreground">Interactive Sandbox IDE</h4>
+              <h4 className="text-xs font-semibold text-foreground">Career Gateway (Phase 2)</h4>
               <p className="text-[11px] text-muted-foreground">
-                Practice in the full-screen terminal simulator
+                ATS Scanner, AI Mock Interviews &amp; Marketplace
               </p>
             </div>
           </div>

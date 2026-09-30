@@ -5,7 +5,10 @@ export type JourneyStepId =
   | "tech-concept"
   | "tech-visual"
   | "tech-check"
+  | "tech-minigame"
   | "tech-sandbox"
+  | "capstone-project"
+  | "final-assessment"
   | "placement-communication"
   | "placement-aptitude"
   | "placement-logic"
@@ -22,6 +25,7 @@ export const JOURNEY_STEPS: JourneyStepMeta[] = [
   { id: "tech-concept", label: "Core Concept", phase: "tech", duration: "2m" },
   { id: "tech-visual", label: "Architecture", phase: "tech", duration: "2m" },
   { id: "tech-check", label: "Quick Check", phase: "tech", duration: "2m" },
+  { id: "tech-minigame", label: "Mini-Game", phase: "tech", duration: "3m" },
   { id: "tech-sandbox", label: "Guided Lab", phase: "tech", duration: "4m" },
   { id: "placement-communication", label: "Communication", phase: "placement", duration: "2m" },
   { id: "placement-aptitude", label: "Aptitude", phase: "placement", duration: "3m" },
@@ -32,6 +36,7 @@ interface JourneyProgressBarProps {
   currentStep: JourneyStepId;
   dayNum: number;
   sessionXp: number;
+  steps?: JourneyStepMeta[] | undefined;
   onExit: () => void;
   onStepClick?: (stepId: JourneyStepId) => void;
 }
@@ -40,14 +45,16 @@ export function JourneyProgressBar({
   currentStep,
   dayNum,
   sessionXp,
+  steps,
   onExit,
   onStepClick,
 }: JourneyProgressBarProps) {
-  const currentIndex = JOURNEY_STEPS.findIndex((s) => s.id === currentStep);
+  const effectiveSteps = steps && steps.length > 0 ? steps : JOURNEY_STEPS;
+  const currentIndex = effectiveSteps.findIndex((s) => s.id === currentStep);
   const isComplete = currentStep === "complete";
   const activeStep: JourneyStepMeta = isComplete
     ? { id: "complete" as const, label: "Day Complete", phase: "complete" as const, duration: "Done" }
-    : (JOURNEY_STEPS[currentIndex] ?? JOURNEY_STEPS[0]!);
+    : (effectiveSteps[currentIndex] ?? effectiveSteps[0]!);
 
   const currentPhase = isComplete
     ? "Day Completed"
@@ -56,10 +63,10 @@ export function JourneyProgressBar({
       : "Phase 2: Placement Accelerator";
 
   // Calculate remaining estimated minutes
-  const remainingSteps = isComplete ? 0 : JOURNEY_STEPS.length - currentIndex;
+  const remainingSteps = isComplete ? 0 : effectiveSteps.length - currentIndex;
   const remainingMinutes = isComplete
     ? 0
-    : JOURNEY_STEPS.slice(currentIndex).reduce((acc, s) => acc + parseInt(s.duration), 0);
+    : effectiveSteps.slice(currentIndex).reduce((acc, s) => acc + (parseInt(s.duration) || 2), 0);
 
   return (
     <header className="sticky top-0 z-30 mb-6 border-b border-border/60 bg-background/95 backdrop-blur-md transition-all">
@@ -81,14 +88,14 @@ export function JourneyProgressBar({
               <span className="text-xs font-medium text-foreground">{currentPhase}</span>
             </div>
             <p className="text-[11px] text-muted-foreground hidden sm:block">
-              {isComplete ? "All 17 minutes completed" : `Step ${currentIndex + 1} of ${JOURNEY_STEPS.length}: ${activeStep.label}`}
+              {isComplete ? "All daily activities completed" : `Step ${currentIndex + 1} of ${effectiveSteps.length}: ${activeStep.label}`}
             </p>
           </div>
         </div>
 
         {/* Center: Step indicators (dots / pills) */}
         <div className="hidden md:flex items-center gap-1.5">
-          {JOURNEY_STEPS.map((step, idx) => {
+          {effectiveSteps.map((step, idx) => {
             const isPassed = isComplete || idx < currentIndex;
             const isCurrent = !isComplete && idx === currentIndex;
 
@@ -105,7 +112,7 @@ export function JourneyProgressBar({
                     : isPassed
                       ? "w-3 bg-emerald-500 hover:opacity-80"
                       : "w-2 bg-muted/70",
-                  step.phase === "placement" && idx === 4 && "ml-2",
+                  step.phase === "placement" && idx >= 4 && "ml-1.5",
                 )}
               />
             );
@@ -135,7 +142,7 @@ export function JourneyProgressBar({
           style={{
             width: isComplete
               ? "100%"
-              : `${Math.round(((currentIndex + 1) / (JOURNEY_STEPS.length + 1)) * 100)}%`,
+              : `${Math.round(((currentIndex + 1) / (effectiveSteps.length + 1)) * 100)}%`,
           }}
         />
       </div>

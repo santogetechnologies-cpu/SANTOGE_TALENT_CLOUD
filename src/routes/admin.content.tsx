@@ -32,7 +32,21 @@ import {
   Trash2,
   Users,
   Video,
+  Gamepad2,
+  Cpu,
+  Globe,
+  Award,
+  ShieldCheck,
+  CheckCircle2,
+  ExternalLink,
 } from "lucide-react";
+import {
+  getLessonForDay,
+  getCourseCurriculum,
+  getAllLessonsForCourse,
+  PHASE_NAMES,
+  PHASE_RANGES,
+} from "@/lib/course-curricula";
 
 export const Route = createFileRoute("/admin/content")({
   head: () => ({
@@ -50,7 +64,7 @@ export const Route = createFileRoute("/admin/content")({
   component: ContentManagementPage,
 });
 
-type CMSTab = "placement-accelerator" | "technical-tracks";
+type CMSTab = "placement-accelerator" | "technical-tracks" | "curriculum-90days";
 
 function ContentManagementPage() {
   const store = useAppStore();
@@ -97,6 +111,19 @@ function ContentManagementPage() {
   const [fridayProjectTitle, setFridayProjectTitle] = useState(activeWeek.projectTitle);
   const [fridayDeliverable, setFridayDeliverable] = useState(activeWeek.deliverable);
   const [workplaceSkill, setWorkplaceSkill] = useState(activeWeek.workplaceSkill);
+
+  // 90-Day Specialized Technical Curricula CMS states
+  const [curriculumTrackId, setCurriculumTrackId] = useState<TrackId>("java");
+  const [curriculumPhaseFilter, setCurriculumPhaseFilter] = useState<number | "all">("all");
+  const [curriculumDayNum, setCurriculumDayNum] = useState<number>(1);
+  const activeCurriculumLesson = useMemo(
+    () => getLessonForDay(curriculumTrackId, curriculumDayNum),
+    [curriculumTrackId, curriculumDayNum],
+  );
+  const allCurriculumLessons = useMemo(
+    () => getAllLessonsForCourse(curriculumTrackId),
+    [curriculumTrackId],
+  );
 
   // Update form fields when day changes
   const handlePlacementDaySelect = (dayNum: number) => {
@@ -207,29 +234,42 @@ function ContentManagementPage() {
 
       {/* KPI Stats */}
       <div className="grid gap-4 sm:grid-cols-4">
-        <Stat label="Total Curriculum Days" value="90 Days" tone="brand" hint="18 Weeks × 5 Working Days" />
+        <Stat label="Total Daily Lessons" value="540 Lessons" tone="brand" hint="6 Tracks × 90 Unique Days" />
         <Stat
-          label="Technical Specializations"
-          value={`${TRACKS.length} Tracks`}
+          label="Specialized Technical Tracks"
+          value="6 Tracks"
           tone="cyan"
-          hint="Individual self-paced tracks"
+          hint="Java, AIML, DS, Med, Mktg, SAP"
         />
         <Stat
-          label="Active Cohorts Managed"
-          value={`${batchesCount} Batches`}
+          label="Course Mini-Games"
+          value="54 Game Engines"
           tone="purple"
-          hint="100–300 learners per batch"
+          hint="9 Custom Game Types per Track"
         />
         <Stat
-          label="Total Portfolio Projects"
-          value={`${TRACKS.length * 18} Projects`}
+          label="Capstone Milestones"
+          value="90 Milestones"
           tone="emerald"
-          hint={`18 Friday Projects × ${TRACKS.length} Tracks`}
+          hint="15 Milestone Days × 6 Tracks"
         />
       </div>
 
       {/* CMS Mode Switcher Tabs */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
+        <button
+          onClick={() => setCmsTab("curriculum-90days")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all",
+            cmsTab === "curriculum-90days"
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50",
+          )}
+        >
+          <Layers className="size-3.5" />
+          90-Day Specialized Technical Curricula (540 Lessons)
+        </button>
+
         <button
           onClick={() => setCmsTab("placement-accelerator")}
           className={cn(
@@ -253,9 +293,367 @@ function ContentManagementPage() {
           )}
         >
           <Code2 className="size-3.5" />
-          Technical Tracks &amp; Friday Projects CMS (15 Tracks)
+          Weekly Syllabi &amp; Friday Projects CMS
         </button>
       </div>
+
+      {/* 0. 90-DAY SPECIALIZED TECHNICAL CURRICULA INSPECTOR */}
+      {cmsTab === "curriculum-90days" && (
+        <div className="space-y-6">
+          {/* Track Selector Bar */}
+          <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <span className="text-xs font-semibold text-foreground flex items-center gap-2">
+                <Layers className="size-4 text-primary" />
+                Select Specialized Technical Track (6 Authoritative Courses × 90 Days)
+              </span>
+              <span className="text-xs font-mono text-muted-foreground">
+                Showing {allCurriculumLessons.length} Unique Lessons
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+              {TRACKS.map((t) => {
+                const isSelected = t.id === curriculumTrackId;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setCurriculumTrackId(t.id);
+                      setCurriculumDayNum(1);
+                    }}
+                    className={cn(
+                      "flex flex-col p-3 rounded-xl border text-left transition-all",
+                      isSelected
+                        ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary"
+                        : "border-border bg-card hover:bg-muted/50 hover:border-primary/40",
+                    )}
+                  >
+                    <span className="text-xs font-bold text-foreground">{t.name}</span>
+                    <span className="text-[10px] text-muted-foreground mt-0.5">{t.tagline}</span>
+                    <span className="text-[10px] font-mono text-primary font-semibold mt-2">
+                      90 Days • 6 Phases
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Phase Filter & Day Selector */}
+          <div className="rounded-xl border border-border bg-card p-4 shadow-xs space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+              <span className="text-xs font-semibold text-foreground flex items-center gap-2">
+                <Calendar className="size-4 text-primary" />
+                Filter by Phase or Jump to Day:
+              </span>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  onClick={() => setCurriculumPhaseFilter("all")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-xs font-medium transition-all",
+                    curriculumPhaseFilter === "all"
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  All 90 Days
+                </button>
+                {[1, 2, 3, 4, 5, 6].map((pNum) => {
+                  const pRange = PHASE_RANGES[pNum as 1 | 2 | 3 | 4 | 5 | 6];
+                  return (
+                    <button
+                      key={pNum}
+                      onClick={() => {
+                        setCurriculumPhaseFilter(pNum);
+                        setCurriculumDayNum(pRange.start);
+                      }}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-xs font-medium transition-all",
+                        curriculumPhaseFilter === pNum
+                          ? "bg-primary text-primary-foreground font-semibold"
+                          : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      P{pNum}: {PHASE_NAMES[pNum as 1 | 2 | 3 | 4 | 5 | 6].split(" ")[0]} ({pRange.start}–{pRange.end})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Day Number Pills */}
+            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1">
+              {allCurriculumLessons
+                .filter((l) =>
+                  curriculumPhaseFilter === "all" ? true : l.phase === curriculumPhaseFilter,
+                )
+                .map((lesson) => {
+                  const isCurrent = lesson.day === curriculumDayNum;
+                  return (
+                    <button
+                      key={lesson.day}
+                      onClick={() => setCurriculumDayNum(lesson.day)}
+                      title={`Day ${lesson.day}: ${lesson.title}`}
+                      className={cn(
+                        "size-8 rounded-lg text-xs font-mono font-medium transition-all flex items-center justify-center shrink-0",
+                        isCurrent
+                          ? "bg-primary text-primary-foreground font-bold shadow-xs scale-105"
+                          : lesson.day >= 76
+                          ? "bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/30 hover:bg-purple-500/20"
+                          : "bg-muted/40 hover:bg-muted text-foreground border border-border/60",
+                      )}
+                    >
+                      {lesson.day}
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+
+          {/* Active Lesson Inspector Panel */}
+          {activeCurriculumLesson && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Main Column: Lesson Details & Pipeline */}
+              <div className="lg:col-span-2 space-y-6">
+                <Panel className="p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-border">
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary uppercase">
+                        Phase {activeCurriculumLesson.phase}: {activeCurriculumLesson.phaseName}
+                      </span>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        Day {activeCurriculumLesson.day} of 90
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono px-2.5 py-0.5 rounded-md bg-muted text-muted-foreground capitalize">
+                        {activeCurriculumLesson.difficulty}
+                      </span>
+                      <span className="text-xs font-mono px-2.5 py-0.5 rounded-md bg-muted text-muted-foreground">
+                        ⏱ {activeCurriculumLesson.estimatedMinutes} mins
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    <h2 className="text-xl font-bold tracking-tight text-foreground">
+                      Day {activeCurriculumLesson.day}: {activeCurriculumLesson.title}
+                    </h2>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {activeCurriculumLesson.description}
+                    </p>
+                  </div>
+
+                  {/* Learning Objectives */}
+                  <div className="mt-6 pt-4 border-t border-border space-y-2.5">
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                      <CheckCircle2 className="size-3.5 text-primary" />
+                      Domain Learning Objectives
+                    </h4>
+                    <ul className="space-y-1.5 text-xs text-muted-foreground">
+                      {activeCurriculumLesson.learningObjectives.map((obj, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className="text-primary font-mono shrink-0">#{idx + 1}</span>
+                          <span>{obj}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* 4-Node Architecture Pipeline */}
+                  <div className="mt-6 pt-4 border-t border-border space-y-3">
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                      <Cpu className="size-3.5 text-primary" />
+                      Architecture &amp; Dataflow Pipeline (4 Stages)
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                      {activeCurriculumLesson.animationPipeline.nodes.map((node, idx) => (
+                        <div
+                          key={node.id}
+                          className="p-3 rounded-xl bg-muted/40 border border-border/60 flex flex-col justify-between gap-1"
+                        >
+                          <span className="text-[10px] font-mono text-primary uppercase font-semibold">
+                            Stage {idx + 1} • {node.role}
+                          </span>
+                          <span className="text-xs font-bold text-foreground line-clamp-2">
+                            {node.label}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground line-clamp-2">
+                            {node.sublabel}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Real World Industry Scenario */}
+                  <div className="mt-6 pt-4 border-t border-border space-y-2">
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                      <Globe className="size-3.5 text-emerald-500" />
+                      Real-World Enterprise Application
+                    </h4>
+                    <div className="p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-xs space-y-1">
+                      <p className="font-semibold text-foreground">
+                        {activeCurriculumLesson.realWorldExample.application} (
+                        {activeCurriculumLesson.realWorldExample.industry})
+                      </p>
+                      <p className="text-muted-foreground">
+                        {activeCurriculumLesson.realWorldExample.scenario}
+                      </p>
+                    </div>
+                  </div>
+                </Panel>
+
+                {/* Capstone Milestone (Phase 6 only) */}
+                {activeCurriculumLesson.projectConfig && (
+                  <Panel className="p-6 border-purple-500/30 bg-purple-500/5">
+                    <div className="flex items-center gap-2 pb-3 border-b border-purple-500/20">
+                      <Award className="size-4 text-purple-600 dark:text-purple-400" />
+                      <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">
+                        Phase 6 Capstone Project Milestone Deliverable
+                      </h3>
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                      <div>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          Project System:
+                        </span>
+                        <h4 className="text-base font-bold text-foreground">
+                          {activeCurriculumLesson.projectConfig.projectTitle}
+                        </h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {activeCurriculumLesson.projectConfig.overview}
+                        </p>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-background border border-border space-y-2">
+                        <span className="text-xs font-bold text-primary">
+                          Today's Milestone Deliverable:
+                        </span>
+                        <p className="text-xs text-foreground font-medium">
+                          {activeCurriculumLesson.projectConfig.milestone.deliverable}
+                        </p>
+                        <div className="pt-2 border-t border-border/50">
+                          <span className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                            Acceptance Criteria:
+                          </span>
+                          <ul className="space-y-1 text-xs text-muted-foreground">
+                            {activeCurriculumLesson.projectConfig.milestone.acceptanceCriteria.map(
+                              (crit, idx) => (
+                                <li key={idx} className="flex items-start gap-1.5">
+                                  <Check className="size-3 text-emerald-500 shrink-0 mt-0.5" />
+                                  <span>{crit}</span>
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </Panel>
+                )}
+              </div>
+
+              {/* Sidebar Column: Mini-Game & Knowledge Check */}
+              <div className="space-y-6">
+                {/* Mini-Game Preview Card */}
+                {activeCurriculumLesson.miniGame && (
+                  <Panel className="p-5">
+                    <div className="flex items-center justify-between pb-3 border-b border-border">
+                      <div className="flex items-center gap-2">
+                        <Gamepad2 className="size-4 text-primary" />
+                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">
+                          Course Mini-Game
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">
+                        +{activeCurriculumLesson.miniGame.perfectXpBonus} Perfect XP
+                      </span>
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      <span className="text-[11px] font-mono text-primary uppercase font-semibold">
+                        Game Engine: {activeCurriculumLesson.miniGame.gameType}
+                      </span>
+                      <h5 className="text-sm font-bold text-foreground">
+                        {activeCurriculumLesson.miniGame.title}
+                      </h5>
+                      <p className="text-xs text-muted-foreground">
+                        {activeCurriculumLesson.miniGame.instruction}
+                      </p>
+
+                      <div className="grid grid-cols-2 gap-2 pt-2 text-xs font-mono">
+                        <div className="p-2 rounded-lg bg-muted/40 border border-border/60 text-center">
+                          <span className="text-[10px] text-muted-foreground">Time Limit</span>
+                          <p className="font-bold text-foreground">
+                            {activeCurriculumLesson.miniGame.timeLimitSeconds}s
+                          </p>
+                        </div>
+                        <div className="p-2 rounded-lg bg-muted/40 border border-border/60 text-center">
+                          <span className="text-[10px] text-muted-foreground">Difficulty</span>
+                          <p className="font-bold text-amber-500">
+                            {"★".repeat(activeCurriculumLesson.miniGame.difficulty)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </Panel>
+                )}
+
+                {/* Knowledge Check MCQ Card */}
+                <Panel className="p-5">
+                  <div className="flex items-center gap-2 pb-3 border-b border-border">
+                    <ShieldCheck className="size-4 text-primary" />
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">
+                      Knowledge Check MCQ
+                    </h4>
+                  </div>
+
+                  <div className="mt-3 space-y-3">
+                    <p className="text-xs font-bold text-foreground leading-snug">
+                      {activeCurriculumLesson.knowledgeCheck.question}
+                    </p>
+
+                    <div className="space-y-1.5">
+                      {activeCurriculumLesson.knowledgeCheck.options.map((opt, idx) => (
+                        <div
+                          key={idx}
+                          className={cn(
+                            "p-2.5 rounded-lg text-xs border flex items-start gap-2",
+                            opt.isCorrect
+                              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-200 font-medium"
+                              : "bg-muted/30 border-border/40 text-muted-foreground",
+                          )}
+                        >
+                          <span className="font-mono font-bold mt-0.5">
+                            {String.fromCharCode(65 + idx)}.
+                          </span>
+                          <span className="flex-1">{opt.text}</span>
+                          {opt.isCorrect && (
+                            <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-muted/40 border border-border/60 text-xs text-muted-foreground">
+                      <span className="font-semibold text-foreground block mb-0.5">
+                        Answer Rationale:
+                      </span>
+                      {activeCurriculumLesson.knowledgeCheck.options.find((o) => o.isCorrect)
+                        ?.explanation || "Authoritative domain verification."}
+                    </div>
+                  </div>
+                </Panel>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 1. PLACEMENT ACCELERATOR CMS */}
       {cmsTab === "placement-accelerator" && (

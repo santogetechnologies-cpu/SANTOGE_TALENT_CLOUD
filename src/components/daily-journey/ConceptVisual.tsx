@@ -2,6 +2,8 @@ import { useState, useRef } from "react";
 import { ArrowRight, Workflow, CheckCircle2, Sparkles, Layers, Info, Cpu, Database, Server, ShieldCheck, Activity, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/app-store";
+import { getLessonForDay } from "@/lib/course-curricula";
+import type { TrackId } from "@/lib/tracks";
 
 interface ConceptVisualProps {
   dayNum?: number;
@@ -42,8 +44,23 @@ export function ConceptVisual({ dayNum = 1, trackId, trackName, topic, onNext }:
     onNext();
   };
 
-  // Generate visual pipeline based on track family
+  // Generate visual pipeline based on track family or specific lesson curriculum
   const getPipeline = (): { family: string; nodes: NodeData[] } => {
+    const lesson = getLessonForDay(trackId as TrackId, dayNum);
+    if (lesson?.animationPipeline?.nodes && lesson.animationPipeline.nodes.length >= 4) {
+      const iconList = [Cpu, Server, Database, ShieldCheck];
+      return {
+        family: `${trackName} • ${lesson.phaseName}`,
+        nodes: lesson.animationPipeline.nodes.slice(0, 4).map((node, idx) => ({
+          id: node.id,
+          label: `${idx + 1}. ${node.label}`,
+          sublabel: node.sublabel || node.role,
+          icon: iconList[idx] ?? Cpu,
+          role: `${node.label} (${node.sublabel}): ${node.role || "Processes and validates domain transactions under strict system constraints."}`,
+        })),
+      };
+    }
+
     if (trackId === "sap" || trackId === "hr" || trackId === "marketing") {
       return {
         family: "Enterprise Business Process Pipeline",

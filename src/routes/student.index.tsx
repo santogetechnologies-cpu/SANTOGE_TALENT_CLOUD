@@ -14,6 +14,7 @@ import {
 import { DailyHomeScreen } from "@/components/daily-journey/DailyHomeScreen";
 import { DailyJourneyRunner } from "@/components/daily-journey/DailyJourneyRunner";
 import type { JourneyStepId } from "@/components/daily-journey/JourneyProgressBar";
+import { getLessonForDay } from "@/lib/course-curricula";
 
 export const Route = createFileRoute("/student/")({
   head: () => ({
@@ -22,27 +23,22 @@ export const Route = createFileRoute("/student/")({
       {
         name: "description",
         content:
-          "Unified 20-minute daily learning journey: 10-minute Technical Skill Lab and 10-minute Placement Accelerator drill.",
+          "Authoritative 90-Day Technical Mastery and synchronized Placement Accelerator for career readiness.",
       },
       { property: "og:title", content: "Today's Learning — SantoGe Talent Cloud" },
       {
         property: "og:description",
         content:
-          "20-minute daily routine combining technical mastery and placement readiness.",
+          "90-Day specialized technical curriculum and daily placement readiness journey.",
       },
     ],
   }),
   component: TodayLearningPage,
 });
 
-
-
 function TodayLearningPage() {
   const store = useAppStore();
   const queryClient = useQueryClient();
-
-  const [isJourneyActive, setIsJourneyActive] = useState(false);
-  const [targetStep, setTargetStep] = useState<JourneyStepId | undefined>(undefined);
 
   // Live Supabase student profile & progress
   const { data: liveProfileData } = useLiveStudentProfile(
@@ -68,7 +64,11 @@ function TodayLearningPage() {
     }
   }, [liveProgressData, syncDailyProgress]);
 
-  const cohortDay = liveProfileData?.profile?.placement_day ?? store.placementDay ?? 1;
+  // Synchronized cohort placement day (always >= 1)
+  const cohortDay = Math.max(
+    1,
+    liveProfileData?.profile?.placement_day ?? store.placementDay ?? 1,
+  );
 
   const activeTracks: TrackId[] = useMemo(
     () => liveProfileData?.tracks || store.activeTracks,
@@ -87,6 +87,21 @@ function TodayLearningPage() {
     () => liveProgressData?.completedTechDays || store.completedTechDays || [],
     [liveProgressData?.completedTechDays, store.completedTechDays],
   );
+
+  // Highest unlocked technical day
+  const maxCompletedTechDay = useMemo(
+    () => (completedTechDays.length > 0 ? Math.max(...completedTechDays) : 0),
+    [completedTechDays],
+  );
+
+  const currentTechnicalDay = useMemo(
+    () => Math.min(90, maxCompletedTechDay + 1),
+    [maxCompletedTechDay],
+  );
+
+  // Allow student to select a day to view/review (defaults to currentTechnicalDay)
+  const [selectedDayOverride, setSelectedDayOverride] = useState<number | null>(null);
+  const selectedDay = selectedDayOverride ?? currentTechnicalDay;
 
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -118,25 +133,29 @@ function TodayLearningPage() {
     }
   };
 
-  // Today's Syllabus Data
-  const placementPlan: AcceleratorDay = useMemo(
-    () => getAcceleratorDay(cohortDay),
-    [cohortDay],
-  );
-  const weekIdx = Math.floor((cohortDay - 1) / 5);
-  const dayInWeekIdx = (cohortDay - 1) % 5;
+  const weekIdx = Math.floor((selectedDay - 1) / 5);
+  const dayInWeekIdx = (selectedDay - 1) % 5;
   const currentWeekPlan = technicalSyllabus.weeks[weekIdx] || technicalSyllabus.weeks[0]!;
   const currentTechDay = currentWeekPlan.days[dayInWeekIdx] || currentWeekPlan.days[0]!;
 
-  const isTechDone = completedTechDays.includes(cohortDay);
-  const isPlacementDone = attendance.includes(cohortDay);
+  // Journey Runner state
+  const [journeyConfig, setJourneyConfig] = useState<{
+    isActive: boolean;
+    mode: "technical" | "placement" | "all";
+    dayNum: number;
+    initialStep?: JourneyStepId;
+  }>({
+    isActive: false,
+    mode: "technical",
+    dayNum: 1,
+  });
 
   const handleCompleteTechnicalLab = async () => {
     if (!liveStudentId) {
       toast.error("Authentication required to verify technical day");
       return;
     }
-    const res = await store.completeTechDay(cohortDay);
+    const res = await store.completeTechDay(journeyConfig.dayNum);
     if (res?.ok) {
       queryClient.invalidateQueries({
         queryKey: ["live", "student-progress", liveStudentId],
@@ -144,6 +163,11 @@ function TodayLearningPage() {
       queryClient.invalidateQueries({
         queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
       });
+
+      // Automatically advance to the next technical day if completed current day
+      if (journeyConfig.dayNum >= currentTechnicalDay) {
+        setSelectedDayOverride(Math.min(90, journeyConfig.dayNum + 1));
+      }
     }
   };
 
@@ -154,7 +178,7 @@ function TodayLearningPage() {
     }
     const stepRes = await store.completeDailyStep("practice");
     if (!stepRes?.ok) return;
-    const dayRes = await store.completePlacementDay(cohortDay);
+    const dayRes = await store.completePlacementDay(journeyConfig.dayNum);
     if (dayRes?.ok) {
       queryClient.invalidateQueries({
         queryKey: ["live", "student-progress", liveStudentId],
@@ -165,34 +189,65 @@ function TodayLearningPage() {
     }
   };
 
-  const handleStartJourney = (stepId?: JourneyStepId) => {
-    setTargetStep(stepId);
-    setIsJourneyActive(true);
+  const handleStartTechnicalLesson = (stepType?: string) => {
+    let initialStep: JourneyStepId | undefined;
+    if (stepType === "concept-visual" || stepType === "animated-intro") initialStep = "tech-visual";
+    else if (stepType === "mini-game") initialStep = "tech-minigame";
+    else if (stepType === "knowledge-check") initialStep = "tech-check";
+    else if (stepType === "guided-sandbox" || stepType === "practical-challenge") initialStep = "tech-sandbox";
+    else if (stepType === "capstone-project") initialStep = "capstone-project";
+    else if (stepType === "final-assessment") initialStep = "final-assessment";
+    else initialStep = "tech-concept";
+
+    setJourneyConfig({
+      isActive: true,
+      mode: "technical",
+      dayNum: selectedDay,
+      initialStep,
+    });
   };
 
-  if (isJourneyActive) {
+  const handleStartPlacementDrill = (drillType: "english" | "aptitude" | "logic" | "all") => {
+    let initialStep: JourneyStepId = "placement-communication";
+    if (drillType === "aptitude") initialStep = "placement-aptitude";
+    else if (drillType === "logic") initialStep = "placement-logic";
+
+    setJourneyConfig({
+      isActive: true,
+      mode: "placement",
+      dayNum: cohortDay,
+      initialStep,
+    });
+  };
+
+  if (journeyConfig.isActive) {
+    const activeLesson = getLessonForDay(selectedTrackId, journeyConfig.dayNum);
+    const activePlacementPlan: AcceleratorDay = getAcceleratorDay(journeyConfig.dayNum);
+    const isLabDone = completedTechDays.includes(journeyConfig.dayNum);
+    const isPlacementComplete = attendance.includes(journeyConfig.dayNum);
+
     return (
       <DailyJourneyRunner
-        dayNum={cohortDay}
+        dayNum={journeyConfig.dayNum}
         trackId={selectedTrackId}
         trackName={primaryTrack.name}
         trackShort={primaryTrack.short}
         labTitle={primaryTrack.labTitle}
-        techTopic={currentTechDay.topic}
-        techPractice={currentTechDay.practice}
-        weekTheme={currentWeekPlan.theme}
+        techTopic={activeLesson?.title || currentTechDay.topic}
+        techPractice={activeLesson?.description || currentTechDay.practice}
+        weekTheme={activeLesson ? `${activeLesson.phaseName} (Phase ${activeLesson.phase})` : currentWeekPlan.theme}
         workplaceSkill={currentWeekPlan.workplaceSkill}
-        placementPlan={placementPlan}
-        isLabCompleted={isTechDone}
-        isPlacementCompleted={isPlacementDone}
+        placementPlan={activePlacementPlan}
+        isLabCompleted={isLabDone}
+        isPlacementCompleted={isPlacementComplete}
         streak={streak}
         talentScore={talentScore}
-        initialStepOverride={targetStep}
+        initialStepOverride={journeyConfig.initialStep}
+        mode={journeyConfig.mode}
         onCompleteTechnicalLab={handleCompleteTechnicalLab}
         onCompletePlacement={handleCompletePlacement}
         onExit={() => {
-          setIsJourneyActive(false);
-          setTargetStep(undefined);
+          setJourneyConfig((prev) => ({ ...prev, isActive: false }));
         }}
       />
     );
@@ -201,19 +256,19 @@ function TodayLearningPage() {
   return (
     <DailyHomeScreen
       studentName={studentName}
+      selectedDay={selectedDay}
+      currentTechnicalDay={currentTechnicalDay}
       cohortDay={cohortDay}
       primaryTrack={primaryTrack}
-      techTopic={currentTechDay.topic}
-      techPractice={currentTechDay.practice}
-      weekTheme={currentWeekPlan.theme}
-      placementPlan={placementPlan}
-      isTechDone={isTechDone}
-      isPlacementDone={isPlacementDone}
+      completedTechDays={completedTechDays}
+      attendance={attendance}
       streak={streak}
       talentScore={talentScore}
       assignedTracks={activeTracks}
       onSelectTrack={handleSelectTrack}
-      onStartJourney={handleStartJourney}
+      onSelectDay={(day) => setSelectedDayOverride(day)}
+      onStartTechnicalLesson={handleStartTechnicalLesson}
+      onStartPlacementDrill={handleStartPlacementDrill}
     />
   );
 }

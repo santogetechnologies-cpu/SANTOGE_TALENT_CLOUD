@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import { XPReward } from "./XPReward";
 import { useAppStore } from "@/lib/app-store";
 import { getTechnicalCheckQuestion } from "@/lib/data/technical-checks";
+import { getLessonForDay } from "@/lib/course-curricula";
+import type { TrackId } from "@/lib/tracks";
 
 interface KnowledgeCheckProps {
   dayNum?: number;
@@ -57,8 +59,20 @@ export function KnowledgeCheck({
     }
   }, [dayNum, trackId, store]);
 
-  // Generate deterministic contextual question for today's topic & practice
+  // Generate deterministic contextual question from the authoritative 540-lesson curriculum
   const questionData = useMemo(() => {
+    const lesson = getLessonForDay(trackId as TrackId, dayNum);
+    if (lesson?.knowledgeCheck?.options && lesson.knowledgeCheck.options.length > 0) {
+      return {
+        question: lesson.knowledgeCheck.question,
+        options: lesson.knowledgeCheck.options.map((opt) => ({
+          text: opt.text,
+          isCorrect: opt.isCorrect,
+          explanation: opt.explanation || "",
+        })),
+        explanation: lesson.knowledgeCheck.explanation || "",
+      };
+    }
     return getTechnicalCheckQuestion(dayNum, trackId, trackName, topic, practice || topic);
   }, [dayNum, trackId, trackName, topic, practice]);
 
