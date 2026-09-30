@@ -14,6 +14,7 @@ interface GuidedSandboxProps {
   trackName: string;
   labTitle: string;
   isLabCompleted: boolean;
+  mode?: "technical" | "placement" | "all";
   onCompleteLab: () => Promise<void>;
   onNext: () => void;
 }
@@ -26,6 +27,7 @@ export function GuidedSandbox({
   trackName,
   labTitle,
   isLabCompleted,
+  mode = "technical",
   onCompleteLab,
   onNext,
 }: GuidedSandboxProps) {
@@ -112,7 +114,7 @@ export function GuidedSandbox({
 
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-mono text-muted-foreground">
-            Step 4 of 7 · 4 min
+            Step 5 of 5 · 4 min
           </span>
           <button
             onClick={() => setShowTutor(true)}
@@ -235,27 +237,33 @@ export function GuidedSandbox({
       {/* Footer Navigation CTA */}
       <div className="mt-8 flex items-center justify-between border-t border-border/70 pt-6">
         <div className="text-xs text-muted-foreground">
-          {isStepLocked || hasRun
-            ? "Phase 1 Complete! Transitioning to Phase 2: Placement Accelerator."
-            : "Run tests to verify your implementation before proceeding."}
+          {mode === "all"
+            ? (isStepLocked || hasRun
+              ? "Technical Mastery complete! Transitioning to Phase 2: Placement Accelerator."
+              : "Run tests to verify your implementation before proceeding.")
+            : (isStepLocked || hasRun
+              ? "All technical requirements verified for today! Complete your daily mastery."
+              : "Verify your lab code to complete technical learning.")}
         </div>
 
         <button
           onClick={async () => {
             if (!isStepLocked && !isProcessingRef.current) {
               isProcessingRef.current = true;
-              const res = await store.recordDailyStepAction(dayNum, trackId, "tech-sandbox");
-              if (!res?.ok) {
-                isProcessingRef.current = false;
-                return;
+              try {
+                await store.recordDailyStepAction(dayNum, trackId, "tech-sandbox");
+                await onCompleteLab();
+              } catch (err) {
+                console.warn("Non-fatal sandbox lab completion:", err);
               }
-              await onCompleteLab();
             }
             onNext();
           }}
           className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors cursor-pointer"
         >
-          <span>Begin Placement Accelerator (Phase 2)</span>
+          <span>
+            {mode === "all" ? "Begin Placement Accelerator (Phase 2)" : "Complete Today's Technical Mastery"}
+          </span>
           <ArrowRight className="size-4" />
         </button>
       </div>

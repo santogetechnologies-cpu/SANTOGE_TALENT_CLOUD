@@ -30,22 +30,27 @@ export function KnowledgeCheck({
 
   // Retrieve any previously persisted lock & answer record
   const existingRecord = store.getKnowledgeCheck(dayNum, trackId);
+  const isStepAlreadyDone = Boolean(
+    existingRecord?.isLocked ||
+    store.isDailyStepLocked(dayNum, trackId, "tech-check") ||
+    store.profile.completedTechDays?.includes(dayNum)
+  );
 
   const [selectedOption, setSelectedOption] = useState<number | null>(() => {
     return existingRecord ? existingRecord.selectedOption : null;
   });
   const [hasSubmitted, setHasSubmitted] = useState<boolean>(() => {
-    return existingRecord ? existingRecord.isLocked : false;
+    return isStepAlreadyDone;
   });
   const [isLocked, setIsLocked] = useState<boolean>(() => {
-    return existingRecord ? existingRecord.isLocked : false;
+    return isStepAlreadyDone;
   });
   const [xpAwarded, setXpAwarded] = useState<boolean>(() => {
     return existingRecord ? existingRecord.xpAwarded : false;
   });
 
   // Ref for synchronous atomic lock against rapid concurrent clicks
-  const isProcessingRef = useRef<boolean>(existingRecord ? existingRecord.isLocked : false);
+  const isProcessingRef = useRef<boolean>(isStepAlreadyDone);
 
   // Sync if stored record changes or hydrates
   useEffect(() => {
@@ -61,49 +66,53 @@ export function KnowledgeCheck({
 
   // Generate deterministic contextual question from the authoritative 540-lesson curriculum
   const questionData = useMemo(() => {
-    const lesson = getLessonForDay(trackId as TrackId, dayNum);
-    if (lesson?.knowledgeCheck?.options && lesson.knowledgeCheck.options.length > 0) {
-      return {
-        question: lesson.knowledgeCheck.question,
-        options: lesson.knowledgeCheck.options.map((opt) => ({
+    try {
+      const lesson = getLessonForDay(trackId as TrackId, dayNum);
+      if (lesson?.knowledgeCheck?.options && lesson.knowledgeCheck.options.length > 0) {
+        const rawOptions = lesson.knowledgeCheck.options.map((opt) => ({
           text: opt.text,
-          isCorrect: opt.isCorrect,
+          isCorrect: Boolean(opt.isCorrect),
           explanation: opt.explanation || "",
-        })),
-        explanation: lesson.knowledgeCheck.explanation || "",
-      };
+        }));
+        // Deterministic rotation based on dayNum so Option A is not the only correct option
+        const shift = dayNum % rawOptions.length;
+        const rotated = [...rawOptions.slice(shift), ...rawOptions.slice(0, shift)];
+        return {
+          question: lesson.knowledgeCheck.question,
+          options: rotated,
+          explanation: lesson.knowledgeCheck.explanation || "",
+        };
+      }
+    } catch (err) {
+      console.warn("Curriculum knowledge check fallback:", err);
     }
     return getTechnicalCheckQuestion(dayNum, trackId, trackName, topic, practice || topic);
   }, [dayNum, trackId, trackName, topic, practice]);
 
   const handleSelect = async (idx: number) => {
-    // 10. Prevent race conditions: rapid clicks only accept the FIRST selected answer
     if (isLocked || isProcessingRef.current) {
       return;
     }
-    isProcessingRef.current = true;
 
     const opt = questionData.options[idx];
     const isCorrectChoice = Boolean(opt?.isCorrect);
 
-    // 2. Immediately record selected answer, lock question, and disable options
     setSelectedOption(idx);
     setHasSubmitted(true);
-    setIsLocked(true);
 
-    // 8 & 9 & 11. Persist to app/backend state and enforce one-attempt & single XP award
-    const res = await store.recordKnowledgeCheck(dayNum, trackId, topic, idx, isCorrectChoice);
-
-    if (!res?.ok) {
-      setIsLocked(false);
-      setHasSubmitted(false);
-      isProcessingRef.current = false;
-      return;
+    if (isCorrectChoice) {
+      setIsLocked(true);
+      isProcessingRef.current = true;
     }
 
-    if (isCorrectChoice && res.xpAwarded && !xpAwarded) {
-      setXpAwarded(true);
-      onSuccess(15);
+    try {
+      const res = await store.recordKnowledgeCheck(dayNum, trackId, topic, idx, isCorrectChoice);
+      if (isCorrectChoice && res?.xpAwarded && !xpAwarded) {
+        setXpAwarded(true);
+        onSuccess(15);
+      }
+    } catch (err) {
+      console.warn("Non-fatal knowledge check persistence warning:", err);
     }
   };
 
@@ -125,7 +134,7 @@ export function KnowledgeCheck({
 
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-mono text-muted-foreground">
-            Step 3 of 7 · 2 min
+            Step 4 of 5 · 2 min
           </span>
           {xpAwarded && <XPReward amount={15} />}
         </div>
@@ -219,17 +228,33 @@ export function KnowledgeCheck({
       {/* Footer Navigation CTA */}
       <div className="mt-8 flex items-center justify-between border-t border-border/70 pt-6">
         <span className="text-xs text-muted-foreground">
-          {isCorrect ? "Ready for hands-on application in the sandbox." : "Select an option to proceed."}
+          {hasSubmitted
+            ? isCorrect
+              ? "Verified understanding! Ready for hands-on application in the sandbox."
+              : "Option reviewed. You can select another option or proceed to the sandbox."
+            : "Select an option to test your understanding."}
         </span>
 
-        <button
-          onClick={onNext}
-          disabled={!hasSubmitted}
-          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-40 transition-colors cursor-pointer"
-        >
-          <span>Continue to Guided Sandbox</span>
-          <ArrowRight className="size-4" />
-        </button>
+        <div className="flex items-center gap-3">
+          {!hasSubmitted && (
+            <button
+              type="button"
+              onClick={onNext}
+              className="text-xs text-muted-foreground hover:text-foreground underline transition-colors cursor-pointer"
+            >
+              Skip to Sandbox →
+            </button>
+          )}
+
+          <button
+            onClick={onNext}
+            disabled={!hasSubmitted}
+            className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-40 transition-colors cursor-pointer"
+          >
+            <span>Continue to Guided Sandbox</span>
+            <ArrowRight className="size-4" />
+          </button>
+        </div>
       </div>
     </div>
   );

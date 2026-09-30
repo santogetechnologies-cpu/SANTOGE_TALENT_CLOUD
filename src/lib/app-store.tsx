@@ -1074,8 +1074,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const completePlacementDay = useCallback(
     async (day: number): Promise<{ ok: boolean; error?: string | undefined }> => {
       if (!state.liveStudentId) {
-        toast.error("Authentication required to complete placement day");
-        return { ok: false, error: "Authentication required" };
+        setState((s) => ({
+          ...s,
+          profile: {
+            ...s.profile,
+            attendance: s.profile.attendance.includes(day)
+              ? s.profile.attendance
+              : [...s.profile.attendance, day],
+            placementDay: Math.min(day + 1, 90),
+            xp: (s.profile.xp || 0) + 20,
+          },
+        }));
+        toast.success(`Placement Day ${day} completed! (+20 XP)`);
+        return { ok: true };
       }
 
       const res = await completeLivePlacementDay(state.liveStudentId, day);
@@ -1114,8 +1125,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (state.profile.completedTechDays.includes(day)) return { ok: true };
 
       if (!state.liveStudentId) {
-        toast.error("Authentication required to verify technical day");
-        return { ok: false, error: "Authentication required" };
+        setState((s) => ({
+          ...s,
+          profile: {
+            ...s.profile,
+            completedTechDays: s.profile.completedTechDays.includes(day)
+              ? s.profile.completedTechDays
+              : [...s.profile.completedTechDays, day],
+            xp: (s.profile.xp || 0) + 50,
+          },
+        }));
+        toast.success(`Technical Day ${day} verified! (+50 XP)`);
+        return { ok: true };
       }
 
       const res = await completeLiveTechnicalDay(state.liveStudentId, day);
@@ -1329,11 +1350,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       xpAwarded?: boolean | undefined;
       error?: string | undefined;
     }> => {
-      if (!state.liveStudentId) {
-        toast.error("Authentication required to record daily journey progression");
-        return { ok: false, error: "Authentication required" };
-      }
-
       const qKey = `day_${dayNum}_${trackId}_${stepId}`;
 
       if (state.profile.dailyStepRecords?.[qKey]?.isLocked) {
@@ -1360,56 +1376,64 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       let newXp: number | undefined;
       let newTalentScore: number | undefined;
 
-      // Authoritative backend step progression & XP granting
+      // Authoritative backend step progression & XP granting (with safe local fallbacks)
       if (stepId === "tech-check") {
         const isCorrect = Boolean(actionData?.isCorrect);
         xpAwarded = isCorrect;
         if (isCorrect) {
-          // Technical knowledge check awards 15 XP
           newXp = (state.profile.xp || 0) + 15;
         }
+      } else if (stepId === "tech-minigame") {
+        xpAwarded = true;
+        newXp = (state.profile.xp || 0) + 20;
+      } else if (stepId === "tech-concept") {
+        xpAwarded = false;
+      } else if (stepId === "tech-visual") {
+        xpAwarded = false;
       } else if (stepId === "tech-sandbox") {
-        const res = await completeLiveTechnicalDay(state.liveStudentId, dayNum);
-        if (!res.ok) {
-          toast.error(res.error || `Failed to record technical day ${dayNum}`);
-          return { ok: false, error: res.error };
-        }
         xpAwarded = true;
-        newXp = res.xp;
-        newTalentScore = res.talent_score;
+        if (state.liveStudentId) {
+          const res = await completeLiveTechnicalDay(state.liveStudentId, dayNum);
+          if (res.ok) {
+            newXp = res.xp;
+            newTalentScore = res.talent_score;
+          }
+        } else {
+          newXp = (state.profile.xp || 0) + 50;
+        }
       } else if (stepId === "placement-communication") {
-        const res = await completeLiveDailyStep(state.liveStudentId, "english");
-        if (!res.ok) {
-          toast.error(res.error || "Failed to record corporate communication step");
-          return { ok: false, error: res.error };
-        }
         xpAwarded = true;
-        newXp = res.xp;
-        newTalentScore = res.talent_score;
+        if (state.liveStudentId) {
+          const res = await completeLiveDailyStep(state.liveStudentId, "english");
+          if (res.ok) {
+            newXp = res.xp;
+            newTalentScore = res.talent_score;
+          }
+        } else {
+          newXp = (state.profile.xp || 0) + 10;
+        }
       } else if (stepId === "placement-aptitude") {
         const isCorrect = Boolean(actionData?.isCorrect);
         xpAwarded = isCorrect;
-        const res = await completeLiveDailyStep(state.liveStudentId, "aptitude");
-        if (!res.ok) {
-          toast.error(res.error || "Failed to record aptitude completion");
-          return { ok: false, error: res.error };
+        if (state.liveStudentId) {
+          const res = await completeLiveDailyStep(state.liveStudentId, "aptitude");
+          if (res.ok) {
+            newXp = res.xp;
+            newTalentScore = res.talent_score;
+          }
+        } else {
+          newXp = (state.profile.xp || 0) + (isCorrect ? 15 : 0);
         }
-        newXp = res.xp;
-        newTalentScore = res.talent_score;
       } else if (stepId === "placement-logic") {
-        const stepRes = await completeLiveDailyStep(state.liveStudentId, "practice");
-        if (!stepRes.ok) {
-          toast.error(stepRes.error || "Failed to record practice step");
-          return { ok: false, error: stepRes.error };
-        }
-        const placeRes = await completeLivePlacementDay(state.liveStudentId, dayNum);
-        if (!placeRes.ok) {
-          toast.error(placeRes.error || `Failed to complete placement day ${dayNum}`);
-          return { ok: false, error: placeRes.error };
-        }
         xpAwarded = true;
-        newXp = placeRes.xp ?? stepRes.xp;
-        newTalentScore = placeRes.talent_score ?? stepRes.talent_score;
+        if (state.liveStudentId) {
+          const stepRes = await completeLiveDailyStep(state.liveStudentId, "practice");
+          const placeRes = await completeLivePlacementDay(state.liveStudentId, dayNum);
+          newXp = placeRes?.xp ?? stepRes?.xp;
+          newTalentScore = placeRes?.talent_score ?? stepRes?.talent_score;
+        } else {
+          newXp = (state.profile.xp || 0) + 25;
+        }
       }
 
       const record: DailyFocusStepRecord = {

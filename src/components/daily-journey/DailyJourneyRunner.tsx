@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { TrackId } from "@/lib/tracks";
 import type { AcceleratorDay } from "@/lib/placement-accelerator-data";
 import {
@@ -37,6 +37,7 @@ interface DailyJourneyRunnerProps {
   talentScore: number;
   initialStepOverride?: JourneyStepId | undefined;
   mode?: "technical" | "placement" | "all";
+  onStepChange?: (step: JourneyStepId) => void;
   onCompleteTechnicalLab: () => Promise<void>;
   onCompletePlacement?: () => Promise<void>;
   onRecordVoicePitch?: () => Promise<void>;
@@ -60,6 +61,7 @@ export function DailyJourneyRunner({
   talentScore,
   initialStepOverride,
   mode = "technical",
+  onStepChange,
   onCompleteTechnicalLab,
   onCompletePlacement,
   onRecordVoicePitch,
@@ -98,45 +100,14 @@ export function DailyJourneyRunner({
         { id: "capstone-project", label: "Capstone Milestone", phase: "tech", duration: "8m" }
       );
     } else {
-      // Dynamic lesson pattern derived from 540-lesson curriculum
-      if (curriculumLesson?.steps && curriculumLesson.steps.length > 0) {
-        curriculumLesson.steps.forEach((s) => {
-          if (s.type === "concept-explanation" || s.type === "reveal-card") {
-            if (!steps.some((x) => x.id === "tech-concept")) {
-              steps.push({ id: "tech-concept", label: s.label, phase: "tech", duration: `${s.durationMinutes}m` });
-            }
-          } else if (s.type === "concept-visual" || s.type === "animated-intro") {
-            if (!steps.some((x) => x.id === "tech-visual")) {
-              steps.push({ id: "tech-visual", label: s.label, phase: "tech", duration: `${s.durationMinutes}m` });
-            }
-          } else if (s.type === "mini-game" && curriculumLesson.miniGame) {
-            if (!steps.some((x) => x.id === "tech-minigame")) {
-              steps.push({ id: "tech-minigame", label: s.label, phase: "tech", duration: `${s.durationMinutes}m` });
-            }
-          } else if (s.type === "knowledge-check") {
-            if (!steps.some((x) => x.id === "tech-check")) {
-              steps.push({ id: "tech-check", label: s.label, phase: "tech", duration: `${s.durationMinutes}m` });
-            }
-          } else if (s.type === "guided-sandbox" || s.type === "practical-challenge") {
-            if (!steps.some((x) => x.id === "tech-sandbox")) {
-              steps.push({ id: "tech-sandbox", label: s.label, phase: "tech", duration: `${s.durationMinutes}m` });
-            }
-          }
-        });
-      }
-
-      // Safe defaults if empty
-      if (steps.length === 0) {
-        steps.push(
-          { id: "tech-concept", label: "Core Concept", phase: "tech", duration: "2m" },
-          { id: "tech-visual", label: "Architecture", phase: "tech", duration: "2m" },
-          { id: "tech-check", label: "Quick Check", phase: "tech", duration: "2m" }
-        );
-        if (curriculumLesson?.miniGame) {
-          steps.push({ id: "tech-minigame", label: "Mini-Game Challenge", phase: "tech", duration: "3m" });
-        }
-        steps.push({ id: "tech-sandbox", label: "Guided Lab", phase: "tech", duration: "4m" });
-      }
+      // 5 Canonical Technical Mastery Steps for Days 1 to 75
+      steps.push(
+        { id: "tech-concept", label: "Core Concept", phase: "tech", duration: "2m" },
+        { id: "tech-visual", label: "Architecture", phase: "tech", duration: "2m" },
+        { id: "tech-minigame", label: curriculumLesson?.miniGame?.title || "Mini-Game Challenge", phase: "tech", duration: "3m" },
+        { id: "tech-check", label: "Knowledge Check", phase: "tech", duration: "2m" },
+        { id: "tech-sandbox", label: "Guided Lab", phase: "tech", duration: "4m" }
+      );
     }
 
     if (mode === "all") {
@@ -176,6 +147,7 @@ export function DailyJourneyRunner({
   }, [dayNum, trackId, isLabCompleted, isPlacementCompleted, store, effectiveSteps, initialStepOverride, mode]);
 
   const [currentStep, setCurrentStep] = useState<JourneyStepId>(initialStep);
+
   const [sessionXp, setSessionXp] = useState<number>(() => {
     let initialXp = 0;
     if (isLabCompleted && mode !== "placement") initialXp += 50;
@@ -188,29 +160,33 @@ export function DailyJourneyRunner({
   });
 
   const addXp = (amount: number) => {
+    if (!amount || isNaN(amount)) return;
     setSessionXp((prev) => prev + amount);
   };
 
   const handleStepClick = (stepId: JourneyStepId) => {
     setCurrentStep(stepId);
+    if (onStepChange) onStepChange(stepId);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const goToNextStep = async () => {
-    const currentIndex = effectiveSteps.findIndex((s) => s.id === currentStep);
-    if (currentIndex >= 0 && currentIndex < effectiveSteps.length - 1) {
-      const next = effectiveSteps[currentIndex + 1]!;
-      setCurrentStep(next.id);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      if (mode === "technical" && !isLabCompleted) {
-        await onCompleteTechnicalLab();
-      } else if (mode === "placement" && !isPlacementCompleted) {
-        if (onCompletePlacement) await onCompletePlacement();
+  const goToNextStep = () => {
+    setCurrentStep((prevStep) => {
+      const currentIndex = effectiveSteps.findIndex((s) => s.id === prevStep);
+      let nextStepId: JourneyStepId = "complete";
+      if (currentIndex >= 0 && currentIndex < effectiveSteps.length - 1) {
+        nextStepId = effectiveSteps[currentIndex + 1]!.id;
+      } else {
+        if (mode === "technical" && !isLabCompleted) {
+          void onCompleteTechnicalLab();
+        } else if (mode === "placement" && !isPlacementCompleted) {
+          if (onCompletePlacement) void onCompletePlacement();
+        }
       }
-      setCurrentStep("complete");
+      if (onStepChange) onStepChange(nextStepId);
       window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+      return nextStepId;
+    });
   };
 
   return (
@@ -251,6 +227,35 @@ export function DailyJourneyRunner({
           />
         )}
 
+        {currentStep === "tech-minigame" && (
+          curriculumLesson?.miniGame ? (
+            <MiniGame
+              game={curriculumLesson.miniGame}
+              onComplete={async (score, perfect) => {
+                addXp(score);
+                goToNextStep();
+                try {
+                  await store.recordDailyStepAction(dayNum, trackId, "tech-minigame");
+                } catch (err) {
+                  console.warn("Non-fatal minigame record error:", err);
+                }
+              }}
+              onSkip={() => goToNextStep()}
+            />
+          ) : (
+            <div className="journey-card mx-auto max-w-xl p-8 text-center space-y-4 phase-enter">
+              <h3 className="text-xl font-bold text-foreground">Interactive Challenge</h3>
+              <p className="text-xs text-muted-foreground">Ready to test your comprehension with the knowledge check.</p>
+              <button
+                onClick={() => goToNextStep()}
+                className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all cursor-pointer"
+              >
+                Continue to Knowledge Check →
+              </button>
+            </div>
+          )
+        )}
+
         {currentStep === "tech-check" && (
           <KnowledgeCheck
             dayNum={dayNum}
@@ -260,18 +265,6 @@ export function DailyJourneyRunner({
             trackName={trackName}
             onSuccess={(bonus) => addXp(bonus)}
             onNext={goToNextStep}
-          />
-        )}
-
-        {currentStep === "tech-minigame" && curriculumLesson?.miniGame && (
-          <MiniGame
-            game={curriculumLesson.miniGame}
-            onComplete={async (score, perfect) => {
-              addXp(score);
-              await store.recordDailyStepAction(dayNum, trackId, "tech-minigame");
-              goToNextStep();
-            }}
-            onSkip={() => goToNextStep()}
           />
         )}
 
@@ -313,8 +306,13 @@ export function DailyJourneyRunner({
             trackName={trackName}
             labTitle={labTitle}
             isLabCompleted={isLabCompleted}
+            mode={mode}
             onCompleteLab={async () => {
-              await onCompleteTechnicalLab();
+              try {
+                await onCompleteTechnicalLab();
+              } catch (err) {
+                console.warn("Non-fatal technical lab completion error:", err);
+              }
               addXp(50);
             }}
             onNext={goToNextStep}

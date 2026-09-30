@@ -46,8 +46,10 @@ export function MiniGame({ game, onComplete, onSkip }: MiniGameProps) {
     setIsTimerRunning(false);
     setIsCompleted(true);
     const perfect = finalMistakes === 0;
-    const timeBonus = Math.round((timeLeft / game.timeLimitSeconds) * 20);
-    const finalScore = Math.max(50, 100 - finalMistakes * 15 + timeBonus + (perfect ? game.perfectXpBonus : 0));
+    const timeLimit = game.timeLimitSeconds && game.timeLimitSeconds > 0 ? game.timeLimitSeconds : 120;
+    const timeBonus = Math.round((Math.max(0, timeLeft) / timeLimit) * 20) || 0;
+    const perfectBonus = perfect ? (game.perfectXpBonus || 10) : 0;
+    const finalScore = Math.max(50, Math.round(100 - (finalMistakes || 0) * 15 + timeBonus + perfectBonus)) || 75;
     setScore(finalScore);
   };
 

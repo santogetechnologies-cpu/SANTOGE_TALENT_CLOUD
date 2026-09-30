@@ -151,18 +151,16 @@ function TodayLearningPage() {
   });
 
   const handleCompleteTechnicalLab = async () => {
-    if (!liveStudentId) {
-      toast.error("Authentication required to verify technical day");
-      return;
-    }
     const res = await store.completeTechDay(journeyConfig.dayNum);
     if (res?.ok) {
-      queryClient.invalidateQueries({
-        queryKey: ["live", "student-progress", liveStudentId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
-      });
+      if (liveStudentId) {
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-progress", liveStudentId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+        });
+      }
 
       // Automatically advance to the next technical day if completed current day
       if (journeyConfig.dayNum >= currentTechnicalDay) {
@@ -172,32 +170,45 @@ function TodayLearningPage() {
   };
 
   const handleCompletePlacement = async () => {
-    if (!liveStudentId) {
-      toast.error("Authentication required to complete placement routine");
-      return;
-    }
     const stepRes = await store.completeDailyStep("practice");
-    if (!stepRes?.ok) return;
     const dayRes = await store.completePlacementDay(journeyConfig.dayNum);
     if (dayRes?.ok) {
-      queryClient.invalidateQueries({
-        queryKey: ["live", "student-progress", liveStudentId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
-      });
+      if (liveStudentId) {
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-progress", liveStudentId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
+        });
+      }
     }
   };
 
-  const handleStartTechnicalLesson = (stepType?: string) => {
+  const handleStartTechnicalLesson = (stepTypeOrId?: string) => {
     let initialStep: JourneyStepId | undefined;
-    if (stepType === "concept-visual" || stepType === "animated-intro") initialStep = "tech-visual";
-    else if (stepType === "mini-game") initialStep = "tech-minigame";
-    else if (stepType === "knowledge-check") initialStep = "tech-check";
-    else if (stepType === "guided-sandbox" || stepType === "practical-challenge") initialStep = "tech-sandbox";
-    else if (stepType === "capstone-project") initialStep = "capstone-project";
-    else if (stepType === "final-assessment") initialStep = "final-assessment";
-    else initialStep = "tech-concept";
+    if (
+      stepTypeOrId === "concept-visual" ||
+      stepTypeOrId === "animated-intro" ||
+      stepTypeOrId === "tech-visual"
+    ) {
+      initialStep = "tech-visual";
+    } else if (stepTypeOrId === "mini-game" || stepTypeOrId === "tech-minigame") {
+      initialStep = "tech-minigame";
+    } else if (stepTypeOrId === "knowledge-check" || stepTypeOrId === "tech-check") {
+      initialStep = "tech-check";
+    } else if (
+      stepTypeOrId === "guided-sandbox" ||
+      stepTypeOrId === "practical-challenge" ||
+      stepTypeOrId === "tech-sandbox"
+    ) {
+      initialStep = "tech-sandbox";
+    } else if (stepTypeOrId === "capstone-project") {
+      initialStep = "capstone-project";
+    } else if (stepTypeOrId === "final-assessment") {
+      initialStep = "final-assessment";
+    } else {
+      initialStep = "tech-concept";
+    }
 
     setJourneyConfig({
       isActive: true,
@@ -244,6 +255,9 @@ function TodayLearningPage() {
         talentScore={talentScore}
         initialStepOverride={journeyConfig.initialStep}
         mode={journeyConfig.mode}
+        onStepChange={(step) => {
+          setJourneyConfig((prev) => ({ ...prev, initialStep: step }));
+        }}
         onCompleteTechnicalLab={handleCompleteTechnicalLab}
         onCompletePlacement={handleCompletePlacement}
         onExit={() => {

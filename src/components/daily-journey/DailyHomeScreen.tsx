@@ -137,33 +137,69 @@ export function DailyHomeScreen({
   const isLogicDone = Boolean(store.profile.daily?.practice || isPlacementDone);
 
   // Compute realtime status for each dynamic lesson step
+  // Compute realtime status for each dynamic lesson step (5 canonical technical mastery steps)
   const dynamicSteps = useMemo(() => {
-    if (!curriculumLesson?.steps || curriculumLesson.steps.length === 0) {
-      return [];
-    }
-
     const s1Done = Boolean(store.getDailyStepRecord(selectedDay, primaryTrack.id, "tech-concept")?.isLocked || isDayCompleted);
     const s2Done = Boolean(store.getDailyStepRecord(selectedDay, primaryTrack.id, "tech-visual")?.isLocked || isDayCompleted);
     const s3Done = Boolean(store.getDailyStepRecord(selectedDay, primaryTrack.id, "tech-minigame")?.isLocked || isDayCompleted);
     const s4Done = Boolean(store.getKnowledgeCheck(selectedDay, primaryTrack.id)?.isLocked || store.getDailyStepRecord(selectedDay, primaryTrack.id, "tech-check")?.isLocked || isDayCompleted);
     const s5Done = Boolean(store.getDailyStepRecord(selectedDay, primaryTrack.id, "tech-sandbox")?.isLocked || isDayCompleted);
 
+    const canonicalSteps = [
+      {
+        stepId: "tech-concept" as const,
+        type: "concept-explanation" as const,
+        label: "Core Concept",
+        durationMinutes: 2,
+        xpReward: 15,
+        isDone: s1Done,
+        description: curriculumLesson?.description || "Master foundational architecture and principles",
+      },
+      {
+        stepId: "tech-visual" as const,
+        type: "concept-visual" as const,
+        label: "Architecture",
+        durationMinutes: 2,
+        xpReward: 15,
+        isDone: s2Done,
+        description: "Interactive visual system & pipeline explorer",
+      },
+      {
+        stepId: "tech-minigame" as const,
+        type: "mini-game" as const,
+        label: curriculumLesson?.miniGame?.title || "Mini-Game Challenge",
+        durationMinutes: 3,
+        xpReward: 15,
+        isDone: s3Done,
+        description: curriculumLesson?.miniGame?.instruction || "Hands-on interactive challenge",
+      },
+      {
+        stepId: "tech-check" as const,
+        type: "knowledge-check" as const,
+        label: "Knowledge Check",
+        durationMinutes: 2,
+        xpReward: 15,
+        isDone: s4Done,
+        description: "Verify conceptual mastery before lab execution",
+      },
+      {
+        stepId: "tech-sandbox" as const,
+        type: "guided-sandbox" as const,
+        label: "Guided Lab",
+        durationMinutes: 4,
+        xpReward: 20,
+        isDone: s5Done,
+        description: "Production simulation with terminal execution",
+      },
+    ];
+
     let foundFirstIncomplete = false;
 
-    return curriculumLesson.steps.map((st, idx) => {
-      let isDone = isDayCompleted;
-      if (!isDone) {
-        if (st.type === "concept-explanation" || st.type === "reveal-card") isDone = s1Done;
-        else if (st.type === "concept-visual" || st.type === "animated-intro") isDone = s2Done;
-        else if (st.type === "mini-game") isDone = s3Done;
-        else if (st.type === "knowledge-check") isDone = s4Done;
-        else if (st.type === "guided-sandbox" || st.type === "practical-challenge") isDone = s5Done;
-      }
-
+    return canonicalSteps.map((st, idx) => {
       let status: "completed" | "current" | "pending" | "locked" = "pending";
       if (isDayLocked) {
         status = "locked";
-      } else if (isDone) {
+      } else if (st.isDone) {
         status = "completed";
       } else if (!foundFirstIncomplete) {
         status = "current";
@@ -175,7 +211,6 @@ export function DailyHomeScreen({
       return {
         ...st,
         stepNum: idx + 1,
-        isDone,
         status,
         IconComponent: getStepIcon(st.type),
       };
@@ -485,7 +520,7 @@ export function DailyHomeScreen({
             <button
               onClick={() => {
                 if (isDayLocked) return;
-                onStartTechnicalLesson(activeStep?.type);
+                onStartTechnicalLesson(activeStep ? activeStep.stepId : undefined);
               }}
               disabled={isDayLocked}
               className={cn(
@@ -663,7 +698,7 @@ export function DailyHomeScreen({
                   type="button"
                   onClick={() => {
                     if (isDayLocked) return;
-                    onStartTechnicalLesson(step.type);
+                    onStartTechnicalLesson(step.stepId);
                   }}
                   disabled={isDayLocked}
                   className={cn(
@@ -731,7 +766,7 @@ export function DailyHomeScreen({
                           ? "Pipeline Visualizer & Animation"
                           : step.type === "knowledge-check"
                             ? "Concept Mastery MCQ"
-                            : step.type === "guided-sandbox" || step.type === "practical-challenge"
+                            : step.type === "guided-sandbox"
                               ? "Hands-on Practical Lab"
                               : curriculumLesson?.title || "Core Technical Concept"}
                     </p>

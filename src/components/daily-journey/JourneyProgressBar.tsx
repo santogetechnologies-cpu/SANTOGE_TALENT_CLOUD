@@ -102,16 +102,15 @@ export function JourneyProgressBar({
             return (
               <button
                 key={step.id}
-                disabled={!isPassed && !isCurrent}
                 onClick={() => onStepClick && onStepClick(step.id)}
                 title={`${step.label} (${step.duration})`}
                 className={cn(
-                  "h-1.5 rounded-full transition-all duration-300",
+                  "h-1.5 rounded-full transition-all duration-300 cursor-pointer",
                   isCurrent
                     ? "w-7 bg-primary"
                     : isPassed
                       ? "w-3 bg-emerald-500 hover:opacity-80"
-                      : "w-2 bg-muted/70",
+                      : "w-2 bg-muted/70 hover:bg-primary/50",
                   step.phase === "placement" && idx >= 4 && "ml-1.5",
                 )}
               />

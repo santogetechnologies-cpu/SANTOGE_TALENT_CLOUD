@@ -39,11 +39,10 @@ export function RevealCard({
     if (!isLocked && !isProcessingRef.current) {
       isProcessingRef.current = true;
       setIsLocked(true);
-      const res = await store.recordDailyStepAction(dayNum, trackId, "tech-concept");
-      if (!res?.ok) {
-        setIsLocked(false);
-        isProcessingRef.current = false;
-        return;
+      try {
+        await store.recordDailyStepAction(dayNum, trackId, "tech-concept");
+      } catch (err) {
+        console.warn("Non-fatal step record error:", err);
       }
     }
     onNext();
@@ -73,7 +72,7 @@ export function RevealCard({
 
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-mono text-muted-foreground">
-            Step 1 of 7 · 2 min
+            Step 1 of 5 · 2 min
           </span>
           <button
             onClick={() => setShowTutor(true)}
