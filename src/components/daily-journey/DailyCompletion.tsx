@@ -35,16 +35,20 @@ export function DailyCompletion({
           <Trophy className="size-8 text-emerald-600 dark:text-emerald-400" />
         </div>
 
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="size-3.5" />
-            <span>Daily 20-Minute Routine Completed</span>
+            <span>🎉 Today’s Lesson Complete!</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Day {dayNum} Mastery Achieved!
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+            Day {dayNum} Mastery Achieved
           </h1>
+          <div className="rounded-xl border border-border bg-muted/30 p-3 max-w-lg mx-auto">
+            <span className="text-xs text-muted-foreground font-medium">You completed:</span>
+            <p className="text-sm font-bold text-foreground mt-0.5">{topic}</p>
+          </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
-            You have satisfied the dual requirement: Technical Skill Sandbox validation and Placement Accelerator attendance.
+            Today's technical learning is complete. Your progress and +{sessionXp} XP have been saved.
           </p>
         </div>
       </div>
@@ -55,7 +59,7 @@ export function DailyCompletion({
           <span className="text-[11px] text-muted-foreground">Session Rewards</span>
           <div className="flex items-center gap-1.5 font-mono text-xl font-bold text-primary">
             <Zap className="size-4 fill-primary" />
-            +{sessionXp} XP
+            +{sessionXp} XP Earned
           </div>
           <p className="text-[10px] text-muted-foreground">Credited to profile</p>
         </div>
@@ -141,9 +145,9 @@ export function DailyCompletion({
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
         <button
           onClick={onDone}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors cursor-pointer"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-primary px-7 py-3 text-sm font-bold text-primary-foreground shadow-sm hover:bg-primary/90 transition-all cursor-pointer hover:scale-[1.01]"
         >
-          <span>Return to Today's Dashboard</span>
+          <span>Back to Today</span>
           <ArrowRight className="size-4" />
         </button>
 

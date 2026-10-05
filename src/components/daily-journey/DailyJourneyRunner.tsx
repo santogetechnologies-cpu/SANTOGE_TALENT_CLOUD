@@ -202,6 +202,7 @@ export function DailyJourneyRunner({
         currentStep={currentStep}
         dayNum={dayNum}
         sessionXp={sessionXp}
+        trackName={trackName}
         steps={effectiveSteps}
         onExit={onExit}
         onStepClick={handleStepClick}

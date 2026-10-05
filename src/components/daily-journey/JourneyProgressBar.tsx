@@ -36,6 +36,7 @@ interface JourneyProgressBarProps {
   currentStep: JourneyStepId;
   dayNum: number;
   sessionXp: number;
+  trackName?: string;
   steps?: JourneyStepMeta[] | undefined;
   onExit: () => void;
   onStepClick?: (stepId: JourneyStepId) => void;
@@ -45,6 +46,7 @@ export function JourneyProgressBar({
   currentStep,
   dayNum,
   sessionXp,
+  trackName,
   steps,
   onExit,
   onStepClick,
@@ -53,81 +55,85 @@ export function JourneyProgressBar({
   const currentIndex = effectiveSteps.findIndex((s) => s.id === currentStep);
   const isComplete = currentStep === "complete";
   const activeStep: JourneyStepMeta = isComplete
-    ? { id: "complete" as const, label: "Day Complete", phase: "complete" as const, duration: "Done" }
+    ? { id: "complete" as const, label: "Lesson Complete", phase: "complete" as const, duration: "Done" }
     : (effectiveSteps[currentIndex] ?? effectiveSteps[0]!);
 
-  const currentPhase = isComplete
-    ? "Day Completed"
-    : activeStep.phase === "tech"
-      ? "Phase 1: Technical Mastery"
-      : "Phase 2: Placement Accelerator";
-
-  // Calculate remaining estimated minutes
-  const remainingSteps = isComplete ? 0 : effectiveSteps.length - currentIndex;
-  const remainingMinutes = isComplete
-    ? 0
-    : effectiveSteps.slice(currentIndex).reduce((acc, s) => acc + (parseInt(s.duration) || 2), 0);
+  const progressPercent = isComplete
+    ? 100
+    : Math.round(((currentIndex + 1) / effectiveSteps.length) * 100);
 
   return (
-    <header className="sticky top-0 z-30 mb-6 border-b border-border/60 bg-background/95 backdrop-blur-md transition-all">
+    <header className="sticky top-0 z-30 mb-6 border-b border-border/70 bg-background/95 backdrop-blur-md transition-all shadow-2xs">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        {/* Left: Day & Phase Indicator */}
+        {/* Left: Back / Exit & Context */}
         <div className="flex items-center gap-3">
           <button
             onClick={onExit}
-            aria-label="Pause and return to home"
-            className="flex size-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground"
+            aria-label="Pause and return to today"
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/40 hover:bg-muted hover:text-foreground cursor-pointer shadow-2xs"
           >
-            <X className="size-4" />
+            <X className="size-3.5" />
+            <span className="hidden sm:inline">Back to Today</span>
           </button>
 
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-semibold text-primary">Day {dayNum}</span>
-              <span className="text-muted-foreground text-xs">·</span>
-              <span className="text-xs font-medium text-foreground">{currentPhase}</span>
+              <span className="font-mono text-xs font-bold text-primary">
+                Day {dayNum} of 90
+              </span>
+              {trackName && (
+                <>
+                  <span className="text-muted-foreground text-xs">·</span>
+                  <span className="text-xs font-medium text-foreground">{trackName}</span>
+                </>
+              )}
             </div>
-            <p className="text-[11px] text-muted-foreground hidden sm:block">
-              {isComplete ? "All daily activities completed" : `Step ${currentIndex + 1} of ${effectiveSteps.length}: ${activeStep.label}`}
+            <p className="text-[11px] text-muted-foreground font-medium">
+              {isComplete
+                ? "🎉 Today's technical learning is complete!"
+                : `Step ${currentIndex + 1} of ${effectiveSteps.length}: ${activeStep.label}`}
             </p>
           </div>
         </div>
 
-        {/* Center: Step indicators (dots / pills) */}
-        <div className="hidden md:flex items-center gap-1.5">
-          {effectiveSteps.map((step, idx) => {
-            const isPassed = isComplete || idx < currentIndex;
-            const isCurrent = !isComplete && idx === currentIndex;
+        {/* Center: Clean Progress Indicator (Step X of Y + Bar) */}
+        <div className="flex flex-col items-center gap-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono font-bold text-foreground">
+              {isComplete ? "Completed" : `Step ${currentIndex + 1} of ${effectiveSteps.length}`}
+            </span>
+            <span className="text-[11px] font-mono text-muted-foreground">
+              ({progressPercent}%)
+            </span>
+          </div>
 
-            return (
-              <button
-                key={step.id}
-                onClick={() => onStepClick && onStepClick(step.id)}
-                title={`${step.label} (${step.duration})`}
-                className={cn(
-                  "h-1.5 rounded-full transition-all duration-300 cursor-pointer",
-                  isCurrent
-                    ? "w-7 bg-primary"
-                    : isPassed
-                      ? "w-3 bg-emerald-500 hover:opacity-80"
-                      : "w-2 bg-muted/70 hover:bg-primary/50",
-                  step.phase === "placement" && idx >= 4 && "ml-1.5",
-                )}
-              />
-            );
-          })}
+          <div className="flex items-center gap-1.5">
+            {effectiveSteps.map((step, idx) => {
+              const isPassed = isComplete || idx < currentIndex;
+              const isCurrent = !isComplete && idx === currentIndex;
+
+              return (
+                <button
+                  key={step.id}
+                  onClick={() => onStepClick && onStepClick(step.id)}
+                  title={`Step ${idx + 1}: ${step.label} (${step.duration})`}
+                  className={cn(
+                    "h-2 rounded-full transition-all duration-300 cursor-pointer",
+                    isCurrent
+                      ? "w-8 bg-primary ring-2 ring-primary/30"
+                      : isPassed
+                        ? "w-4 bg-emerald-500 hover:opacity-80"
+                        : "w-3 bg-muted/80 hover:bg-primary/40"
+                  )}
+                />
+              );
+            })}
+          </div>
         </div>
 
-        {/* Right: Time remaining & Session XP */}
+        {/* Right: XP Reward Badge */}
         <div className="flex items-center gap-2">
-          {!isComplete && (
-            <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground font-mono">
-              <Clock className="size-3 text-primary" />
-              <span>{remainingMinutes}m left</span>
-            </div>
-          )}
-
-          <div className="flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+          <div className="flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-bold text-primary font-mono shadow-2xs">
             <Zap className="size-3.5 fill-primary" />
             <span>+{sessionXp} XP</span>
           </div>
@@ -138,11 +144,7 @@ export function JourneyProgressBar({
       <div className="h-0.5 w-full bg-border/40">
         <div
           className="h-full bg-primary transition-all duration-500 ease-out"
-          style={{
-            width: isComplete
-              ? "100%"
-              : `${Math.round(((currentIndex + 1) / (effectiveSteps.length + 1)) * 100)}%`,
-          }}
+          style={{ width: `${progressPercent}%` }}
         />
       </div>
     </header>
