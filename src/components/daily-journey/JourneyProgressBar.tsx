@@ -90,7 +90,7 @@ export function JourneyProgressBar({
             </div>
             <p className="text-[11px] text-muted-foreground font-medium">
               {isComplete
-                ? "🎉 Today's technical learning is complete!"
+                ? "Today's technical learning is complete!"
                 : `Step ${currentIndex + 1} of ${effectiveSteps.length}: ${activeStep.label}`}
             </p>
           </div>

@@ -38,7 +38,7 @@ export function DailyCompletion({
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="size-3.5" />
-            <span>🎉 Today’s Lesson Complete!</span>
+            <span>Today's Lesson Complete</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
             Day {dayNum} Mastery Achieved
@@ -102,7 +102,7 @@ export function DailyCompletion({
               </div>
             </div>
             <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
-              Verified ✓
+              Verified
             </span>
           </div>
 
@@ -119,7 +119,7 @@ export function DailyCompletion({
               </div>
             </div>
             <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
-              Attendance Logged ✓
+              Attendance Logged
             </span>
           </div>
         </div>

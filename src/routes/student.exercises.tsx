@@ -1299,13 +1299,13 @@ function DailyExercisesPage() {
                               {isCorrect ? (
                                 <>
                                   <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                                  <span>✓ Correct! (+1 XP)</span>
+                                  <span>Correct (+1 XP)</span>
                                 </>
                               ) : (
                                 <>
                                   <AlertCircle className="size-3.5 text-rose-600 dark:text-rose-400" />
                                   <span>
-                                    ✗ Incorrect (0 XP) · Correct:{" "}
+                                    Incorrect (0 XP) · Correct:{" "}
                                     {String.fromCharCode(65 + q.correct_option)} ({q.correct_answer}
                                     )
                                   </span>
@@ -1333,7 +1333,7 @@ function DailyExercisesPage() {
                 </div>
                 <span className="text-[11px] font-mono text-muted-foreground">
                   {englishCompletedCount === 10
-                    ? `✓ Completed (10 / 10 · ${englishXpEarned} / 10 XP)`
+                    ? `Completed (10 / 10 · ${englishXpEarned} / 10 XP)`
                     : `${englishCompletedCount} / 10 Completed · ${englishXpEarned} / 10 XP`}
                 </span>
               </div>
@@ -1369,7 +1369,7 @@ function DailyExercisesPage() {
             subtitle={`Day ${selectedDayNum} · ${primaryTrack.name}`}
             action={
               !isEnglishDone ? (
-                <Chip tone="muted">🔒 Complete English to Open</Chip>
+                <Chip tone="muted">Complete English to Open</Chip>
               ) : isCodeDone ? (
                 <Chip tone="emerald">Code Verified (+50 XP)</Chip>
               ) : (

@@ -225,7 +225,7 @@ export function GuidedSandbox({
             {isStepLocked && (
               <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
                 <CheckCircle2 className="size-4" />
-                <span>Lab Verified ✓</span>
+                <span>Lab Verified</span>
               </div>
             )}
           </div>

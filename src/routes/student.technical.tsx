@@ -345,7 +345,9 @@ function TechnicalPage() {
             </div>
             <div className="flex items-center justify-between border-t border-border pt-2 text-[11px] text-muted-foreground">
               <span>Verified through 18 mini projects + Day 90 industry capstone.</span>
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">✓ Placement Ready</span>
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <CheckCircle2 className="size-3.5" /> Placement Ready
+              </span>
             </div>
           </div>
         </div>

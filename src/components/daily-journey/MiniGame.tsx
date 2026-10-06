@@ -175,8 +175,9 @@ export function MiniGame({ game, onComplete, onSkip }: MiniGameProps) {
       </div>
 
       {showHint && (
-        <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-xs">
-          💡 <strong>Hint:</strong> Focus on architectural sequencing and standard protocol / method contracts.
+        <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2">
+          <HelpCircle className="size-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span><strong>Hint:</strong> Focus on architectural sequencing and standard protocol / method contracts.</span>
         </div>
       )}
     </div>

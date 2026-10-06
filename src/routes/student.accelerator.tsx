@@ -168,7 +168,7 @@ function AcceleratorPage() {
               <GraduationCap className="size-3.5" />
               {isInstructorMode ? "Instructor Lesson Mode Active" : "Switch to Instructor View"}
             </button>
-            <Chip tone="amber">🔥 Day {streak} Streak</Chip>
+            <Chip tone="amber">Day {streak} Streak</Chip>
           </div>
         }
       />
@@ -305,7 +305,7 @@ function AcceleratorPage() {
                 {isInstructorMode ? "View Instructor Guide →" : "View Lesson & Audio →"}
               </button>
               <span className="font-mono text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
-                {store.daily.english ? "Completed ✓" : "+25 XP"}
+                {store.daily.english ? "Completed" : "+25 XP"}
               </span>
             </div>
           </div>
@@ -350,7 +350,7 @@ function AcceleratorPage() {
                 {isInstructorMode ? "View Instructor Guide →" : "View Formulas & Tricks →"}
               </button>
               <span className="font-mono text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
-                {store.daily.aptitude ? "Completed ✓" : "+25 XP"}
+                {store.daily.aptitude ? "Completed" : "+25 XP"}
               </span>
             </div>
           </div>
@@ -395,7 +395,7 @@ function AcceleratorPage() {
                 Launch Practice Drill →
               </button>
               <span className="font-mono text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
-                {store.daily.practice ? "Completed ✓" : "+25 XP"}
+                {store.daily.practice ? "Completed" : "+25 XP"}
               </span>
             </div>
           </div>
