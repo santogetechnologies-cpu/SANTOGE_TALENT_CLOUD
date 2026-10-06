@@ -38,45 +38,56 @@ export const Route = createFileRoute("/login")({
 });
 
 // ---------------------------------------------------------------------------
-// Interactive Animated Characters (Reference: https://youtu.be/WYLiXJDUnaw)
-// Cute, modern 2.5D characters whose eyes track typing and hide during password entry
+// Interactive Realistic Panda Component
+// Reacts to focus, mouse movement, password hiding, and peeking
 // ---------------------------------------------------------------------------
-interface InteractiveCharactersProps {
+interface InteractivePandaProps {
   focusedField: "email" | "password" | null;
   isTyping: boolean;
+  showPassword: boolean;
   mousePos: { x: number; y: number };
 }
 
-function InteractiveCharacters({ focusedField, mousePos }: InteractiveCharactersProps) {
+function InteractivePanda({
+  focusedField,
+  isTyping,
+  showPassword,
+  mousePos,
+}: InteractivePandaProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [pupilOffset, setPupilOffset] = useState({ x: 0, y: 0 });
   const [blink, setBlink] = useState(false);
 
-  // Random natural blinking
+  // Natural blinking
   useEffect(() => {
     const blinkInterval = setInterval(() => {
       setBlink(true);
-      setTimeout(() => setBlink(false), 180);
-    }, 3800 + Math.random() * 2000);
+      setTimeout(() => setBlink(false), 160);
+    }, 4000 + Math.random() * 2500);
 
     return () => clearInterval(blinkInterval);
   }, []);
 
-  // Compute pupil position based on mouse or focused field
+  // Pupil positioning
   useEffect(() => {
     if (focusedField === "password") {
-      // Shy / looking away when password is active
-      setPupilOffset({ x: -4, y: 4 });
+      if (showPassword) {
+        // Peeking pupil offset
+        setPupilOffset({ x: 4, y: 2 });
+      } else {
+        // Looking up shyly under paws
+        setPupilOffset({ x: 0, y: -2 });
+      }
       return;
     }
 
     if (focusedField === "email") {
-      // Look intently towards the form on the right
-      setPupilOffset({ x: 6, y: 1 });
+      // Look down and slightly forward toward the email input
+      setPupilOffset({ x: 4, y: 5 });
       return;
     }
 
-    // Otherwise track mouse pointer smoothly
+    // Follow mouse when idle
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
@@ -84,226 +95,404 @@ function InteractiveCharacters({ focusedField, mousePos }: InteractiveCharacters
       const dx = mousePos.x - centerX;
       const dy = mousePos.y - centerY;
       const angle = Math.atan2(dy, dx);
-      const dist = Math.min(6, Math.hypot(dx, dy) / 45);
+      const dist = Math.min(5, Math.hypot(dx, dy) / 60);
 
       setPupilOffset({
         x: Math.cos(angle) * dist,
         y: Math.sin(angle) * dist,
       });
     }
-  }, [mousePos, focusedField]);
+  }, [mousePos, focusedField, showPassword]);
 
-  const isPassword = focusedField === "password";
+  const isCoveringEyes = focusedField === "password" && !showPassword;
+  const isPeeking = focusedField === "password" && showPassword;
+  const isLookingDown = focusedField === "email";
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[180px] sm:h-[210px] lg:h-[230px] flex items-end justify-center select-none"
+      className="relative w-full h-[220px] sm:h-[250px] lg:h-[270px] flex items-center justify-center select-none"
     >
       <svg
-        viewBox="0 0 380 320"
-        className="w-full h-full max-w-[340px] drop-shadow-2xl overflow-visible transition-transform duration-300"
+        viewBox="0 0 340 300"
+        className="w-full h-full max-w-[320px] overflow-visible drop-shadow-xl transition-transform duration-300"
       >
-        {/* Soft Ambient Shadow Underneath */}
+        <defs>
+          {/* Subtle 3D gradient fills for panda body */}
+          <radialGradient id="pandaFurGrad" cx="45%" cy="40%" r="60%">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="85%" stopColor="#f3f4f6" />
+            <stop offset="100%" stopColor="#e5e7eb" />
+          </radialGradient>
+
+          <linearGradient id="pandaDarkGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#374151" />
+            <stop offset="100%" stopColor="#1f2937" />
+          </linearGradient>
+
+          <radialGradient id="pawPadGrad" cx="35%" cy="35%" r="65%">
+            <stop offset="0%" stopColor="#fed7aa" />
+            <stop offset="100%" stopColor="#fba3b1" />
+          </radialGradient>
+
+          {/* Soft contact shadow filter */}
+          <filter id="shadowGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.15" />
+          </filter>
+        </defs>
+
+        {/* Soft ground shadow underneath panda */}
         <ellipse
-          cx="190"
-          cy="305"
-          rx="140"
+          cx="170"
+          cy="285"
+          rx="110"
           ry="12"
-          fill="#020617"
-          opacity="0.85"
+          fill="#cbd5e1"
+          opacity="0.6"
         />
 
-        {/* 1. TALL VIOLET / INDIGO PILL CHARACTER (Back Center) */}
+        {/* PANDA BODY & TORSO */}
         <g
           className="transition-transform duration-500 ease-out origin-bottom"
           style={{
-            transform: isPassword
-              ? "translateY(8px) rotate(-3deg)"
-              : focusedField === "email"
-              ? "translateY(-4px) rotate(2deg)"
-              : "translateY(0) rotate(0)",
+            transform: isCoveringEyes
+              ? "translateY(4px) scale(0.98)"
+              : isLookingDown
+              ? "translateY(2px)"
+              : "translateY(0)",
           }}
         >
-          {/* Body */}
-          <rect
-            x="110"
-            y="70"
-            width="85"
-            height="230"
-            rx="42.5"
-            className="fill-[#6366f1] transition-colors duration-300"
-          />
-
-          {/* Eyes */}
-          {isPassword ? (
-            // Closed / Shy Eyelids
-            <g className="stroke-white stroke-[3.5] stroke-linecap-round fill-none">
-              <path d="M 132 138 Q 140 144 148 138" />
-              <path d="M 157 138 Q 165 144 173 138" />
-              {/* Cute Blushing Cheeks */}
-              <circle cx="127" cy="148" r="6" fill="#f43f5e" opacity="0.65" stroke="none" />
-              <circle cx="178" cy="148" r="6" fill="#f43f5e" opacity="0.65" stroke="none" />
-            </g>
-          ) : (
-            // Open Tracking Eyes
-            <g>
-              {/* Eye Whites */}
-              <ellipse cx="140" cy="135" rx="10" ry={blink ? 1 : 12} fill="#ffffff" />
-              <ellipse cx="165" cy="135" rx="10" ry={blink ? 1 : 12} fill="#ffffff" />
-              {/* Pupils */}
-              {!blink && (
-                <>
-                  <circle cx={140 + pupilOffset.x} cy={135 + pupilOffset.y} r="4.5" fill="#1e1b4b" />
-                  <circle cx={140 + pupilOffset.x + 1.5} cy={135 + pupilOffset.y - 1.5} r="1.5" fill="#ffffff" />
-                  <circle cx={165 + pupilOffset.x} cy={135 + pupilOffset.y} r="4.5" fill="#1e1b4b" />
-                  <circle cx={165 + pupilOffset.x + 1.5} cy={135 + pupilOffset.y - 1.5} r="1.5" fill="#ffffff" />
-                </>
-              )}
-            </g>
-          )}
-
-          {/* Cute Mouth */}
-          <ellipse
-            cx="152"
-            cy="162"
-            rx={isPassword ? "6" : focusedField === "email" ? "4" : "3"}
-            ry={isPassword ? "2" : focusedField === "email" ? "4" : "3"}
-            fill="#1e1b4b"
-            opacity="0.8"
-          />
-        </g>
-
-        {/* 2. MAGENTA / PINK PILL CHARACTER (Mid Right) */}
-        <g
-          className="transition-transform duration-500 ease-out origin-bottom"
-          style={{
-            transform: isPassword
-              ? "translateY(14px) rotate(4deg)"
-              : focusedField === "email"
-              ? "translateY(-6px) rotate(4deg)"
-              : "translateY(0) rotate(0)",
-          }}
-        >
-          {/* Body */}
-          <rect
-            x="175"
-            y="130"
-            width="60"
-            height="170"
-            rx="30"
-            className="fill-[#ec4899] transition-colors duration-300"
-          />
-
-          {/* Eyes */}
-          {isPassword ? (
-            <g className="stroke-white stroke-[3] stroke-linecap-round fill-none">
-              <path d="M 190 180 Q 196 186 202 180" />
-              <path d="M 208 180 Q 214 186 220 180" />
-              <circle cx="186" cy="188" r="5" fill="#be185d" opacity="0.55" stroke="none" />
-              <circle cx="224" cy="188" r="5" fill="#be185d" opacity="0.55" stroke="none" />
-            </g>
-          ) : (
-            <g>
-              <ellipse cx="196" cy="178" rx="8" ry={blink ? 1 : 9} fill="#ffffff" />
-              <ellipse cx="214" cy="178" rx="8" ry={blink ? 1 : 9} fill="#ffffff" />
-              {!blink && (
-                <>
-                  <circle cx={196 + pupilOffset.x * 0.9} cy={178 + pupilOffset.y * 0.9} r="3.5" fill="#831843" />
-                  <circle cx={196 + pupilOffset.x * 0.9 + 1} cy={178 + pupilOffset.y * 0.9 - 1} r="1.2" fill="#ffffff" />
-                  <circle cx={214 + pupilOffset.x * 0.9} cy={178 + pupilOffset.y * 0.9} r="3.5" fill="#831843" />
-                  <circle cx={214 + pupilOffset.x * 0.9 + 1} cy={178 + pupilOffset.y * 0.9 - 1} r="1.2" fill="#ffffff" />
-                </>
-              )}
-            </g>
-          )}
-
-          {/* Small mouth */}
-          <circle cx="205" cy="198" r="2.5" fill="#831843" opacity="0.8" />
-        </g>
-
-        {/* 3. WARM YELLOW PILL (Far Right) */}
-        <g
-          className="transition-transform duration-500 ease-out origin-bottom"
-          style={{
-            transform: isPassword
-              ? "translateY(16px) rotate(6deg)"
-              : focusedField === "email"
-              ? "translateY(-2px) rotate(1deg)"
-              : "translateY(0) rotate(0)",
-          }}
-        >
-          {/* Body */}
-          <rect
-            x="228"
-            y="170"
-            width="55"
-            height="130"
-            rx="27.5"
-            className="fill-[#eab308] transition-colors duration-300"
-          />
-
-          {/* Eye */}
-          {isPassword ? (
-            <path d="M 245 208 Q 252 214 259 208" stroke="#713f12" strokeWidth="3" strokeLinecap="round" fill="none" />
-          ) : (
-            <g>
-              <ellipse cx="252" cy="205" rx="7.5" ry={blink ? 1 : 8.5} fill="#ffffff" />
-              {!blink && (
-                <>
-                  <circle cx={252 + pupilOffset.x * 0.8} cy={205 + pupilOffset.y * 0.8} r="3.2" fill="#713f12" />
-                  <circle cx={252 + pupilOffset.x * 0.8 + 1} cy={205 + pupilOffset.y * 0.8 - 1} r="1.1" fill="#ffffff" />
-                </>
-              )}
-            </g>
-          )}
-
-          {/* Shy mouth line */}
-          <line x1="246" y1="222" x2="258" y2="222" stroke="#713f12" strokeWidth="2.5" strokeLinecap="round" opacity="0.8" />
-        </g>
-
-        {/* 4. WARM ORANGE SQUAT DOME (Foreground Left) */}
-        <g
-          className="transition-transform duration-500 ease-out origin-bottom"
-          style={{
-            transform: isPassword
-              ? "scaleY(0.92) translateY(6px)"
-              : focusedField === "email"
-              ? "translateY(-4px) scaleY(1.04)"
-              : "scaleY(1) translateY(0)",
-          }}
-        >
-          {/* Squat dome body */}
+          {/* Back shoulders / upper body */}
           <path
-            d="M 60 300 C 60 210, 160 210, 160 300 Z"
-            className="fill-[#f97316] transition-colors duration-300"
+            d="M 90 280 C 85 210, 110 185, 170 185 C 230 185, 255 210, 250 280 Z"
+            fill="url(#pandaDarkGrad)"
+          />
+          {/* White chest bib */}
+          <path
+            d="M 125 280 C 120 225, 140 210, 170 210 C 200 210, 220 225, 215 280 Z"
+            fill="url(#pandaFurGrad)"
+          />
+        </g>
+
+        {/* PANDA HEAD GROUP */}
+        <g
+          className="transition-transform duration-500 ease-out origin-center"
+          style={{
+            transform: isCoveringEyes
+              ? "translateY(3px) rotate(-1deg)"
+              : isLookingDown
+              ? "translateY(4px) rotate(1deg)"
+              : "translateY(0) rotate(0)",
+          }}
+        >
+          {/* EARS */}
+          {/* Left Ear */}
+          <g
+            className="transition-transform duration-300 origin-[95px_85px]"
+            style={{
+              transform: isCoveringEyes
+                ? "rotate(-8deg)"
+                : isTyping
+                ? "rotate(-4deg)"
+                : "rotate(0deg)",
+            }}
+          >
+            <ellipse
+              cx="95"
+              cy="80"
+              rx="28"
+              ry="26"
+              fill="url(#pandaDarkGrad)"
+              transform="rotate(-25 95 80)"
+            />
+            {/* Inner Ear Tint */}
+            <ellipse
+              cx="95"
+              cy="80"
+              rx="18"
+              ry="16"
+              fill="#111827"
+              opacity="0.4"
+              transform="rotate(-25 95 80)"
+            />
+          </g>
+
+          {/* Right Ear */}
+          <g
+            className="transition-transform duration-300 origin-[245px_85px]"
+            style={{
+              transform: isCoveringEyes
+                ? "rotate(8deg)"
+                : isTyping
+                ? "rotate(4deg)"
+                : "rotate(0deg)",
+            }}
+          >
+            <ellipse
+              cx="245"
+              cy="80"
+              rx="28"
+              ry="26"
+              fill="url(#pandaDarkGrad)"
+              transform="rotate(25 245 80)"
+            />
+            {/* Inner Ear Tint */}
+            <ellipse
+              cx="245"
+              cy="80"
+              rx="18"
+              ry="16"
+              fill="#111827"
+              opacity="0.4"
+              transform="rotate(25 245 80)"
+            />
+          </g>
+
+          {/* HEAD BASE */}
+          <ellipse
+            cx="170"
+            cy="145"
+            rx="84"
+            ry="75"
+            fill="url(#pandaFurGrad)"
+            stroke="#e2e8f0"
+            strokeWidth="1.5"
           />
 
-          {/* Eyes */}
-          {isPassword ? (
-            <g className="stroke-[#7c2d12] stroke-[3] stroke-linecap-round fill-none">
-              <path d="M 96 248 Q 102 254 108 248" />
-              <path d="M 120 248 Q 126 254 132 248" />
-              <circle cx="92" cy="254" r="5" fill="#ea580c" opacity="0.4" stroke="none" />
-              <circle cx="136" cy="254" r="5" fill="#ea580c" opacity="0.4" stroke="none" />
-            </g>
-          ) : (
-            <g>
-              <ellipse cx="102" cy="245" rx="7" ry={blink ? 1 : 8} fill="#ffffff" />
-              <ellipse cx="126" cy="245" rx="7" ry={blink ? 1 : 8} fill="#ffffff" />
-              {!blink && (
-                <>
-                  <circle cx={102 + pupilOffset.x * 0.8} cy={245 + pupilOffset.y * 0.8} r="3" fill="#7c2d12" />
-                  <circle cx={102 + pupilOffset.x * 0.8 + 1} cy={245 + pupilOffset.y * 0.8 - 1} r="1" fill="#ffffff" />
-                  <circle cx={126 + pupilOffset.x * 0.8} cy={245 + pupilOffset.y * 0.8} r="3" fill="#7c2d12" />
-                  <circle cx={126 + pupilOffset.x * 0.8 + 1} cy={245 + pupilOffset.y * 0.8 - 1} r="1" fill="#ffffff" />
-                </>
-              )}
-            </g>
-          )}
+          {/* CUTE BLUSH CHEEKS */}
+          <ellipse
+            cx="106"
+            cy="168"
+            rx="14"
+            ry="9"
+            fill="#ff8da1"
+            opacity="0.65"
+          />
+          <ellipse
+            cx="234"
+            cy="168"
+            rx="14"
+            ry="9"
+            fill="#ff8da1"
+            opacity="0.65"
+          />
 
-          {/* Tiny cute nose/mouth */}
-          <ellipse cx="114" cy="257" rx="2.5" ry="2" fill="#7c2d12" opacity="0.85" />
+          {/* EYE PATCHES */}
+          {/* Left Eye Patch */}
+          <ellipse
+            cx="124"
+            cy="138"
+            rx="24"
+            ry="29"
+            fill="url(#pandaDarkGrad)"
+            transform="rotate(-22 124 138)"
+          />
+          {/* Right Eye Patch */}
+          <ellipse
+            cx="216"
+            cy="138"
+            rx="24"
+            ry="29"
+            fill="url(#pandaDarkGrad)"
+            transform="rotate(22 216 138)"
+          />
+
+          {/* EYES & PUPILS */}
+          {/* Left Eye */}
+          <g>
+            <ellipse
+              cx="126"
+              cy="136"
+              rx="10"
+              ry={blink ? 1 : 11}
+              fill="#ffffff"
+            />
+            {!blink && (
+              <>
+                <circle
+                  cx={126 + pupilOffset.x}
+                  cy={136 + pupilOffset.y}
+                  r="5"
+                  fill="#0f172a"
+                />
+                {/* Specular highlights */}
+                <circle
+                  cx={126 + pupilOffset.x + 1.6}
+                  cy={136 + pupilOffset.y - 1.6}
+                  r="1.8"
+                  fill="#ffffff"
+                />
+                <circle
+                  cx={126 + pupilOffset.x - 1.2}
+                  cy={136 + pupilOffset.y + 1.2}
+                  r="0.8"
+                  fill="#ffffff"
+                  opacity="0.8"
+                />
+              </>
+            )}
+          </g>
+
+          {/* Right Eye */}
+          <g>
+            <ellipse
+              cx="214"
+              cy="136"
+              rx="10"
+              ry={blink ? 1 : 11}
+              fill="#ffffff"
+            />
+            {!blink && (
+              <>
+                <circle
+                  cx={214 + pupilOffset.x}
+                  cy={136 + pupilOffset.y}
+                  r="5"
+                  fill="#0f172a"
+                />
+                {/* Specular highlights */}
+                <circle
+                  cx={214 + pupilOffset.x + 1.6}
+                  cy={136 + pupilOffset.y - 1.6}
+                  r="1.8"
+                  fill="#ffffff"
+                />
+                <circle
+                  cx={214 + pupilOffset.x - 1.2}
+                  cy={136 + pupilOffset.y + 1.2}
+                  r="0.8"
+                  fill="#ffffff"
+                  opacity="0.8"
+                />
+              </>
+            )}
+          </g>
+
+          {/* SNOUT / NOSE / MOUTH */}
+          {/* White Snout Base */}
+          <ellipse
+            cx="170"
+            cy="165"
+            rx="24"
+            ry="18"
+            fill="#ffffff"
+            opacity="0.95"
+          />
+
+          {/* Cute Nose */}
+          <path
+            d="M 161 157 C 161 154, 179 154, 179 157 C 179 163, 172 167, 170 167 C 168 167, 161 163, 161 157 Z"
+            fill="#1e293b"
+          />
+          {/* Nose shine */}
+          <ellipse cx="167" cy="157" rx="3" ry="1.2" fill="#ffffff" opacity="0.6" />
+
+          {/* Mouth */}
+          <path
+            d="M 170 167 L 170 172"
+            stroke="#1e293b"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 160 172 Q 165 178 170 172 Q 175 178 180 172"
+            stroke="#1e293b"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            fill="none"
+          />
+        </g>
+
+        {/* ----------------------------------------------------------- */}
+        {/* INTERACTIVE PAWS / HANDS (COVERS EYES ON PASSWORD)          */}
+        {/* ----------------------------------------------------------- */}
+
+        {/* LEFT PAW */}
+        <g
+          className="transition-all duration-500 ease-[cubic-bezier(0.34,1.4,0.64,1)] origin-[80px_230px]"
+          style={{
+            transform: isCoveringEyes
+              ? "translate(42px, -82px) rotate(38deg)"
+              : isPeeking
+              ? "translate(30px, -68px) rotate(22deg)"
+              : isLookingDown
+              ? "translate(4px, -12px) rotate(-4deg)"
+              : "translate(0px, 0px) rotate(0deg)",
+          }}
+        >
+          {/* Arm & Paw Shape */}
+          <ellipse
+            cx="78"
+            cy="226"
+            rx="26"
+            ry="34"
+            fill="url(#pandaDarkGrad)"
+            stroke="#1f2937"
+            strokeWidth="1.5"
+            transform="rotate(-15 78 226)"
+          />
+          {/* Paw Pads (Pink pads visible when covering eyes/up) */}
+          <g
+            className="transition-opacity duration-300"
+            style={{ opacity: isCoveringEyes || isPeeking ? 1 : 0.85 }}
+          >
+            {/* Main Central Pad */}
+            <ellipse
+              cx="80"
+              cy="232"
+              rx="13"
+              ry="11"
+              fill="url(#pawPadGrad)"
+            />
+            {/* Toe Beans */}
+            <circle cx="68" cy="216" r="4.2" fill="url(#pawPadGrad)" />
+            <circle cx="78" cy="212" r="4.5" fill="url(#pawPadGrad)" />
+            <circle cx="89" cy="216" r="4.2" fill="url(#pawPadGrad)" />
+          </g>
+        </g>
+
+        {/* RIGHT PAW */}
+        <g
+          className="transition-all duration-500 ease-[cubic-bezier(0.34,1.4,0.64,1)] origin-[260px_230px]"
+          style={{
+            transform: isCoveringEyes
+              ? "translate(-42px, -82px) rotate(-38deg)"
+              : isPeeking
+              ? "translate(-12px, -45px) rotate(-15deg)"
+              : isLookingDown
+              ? "translate(-4px, -12px) rotate(4deg)"
+              : "translate(0px, 0px) rotate(0deg)",
+          }}
+        >
+          {/* Arm & Paw Shape */}
+          <ellipse
+            cx="262"
+            cy="226"
+            rx="26"
+            ry="34"
+            fill="url(#pandaDarkGrad)"
+            stroke="#1f2937"
+            strokeWidth="1.5"
+            transform="rotate(15 262 226)"
+          />
+          {/* Paw Pads */}
+          <g
+            className="transition-opacity duration-300"
+            style={{ opacity: isCoveringEyes || isPeeking ? 1 : 0.85 }}
+          >
+            {/* Main Central Pad */}
+            <ellipse
+              cx="260"
+              cy="232"
+              rx="13"
+              ry="11"
+              fill="url(#pawPadGrad)"
+            />
+            {/* Toe Beans */}
+            <circle cx="249" cy="216" r="4.2" fill="url(#pawPadGrad)" />
+            <circle cx="260" cy="212" r="4.5" fill="url(#pawPadGrad)" />
+            <circle cx="271" cy="216" r="4.2" fill="url(#pawPadGrad)" />
+          </g>
         </g>
       </svg>
     </div>
@@ -311,7 +500,7 @@ function InteractiveCharacters({ focusedField, mousePos }: InteractiveCharacters
 }
 
 // ---------------------------------------------------------------------------
-// Login Page Component (Guaranteed Dark Mode & Master Split Layout)
+// Login Page Component (Light Theme & Refined Modern Layout)
 // ---------------------------------------------------------------------------
 function LoginPage() {
   const store = useAppStore();
@@ -348,7 +537,7 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Field focus states for character interaction
+  // Field focus states for panda interaction
   const [focusedField, setFocusedField] = useState<"email" | "password" | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -474,100 +663,116 @@ function LoginPage() {
   };
 
   return (
-    // Always Dark Mode container - fixed viewport height, zero vertical scroll
-    <div className="dark h-screen max-h-screen w-full bg-[#080b13] text-slate-100 flex flex-col justify-between p-3 sm:p-5 lg:p-6 select-none relative overflow-hidden font-sans">
-      {/* Ambient background soft light accents */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-indigo-600/10 blur-[120px] pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-purple-600/10 blur-[120px] pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-blue-600/5 blur-[140px] pointer-events-none" />
+    // Light-Themed Clean Master Container with soft ambient accents
+    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-white to-slate-100/80 text-slate-800 flex flex-col justify-between p-4 sm:p-6 lg:p-8 select-none relative overflow-x-hidden font-sans">
+      {/* Decorative ambient subtle pastel gradients in the background */}
+      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-indigo-100/60 blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/3 -right-32 w-96 h-96 rounded-full bg-teal-100/50 blur-[100px] pointer-events-none" />
+      <div className="absolute -bottom-32 left-1/3 w-96 h-96 rounded-full bg-rose-100/40 blur-[120px] pointer-events-none" />
 
       {/* Top Header Bar */}
-      <header className="relative z-10 w-full max-w-5xl mx-auto flex items-center pb-2">
+      <header className="relative z-10 w-full max-w-5xl mx-auto flex items-center justify-between pb-3">
         {/* Brand identity */}
         <div className="flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-md shadow-indigo-600/20">
+          <span className="grid size-9 sm:size-10 place-items-center rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-500/20">
             <Hexagon className="size-5 stroke-[2.2]" />
           </span>
           <div className="flex items-center gap-2">
-            <span className="text-base font-bold tracking-tight text-white">SantoGe</span>
-            <span className="text-sm font-medium text-slate-400">Talent Cloud</span>
+            <span className="text-base sm:text-lg font-bold tracking-tight text-slate-900">
+              SantoGe
+            </span>
+            <span className="text-xs sm:text-sm font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+              Talent Cloud
+            </span>
           </div>
+        </div>
+
+        <div className="hidden sm:flex items-center gap-2 text-xs text-slate-600">
+          <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Placement Accelerator Synchronized</span>
         </div>
       </header>
 
-      {/* Main Master Split Card Container */}
-      <main className="relative z-10 flex-1 flex items-center justify-center py-1">
-        <div className="w-full max-w-4xl lg:max-w-5xl rounded-3xl border border-slate-800/90 bg-[#0e1424]/90 backdrop-blur-xl shadow-2xl shadow-black/80 overflow-hidden grid lg:grid-cols-12 transition-all duration-300">
+      {/* Main Master Card */}
+      <main className="relative z-10 flex-1 flex items-center justify-center py-4 sm:py-6">
+        <div className="w-full max-w-4xl lg:max-w-5xl rounded-3xl border border-slate-200/90 bg-white/95 backdrop-blur-xl shadow-2xl shadow-slate-200/80 overflow-hidden grid lg:grid-cols-12 transition-all duration-300">
           
-          {/* Left Column: Visual Character Stage */}
-          <div className="lg:col-span-6 bg-gradient-to-b from-[#0b1020] via-[#0e162a] to-[#0a0f1d] p-5 sm:p-6 lg:p-7 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800/80 relative overflow-hidden">
-            {/* Soft backdrop radial glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
+          {/* Left Column: Interactive Panda Mascot Stage */}
+          <div className="lg:col-span-6 bg-gradient-to-b from-slate-50/90 via-slate-100/60 to-slate-50 p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-200/80 relative overflow-hidden">
+            {/* Subtle radial backdrop accent */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] rounded-full bg-indigo-100/40 blur-3xl pointer-events-none" />
 
-            {/* Top Stage Header */}
+            {/* Top Badge */}
             <div className="relative z-10 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-300">
-                <Sparkles className="size-3.5 text-indigo-400" /> Placement Accelerator
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm">
+                <Sparkles className="size-3.5 text-emerald-600" /> Placement Accelerator
               </span>
-              <span className="text-[11px] font-mono font-medium text-slate-400 tracking-wider">
+              <span className="text-[11px] font-mono font-medium text-slate-600 tracking-wider">
                 90-DAY COHORT
               </span>
             </div>
 
-            {/* Interactive Characters Stage */}
-            <div className="my-auto py-2 sm:py-4 flex items-center justify-center">
-              <InteractiveCharacters
+            {/* Realistic Interactive Panda Stage */}
+            <div className="my-auto py-4 sm:py-6 flex items-center justify-center">
+              <InteractivePanda
                 focusedField={focusedField}
                 isTyping={isTyping}
+                showPassword={showPassword}
                 mousePos={mousePos}
               />
             </div>
 
-            {/* Bottom Stage Footer */}
+            {/* Bottom Mascot Caption */}
             <div className="relative z-10 text-center space-y-1">
-              <p className="text-xs font-semibold text-slate-200 tracking-wide">
-                Synchronized Placement Cohorts
+              <p className="text-xs font-semibold text-slate-800 tracking-wide">
+                {focusedField === "password"
+                  ? showPassword
+                    ? "👀 Panda is peeking while password is visible!"
+                    : "🙈 Panda is covering its eyes to keep your password safe!"
+                  : focusedField === "email"
+                  ? "✍️ Panda is watching your institutional email entry..."
+                  : "👋 Welcome! Move your cursor around to interact."}
               </p>
-              <p className="text-[11px] text-slate-400">
-                15 Technical Specializations · Evidence-Based Mastery
+              <p className="text-[11px] text-slate-600">
+                15 Technical Tracks · 90-Day Evidence-Based Mastery
               </p>
             </div>
           </div>
 
-          {/* Right Column: Clean Auth Form Area */}
-          <div className="lg:col-span-6 p-5 sm:p-7 lg:p-8 flex flex-col justify-center bg-[#0c1222]/95 relative">
-            <div className="w-full max-w-[360px] mx-auto space-y-4 sm:space-y-5">
+          {/* Right Column: Light Modern Auth Form Area */}
+          <div className="lg:col-span-6 p-6 sm:p-8 lg:p-10 flex flex-col justify-center bg-white relative">
+            <div className="w-full max-w-[360px] mx-auto space-y-5">
               
               {/* Form Title & Subtitle */}
-              <div className="space-y-1">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                  {authMode === "signin" && "Welcome back!"}
+              <div className="space-y-1.5">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+                  {authMode === "signin" && "Welcome back"}
                   {authMode === "forgot" && "Reset Password"}
                   {authMode === "reset" && "Set New Password"}
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                  {authMode === "signin" && "Sign in to continue to your Talent Cloud account."}
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  {authMode === "signin" && "Sign in to access your talent dashboard and cohort modules."}
                   {authMode === "forgot" &&
                     "Enter your registered institutional email to receive a recovery link."}
                   {authMode === "reset" &&
-                    "Create a new password for your SantoGe account."}
+                    "Create a strong, new password for your SantoGe account."}
                 </p>
               </div>
 
-              {/* Reset Success Banner */}
+              {/* Reset Success Alert */}
               {resetSuccess && authMode === "signin" && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-3 text-xs text-emerald-300 animate-in fade-in">
-                  <ShieldCheck className="size-4 shrink-0 mt-0.5 text-emerald-400" />
-                  <p>Password updated successfully in Supabase Auth. Please sign in with your new password.</p>
+                <div className="flex items-start gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3.5 text-xs text-emerald-800 shadow-sm animate-in fade-in">
+                  <ShieldCheck className="size-4 shrink-0 mt-0.5 text-emerald-600" />
+                  <p>Password updated successfully. Please sign in with your new password.</p>
                 </div>
               )}
 
               {/* Supabase backend warning if unconfigured */}
               {!isConfigured && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-950/40 p-3 text-xs text-rose-300 animate-in fade-in">
-                  <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-400" />
+                <div className="flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50/90 p-3.5 text-xs text-amber-800 shadow-sm animate-in fade-in">
+                  <AlertCircle className="size-4 shrink-0 mt-0.5 text-amber-600" />
                   <p>
-                    Supabase backend is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env
+                    Supabase backend is not configured. Set <code className="font-mono text-[11px] font-bold">VITE_SUPABASE_URL</code> and <code className="font-mono text-[11px] font-bold">VITE_SUPABASE_PUBLISHABLE_KEY</code> in .env
                   </p>
                 </div>
               )}
@@ -576,10 +781,10 @@ function LoginPage() {
               {/* MODE 1: Standard Sign In Form                                 */}
               {/* ------------------------------------------------------------- */}
               {authMode === "signin" && (
-                <form onSubmit={handleSupabaseSubmit} className="space-y-3.5 sm:space-y-4">
+                <form onSubmit={handleSupabaseSubmit} className="space-y-4">
                   {/* Institutional Email Field */}
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-300">
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-700">
                       Institutional Email
                     </label>
                     <div className="relative">
@@ -595,18 +800,18 @@ function LoginPage() {
                         onChange={(e) => {
                           setEmail(e.target.value);
                           setIsTyping(true);
-                          setTimeout(() => setIsTyping(false), 800);
+                          setTimeout(() => setIsTyping(false), 700);
                         }}
                         placeholder="student@college.edu or admin@domain.com"
-                        className="w-full h-10 sm:h-11 pl-10 pr-3.5 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
+                        className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-300 bg-slate-50/60 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-100"
                       />
                     </div>
                   </div>
 
                   {/* Password Field with Reveal Toggle & Forgot Password Link */}
                   <div>
-                    <div className="mb-1 flex items-center justify-between">
-                      <label className="text-xs font-medium text-slate-300">Password</label>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-700">Password</label>
                       <button
                         type="button"
                         onClick={() => {
@@ -614,7 +819,7 @@ function LoginPage() {
                           setForgotSuccess(false);
                           setAuthMode("forgot");
                         }}
-                        className="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer"
                       >
                         Forgot password?
                       </button>
@@ -631,15 +836,15 @@ function LoginPage() {
                         onChange={(e) => {
                           setPassword(e.target.value);
                           setIsTyping(true);
-                          setTimeout(() => setIsTyping(false), 800);
+                          setTimeout(() => setIsTyping(false), 700);
                         }}
                         placeholder="••••••••••••"
-                        className="w-full h-10 sm:h-11 pl-10 pr-10 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
+                        className="w-full h-11 pl-10 pr-10 rounded-xl border border-slate-300 bg-slate-50/60 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-100"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded-md transition-colors cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 p-1 rounded-md transition-colors cursor-pointer"
                         aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? (
@@ -653,24 +858,24 @@ function LoginPage() {
 
                   {/* Inline Error Message */}
                   {error && (
-                    <div className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-2 text-xs text-rose-300 animate-in fade-in">
-                      <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-400" />
-                      <span className="leading-relaxed">{error}</span>
+                    <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 shadow-sm animate-in fade-in">
+                      <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-600" />
+                      <span className="leading-relaxed font-medium">{error}</span>
                     </div>
                   )}
 
-                  {/* Submit Primary CTA */}
+                  {/* Submit CTA */}
                   <button
                     type="submit"
                     disabled={loading || !isConfigured}
-                    className="group flex w-full h-10 sm:h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                    className="group flex w-full h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
                   >
                     {loading ? (
                       <RefreshCw className="size-4 animate-spin" />
                     ) : (
                       <LogIn className="size-4" />
                     )}
-                    {loading ? "Signing in..." : "Sign In"}
+                    {loading ? "Signing in..." : "Sign In to Talent Cloud"}
                     {!loading && (
                       <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                     )}
@@ -685,14 +890,14 @@ function LoginPage() {
                 <div className="space-y-4">
                   {forgotSuccess ? (
                     <div className="space-y-4 animate-in fade-in">
-                      <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-3.5 text-xs text-emerald-300 space-y-2">
-                        <div className="flex items-center gap-2 font-semibold text-emerald-400 text-sm">
-                          <ShieldCheck className="size-4" />
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 text-xs text-emerald-900 space-y-2">
+                        <div className="flex items-center gap-2 font-bold text-emerald-800 text-sm">
+                          <ShieldCheck className="size-4 text-emerald-600" />
                           <span>Recovery Email Sent</span>
                         </div>
-                        <p className="leading-relaxed text-slate-300">
-                          We've sent a password recovery link to{" "}
-                          <strong className="text-white font-mono">{email}</strong>.
+                        <p className="leading-relaxed text-slate-600">
+                          We've sent a recovery link to{" "}
+                          <strong className="text-slate-900 font-mono">{email}</strong>.
                           Please check your inbox (and spam folder) and open the link to set a new password.
                         </p>
                       </div>
@@ -703,15 +908,15 @@ function LoginPage() {
                           setForgotSuccess(false);
                           setAuthMode("signin");
                         }}
-                        className="w-full h-10 sm:h-11 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700/80 text-sm font-semibold text-white transition-colors cursor-pointer"
+                        className="w-full h-11 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-sm font-semibold text-slate-800 transition-colors cursor-pointer"
                       >
                         Return to Sign In
                       </button>
                     </div>
                   ) : (
-                    <form onSubmit={handleForgotPasswordSubmit} className="space-y-3.5 sm:space-y-4">
+                    <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-300">
+                        <label className="mb-1.5 block text-xs font-semibold text-slate-700">
                           Registered Institutional Email
                         </label>
                         <div className="relative">
@@ -727,26 +932,26 @@ function LoginPage() {
                             onChange={(e) => {
                               setEmail(e.target.value);
                               setIsTyping(true);
-                              setTimeout(() => setIsTyping(false), 800);
+                              setTimeout(() => setIsTyping(false), 700);
                             }}
                             placeholder="student@college.edu"
-                            className="w-full h-10 sm:h-11 pl-10 pr-3.5 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
+                            className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-300 bg-slate-50/60 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-100"
                           />
                         </div>
                       </div>
 
                       {/* Inline Error Message */}
                       {error && (
-                        <div className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-2 text-xs text-rose-300 animate-in fade-in">
-                          <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-400" />
-                          <span className="leading-relaxed">{error}</span>
+                        <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 shadow-sm animate-in fade-in">
+                          <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-600" />
+                          <span className="leading-relaxed font-medium">{error}</span>
                         </div>
                       )}
 
                       <button
                         type="submit"
                         disabled={loading || !isConfigured}
-                        className="flex w-full h-10 sm:h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+                        className="flex w-full h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 disabled:opacity-50 cursor-pointer"
                       >
                         {loading ? (
                           <RefreshCw className="size-4 animate-spin" />
@@ -763,7 +968,7 @@ function LoginPage() {
                             setError("");
                             setAuthMode("signin");
                           }}
-                          className="text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                          className="text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
                         >
                           ← Back to Sign In
                         </button>
@@ -777,10 +982,10 @@ function LoginPage() {
               {/* MODE 3: Set New Password Form (Recovery Session)             */}
               {/* ------------------------------------------------------------- */}
               {authMode === "reset" && (
-                <form onSubmit={handleUpdatePasswordSubmit} className="space-y-3.5 sm:space-y-4">
+                <form onSubmit={handleUpdatePasswordSubmit} className="space-y-4">
                   {/* New Password */}
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-300">
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-700">
                       New Password (min 6 characters)
                     </label>
                     <div className="relative">
@@ -796,15 +1001,15 @@ function LoginPage() {
                         onChange={(e) => {
                           setNewPassword(e.target.value);
                           setIsTyping(true);
-                          setTimeout(() => setIsTyping(false), 800);
+                          setTimeout(() => setIsTyping(false), 700);
                         }}
                         placeholder="••••••••••••"
-                        className="w-full h-10 sm:h-11 pl-10 pr-10 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
+                        className="w-full h-11 pl-10 pr-10 rounded-xl border border-slate-300 bg-slate-50/60 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-100"
                       />
                       <button
                         type="button"
                         onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded-md transition-colors cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 p-1 rounded-md transition-colors cursor-pointer"
                         aria-label={showNewPassword ? "Hide password" : "Show password"}
                       >
                         {showNewPassword ? (
@@ -818,7 +1023,7 @@ function LoginPage() {
 
                   {/* Confirm New Password */}
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-300">
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-700">
                       Confirm New Password
                     </label>
                     <div className="relative">
@@ -833,15 +1038,15 @@ function LoginPage() {
                         onChange={(e) => {
                           setConfirmPassword(e.target.value);
                           setIsTyping(true);
-                          setTimeout(() => setIsTyping(false), 800);
+                          setTimeout(() => setIsTyping(false), 700);
                         }}
                         placeholder="••••••••••••"
-                        className="w-full h-10 sm:h-11 pl-10 pr-10 rounded-xl border border-slate-700/80 bg-[#070b14]/90 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-[#080e1d]"
+                        className="w-full h-11 pl-10 pr-10 rounded-xl border border-slate-300 bg-slate-50/60 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-100"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded-md transition-colors cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 p-1 rounded-md transition-colors cursor-pointer"
                         aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                       >
                         {showConfirmPassword ? (
@@ -855,16 +1060,16 @@ function LoginPage() {
 
                   {/* Inline Error Message */}
                   {error && (
-                    <div className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-2 text-xs text-rose-300 animate-in fade-in">
-                      <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-400" />
-                      <span className="leading-relaxed">{error}</span>
+                    <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 shadow-sm animate-in fade-in">
+                      <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-600" />
+                      <span className="leading-relaxed font-medium">{error}</span>
                     </div>
                   )}
 
                   <button
                     type="submit"
                     disabled={loading || !isConfigured}
-                    className="flex w-full h-10 sm:h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+                    className="flex w-full h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-700 hover:to-indigo-700 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 disabled:opacity-50 cursor-pointer"
                   >
                     {loading ? (
                       <RefreshCw className="size-4 animate-spin" />
@@ -881,7 +1086,7 @@ function LoginPage() {
                         setError("");
                         setAuthMode("signin");
                       }}
-                      className="text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                      className="text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
                     >
                       ← Back to Sign In
                     </button>
@@ -890,10 +1095,10 @@ function LoginPage() {
               )}
 
               {/* Supporting Institutional Provisioning Notice */}
-              <div className="pt-1 text-center text-xs text-slate-400">
+              <div className="pt-2 text-center text-xs text-slate-600 border-t border-slate-100">
                 <span className="inline-flex items-center gap-1.5 text-[11px]">
-                  <ShieldCheck className="size-3.5 text-emerald-400 shrink-0" />
-                  <span>Student accounts provisioned by institution administrators.</span>
+                  <ShieldCheck className="size-3.5 text-emerald-600 shrink-0" />
+                  <span>Student accounts provisioned by institutional administrators.</span>
                 </span>
               </div>
             </div>
@@ -901,7 +1106,13 @@ function LoginPage() {
         </div>
       </main>
 
-      <Toaster position="bottom-right" theme="dark" />
+      {/* Footer */}
+      <footer className="relative z-10 w-full max-w-5xl mx-auto flex items-center justify-between pt-2 text-[11px] text-slate-600">
+        <span>© {new Date().getFullYear()} SantoGe Talent Cloud</span>
+        <span>Secure Institutional Authentication</span>
+      </footer>
+
+      <Toaster position="bottom-right" theme="light" />
     </div>
   );
 }
