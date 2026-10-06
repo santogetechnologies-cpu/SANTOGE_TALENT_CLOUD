@@ -38,14 +38,11 @@ export const Route = createFileRoute("/login")({
 
 // ---------------------------------------------------------------------------
 // Interactive Realistic Panda Mascot & 3D Cloud Tech Scene
-// Matches reference artwork:
 // - Large soft lavender circular glow behind panda
 // - Blue-purple abstract flowing shapes along the bottom
 // - Floating gradient spheres / 3D orbs
 // - Floating puffy cloud (cloud technology)
 // - Paper airplane with dotted flight trajectory (career progress)
-// - Floating education tile (graduation cap)
-// - Floating team tile (students/collaboration)
 // - Soft elliptical ground shadow
 // - Interactive eye-tracking & paws that cover eyes during password entry
 // ---------------------------------------------------------------------------
@@ -119,10 +116,10 @@ function InteractivePandaScene({
   return (
     <div
       ref={containerRef}
-      className="relative w-full max-w-[540px] aspect-[1/0.88] flex items-center justify-center select-none"
+      className="relative w-full max-w-[460px] lg:max-w-[490px] aspect-[1/0.84] flex items-center justify-center select-none"
     >
       <svg
-        viewBox="0 0 540 470"
+        viewBox="0 0 540 450"
         className="w-full h-full overflow-visible drop-shadow-sm transition-transform duration-300"
       >
         <defs>
@@ -170,18 +167,6 @@ function InteractivePandaScene({
             <stop offset="100%" stopColor="#0369a1" />
           </radialGradient>
 
-          {/* 3D Purple/Violet Tile Gradient */}
-          <linearGradient id="purpleTileGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#a855f7" />
-            <stop offset="100%" stopColor="#6366f1" />
-          </linearGradient>
-
-          {/* 3D Blue Team Tile Gradient */}
-          <linearGradient id="blueTileGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#60a5fa" />
-            <stop offset="100%" stopColor="#3b82f6" />
-          </linearGradient>
-
           {/* Paper Airplane Gradient */}
           <linearGradient id="planeGrad" x1="0%" y1="0%" x2="100%" y2="80%">
             <stop offset="0%" stopColor="#818cf8" />
@@ -215,9 +200,6 @@ function InteractivePandaScene({
           </linearGradient>
 
           {/* Drop Shadows */}
-          <filter id="tileShadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feDropShadow dx="0" dy="10" stdDeviation="12" floodColor="#4f46e5" floodOpacity="0.25" />
-          </filter>
           <filter id="elementShadow" x="-30%" y="-30%" width="160%" height="160%">
             <feDropShadow dx="0" dy="8" stdDeviation="10" floodColor="#1e293b" floodOpacity="0.12" />
           </filter>
@@ -281,67 +263,7 @@ function InteractivePandaScene({
         </g>
 
         {/* ----------------------------------------------------------- */}
-        {/* 4. FLOATING EDUCATION CARD (GRADUATION CAP - LEARNING)      */}
-        {/* ----------------------------------------------------------- */}
-        <g
-          transform="translate(85, 175) rotate(-16)"
-          filter="url(#tileShadow)"
-          className="transition-transform duration-500 hover:scale-105"
-        >
-          {/* Card body */}
-          <rect
-            x="0"
-            y="0"
-            width="68"
-            height="68"
-            rx="18"
-            fill="url(#purpleTileGrad)"
-          />
-          {/* Graduation Cap Icon inside */}
-          <g transform="translate(16, 17)" fill="#ffffff">
-            {/* Cap top diamond */}
-            <polygon points="18,3 34,9 18,15 2,9" />
-            {/* Cap bottom skullcap */}
-            <path d="M 7 12.5 L 7 21 C 7 25 29 25 29 21 L 29 12.5" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-            {/* Tassel */}
-            <path d="M 31 10 L 33 22" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
-            <circle cx="33" cy="23" r="1.5" />
-          </g>
-        </g>
-
-        {/* ----------------------------------------------------------- */}
-        {/* 5. FLOATING TEAM CARD (STUDENTS / TALENT / COLLABORATION)   */}
-        {/* ----------------------------------------------------------- */}
-        <g
-          transform="translate(385, 195) rotate(12)"
-          filter="url(#tileShadow)"
-          className="transition-transform duration-500 hover:scale-105"
-        >
-          {/* Card body */}
-          <rect
-            x="0"
-            y="0"
-            width="66"
-            height="66"
-            rx="18"
-            fill="url(#blueTileGrad)"
-          />
-          {/* Team / Users Icon inside */}
-          <g transform="translate(15, 17)" fill="#ffffff">
-            {/* Center user */}
-            <circle cx="18" cy="9" r="5" />
-            <path d="M 10 27 C 10 21 14 18 18 18 C 22 18 26 21 26 27 Z" />
-            {/* Left user */}
-            <circle cx="9" cy="11" r="3.8" opacity="0.85" />
-            <path d="M 3 26 C 3 22 6 19.5 9 19.5 C 10.5 19.5 12 20.2 13 21.2 C 11.5 22.8 11.2 24.8 11.2 26 Z" opacity="0.85" />
-            {/* Right user */}
-            <circle cx="27" cy="11" r="3.8" opacity="0.85" />
-            <path d="M 33 26 C 33 22 30 19.5 27 19.5 C 25.5 19.5 24 20.2 23 21.2 C 24.5 22.8 24.8 24.8 24.8 26 Z" opacity="0.85" />
-          </g>
-        </g>
-
-        {/* ----------------------------------------------------------- */}
-        {/* 6. FLOATING 3D SPHERES / ORBS                               */}
+        {/* 4. FLOATING 3D SPHERES / ORBS                               */}
         {/* ----------------------------------------------------------- */}
         {/* Big Blue Sphere Top Left */}
         <g filter="url(#elementShadow)">
@@ -359,7 +281,7 @@ function InteractivePandaScene({
         </g>
 
         {/* ----------------------------------------------------------- */}
-        {/* 7. BLUE-PURPLE ABSTRACT FLOWING WAVES & PETALS AT BOTTOM    */}
+        {/* 5. BLUE-PURPLE ABSTRACT FLOWING WAVES & PETALS AT BOTTOM    */}
         {/* ----------------------------------------------------------- */}
         {/* Left flowing layered petals */}
         <g opacity="0.95">
@@ -400,7 +322,7 @@ function InteractivePandaScene({
         </g>
 
         {/* ----------------------------------------------------------- */}
-        {/* 8. SOFT ELLIPTICAL GROUND SHADOW UNDER PANDA                */}
+        {/* 6. SOFT ELLIPTICAL GROUND SHADOW UNDER PANDA                */}
         {/* ----------------------------------------------------------- */}
         <ellipse
           cx="270"
@@ -412,7 +334,7 @@ function InteractivePandaScene({
         />
 
         {/* ----------------------------------------------------------- */}
-        {/* 9. THE REALISTIC CUTE PANDA MASCOT                          */}
+        {/* 7. THE REALISTIC CUTE PANDA MASCOT                          */}
         {/* ----------------------------------------------------------- */}
 
         {/* PANDA BODY & TORSO */}
@@ -658,7 +580,7 @@ function InteractivePandaScene({
         </g>
 
         {/* ----------------------------------------------------------- */}
-        {/* 10. INTERACTIVE PAWS (WAVING / COVERS EYES ON PASSWORD)     */}
+        {/* 8. INTERACTIVE PAWS (WAVING / COVERS EYES ON PASSWORD)      */}
         {/* ----------------------------------------------------------- */}
 
         {/* LEFT PAW (3 TOE BEANS + 1 MAIN PAD) */}
@@ -748,7 +670,7 @@ function InteractivePandaScene({
 }
 
 // ---------------------------------------------------------------------------
-// Login Page Component (Light-Themed Exact Artwork Layout)
+// Login Page Component (Zero-Scroll Viewport Fitted Layout)
 // ---------------------------------------------------------------------------
 function LoginPage() {
   const store = useAppStore();
@@ -911,11 +833,11 @@ function LoginPage() {
   };
 
   return (
-    // Clean, crisp white background with flowing corner gradient curves exactly like reference image
-    <div className="min-h-screen w-full bg-white text-slate-800 flex flex-col justify-between p-4 sm:p-6 lg:p-10 select-none relative overflow-x-hidden font-sans">
+    // Clean, crisp white background fitted cleanly into viewport (zero scroll)
+    <div className="h-screen max-h-screen w-full bg-white text-slate-800 flex flex-col justify-between px-4 sm:px-8 lg:px-12 py-3 sm:py-4 select-none relative overflow-hidden font-sans">
       
       {/* Decorative Top-Left Soft Blue-Lavender Corner Swoosh */}
-      <div className="absolute -top-32 -left-32 w-[420px] h-[420px] pointer-events-none opacity-80">
+      <div className="absolute -top-32 -left-32 w-[380px] h-[380px] pointer-events-none opacity-80">
         <svg viewBox="0 0 400 400" className="w-full h-full fill-none">
           <path
             d="M 0 0 C 180 0, 320 120, 340 300 C 350 380, 260 400, 0 400 Z"
@@ -932,7 +854,7 @@ function LoginPage() {
       </div>
 
       {/* Decorative Bottom-Right Soft Purple-Indigo Corner Swoosh */}
-      <div className="absolute -bottom-32 -right-32 w-[480px] h-[480px] pointer-events-none opacity-80">
+      <div className="absolute -bottom-32 -right-32 w-[420px] h-[420px] pointer-events-none opacity-80">
         <svg viewBox="0 0 450 450" className="w-full h-full fill-none">
           <path
             d="M 450 450 C 270 450, 130 330, 110 150 C 100 70, 190 50, 450 50 Z"
@@ -949,26 +871,26 @@ function LoginPage() {
       </div>
 
       {/* Top Header Bar */}
-      <header className="relative z-10 w-full max-w-6xl mx-auto flex items-center justify-between pb-2">
+      <header className="relative z-10 w-full max-w-6xl mx-auto flex items-center justify-between shrink-0">
         {/* Brand identity: Rounded Blue Hexagon + SantoGe + Sky Blue Talent Cloud pill */}
-        <div className="flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-2xl bg-gradient-to-tr from-[#3b82f6] to-[#4338ca] text-white shadow-lg shadow-indigo-500/25">
-            <Hexagon className="size-6 stroke-[2.4]" />
+        <div className="flex items-center gap-2.5">
+          <span className="grid size-9 sm:size-10 place-items-center rounded-xl bg-gradient-to-tr from-[#3b82f6] to-[#4338ca] text-white shadow-md shadow-indigo-500/25">
+            <Hexagon className="size-5 stroke-[2.4]" />
           </span>
-          <div className="flex items-center gap-2.5">
-            <span className="text-2xl font-bold tracking-tight text-[#0f172a]">
+          <div className="flex items-center gap-2">
+            <span className="text-xl sm:text-2xl font-bold tracking-tight text-[#0f172a]">
               SantoGe
             </span>
-            <span className="text-xs font-semibold text-[#2563eb] bg-[#e0f2fe] px-3 py-1 rounded-full border border-[#bae6fd]">
+            <span className="text-[11px] sm:text-xs font-semibold text-[#2563eb] bg-[#e0f2fe] px-2.5 py-0.5 rounded-full border border-[#bae6fd]">
               Talent Cloud
             </span>
           </div>
         </div>
       </header>
 
-      {/* Main Split Layout Container */}
-      <main className="relative z-10 flex-1 flex items-center justify-center py-4 lg:py-8">
-        <div className="w-full max-w-6xl grid lg:grid-cols-12 items-center gap-8 lg:gap-12">
+      {/* Main Split Layout Container (Viewport Centered, Minimized Height) */}
+      <main className="relative z-10 flex-1 min-h-0 flex items-center justify-center my-auto py-1">
+        <div className="w-full max-w-6xl grid lg:grid-cols-12 items-center gap-4 lg:gap-10">
           
           {/* Left Column: 3D Animated Realistic Panda Mascot Scene */}
           <div className="lg:col-span-6 flex items-center justify-center relative">
@@ -982,11 +904,11 @@ function LoginPage() {
 
           {/* Right Column: Clean, Crisp Form Area */}
           <div className="lg:col-span-6 flex justify-center lg:justify-start">
-            <div className="w-full max-w-[440px] space-y-6">
+            <div className="w-full max-w-[420px] space-y-4 sm:space-y-5">
               
               {/* Heading: "Welcome back" */}
-              <div className="space-y-2">
-                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#0f172a]">
+              <div className="space-y-1 sm:space-y-1.5">
+                <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold tracking-tight text-[#0f172a] leading-tight">
                   {authMode === "signin" && (
                     <>
                       Welcome <span className="text-[#4338ca]">back</span>
@@ -1003,7 +925,7 @@ function LoginPage() {
                     </>
                   )}
                 </h1>
-                <p className="text-sm sm:text-base text-slate-500 leading-relaxed font-normal">
+                <p className="text-xs sm:text-sm text-slate-500 leading-relaxed font-normal">
                   {authMode === "signin" && "Sign in to access your talent dashboard and cohort modules."}
                   {authMode === "forgot" &&
                     "Enter your registered institutional email to receive a recovery link."}
@@ -1014,7 +936,7 @@ function LoginPage() {
 
               {/* Reset Success Alert */}
               {resetSuccess && authMode === "signin" && (
-                <div className="flex items-start gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3.5 text-xs text-emerald-800 shadow-sm animate-in fade-in">
+                <div className="flex items-start gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3 text-xs text-emerald-800 shadow-sm animate-in fade-in">
                   <ShieldCheck className="size-4 shrink-0 mt-0.5 text-emerald-600" />
                   <p>Password updated successfully. Please sign in with your new password.</p>
                 </div>
@@ -1022,7 +944,7 @@ function LoginPage() {
 
               {/* Supabase backend warning if unconfigured */}
               {!isConfigured && (
-                <div className="flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50/90 p-3.5 text-xs text-amber-800 shadow-sm animate-in fade-in">
+                <div className="flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50/90 p-3 text-xs text-amber-800 shadow-sm animate-in fade-in">
                   <AlertCircle className="size-4 shrink-0 mt-0.5 text-amber-600" />
                   <p>
                     Supabase backend is not configured. Set <code className="font-mono text-[11px] font-bold">VITE_SUPABASE_URL</code> and <code className="font-mono text-[11px] font-bold">VITE_SUPABASE_PUBLISHABLE_KEY</code> in .env
@@ -1034,9 +956,9 @@ function LoginPage() {
               {/* MODE 1: Standard Sign In Form                                 */}
               {/* ------------------------------------------------------------- */}
               {authMode === "signin" && (
-                <form onSubmit={handleSupabaseSubmit} className="space-y-4">
+                <form onSubmit={handleSupabaseSubmit} className="space-y-3.5 sm:space-y-4">
                   {/* Institutional Email Field */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="block text-xs font-semibold text-slate-700">
                       Institutional Email
                     </label>
@@ -1056,13 +978,13 @@ function LoginPage() {
                           setTimeout(() => setIsTyping(false), 700);
                         }}
                         placeholder="sneha@college.edu"
-                        className="w-full h-12 pl-11 pr-4 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                        className="w-full h-11 sm:h-12 pl-11 pr-4 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100"
                       />
                     </div>
                   </div>
 
                   {/* Password Field with Reveal Toggle & Forgot Password Link */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-semibold text-slate-700">Password</label>
                       <button
@@ -1092,7 +1014,7 @@ function LoginPage() {
                           setTimeout(() => setIsTyping(false), 700);
                         }}
                         placeholder="••••••••••••"
-                        className="w-full h-12 pl-11 pr-11 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100 font-mono"
+                        className="w-full h-11 sm:h-12 pl-11 pr-11 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100 font-mono"
                       />
                       <button
                         type="button"
@@ -1111,7 +1033,7 @@ function LoginPage() {
 
                   {/* Inline Error Message */}
                   {error && (
-                    <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 shadow-sm animate-in fade-in">
+                    <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 shadow-sm animate-in fade-in">
                       <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-600" />
                       <span className="leading-relaxed font-medium">{error}</span>
                     </div>
@@ -1121,7 +1043,7 @@ function LoginPage() {
                   <button
                     type="submit"
                     disabled={loading || !isConfigured}
-                    className="group flex w-full h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#4f46e5] via-[#4338ca] to-[#3730a3] hover:from-[#4338ca] hover:to-[#312e81] text-sm sm:text-base font-bold text-white shadow-xl shadow-indigo-600/30 transition-all duration-200 active:scale-[0.99] disabled:opacity-50 cursor-pointer pt-0.5"
+                    className="group flex w-full h-11 sm:h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#4f46e5] via-[#4338ca] to-[#3730a3] hover:from-[#4338ca] hover:to-[#312e81] text-sm sm:text-base font-bold text-white shadow-xl shadow-indigo-600/30 transition-all duration-200 active:scale-[0.99] disabled:opacity-50 cursor-pointer pt-0.5"
                   >
                     {loading ? (
                       <RefreshCw className="size-4 animate-spin" />
@@ -1143,7 +1065,7 @@ function LoginPage() {
                 <div className="space-y-4">
                   {forgotSuccess ? (
                     <div className="space-y-4 animate-in fade-in">
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 text-xs text-emerald-900 space-y-2">
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-3.5 text-xs text-emerald-900 space-y-2">
                         <div className="flex items-center gap-2 font-bold text-emerald-800 text-sm">
                           <ShieldCheck className="size-4 text-emerald-600" />
                           <span>Recovery Email Sent</span>
@@ -1161,14 +1083,14 @@ function LoginPage() {
                           setForgotSuccess(false);
                           setAuthMode("signin");
                         }}
-                        className="w-full h-12 rounded-2xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-sm font-semibold text-slate-800 transition-colors cursor-pointer"
+                        className="w-full h-11 sm:h-12 rounded-2xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-sm font-semibold text-slate-800 transition-colors cursor-pointer"
                       >
                         Return to Sign In
                       </button>
                     </div>
                   ) : (
-                    <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
-                      <div className="space-y-1.5">
+                    <form onSubmit={handleForgotPasswordSubmit} className="space-y-3.5 sm:space-y-4">
+                      <div className="space-y-1">
                         <label className="block text-xs font-semibold text-slate-700">
                           Registered Institutional Email
                         </label>
@@ -1188,14 +1110,14 @@ function LoginPage() {
                               setTimeout(() => setIsTyping(false), 700);
                             }}
                             placeholder="student@college.edu"
-                            className="w-full h-12 pl-11 pr-4 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                            className="w-full h-11 sm:h-12 pl-11 pr-4 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100"
                           />
                         </div>
                       </div>
 
                       {/* Inline Error Message */}
                       {error && (
-                        <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 shadow-sm animate-in fade-in">
+                        <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 shadow-sm animate-in fade-in">
                           <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-600" />
                           <span className="leading-relaxed font-medium">{error}</span>
                         </div>
@@ -1204,7 +1126,7 @@ function LoginPage() {
                       <button
                         type="submit"
                         disabled={loading || !isConfigured}
-                        className="flex w-full h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#4f46e5] to-[#4338ca] hover:from-[#4338ca] hover:to-[#3730a3] text-sm font-semibold text-white shadow-xl shadow-indigo-600/30 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+                        className="flex w-full h-11 sm:h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#4f46e5] to-[#4338ca] hover:from-[#4338ca] hover:to-[#3730a3] text-sm font-semibold text-white shadow-xl shadow-indigo-600/30 transition-all duration-200 disabled:opacity-50 cursor-pointer"
                       >
                         {loading ? (
                           <RefreshCw className="size-4 animate-spin" />
@@ -1235,9 +1157,9 @@ function LoginPage() {
               {/* MODE 3: Set New Password Form (Recovery Session)             */}
               {/* ------------------------------------------------------------- */}
               {authMode === "reset" && (
-                <form onSubmit={handleUpdatePasswordSubmit} className="space-y-4">
+                <form onSubmit={handleUpdatePasswordSubmit} className="space-y-3.5 sm:space-y-4">
                   {/* New Password */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="block text-xs font-semibold text-slate-700">
                       New Password (min 6 characters)
                     </label>
@@ -1257,7 +1179,7 @@ function LoginPage() {
                           setTimeout(() => setIsTyping(false), 700);
                         }}
                         placeholder="••••••••••••"
-                        className="w-full h-12 pl-11 pr-11 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100 font-mono"
+                        className="w-full h-11 sm:h-12 pl-11 pr-11 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100 font-mono"
                       />
                       <button
                         type="button"
@@ -1275,7 +1197,7 @@ function LoginPage() {
                   </div>
 
                   {/* Confirm New Password */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="block text-xs font-semibold text-slate-700">
                       Confirm New Password
                     </label>
@@ -1294,7 +1216,7 @@ function LoginPage() {
                           setTimeout(() => setIsTyping(false), 700);
                         }}
                         placeholder="••••••••••••"
-                        className="w-full h-12 pl-11 pr-11 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100 font-mono"
+                        className="w-full h-11 sm:h-12 pl-11 pr-11 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100 font-mono"
                       />
                       <button
                         type="button"
@@ -1313,7 +1235,7 @@ function LoginPage() {
 
                   {/* Inline Error Message */}
                   {error && (
-                    <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 shadow-sm animate-in fade-in">
+                    <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 shadow-sm animate-in fade-in">
                       <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-600" />
                       <span className="leading-relaxed font-medium">{error}</span>
                     </div>
@@ -1322,7 +1244,7 @@ function LoginPage() {
                   <button
                     type="submit"
                     disabled={loading || !isConfigured}
-                    className="flex w-full h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-700 hover:to-indigo-700 text-sm font-semibold text-white shadow-xl shadow-emerald-600/30 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+                    className="flex w-full h-11 sm:h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-700 hover:to-indigo-700 text-sm font-semibold text-white shadow-xl shadow-emerald-600/30 transition-all duration-200 disabled:opacity-50 cursor-pointer"
                   >
                     {loading ? (
                       <RefreshCw className="size-4 animate-spin" />
@@ -1348,7 +1270,7 @@ function LoginPage() {
               )}
 
               {/* Supporting Institutional Provisioning Notice: Green Shield Check */}
-              <div className="pt-2 flex items-center justify-start gap-2 text-xs text-slate-500">
+              <div className="pt-1 flex items-center justify-start gap-2 text-xs text-slate-500">
                 <ShieldCheck className="size-4 text-[#10b981] shrink-0 stroke-[2.2]" />
                 <span>Student accounts provisioned by institutional administrators.</span>
               </div>
