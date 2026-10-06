@@ -40,9 +40,8 @@ type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; sectio
 
 const STUDENT_NAV: NavItem[] = [
   { to: "/student", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/student/technical", label: "Learning", icon: BookOpen },
-  { to: "/student/exercises", label: "Labs & Practice", icon: Code2 },
-  { to: "/student/gateway", label: "Career & Projects", icon: Briefcase },
+  { to: "/student/technical", label: "Technical Track", icon: Code2 },
+  { to: "/student/accelerator", label: "Placement Track", icon: GraduationCap },
   { to: "/student/leaderboard", label: "Leaderboard", icon: Trophy },
   { to: "/student/settings", label: "Profile", icon: Settings2 },
 ];
