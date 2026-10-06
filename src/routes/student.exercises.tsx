@@ -55,7 +55,13 @@ import {
   CheckSquare,
   BookmarkCheck,
   ExternalLink,
+  Cpu,
+  Activity,
+  Brain,
 } from "lucide-react";
+import { TeachTheMachineHub } from "@/components/teach-the-machine/TeachTheMachineHub";
+import { PredictRunExplainSimulators } from "@/components/simulators/PredictRunExplainSimulators";
+import { SpacedReviewHub } from "@/components/spaced-review/SpacedReviewHub";
 
 export const Route = createFileRoute("/student/exercises")({
   head: () => ({
@@ -300,7 +306,7 @@ function DailyExercisesPage() {
             queryKey: ["live", "student-profile", store.supabaseSession?.user?.id],
           });
         }
-        toast.success(`🎉 Day ${dayNum} Completed! (3/3 Workouts Mastered)`, {
+        toast.success(`Day ${dayNum} Completed! (3/3 Workouts Mastered)`, {
           description:
             dayNum < 90
               ? `Day ${dayNum + 1} is now unlocked! Great job advancing your cadence.`
@@ -478,12 +484,17 @@ function DailyExercisesPage() {
     await checkAndFinalizeDayCompletion(selectedDayNum, isAptitudeDone, isEnglishDone, true);
   };
 
+  // Mode switcher: Daily 20 questions, Teach the machine, Simulators, Spaced recall
+  const [workoutMode, setWorkoutMode] = useState<
+    "daily-questions" | "teach-machine" | "simulators" | "spaced-review"
+  >("daily-questions");
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       {/* Top Header */}
       <PageHeader
-        title="Daily Exercise Dashboard"
-        subtitle={`Synchronized placement drills and course-specific technical workouts for Day ${selectedDayNum} of 90 (Week ${currentPlan.week} · ${currentPlan.dayOfWeek}).`}
+        title="Practice & Mastery Hub"
+        subtitle={`Interactive practice engine: Daily 20 questions, logic rule creation, predictive simulators, and spaced memory recall for Day ${selectedDayNum} of 90.`}
         action={
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -509,6 +520,72 @@ function DailyExercisesPage() {
         }
       />
 
+      {/* Mode Switcher Tabs */}
+      <div className="flex flex-wrap gap-2 border-b border-border/80 pb-3">
+        <button
+          type="button"
+          onClick={() => setWorkoutMode("daily-questions")}
+          className={cn(
+            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all border",
+            workoutMode === "daily-questions"
+              ? "bg-primary text-primary-foreground border-primary shadow-xs"
+              : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-border"
+          )}
+        >
+          <BookOpen className="size-3.5" />
+          <span>Daily 20 Questions</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setWorkoutMode("teach-machine")}
+          className={cn(
+            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all border",
+            workoutMode === "teach-machine"
+              ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+              : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-border"
+          )}
+        >
+          <Cpu className="size-3.5" />
+          <span>Teach the Machine</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setWorkoutMode("simulators")}
+          className={cn(
+            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all border",
+            workoutMode === "simulators"
+              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+              : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-border"
+          )}
+        >
+          <Activity className="size-3.5" />
+          <span>Predict → Run Simulators</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setWorkoutMode("spaced-review")}
+          className={cn(
+            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all border",
+            workoutMode === "spaced-review"
+              ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+              : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-border"
+          )}
+        >
+          <Brain className="size-3.5" />
+          <span>Memory & Spaced Recall</span>
+        </button>
+      </div>
+
+      {workoutMode === "teach-machine" && <TeachTheMachineHub />}
+      {workoutMode === "simulators" && <PredictRunExplainSimulators />}
+      {workoutMode === "spaced-review" && <SpacedReviewHub />}
+
+      {workoutMode === "daily-questions" && (
+        <div className="space-y-6">
+
       {/* KPI Stats Row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
@@ -517,7 +594,7 @@ function DailyExercisesPage() {
           tone={totalCompletedCount === 20 ? "emerald" : "brand"}
           hint={
             totalCompletedCount === 20
-              ? "All 20 daily questions finished! 🎉"
+              ? "All 20 daily questions finished!"
               : `${20 - totalCompletedCount} questions remaining today`
           }
         />
@@ -978,13 +1055,13 @@ function DailyExercisesPage() {
                               {isCorrect ? (
                                 <>
                                   <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                                  <span>✓ Correct! (+1 XP)</span>
+                                  <span>Correct (+1 XP)</span>
                                 </>
                               ) : (
                                 <>
                                   <AlertCircle className="size-3.5 text-rose-600 dark:text-rose-400" />
                                   <span>
-                                    ✗ Incorrect (0 XP) · Correct:{" "}
+                                    Incorrect (0 XP) · Correct:{" "}
                                     {String.fromCharCode(65 + q.correct_option)} ({q.correct_answer}
                                     )
                                   </span>
@@ -1012,7 +1089,7 @@ function DailyExercisesPage() {
                 </div>
                 <span className="text-[11px] font-mono text-muted-foreground">
                   {aptitudeCompletedCount === 10
-                    ? `✓ Completed (10 / 10 · ${aptitudeXpEarned} / 10 XP)`
+                    ? `Completed (10 / 10 · ${aptitudeXpEarned} / 10 XP)`
                     : `${aptitudeCompletedCount} / 10 Completed · ${aptitudeXpEarned} / 10 XP`}
                 </span>
               </div>
@@ -1556,6 +1633,8 @@ function DailyExercisesPage() {
           </div>
         </div>
       </div>
+        </div>
+      )}
     </div>
   );
 }

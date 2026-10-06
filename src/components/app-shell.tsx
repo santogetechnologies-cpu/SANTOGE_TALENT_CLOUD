@@ -39,16 +39,12 @@ import { toast } from "sonner";
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; section?: string };
 
 const STUDENT_NAV: NavItem[] = [
-  { to: "/student", label: "Today", icon: LayoutDashboard },
-  { to: "/student/exercises", label: "Daily Exercises", icon: Dumbbell },
-  { to: "/student/technical", label: "90-Day Journey", icon: Code2 },
-  {
-    to: "/student/gateway",
-    label: "Career Gateway (Phase 2)",
-    icon: FileText,
-    section: "Career & Placement",
-  },
-  { to: "/student/settings", label: "Settings & Courses", icon: Settings2 },
+  { to: "/student", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/student/technical", label: "Learning", icon: BookOpen },
+  { to: "/student/exercises", label: "Labs & Practice", icon: Code2 },
+  { to: "/student/gateway", label: "Career & Projects", icon: Briefcase },
+  { to: "/student/leaderboard", label: "Leaderboard", icon: Trophy },
+  { to: "/student/settings", label: "Profile", icon: Settings2 },
 ];
 
 const ADMIN_NAV: NavItem[] = [
@@ -403,7 +399,10 @@ export function AppShell({ portal }: { portal: Role }) {
                 </span>
               </div>
               <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
-                <span>{gateUnlocked ? "Unlocked 🔓" : "In Progress 🔒"}</span>
+                <span className="flex items-center gap-1">
+                  <span className={cn("size-1.5 rounded-full", gateUnlocked ? "bg-emerald-500" : "bg-amber-500")} />
+                  {gateUnlocked ? "Unlocked" : "In Progress"}
+                </span>
                 <span className="font-medium text-foreground">{eligibleCompanies} Companies</span>
               </div>
             </div>

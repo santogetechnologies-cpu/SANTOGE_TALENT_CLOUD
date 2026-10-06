@@ -16,7 +16,11 @@ import {
   Briefcase,
   Building2,
   Sparkles,
+  FolderGit2,
+  ShieldCheck,
 } from "lucide-react";
+import { CareerSimulationHub } from "@/components/career-simulation/CareerSimulationHub";
+import { ProjectWorldsHub } from "@/components/project-worlds/ProjectWorldsHub";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -205,17 +209,72 @@ function GatewayPage() {
     (r) => talentScore >= r.minScore && activeTracks.includes(r.track),
   ).length;
 
+  const [gatewayTab, setGatewayTab] = useState<
+    "career-sim" | "project-worlds" | "dual-gate"
+  >("career-sim");
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto pb-16">
       <PageHeader
-        title="Dual Completion Gate & Phase 2"
-        subtitle="STC evaluates two independent systems: your individual technical courses + batch placement accelerator."
+        title="Career Simulation & Project Worlds"
+        subtitle="Gain workplace experience with interactive career simulations, production project worlds, and placement matching."
         action={
           <Chip tone={dualGatePassed ? "emerald" : "amber"}>
-            {dualGatePassed ? "Dual Gate Unlocked 🔓" : "Dual Gate In Progress 🔒"}
+            {dualGatePassed ? "Dual Gate Unlocked" : "Dual Gate In Progress"}
           </Chip>
         }
       />
+
+      {/* Gateway Tab Switcher */}
+      <div className="flex flex-wrap gap-2 border-b border-border/80 pb-3">
+        <button
+          type="button"
+          onClick={() => setGatewayTab("career-sim")}
+          className={cn(
+            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all border",
+            gatewayTab === "career-sim"
+              ? "bg-primary text-primary-foreground border-primary shadow-xs"
+              : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-border"
+          )}
+        >
+          <Briefcase className="size-3.5" />
+          <span>Career Simulation Lab</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setGatewayTab("project-worlds")}
+          className={cn(
+            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all border",
+            gatewayTab === "project-worlds"
+              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+              : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-border"
+          )}
+        >
+          <FolderGit2 className="size-3.5" />
+          <span>Project Worlds (Capstones)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setGatewayTab("dual-gate")}
+          className={cn(
+            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all border",
+            gatewayTab === "dual-gate"
+              ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+              : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-border"
+          )}
+        >
+          <ShieldCheck className="size-3.5" />
+          <span>Dual Completion Gate & Hiring</span>
+        </button>
+      </div>
+
+      {gatewayTab === "career-sim" && <CareerSimulationHub />}
+      {gatewayTab === "project-worlds" && <ProjectWorldsHub />}
+
+      {gatewayTab === "dual-gate" && (
+        <div className="space-y-6">
 
       {/* Top Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -491,7 +550,7 @@ function GatewayPage() {
                         isEligible ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400",
                       )}
                     >
-                      {isEligible ? "✓ Matched & Forwarded" : "Requires higher score"}
+                      {isEligible ? "Matched & Forwarded" : "Requires higher score"}
                     </span>
                     {isEligible && <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
                   </div>
@@ -501,6 +560,8 @@ function GatewayPage() {
           </div>
         )}
       </Panel>
+        </div>
+      )}
     </div>
   );
 }

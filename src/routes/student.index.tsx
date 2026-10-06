@@ -13,6 +13,7 @@ import {
 } from "@/lib/data";
 import { DailyHomeScreen } from "@/components/daily-journey/DailyHomeScreen";
 import { DailyJourneyRunner } from "@/components/daily-journey/DailyJourneyRunner";
+import { InteractiveLessonEngine } from "@/components/daily-journey/InteractiveLessonEngine";
 import type { JourneyStepId } from "@/components/daily-journey/JourneyProgressBar";
 import { getLessonForDay } from "@/lib/course-curricula";
 
@@ -141,12 +142,12 @@ function TodayLearningPage() {
   // Journey Runner state
   const [journeyConfig, setJourneyConfig] = useState<{
     isActive: boolean;
-    mode: "technical" | "placement" | "all";
+    mode: "technical" | "placement" | "all" | "interactive-teacher";
     dayNum: number;
     initialStep?: JourneyStepId;
   }>({
     isActive: false,
-    mode: "technical",
+    mode: "interactive-teacher",
     dayNum: 1,
   });
 
@@ -212,7 +213,7 @@ function TodayLearningPage() {
 
     setJourneyConfig({
       isActive: true,
-      mode: "technical",
+      mode: "interactive-teacher",
       dayNum: selectedDay,
       initialStep,
     });
@@ -237,6 +238,25 @@ function TodayLearningPage() {
     const isLabDone = completedTechDays.includes(journeyConfig.dayNum);
     const isPlacementComplete = attendance.includes(journeyConfig.dayNum);
 
+    if (journeyConfig.mode === "interactive-teacher") {
+      return (
+        <InteractiveLessonEngine
+          dayNum={journeyConfig.dayNum}
+          trackId={selectedTrackId}
+          trackName={primaryTrack.name}
+          topicTitle={activeLesson?.title || currentTechDay.topic}
+          topicDescription={activeLesson?.description || currentTechDay.practice}
+          onComplete={async () => {
+            await handleCompleteTechnicalLab();
+            setJourneyConfig((prev) => ({ ...prev, isActive: false }));
+          }}
+          onExit={() => {
+            setJourneyConfig((prev) => ({ ...prev, isActive: false }));
+          }}
+        />
+      );
+    }
+
     return (
       <DailyJourneyRunner
         dayNum={journeyConfig.dayNum}
@@ -254,7 +274,7 @@ function TodayLearningPage() {
         streak={streak}
         talentScore={talentScore}
         initialStepOverride={journeyConfig.initialStep}
-        mode={journeyConfig.mode}
+        mode={journeyConfig.mode === "placement" ? "placement" : "technical"}
         onStepChange={(step) => {
           setJourneyConfig((prev) => ({ ...prev, initialStep: step }));
         }}
