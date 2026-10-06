@@ -691,7 +691,7 @@ function DailyExercisesPage() {
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                Fridays (Tests)
+                Day 5 Milestones
               </button>
               <button
                 type="button"

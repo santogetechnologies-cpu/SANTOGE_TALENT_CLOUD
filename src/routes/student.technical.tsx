@@ -40,16 +40,16 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/student/technical")({
   head: () => ({
     meta: [
-      { title: "90-Day Placement Syllabus & Technical Tracks — SantoGe Talent Cloud" },
+      { title: "90-Day Interactive Learning Track & Technical Engine — SantoGe Talent Cloud" },
       {
         name: "description",
         content:
-          "18 Weeks × 5 Working Days = 90 Days. 18 Friday workplace simulations, 18 portfolio projects, and Day 90 industry capstone designed to crack technical placement interviews.",
+          "18 Weeks × 5 Working Days = 90 Continuous Interactive Learning Days. Comprehensive coverage of all essential tools, technologies, and system architecture to master placement readiness.",
       },
-      { property: "og:title", content: "90-Day Placement Syllabus — SantoGe Talent Cloud" },
+      { property: "og:title", content: "90-Day Technical Track — SantoGe Talent Cloud" },
       {
         property: "og:description",
-        content: "18 Weeks × 5 Days = 90 Learning Days with Friday Workplace Simulations.",
+        content: "18 Weeks × 5 Days = 90 Interactive Learning Days across Full Stack, Data Analysis, and AI/ML.",
       },
     ],
   }),
@@ -94,7 +94,7 @@ function TechnicalPage() {
 
   const [open, setOpen] = useState<TrackId>(tracks[0] ?? "java");
   const [syllabusViewTab, setSyllabusViewTab] = useState<
-    "90days" | "simulations" | "portfolio" | "capstone"
+    "90days" | "topics" | "milestones"
   >("90days");
   const [selectedPhaseFilter, setSelectedPhaseFilter] = useState<number | "all">("all");
   const [expandedWeeks, setExpandedWeeks] = useState<Record<number, boolean>>({
@@ -161,23 +161,23 @@ function TechnicalPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="90-Day Placement-Oriented Syllabus & Technical Engine"
-        subtitle="18 Weeks × 5 Working Days = 90 Days. Days 1–4: 20m Concept + 10m Practice. Friday: Workplace Simulation. Built to crack technical interviews on day 90."
-        action={<Chip tone="emerald">{tracks.length} Admin Assigned</Chip>}
+        title="90-Day Interactive Technical Track"
+        subtitle="18 Weeks × 5 Working Days = 90 Active Learning Days. Every single day features 20 mins concept breakdown + 10 mins hands-on interactive code practice."
+        action={<Chip tone="emerald">{tracks.length} Assigned Track{tracks.length > 1 ? "s" : ""}</Chip>}
       />
 
       {/* KPI Stats */}
       <div className="grid gap-3 sm:grid-cols-4">
-        <Stat label="Total Curriculum Days" value="90 Days" hint="18 Weeks × 5 Working Days" />
+        <Stat label="Curriculum Span" value="90 Days" hint="18 Weeks × 5 Days" />
         <Stat
-          label="Friday Simulations"
-          value="18 Mini Projects"
-          hint="Workplace simulations"
+          label="Learning Mode"
+          value="100% Interactive"
+          hint="Daily concept + live code"
         />
         <Stat
-          label="Placement Portfolio"
-          value="18 Projects + Capstone"
-          hint="Interview-ready artifacts"
+          label="Topic Coverage"
+          value="100% Complete"
+          hint="All core technologies covered"
         />
         <Stat
           label="Competency Mastery"
@@ -292,8 +292,8 @@ function TechnicalPage() {
       {/* =================================================================== */}
       {!isRequestedUnassigned && tracks.length > 0 && (
         <Panel
-          title={`90-Day Placement Syllabus · ${syllabus.trackName}`}
-          subtitle={`Target Role: ${syllabus.targetRole} · Structure: 18 Weeks × 5 Working Days = 90 Learning Days`}
+          title={`90-Day Interactive Learning Track · ${syllabus.trackName}`}
+          subtitle={`Target Role: ${syllabus.targetRole} · Structure: 18 Weeks × 5 Working Days = 90 Continuous Learning Days`}
           action={<Chip tone="emerald">{syllabus.weeks.length} Weeks Structured</Chip>}
         >
         {/* Career Progression & Interview Pitch Banner */}
@@ -344,9 +344,9 @@ function TechnicalPage() {
               </p>
             </div>
             <div className="flex items-center justify-between border-t border-border pt-2 text-[11px] text-muted-foreground">
-              <span>Verified through 18 mini projects + Day 90 industry capstone.</span>
+              <span>Verified through 90 days of daily interactive hands-on coding.</span>
               <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <CheckCircle2 className="size-3.5" /> Placement Ready
+                <CheckCircle2 className="size-3.5" /> 100% Industry Aligned
               </span>
             </div>
           </div>
@@ -364,40 +364,29 @@ function TechnicalPage() {
                   : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted border-border",
               )}
             >
-              <Calendar className="size-3.5" /> 90-Day Schedule (18 Weeks)
+              <Calendar className="size-3.5" /> 90-Day Interactive Schedule (18 Weeks)
             </button>
             <button
-              onClick={() => setSyllabusViewTab("simulations")}
+              onClick={() => setSyllabusViewTab("topics")}
               className={cn(
                 "rounded-md px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer border",
-                syllabusViewTab === "simulations"
+                syllabusViewTab === "topics"
                   ? "bg-primary text-primary-foreground border-primary shadow-xs"
                   : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted border-border",
               )}
             >
-              <Briefcase className="size-3.5" /> 18 Friday Workplace Simulations
+              <Code2 className="size-3.5" /> Topics & Stack Breakdown
             </button>
             <button
-              onClick={() => setSyllabusViewTab("portfolio")}
+              onClick={() => setSyllabusViewTab("milestones")}
               className={cn(
                 "rounded-md px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer border",
-                syllabusViewTab === "portfolio"
+                syllabusViewTab === "milestones"
                   ? "bg-primary text-primary-foreground border-primary shadow-xs"
                   : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted border-border",
               )}
             >
-              <Award className="size-3.5" /> Placement Portfolio (18 Projects)
-            </button>
-            <button
-              onClick={() => setSyllabusViewTab("capstone")}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer border",
-                syllabusViewTab === "capstone"
-                  ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                  : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted border-border",
-              )}
-            >
-              <Sparkles className="size-3.5" /> Day 90 Master Capstone
+              <Award className="size-3.5" /> 18 Weekly Mastery Milestones
             </button>
           </div>
 
@@ -486,7 +475,7 @@ function TechnicalPage() {
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           Theme: <span className="text-foreground font-medium">{w.theme}</span> ·
-                          Friday Mini Project:{" "}
+                          Day 5 Focus:{" "}
                           <span className="text-foreground font-semibold">{w.projectTitle}</span>
                         </p>
                       </div>
@@ -509,14 +498,14 @@ function TechnicalPage() {
                     <div className="border-t border-border p-3.5 space-y-2.5 bg-card">
                       <div className="grid gap-2 sm:grid-cols-5">
                         {w.days.map((d) => {
-                          const isFriday = d.day % 5 === 0;
+                          const isDay5 = d.day % 5 === 0;
 
                           return (
                             <div
                               key={d.day}
                               className={cn(
                                 "rounded-md border p-3 flex flex-col justify-between transition-colors",
-                                isFriday
+                                isDay5
                                   ? "border-primary/40 bg-primary/5 sm:col-span-1"
                                   : "border-border bg-muted/10",
                               )}
@@ -526,7 +515,7 @@ function TechnicalPage() {
                                   <span
                                     className={cn(
                                       "rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold",
-                                      isFriday
+                                      isDay5
                                         ? "bg-primary text-primary-foreground"
                                         : "bg-muted text-muted-foreground",
                                     )}
@@ -534,14 +523,14 @@ function TechnicalPage() {
                                     Day {d.day}
                                   </span>
                                   <span className="font-mono text-[10px] text-muted-foreground">
-                                    {isFriday ? "30m Project" : "20 + 10m"}
+                                    20m + 10m Lab
                                   </span>
                                 </div>
 
                                 <p
                                   className={cn(
                                     "text-xs font-semibold mt-1",
-                                    isFriday ? "text-primary" : "text-foreground",
+                                    isDay5 ? "text-primary" : "text-foreground",
                                   )}
                                 >
                                   {d.topic}
@@ -563,20 +552,19 @@ function TechnicalPage() {
                         })}
                       </div>
 
-                      {/* Friday Workplace Simulation Brief */}
+                      {/* Day 5 Interactive Mastery Brief */}
                       <div className="mt-2 rounded-md border border-border bg-muted/20 p-3 flex items-start gap-2.5 text-xs">
-                        <Briefcase className="size-4 text-primary shrink-0 mt-0.5" />
+                        <BookOpen className="size-4 text-primary shrink-0 mt-0.5" />
                         <div className="min-w-0 flex-1">
                           <p className="font-semibold text-foreground">
-                            Friday Workplace Simulation:{" "}
+                            Day 5 Interactive Deep Dive:{" "}
                             <span>{w.projectTitle}</span>
                           </p>
                           <p className="mt-0.5 text-muted-foreground leading-relaxed">
-                            {w.days.find((d) => d.isProject)?.workplaceSimulation ||
-                              `Complete real-world simulated workplace assignment: ${w.projectTitle}.`}
+                            Hands-on interactive learning synthesis covering the full week's concepts: {w.projectTitle}.
                           </p>
                           <p className="mt-1 font-mono text-[11px] text-emerald-600 dark:text-emerald-400">
-                            Portfolio Deliverable: <strong>{w.deliverable}</strong>
+                            Learning Focus: <strong>{w.deliverable}</strong>
                           </p>
                         </div>
                       </div>
@@ -588,68 +576,55 @@ function TechnicalPage() {
           </div>
         )}
 
-        {/* TAB 2: 18 FRIDAY WORKPLACE SIMULATIONS */}
-        {syllabusViewTab === "simulations" && (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {syllabus.weeks.map((w) => {
-              const projectDay = w.days.find((d) => d.isProject);
+        {/* TAB 2: TOPICS & STACK BREAKDOWN */}
+        {syllabusViewTab === "topics" && (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border bg-muted/20 p-3.5 flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">
+                  Complete Course Syllabus & Topics Covered
+                </h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {track.tagline}
+                </p>
+              </div>
+              <Chip tone="emerald">{track.topics.length} Core Modules</Chip>
+            </div>
 
-              return (
+            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+              {track.topics.map((t, idx) => (
                 <div
-                  key={w.week}
-                  className="flex flex-col justify-between rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40 shadow-xs"
+                  key={t}
+                  className="flex items-center gap-3 rounded-lg border border-border bg-card p-3.5 transition-colors hover:border-primary/40 shadow-xs"
                 >
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="rounded bg-muted px-2 py-0.5 font-mono text-[10px] font-semibold text-foreground border border-border">
-                        Week {w.week} · Day {w.week * 5}
-                      </span>
-                      <span className="text-[11px] font-medium text-muted-foreground">
-                        {w.workplaceSkill}
-                      </span>
-                    </div>
-
-                    <h4 className="mt-2 text-sm font-semibold text-foreground">{w.projectTitle}</h4>
-                    <p className="mt-1 text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                      {projectDay?.workplaceSimulation ||
-                        `Real-world industry simulation challenge for ${w.theme}.`}
-                    </p>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-border space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Deliverable:</span>
-                      <span className="font-mono font-medium text-emerald-600 dark:text-emerald-400 text-[11px]">
-                        {w.deliverable}
-                      </span>
-                    </div>
-                    <Link
-                      to="/student/labs"
-                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-card border border-border py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Terminal className="size-3.5 text-muted-foreground" /> Open Sandbox (+50 XP)
-                    </Link>
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary font-mono text-xs font-bold">
+                    {idx + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-foreground">{t}</p>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                      Covered in 90-Day Curriculum
+                    </span>
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         )}
 
-        {/* TAB 3: PLACEMENT PORTFOLIO MATRIX */}
-        {syllabusViewTab === "portfolio" && (
+        {/* TAB 3: 18 WEEKLY MASTERY MILESTONES */}
+        {syllabusViewTab === "milestones" && (
           <div className="space-y-3">
             <div className="rounded-lg border border-border bg-muted/20 p-3.5 flex items-center justify-between">
               <div>
                 <h4 className="text-sm font-semibold text-foreground">
-                  18 Industry Verified Portfolio Artifacts
+                  18 Weekly Mastery Checkpoints
                 </h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Every Friday mini project produces a tangible code repository, architecture map,
-                  or audit sheet proving your competency.
+                  Structured week-by-week learning milestones verifying end-to-end technical mastery across all 90 days.
                 </p>
               </div>
-              <Chip tone="emerald">18 / 18 Projects</Chip>
+              <Chip tone="emerald">18 / 18 Milestones</Chip>
             </div>
 
             <div className="overflow-x-auto rounded-lg border border-border bg-card">
@@ -657,8 +632,8 @@ function TechnicalPage() {
                 <thead className="border-b border-border text-muted-foreground bg-muted/30">
                   <tr>
                     <th className="py-2.5 px-3.5 font-medium w-12">#</th>
-                    <th className="py-2.5 px-3.5 font-medium">Portfolio Project</th>
-                    <th className="py-2.5 px-3.5 font-medium">Workplace Competency</th>
+                    <th className="py-2.5 px-3.5 font-medium">Weekly Focus Topic</th>
+                    <th className="py-2.5 px-3.5 font-medium">Target Competency</th>
                     <th className="py-2.5 px-3.5 font-medium">Curriculum Phase</th>
                     <th className="py-2.5 px-3.5 font-medium text-right">Status</th>
                   </tr>
@@ -667,7 +642,7 @@ function TechnicalPage() {
                   {syllabus.portfolio.map((p) => (
                     <tr key={p.num} className="hover:bg-muted/30 transition-colors">
                       <td className="py-2.5 px-3.5 font-mono font-semibold text-muted-foreground">
-                        P{String(p.num).padStart(2, "0")}
+                        W{String(p.num).padStart(2, "0")}
                       </td>
                       <td className="py-2.5 px-3.5 font-semibold">{p.project}</td>
                       <td className="py-2.5 px-3.5">
@@ -680,83 +655,13 @@ function TechnicalPage() {
                       </td>
                       <td className="py-2.5 px-3.5 text-right">
                         <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400 text-[11px]">
-                          <CheckCircle2 className="size-3" /> Verified
+                          <CheckCircle2 className="size-3" /> Active Learning
                         </span>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: DAY 90 MASTER CAPSTONE */}
-        {syllabusViewTab === "capstone" && (
-          <div className="space-y-4">
-            <div className="rounded-lg border border-border bg-card p-5 space-y-3.5 shadow-xs">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <span className="rounded bg-primary/10 border border-primary/20 px-2 py-0.5 text-xs font-semibold text-primary">
-                    Day 90 Industry Capstone
-                  </span>
-                  <h3 className="mt-2 text-base font-semibold text-foreground">
-                    {syllabus.day90Capstone.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {syllabus.day90Capstone.description}
-                  </p>
-                </div>
-                <Chip tone="purple">14-Step Lifecycle</Chip>
-              </div>
-
-              {/* Architecture Flow */}
-              <div className="rounded-lg border border-border bg-muted/20 p-3">
-                <p className="text-xs font-semibold text-foreground mb-1.5">
-                  Capstone Data & Execution Flow:
-                </p>
-                <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                  {syllabus.day90Capstone.flow.map((node, nIdx) => (
-                    <div key={node} className="flex items-center gap-1.5">
-                      <span className="rounded bg-card border border-border px-2 py-0.5 font-mono text-[11px] text-foreground">
-                        {node}
-                      </span>
-                      {nIdx < syllabus.day90Capstone.flow.length - 1 && (
-                        <ArrowRight className="size-3 text-muted-foreground" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* 14 Steps Breakdown Grid */}
-              <div className="grid gap-2.5 sm:grid-cols-2">
-                {syllabus.day90Capstone.steps.map((s) => (
-                  <div
-                    key={s.step}
-                    className="rounded-md border border-border bg-muted/10 p-3 flex gap-2.5 items-start"
-                  >
-                    <span className="flex size-5 shrink-0 items-center justify-center rounded bg-muted font-mono text-xs font-bold text-foreground border border-border">
-                      {s.step}
-                    </span>
-                    <div>
-                      <p className="text-xs font-semibold text-foreground">{s.title}</p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground leading-relaxed">
-                        {s.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex justify-end pt-2 border-t border-border">
-                <Link
-                  to="/student/labs"
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
-                >
-                  <Terminal className="size-3.5" /> Launch Capstone Simulator
-                </Link>
-              </div>
             </div>
           </div>
         )}
