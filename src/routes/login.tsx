@@ -8,7 +8,6 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
-  Sparkles,
   ArrowRight,
   ShieldCheck,
   Mail,
@@ -38,56 +37,65 @@ export const Route = createFileRoute("/login")({
 });
 
 // ---------------------------------------------------------------------------
-// Interactive Realistic Panda Component
-// Reacts to focus, mouse movement, password hiding, and peeking
+// Interactive Realistic Panda Mascot & 3D Cloud Tech Scene
+// Matches reference artwork:
+// - Large soft lavender circular glow behind panda
+// - Blue-purple abstract flowing shapes along the bottom
+// - Floating gradient spheres / 3D orbs
+// - Floating puffy cloud (cloud technology)
+// - Paper airplane with dotted flight trajectory (career progress)
+// - Floating education tile (graduation cap)
+// - Floating team tile (students/collaboration)
+// - Soft elliptical ground shadow
+// - Interactive eye-tracking & paws that cover eyes during password entry
 // ---------------------------------------------------------------------------
-interface InteractivePandaProps {
+interface InteractivePandaSceneProps {
   focusedField: "email" | "password" | null;
   isTyping: boolean;
   showPassword: boolean;
   mousePos: { x: number; y: number };
 }
 
-function InteractivePanda({
+function InteractivePandaScene({
   focusedField,
   isTyping,
   showPassword,
   mousePos,
-}: InteractivePandaProps) {
+}: InteractivePandaSceneProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [pupilOffset, setPupilOffset] = useState({ x: 0, y: 0 });
   const [blink, setBlink] = useState(false);
 
-  // Natural blinking
+  // Natural blinking effect
   useEffect(() => {
     const blinkInterval = setInterval(() => {
       setBlink(true);
       setTimeout(() => setBlink(false), 160);
-    }, 4000 + Math.random() * 2500);
+    }, 3800 + Math.random() * 2200);
 
     return () => clearInterval(blinkInterval);
   }, []);
 
-  // Pupil positioning
+  // Pupil and eye tracking logic
   useEffect(() => {
     if (focusedField === "password") {
       if (showPassword) {
         // Peeking pupil offset
         setPupilOffset({ x: 4, y: 2 });
       } else {
-        // Looking up shyly under paws
+        // Shy gaze under paws
         setPupilOffset({ x: 0, y: -2 });
       }
       return;
     }
 
     if (focusedField === "email") {
-      // Look down and slightly forward toward the email input
-      setPupilOffset({ x: 4, y: 5 });
+      // Look down-right intently towards email input field
+      setPupilOffset({ x: 5, y: 5 });
       return;
     }
 
-    // Follow mouse when idle
+    // Follow mouse smoothly when idle
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
@@ -95,7 +103,7 @@ function InteractivePanda({
       const dx = mousePos.x - centerX;
       const dy = mousePos.y - centerY;
       const angle = Math.atan2(dy, dx);
-      const dist = Math.min(5, Math.hypot(dx, dy) / 60);
+      const dist = Math.min(5, Math.hypot(dx, dy) / 55);
 
       setPupilOffset({
         x: Math.cos(angle) * dist,
@@ -111,45 +119,301 @@ function InteractivePanda({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[220px] sm:h-[250px] lg:h-[270px] flex items-center justify-center select-none"
+      className="relative w-full max-w-[540px] aspect-[1/0.88] flex items-center justify-center select-none"
     >
       <svg
-        viewBox="0 0 340 300"
-        className="w-full h-full max-w-[320px] overflow-visible drop-shadow-xl transition-transform duration-300"
+        viewBox="0 0 540 470"
+        className="w-full h-full overflow-visible drop-shadow-sm transition-transform duration-300"
       >
         <defs>
-          {/* Subtle 3D gradient fills for panda body */}
-          <radialGradient id="pandaFurGrad" cx="45%" cy="40%" r="60%">
-            <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="85%" stopColor="#f3f4f6" />
-            <stop offset="100%" stopColor="#e5e7eb" />
+          {/* Lavender background glow */}
+          <radialGradient id="lavenderGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#eef2ff" stopOpacity="0.95" />
+            <stop offset="65%" stopColor="#e0e7ff" stopOpacity="0.75" />
+            <stop offset="100%" stopColor="#f5f3ff" stopOpacity="0.15" />
           </radialGradient>
 
-          <linearGradient id="pandaDarkGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#374151" />
-            <stop offset="100%" stopColor="#1f2937" />
+          {/* Panda fur gradient */}
+          <radialGradient id="furWhiteGrad" cx="45%" cy="38%" r="62%">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="85%" stopColor="#f8fafc" />
+            <stop offset="100%" stopColor="#e2e8f0" />
+          </radialGradient>
+
+          {/* Panda dark fur gradient */}
+          <linearGradient id="darkFurGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#334155" />
+            <stop offset="40%" stopColor="#1e293b" />
+            <stop offset="100%" stopColor="#0f172a" />
           </linearGradient>
 
-          <radialGradient id="pawPadGrad" cx="35%" cy="35%" r="65%">
+          {/* Paw bean pink gradient */}
+          <radialGradient id="pawPadPink" cx="40%" cy="35%" r="65%">
             <stop offset="0%" stopColor="#fed7aa" />
-            <stop offset="100%" stopColor="#fba3b1" />
+            <stop offset="35%" stopColor="#fda4af" />
+            <stop offset="100%" stopColor="#fb7185" />
           </radialGradient>
 
-          {/* Soft contact shadow filter */}
-          <filter id="shadowGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.15" />
+          {/* 3D Blue Sphere Gradient */}
+          <radialGradient id="sphereBlueGrad" cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stopColor="#93c5fd" />
+            <stop offset="45%" stopColor="#3b82f6" />
+            <stop offset="90%" stopColor="#1d4ed8" />
+            <stop offset="100%" stopColor="#1e3a8a" />
+          </radialGradient>
+
+          {/* 3D Cyan Sphere Gradient */}
+          <radialGradient id="sphereCyanGrad" cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stopColor="#a5f3fc" />
+            <stop offset="50%" stopColor="#38bdf8" />
+            <stop offset="95%" stopColor="#0284c7" />
+            <stop offset="100%" stopColor="#0369a1" />
+          </radialGradient>
+
+          {/* 3D Purple/Violet Tile Gradient */}
+          <linearGradient id="purpleTileGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#a855f7" />
+            <stop offset="100%" stopColor="#6366f1" />
+          </linearGradient>
+
+          {/* 3D Blue Team Tile Gradient */}
+          <linearGradient id="blueTileGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#60a5fa" />
+            <stop offset="100%" stopColor="#3b82f6" />
+          </linearGradient>
+
+          {/* Paper Airplane Gradient */}
+          <linearGradient id="planeGrad" x1="0%" y1="0%" x2="100%" y2="80%">
+            <stop offset="0%" stopColor="#818cf8" />
+            <stop offset="60%" stopColor="#6366f1" />
+            <stop offset="100%" stopColor="#4f46e5" />
+          </linearGradient>
+
+          {/* Flowing Organic Petal Gradients */}
+          <linearGradient id="petalBlueViolet" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#818cf8" />
+            <stop offset="50%" stopColor="#6366f1" />
+            <stop offset="100%" stopColor="#4338ca" />
+          </linearGradient>
+
+          <linearGradient id="petalCyanBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#38bdf8" />
+            <stop offset="60%" stopColor="#60a5fa" />
+            <stop offset="100%" stopColor="#3b82f6" />
+          </linearGradient>
+
+          <linearGradient id="petalLightCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#7dd3fc" />
+            <stop offset="100%" stopColor="#38bdf8" />
+          </linearGradient>
+
+          {/* Soft 3D Cloud Gradient */}
+          <linearGradient id="cloudGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="70%" stopColor="#e0e7ff" />
+            <stop offset="100%" stopColor="#c7d2fe" />
+          </linearGradient>
+
+          {/* Drop Shadows */}
+          <filter id="tileShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="10" stdDeviation="12" floodColor="#4f46e5" floodOpacity="0.25" />
+          </filter>
+          <filter id="elementShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="8" stdDeviation="10" floodColor="#1e293b" floodOpacity="0.12" />
           </filter>
         </defs>
 
-        {/* Soft ground shadow underneath panda */}
-        <ellipse
-          cx="170"
-          cy="285"
-          rx="110"
-          ry="12"
-          fill="#cbd5e1"
-          opacity="0.6"
+        {/* ----------------------------------------------------------- */}
+        {/* 1. LARGE SOFT LAVENDER CIRCULAR GLOW BEHIND PANDA           */}
+        {/* ----------------------------------------------------------- */}
+        <circle
+          cx="270"
+          cy="235"
+          r="175"
+          fill="url(#lavenderGlow)"
         />
+
+        {/* ----------------------------------------------------------- */}
+        {/* 2. DOTTED FLIGHT TRAIL & PAPER AIRPLANE (CAREER PROGRESS)   */}
+        {/* ----------------------------------------------------------- */}
+        <g>
+          {/* Curved dashed flight trail */}
+          <path
+            d="M 125 155 Q 160 95 240 102"
+            fill="none"
+            stroke="#818cf8"
+            strokeWidth="2.2"
+            strokeDasharray="4 6"
+            strokeLinecap="round"
+            opacity="0.8"
+          />
+          {/* Paper airplane */}
+          <g transform="translate(240, 92) rotate(18)">
+            {/* Left wing */}
+            <path
+              d="M 0 0 L 26 -8 L 8 16 Z"
+              fill="url(#planeGrad)"
+            />
+            {/* Right wing */}
+            <path
+              d="M 0 0 L 26 -8 L 20 6 Z"
+              fill="#4f46e5"
+            />
+            {/* Bottom fold shadow */}
+            <path
+              d="M 0 0 L 8 16 L 12 6 Z"
+              fill="#3730a3"
+              opacity="0.8"
+            />
+          </g>
+        </g>
+
+        {/* ----------------------------------------------------------- */}
+        {/* 3. FLOATING PUFFY CLOUD (CLOUD TECHNOLOGY)                  */}
+        {/* ----------------------------------------------------------- */}
+        <g transform="translate(370, 90)" filter="url(#elementShadow)">
+          <path
+            d="M 22 35 C 10 35, 0 26, 0 15 C 0 5, 9 -2, 20 0 C 26 -10, 42 -12, 50 -2 C 58 -8, 72 -4, 76 6 C 84 8, 90 16, 90 25 C 90 35, 80 35, 72 35 Z"
+            fill="url(#cloudGrad)"
+          />
+          {/* Soft cloud highlight */}
+          <ellipse cx="45" cy="5" rx="16" ry="6" fill="#ffffff" opacity="0.6" />
+        </g>
+
+        {/* ----------------------------------------------------------- */}
+        {/* 4. FLOATING EDUCATION CARD (GRADUATION CAP - LEARNING)      */}
+        {/* ----------------------------------------------------------- */}
+        <g
+          transform="translate(85, 175) rotate(-16)"
+          filter="url(#tileShadow)"
+          className="transition-transform duration-500 hover:scale-105"
+        >
+          {/* Card body */}
+          <rect
+            x="0"
+            y="0"
+            width="68"
+            height="68"
+            rx="18"
+            fill="url(#purpleTileGrad)"
+          />
+          {/* Graduation Cap Icon inside */}
+          <g transform="translate(16, 17)" fill="#ffffff">
+            {/* Cap top diamond */}
+            <polygon points="18,3 34,9 18,15 2,9" />
+            {/* Cap bottom skullcap */}
+            <path d="M 7 12.5 L 7 21 C 7 25 29 25 29 21 L 29 12.5" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
+            {/* Tassel */}
+            <path d="M 31 10 L 33 22" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="33" cy="23" r="1.5" />
+          </g>
+        </g>
+
+        {/* ----------------------------------------------------------- */}
+        {/* 5. FLOATING TEAM CARD (STUDENTS / TALENT / COLLABORATION)   */}
+        {/* ----------------------------------------------------------- */}
+        <g
+          transform="translate(385, 195) rotate(12)"
+          filter="url(#tileShadow)"
+          className="transition-transform duration-500 hover:scale-105"
+        >
+          {/* Card body */}
+          <rect
+            x="0"
+            y="0"
+            width="66"
+            height="66"
+            rx="18"
+            fill="url(#blueTileGrad)"
+          />
+          {/* Team / Users Icon inside */}
+          <g transform="translate(15, 17)" fill="#ffffff">
+            {/* Center user */}
+            <circle cx="18" cy="9" r="5" />
+            <path d="M 10 27 C 10 21 14 18 18 18 C 22 18 26 21 26 27 Z" />
+            {/* Left user */}
+            <circle cx="9" cy="11" r="3.8" opacity="0.85" />
+            <path d="M 3 26 C 3 22 6 19.5 9 19.5 C 10.5 19.5 12 20.2 13 21.2 C 11.5 22.8 11.2 24.8 11.2 26 Z" opacity="0.85" />
+            {/* Right user */}
+            <circle cx="27" cy="11" r="3.8" opacity="0.85" />
+            <path d="M 33 26 C 33 22 30 19.5 27 19.5 C 25.5 19.5 24 20.2 23 21.2 C 24.5 22.8 24.8 24.8 24.8 26 Z" opacity="0.85" />
+          </g>
+        </g>
+
+        {/* ----------------------------------------------------------- */}
+        {/* 6. FLOATING 3D SPHERES / ORBS                               */}
+        {/* ----------------------------------------------------------- */}
+        {/* Big Blue Sphere Top Left */}
+        <g filter="url(#elementShadow)">
+          <circle cx="118" cy="128" r="15" fill="url(#sphereBlueGrad)" />
+          <ellipse cx="113" cy="123" rx="4" ry="2.5" fill="#ffffff" opacity="0.65" transform="rotate(-30 113 123)" />
+        </g>
+        {/* Small Cyan Sphere Left Edge */}
+        <g filter="url(#elementShadow)">
+          <circle cx="68" cy="255" r="8.5" fill="url(#sphereCyanGrad)" />
+          <ellipse cx="65.5" cy="252.5" rx="2" ry="1.2" fill="#ffffff" opacity="0.65" transform="rotate(-30 65.5 252.5)" />
+        </g>
+        {/* Tiny Cyan Sphere Mid Right */}
+        <g filter="url(#elementShadow)">
+          <circle cx="460" cy="178" r="7.5" fill="url(#sphereCyanGrad)" />
+        </g>
+
+        {/* ----------------------------------------------------------- */}
+        {/* 7. BLUE-PURPLE ABSTRACT FLOWING WAVES & PETALS AT BOTTOM    */}
+        {/* ----------------------------------------------------------- */}
+        {/* Left flowing layered petals */}
+        <g opacity="0.95">
+          {/* Deep violet-blue petal (back) */}
+          <path
+            d="M 120 330 C 65 310, 60 265, 80 260 C 105 255, 150 310, 160 340 Z"
+            fill="url(#petalBlueViolet)"
+          />
+          {/* Mid Cyan-Blue petal */}
+          <path
+            d="M 140 345 C 80 345, 60 315, 75 300 C 95 280, 160 330, 175 355 Z"
+            fill="url(#petalCyanBlue)"
+          />
+          {/* Foreground light cyan petal */}
+          <path
+            d="M 170 365 C 105 375, 50 360, 50 335 C 50 310, 120 335, 185 365 Z"
+            fill="url(#petalLightCyan)"
+          />
+        </g>
+
+        {/* Right flowing layered petals */}
+        <g opacity="0.95">
+          {/* Back cyan petal */}
+          <path
+            d="M 400 330 C 470 300, 485 240, 460 240 C 430 240, 375 305, 360 340 Z"
+            fill="url(#petalLightCyan)"
+          />
+          {/* Mid blue petal */}
+          <path
+            d="M 380 348 C 455 330, 475 285, 455 280 C 430 270, 365 330, 350 355 Z"
+            fill="url(#petalCyanBlue)"
+          />
+          {/* Foreground violet petal */}
+          <path
+            d="M 360 365 C 430 365, 475 335, 465 315 C 450 295, 380 345, 345 368 Z"
+            fill="url(#petalBlueViolet)"
+          />
+        </g>
+
+        {/* ----------------------------------------------------------- */}
+        {/* 8. SOFT ELLIPTICAL GROUND SHADOW UNDER PANDA                */}
+        {/* ----------------------------------------------------------- */}
+        <ellipse
+          cx="270"
+          cy="368"
+          rx="125"
+          ry="14"
+          fill="#cbd5e1"
+          opacity="0.5"
+        />
+
+        {/* ----------------------------------------------------------- */}
+        {/* 9. THE REALISTIC CUTE PANDA MASCOT                          */}
+        {/* ----------------------------------------------------------- */}
 
         {/* PANDA BODY & TORSO */}
         <g
@@ -162,15 +426,15 @@ function InteractivePanda({
               : "translateY(0)",
           }}
         >
-          {/* Back shoulders / upper body */}
+          {/* Back body / shoulders */}
           <path
-            d="M 90 280 C 85 210, 110 185, 170 185 C 230 185, 255 210, 250 280 Z"
-            fill="url(#pandaDarkGrad)"
+            d="M 185 360 C 180 280, 205 240, 270 240 C 335 240, 360 280, 355 360 Z"
+            fill="url(#darkFurGrad)"
           />
-          {/* White chest bib */}
+          {/* White tummy bib */}
           <path
-            d="M 125 280 C 120 225, 140 210, 170 210 C 200 210, 220 225, 215 280 Z"
-            fill="url(#pandaFurGrad)"
+            d="M 218 360 C 215 295, 235 272, 270 272 C 305 272, 325 295, 322 360 Z"
+            fill="url(#furWhiteGrad)"
           />
         </g>
 
@@ -188,7 +452,7 @@ function InteractivePanda({
           {/* EARS */}
           {/* Left Ear */}
           <g
-            className="transition-transform duration-300 origin-[95px_85px]"
+            className="transition-transform duration-300 origin-[185px_195px]"
             style={{
               transform: isCoveringEyes
                 ? "rotate(-8deg)"
@@ -198,28 +462,28 @@ function InteractivePanda({
             }}
           >
             <ellipse
-              cx="95"
-              cy="80"
-              rx="28"
-              ry="26"
-              fill="url(#pandaDarkGrad)"
-              transform="rotate(-25 95 80)"
+              cx="185"
+              cy="192"
+              rx="30"
+              ry="28"
+              fill="url(#darkFurGrad)"
+              transform="rotate(-28 185 192)"
             />
-            {/* Inner Ear Tint */}
+            {/* Inner Ear shading */}
             <ellipse
-              cx="95"
-              cy="80"
+              cx="185"
+              cy="192"
               rx="18"
               ry="16"
-              fill="#111827"
-              opacity="0.4"
-              transform="rotate(-25 95 80)"
+              fill="#0f172a"
+              opacity="0.45"
+              transform="rotate(-28 185 192)"
             />
           </g>
 
           {/* Right Ear */}
           <g
-            className="transition-transform duration-300 origin-[245px_85px]"
+            className="transition-transform duration-300 origin-[355px_195px]"
             style={{
               transform: isCoveringEyes
                 ? "rotate(8deg)"
@@ -229,105 +493,105 @@ function InteractivePanda({
             }}
           >
             <ellipse
-              cx="245"
-              cy="80"
-              rx="28"
-              ry="26"
-              fill="url(#pandaDarkGrad)"
-              transform="rotate(25 245 80)"
+              cx="355"
+              cy="192"
+              rx="30"
+              ry="28"
+              fill="url(#darkFurGrad)"
+              transform="rotate(28 355 192)"
             />
-            {/* Inner Ear Tint */}
+            {/* Inner Ear shading */}
             <ellipse
-              cx="245"
-              cy="80"
+              cx="355"
+              cy="192"
               rx="18"
               ry="16"
-              fill="#111827"
-              opacity="0.4"
-              transform="rotate(25 245 80)"
+              fill="#0f172a"
+              opacity="0.45"
+              transform="rotate(28 355 192)"
             />
           </g>
 
           {/* HEAD BASE */}
           <ellipse
-            cx="170"
-            cy="145"
-            rx="84"
-            ry="75"
-            fill="url(#pandaFurGrad)"
+            cx="270"
+            cy="260"
+            rx="92"
+            ry="82"
+            fill="url(#furWhiteGrad)"
             stroke="#e2e8f0"
-            strokeWidth="1.5"
+            strokeWidth="1.2"
           />
 
           {/* CUTE BLUSH CHEEKS */}
           <ellipse
-            cx="106"
-            cy="168"
-            rx="14"
-            ry="9"
-            fill="#ff8da1"
-            opacity="0.65"
+            cx="200"
+            cy="284"
+            rx="16"
+            ry="11"
+            fill="#ff6b8b"
+            opacity="0.75"
           />
           <ellipse
-            cx="234"
-            cy="168"
-            rx="14"
-            ry="9"
-            fill="#ff8da1"
-            opacity="0.65"
+            cx="340"
+            cy="284"
+            rx="16"
+            ry="11"
+            fill="#ff6b8b"
+            opacity="0.75"
           />
 
           {/* EYE PATCHES */}
           {/* Left Eye Patch */}
           <ellipse
-            cx="124"
-            cy="138"
-            rx="24"
-            ry="29"
-            fill="url(#pandaDarkGrad)"
-            transform="rotate(-22 124 138)"
+            cx="220"
+            cy="252"
+            rx="27"
+            ry="33"
+            fill="url(#darkFurGrad)"
+            transform="rotate(-22 220 252)"
           />
           {/* Right Eye Patch */}
           <ellipse
-            cx="216"
-            cy="138"
-            rx="24"
-            ry="29"
-            fill="url(#pandaDarkGrad)"
-            transform="rotate(22 216 138)"
+            cx="320"
+            cy="252"
+            rx="27"
+            ry="33"
+            fill="url(#darkFurGrad)"
+            transform="rotate(22 320 252)"
           />
 
           {/* EYES & PUPILS */}
           {/* Left Eye */}
           <g>
             <ellipse
-              cx="126"
-              cy="136"
-              rx="10"
-              ry={blink ? 1 : 11}
+              cx="222"
+              cy="250"
+              rx="11.5"
+              ry={blink ? 1.2 : 12.5}
               fill="#ffffff"
             />
             {!blink && (
               <>
                 <circle
-                  cx={126 + pupilOffset.x}
-                  cy={136 + pupilOffset.y}
-                  r="5"
+                  cx={222 + pupilOffset.x}
+                  cy={250 + pupilOffset.y}
+                  r="5.5"
                   fill="#0f172a"
                 />
-                {/* Specular highlights */}
+                {/* Specular Highlights */}
                 <circle
-                  cx={126 + pupilOffset.x + 1.6}
-                  cy={136 + pupilOffset.y - 1.6}
-                  r="1.8"
+                  cx={222 + pupilOffset.x + 1.8}
+                  cy={250 + pupilOffset.y - 1.8}
+                  r="2"
                   fill="#ffffff"
                 />
                 <circle
-                  cx={126 + pupilOffset.x - 1.2}
-                  cy={136 + pupilOffset.y + 1.2}
-                  r="0.8"
+                  cx={222 + pupilOffset.x - 1.4}
+                  cy={250 + pupilOffset.y + 1.4}
+                  r="0.9"
                   fill="#ffffff"
-                  opacity="0.8"
+                  opacity="0.85"
                 />
               </>
             )}
@@ -336,162 +600,146 @@ function InteractivePanda({
           {/* Right Eye */}
           <g>
             <ellipse
-              cx="214"
-              cy="136"
-              rx="10"
-              ry={blink ? 1 : 11}
+              cx="318"
+              cy="250"
+              rx="11.5"
+              ry={blink ? 1.2 : 12.5}
               fill="#ffffff"
             />
             {!blink && (
               <>
                 <circle
-                  cx={214 + pupilOffset.x}
-                  cy={136 + pupilOffset.y}
-                  r="5"
+                  cx={318 + pupilOffset.x}
+                  cy={250 + pupilOffset.y}
+                  r="5.5"
                   fill="#0f172a"
                 />
-                {/* Specular highlights */}
+                {/* Specular Highlights */}
                 <circle
-                  cx={214 + pupilOffset.x + 1.6}
-                  cy={136 + pupilOffset.y - 1.6}
-                  r="1.8"
+                  cx={318 + pupilOffset.x + 1.8}
+                  cy={250 + pupilOffset.y - 1.8}
+                  r="2"
                   fill="#ffffff"
                 />
                 <circle
-                  cx={214 + pupilOffset.x - 1.2}
-                  cy={136 + pupilOffset.y + 1.2}
-                  r="0.8"
+                  cx={318 + pupilOffset.x - 1.4}
+                  cy={250 + pupilOffset.y + 1.4}
+                  r="0.9"
                   fill="#ffffff"
-                  opacity="0.8"
+                  opacity="0.85"
                 />
               </>
             )}
           </g>
 
           {/* SNOUT / NOSE / MOUTH */}
-          {/* White Snout Base */}
-          <ellipse
-            cx="170"
-            cy="165"
-            rx="24"
-            ry="18"
-            fill="#ffffff"
-            opacity="0.95"
-          />
-
           {/* Cute Nose */}
           <path
-            d="M 161 157 C 161 154, 179 154, 179 157 C 179 163, 172 167, 170 167 C 168 167, 161 163, 161 157 Z"
-            fill="#1e293b"
+            d="M 261 270 C 261 267, 279 267, 279 270 C 279 276, 272 280, 270 280 C 268 280, 261 276, 261 270 Z"
+            fill="#0f172a"
           />
           {/* Nose shine */}
-          <ellipse cx="167" cy="157" rx="3" ry="1.2" fill="#ffffff" opacity="0.6" />
+          <ellipse cx="267" cy="270" rx="3.2" ry="1.2" fill="#ffffff" opacity="0.65" />
 
-          {/* Mouth */}
+          {/* Smiling Mouth */}
           <path
-            d="M 170 167 L 170 172"
-            stroke="#1e293b"
-            strokeWidth="1.8"
+            d="M 270 280 L 270 285"
+            stroke="#0f172a"
+            strokeWidth="2"
             strokeLinecap="round"
           />
           <path
-            d="M 160 172 Q 165 178 170 172 Q 175 178 180 172"
-            stroke="#1e293b"
-            strokeWidth="1.8"
+            d="M 259 285 Q 265 292 270 285 Q 275 292 281 285"
+            stroke="#0f172a"
+            strokeWidth="2"
             strokeLinecap="round"
             fill="none"
           />
         </g>
 
         {/* ----------------------------------------------------------- */}
-        {/* INTERACTIVE PAWS / HANDS (COVERS EYES ON PASSWORD)          */}
+        {/* 10. INTERACTIVE PAWS (WAVING / COVERS EYES ON PASSWORD)     */}
         {/* ----------------------------------------------------------- */}
 
-        {/* LEFT PAW */}
+        {/* LEFT PAW (3 TOE BEANS + 1 MAIN PAD) */}
         <g
-          className="transition-all duration-500 ease-[cubic-bezier(0.34,1.4,0.64,1)] origin-[80px_230px]"
+          className="transition-all duration-500 ease-[cubic-bezier(0.34,1.4,0.64,1)] origin-[175px_330px]"
           style={{
             transform: isCoveringEyes
-              ? "translate(42px, -82px) rotate(38deg)"
+              ? "translate(42px, -86px) rotate(38deg)"
               : isPeeking
-              ? "translate(30px, -68px) rotate(22deg)"
+              ? "translate(30px, -70px) rotate(22deg)"
               : isLookingDown
-              ? "translate(4px, -12px) rotate(-4deg)"
+              ? "translate(4px, -8px) rotate(-4deg)"
               : "translate(0px, 0px) rotate(0deg)",
           }}
         >
-          {/* Arm & Paw Shape */}
+          {/* Paw Base Shape */}
           <ellipse
-            cx="78"
-            cy="226"
-            rx="26"
-            ry="34"
-            fill="url(#pandaDarkGrad)"
-            stroke="#1f2937"
+            cx="172"
+            cy="325"
+            rx="28"
+            ry="36"
+            fill="url(#darkFurGrad)"
+            stroke="#0f172a"
             strokeWidth="1.5"
-            transform="rotate(-15 78 226)"
+            transform="rotate(-15 172 325)"
           />
-          {/* Paw Pads (Pink pads visible when covering eyes/up) */}
-          <g
-            className="transition-opacity duration-300"
-            style={{ opacity: isCoveringEyes || isPeeking ? 1 : 0.85 }}
-          >
+          {/* Paw Pink Pads */}
+          <g>
             {/* Main Central Pad */}
             <ellipse
-              cx="80"
-              cy="232"
-              rx="13"
-              ry="11"
-              fill="url(#pawPadGrad)"
+              cx="174"
+              cy="330"
+              rx="14"
+              ry="12"
+              fill="url(#pawPadPink)"
             />
-            {/* Toe Beans */}
-            <circle cx="68" cy="216" r="4.2" fill="url(#pawPadGrad)" />
-            <circle cx="78" cy="212" r="4.5" fill="url(#pawPadGrad)" />
-            <circle cx="89" cy="216" r="4.2" fill="url(#pawPadGrad)" />
+            {/* 3 Toe Beans */}
+            <circle cx="161" cy="314" r="4.5" fill="url(#pawPadPink)" />
+            <circle cx="172" cy="310" r="4.8" fill="url(#pawPadPink)" />
+            <circle cx="184" cy="314" r="4.5" fill="url(#pawPadPink)" />
           </g>
         </g>
 
-        {/* RIGHT PAW */}
+        {/* RIGHT PAW (3 TOE BEANS + 1 MAIN PAD) */}
         <g
-          className="transition-all duration-500 ease-[cubic-bezier(0.34,1.4,0.64,1)] origin-[260px_230px]"
+          className="transition-all duration-500 ease-[cubic-bezier(0.34,1.4,0.64,1)] origin-[365px_330px]"
           style={{
             transform: isCoveringEyes
-              ? "translate(-42px, -82px) rotate(-38deg)"
+              ? "translate(-42px, -86px) rotate(-38deg)"
               : isPeeking
-              ? "translate(-12px, -45px) rotate(-15deg)"
+              ? "translate(-12px, -48px) rotate(-15deg)"
               : isLookingDown
-              ? "translate(-4px, -12px) rotate(4deg)"
+              ? "translate(-4px, -8px) rotate(4deg)"
               : "translate(0px, 0px) rotate(0deg)",
           }}
         >
-          {/* Arm & Paw Shape */}
+          {/* Paw Base Shape */}
           <ellipse
-            cx="262"
-            cy="226"
-            rx="26"
-            ry="34"
-            fill="url(#pandaDarkGrad)"
-            stroke="#1f2937"
+            cx="368"
+            cy="325"
+            rx="28"
+            ry="36"
+            fill="url(#darkFurGrad)"
+            stroke="#0f172a"
             strokeWidth="1.5"
-            transform="rotate(15 262 226)"
+            transform="rotate(15 368 325)"
           />
-          {/* Paw Pads */}
-          <g
-            className="transition-opacity duration-300"
-            style={{ opacity: isCoveringEyes || isPeeking ? 1 : 0.85 }}
-          >
+          {/* Paw Pink Pads */}
+          <g>
             {/* Main Central Pad */}
             <ellipse
-              cx="260"
-              cy="232"
-              rx="13"
-              ry="11"
-              fill="url(#pawPadGrad)"
+              cx="366"
+              cy="330"
+              rx="14"
+              ry="12"
+              fill="url(#pawPadPink)"
             />
-            {/* Toe Beans */}
-            <circle cx="249" cy="216" r="4.2" fill="url(#pawPadGrad)" />
-            <circle cx="260" cy="212" r="4.5" fill="url(#pawPadGrad)" />
-            <circle cx="271" cy="216" r="4.2" fill="url(#pawPadGrad)" />
+            {/* 3 Toe Beans */}
+            <circle cx="356" cy="314" r="4.5" fill="url(#pawPadPink)" />
+            <circle cx="368" cy="310" r="4.8" fill="url(#pawPadPink)" />
+            <circle cx="379" cy="314" r="4.5" fill="url(#pawPadPink)" />
           </g>
         </g>
       </svg>
@@ -500,7 +748,7 @@ function InteractivePanda({
 }
 
 // ---------------------------------------------------------------------------
-// Login Page Component (Light Theme & Refined Modern Layout)
+// Login Page Component (Light-Themed Exact Artwork Layout)
 // ---------------------------------------------------------------------------
 function LoginPage() {
   const store = useAppStore();
@@ -663,94 +911,99 @@ function LoginPage() {
   };
 
   return (
-    // Light-Themed Clean Master Container with soft ambient accents
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-white to-slate-100/80 text-slate-800 flex flex-col justify-between p-4 sm:p-6 lg:p-8 select-none relative overflow-x-hidden font-sans">
-      {/* Decorative ambient subtle pastel gradients in the background */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-indigo-100/60 blur-[100px] pointer-events-none" />
-      <div className="absolute top-1/3 -right-32 w-96 h-96 rounded-full bg-teal-100/50 blur-[100px] pointer-events-none" />
-      <div className="absolute -bottom-32 left-1/3 w-96 h-96 rounded-full bg-rose-100/40 blur-[120px] pointer-events-none" />
+    // Clean, crisp white background with flowing corner gradient curves exactly like reference image
+    <div className="min-h-screen w-full bg-white text-slate-800 flex flex-col justify-between p-4 sm:p-6 lg:p-10 select-none relative overflow-x-hidden font-sans">
+      
+      {/* Decorative Top-Left Soft Blue-Lavender Corner Swoosh */}
+      <div className="absolute -top-32 -left-32 w-[420px] h-[420px] pointer-events-none opacity-80">
+        <svg viewBox="0 0 400 400" className="w-full h-full fill-none">
+          <path
+            d="M 0 0 C 180 0, 320 120, 340 300 C 350 380, 260 400, 0 400 Z"
+            fill="url(#cornerTopLeftGrad)"
+          />
+          <defs>
+            <linearGradient id="cornerTopLeftGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#bfdbfe" stopOpacity="0.8" />
+              <stop offset="50%" stopColor="#c7d2fe" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      {/* Decorative Bottom-Right Soft Purple-Indigo Corner Swoosh */}
+      <div className="absolute -bottom-32 -right-32 w-[480px] h-[480px] pointer-events-none opacity-80">
+        <svg viewBox="0 0 450 450" className="w-full h-full fill-none">
+          <path
+            d="M 450 450 C 270 450, 130 330, 110 150 C 100 70, 190 50, 450 50 Z"
+            fill="url(#cornerBottomRightGrad)"
+          />
+          <defs>
+            <linearGradient id="cornerBottomRightGrad" x1="100%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%" stopColor="#818cf8" stopOpacity="0.6" />
+              <stop offset="50%" stopColor="#c084fc" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
 
       {/* Top Header Bar */}
-      <header className="relative z-10 w-full max-w-5xl mx-auto flex items-center justify-between pb-3">
-        {/* Brand identity */}
+      <header className="relative z-10 w-full max-w-6xl mx-auto flex items-center justify-between pb-2">
+        {/* Brand identity: Rounded Blue Hexagon + SantoGe + Sky Blue Talent Cloud pill */}
         <div className="flex items-center gap-3">
-          <span className="grid size-9 sm:size-10 place-items-center rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-500/20">
-            <Hexagon className="size-5 stroke-[2.2]" />
+          <span className="grid size-11 place-items-center rounded-2xl bg-gradient-to-tr from-[#3b82f6] to-[#4338ca] text-white shadow-lg shadow-indigo-500/25">
+            <Hexagon className="size-6 stroke-[2.4]" />
           </span>
-          <div className="flex items-center gap-2">
-            <span className="text-base sm:text-lg font-bold tracking-tight text-slate-900">
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl font-bold tracking-tight text-[#0f172a]">
               SantoGe
             </span>
-            <span className="text-xs sm:text-sm font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+            <span className="text-xs font-semibold text-[#2563eb] bg-[#e0f2fe] px-3 py-1 rounded-full border border-[#bae6fd]">
               Talent Cloud
             </span>
           </div>
         </div>
-
-        <div className="hidden sm:flex items-center gap-2 text-xs text-slate-600">
-          <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Placement Accelerator Synchronized</span>
-        </div>
       </header>
 
-      {/* Main Master Card */}
-      <main className="relative z-10 flex-1 flex items-center justify-center py-4 sm:py-6">
-        <div className="w-full max-w-4xl lg:max-w-5xl rounded-3xl border border-slate-200/90 bg-white/95 backdrop-blur-xl shadow-2xl shadow-slate-200/80 overflow-hidden grid lg:grid-cols-12 transition-all duration-300">
+      {/* Main Split Layout Container */}
+      <main className="relative z-10 flex-1 flex items-center justify-center py-4 lg:py-8">
+        <div className="w-full max-w-6xl grid lg:grid-cols-12 items-center gap-8 lg:gap-12">
           
-          {/* Left Column: Interactive Panda Mascot Stage */}
-          <div className="lg:col-span-6 bg-gradient-to-b from-slate-50/90 via-slate-100/60 to-slate-50 p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-200/80 relative overflow-hidden">
-            {/* Subtle radial backdrop accent */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] rounded-full bg-indigo-100/40 blur-3xl pointer-events-none" />
-
-            {/* Top Badge */}
-            <div className="relative z-10 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm">
-                <Sparkles className="size-3.5 text-emerald-600" /> Placement Accelerator
-              </span>
-              <span className="text-[11px] font-mono font-medium text-slate-600 tracking-wider">
-                90-DAY COHORT
-              </span>
-            </div>
-
-            {/* Realistic Interactive Panda Stage */}
-            <div className="my-auto py-4 sm:py-6 flex items-center justify-center">
-              <InteractivePanda
-                focusedField={focusedField}
-                isTyping={isTyping}
-                showPassword={showPassword}
-                mousePos={mousePos}
-              />
-            </div>
-
-            {/* Bottom Mascot Caption */}
-            <div className="relative z-10 text-center space-y-1">
-              <p className="text-xs font-semibold text-slate-800 tracking-wide">
-                {focusedField === "password"
-                  ? showPassword
-                    ? "👀 Panda is peeking while password is visible!"
-                    : "🙈 Panda is covering its eyes to keep your password safe!"
-                  : focusedField === "email"
-                  ? "✍️ Panda is watching your institutional email entry..."
-                  : "👋 Welcome! Move your cursor around to interact."}
-              </p>
-              <p className="text-[11px] text-slate-600">
-                15 Technical Tracks · 90-Day Evidence-Based Mastery
-              </p>
-            </div>
+          {/* Left Column: 3D Animated Realistic Panda Mascot Scene */}
+          <div className="lg:col-span-6 flex items-center justify-center relative">
+            <InteractivePandaScene
+              focusedField={focusedField}
+              isTyping={isTyping}
+              showPassword={showPassword}
+              mousePos={mousePos}
+            />
           </div>
 
-          {/* Right Column: Light Modern Auth Form Area */}
-          <div className="lg:col-span-6 p-6 sm:p-8 lg:p-10 flex flex-col justify-center bg-white relative">
-            <div className="w-full max-w-[360px] mx-auto space-y-5">
+          {/* Right Column: Clean, Crisp Form Area */}
+          <div className="lg:col-span-6 flex justify-center lg:justify-start">
+            <div className="w-full max-w-[440px] space-y-6">
               
-              {/* Form Title & Subtitle */}
-              <div className="space-y-1.5">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-                  {authMode === "signin" && "Welcome back"}
-                  {authMode === "forgot" && "Reset Password"}
-                  {authMode === "reset" && "Set New Password"}
+              {/* Heading: "Welcome back" */}
+              <div className="space-y-2">
+                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#0f172a]">
+                  {authMode === "signin" && (
+                    <>
+                      Welcome <span className="text-[#4338ca]">back</span>
+                    </>
+                  )}
+                  {authMode === "forgot" && (
+                    <>
+                      Reset <span className="text-[#4338ca]">Password</span>
+                    </>
+                  )}
+                  {authMode === "reset" && (
+                    <>
+                      Set New <span className="text-[#4338ca]">Password</span>
+                    </>
+                  )}
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                <p className="text-sm sm:text-base text-slate-500 leading-relaxed font-normal">
                   {authMode === "signin" && "Sign in to access your talent dashboard and cohort modules."}
                   {authMode === "forgot" &&
                     "Enter your registered institutional email to receive a recovery link."}
@@ -783,12 +1036,12 @@ function LoginPage() {
               {authMode === "signin" && (
                 <form onSubmit={handleSupabaseSubmit} className="space-y-4">
                   {/* Institutional Email Field */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700">
                       Institutional Email
                     </label>
                     <div className="relative">
-                      <Mail className="size-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <Mail className="size-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
                         type="email"
                         required
@@ -802,15 +1055,15 @@ function LoginPage() {
                           setIsTyping(true);
                           setTimeout(() => setIsTyping(false), 700);
                         }}
-                        placeholder="student@college.edu or admin@domain.com"
-                        className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-300 bg-slate-50/60 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                        placeholder="sneha@college.edu"
+                        className="w-full h-12 pl-11 pr-4 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100"
                       />
                     </div>
                   </div>
 
                   {/* Password Field with Reveal Toggle & Forgot Password Link */}
-                  <div>
-                    <div className="mb-1.5 flex items-center justify-between">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
                       <label className="text-xs font-semibold text-slate-700">Password</label>
                       <button
                         type="button"
@@ -819,13 +1072,13 @@ function LoginPage() {
                           setForgotSuccess(false);
                           setAuthMode("forgot");
                         }}
-                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer"
+                        className="text-xs font-semibold text-[#4338ca] hover:text-[#3730a3] transition-colors cursor-pointer"
                       >
                         Forgot password?
                       </button>
                     </div>
                     <div className="relative">
-                      <Lock className="size-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <Lock className="size-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
                         type={showPassword ? "text" : "password"}
                         required
@@ -839,12 +1092,12 @@ function LoginPage() {
                           setTimeout(() => setIsTyping(false), 700);
                         }}
                         placeholder="••••••••••••"
-                        className="w-full h-11 pl-10 pr-10 rounded-xl border border-slate-300 bg-slate-50/60 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                        className="w-full h-12 pl-11 pr-11 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100 font-mono"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 p-1 rounded-md transition-colors cursor-pointer"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 rounded-lg transition-colors cursor-pointer"
                         aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? (
@@ -858,17 +1111,17 @@ function LoginPage() {
 
                   {/* Inline Error Message */}
                   {error && (
-                    <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 shadow-sm animate-in fade-in">
+                    <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 shadow-sm animate-in fade-in">
                       <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-600" />
                       <span className="leading-relaxed font-medium">{error}</span>
                     </div>
                   )}
 
-                  {/* Submit CTA */}
+                  {/* Submit CTA Button: "Sign In to Talent Cloud ->" */}
                   <button
                     type="submit"
                     disabled={loading || !isConfigured}
-                    className="group flex w-full h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                    className="group flex w-full h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#4f46e5] via-[#4338ca] to-[#3730a3] hover:from-[#4338ca] hover:to-[#312e81] text-sm sm:text-base font-bold text-white shadow-xl shadow-indigo-600/30 transition-all duration-200 active:scale-[0.99] disabled:opacity-50 cursor-pointer pt-0.5"
                   >
                     {loading ? (
                       <RefreshCw className="size-4 animate-spin" />
@@ -877,7 +1130,7 @@ function LoginPage() {
                     )}
                     {loading ? "Signing in..." : "Sign In to Talent Cloud"}
                     {!loading && (
-                      <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                      <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
                     )}
                   </button>
                 </form>
@@ -908,19 +1161,19 @@ function LoginPage() {
                           setForgotSuccess(false);
                           setAuthMode("signin");
                         }}
-                        className="w-full h-11 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-sm font-semibold text-slate-800 transition-colors cursor-pointer"
+                        className="w-full h-12 rounded-2xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-sm font-semibold text-slate-800 transition-colors cursor-pointer"
                       >
                         Return to Sign In
                       </button>
                     </div>
                   ) : (
                     <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-slate-700">
                           Registered Institutional Email
                         </label>
                         <div className="relative">
-                          <Mail className="size-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <Mail className="size-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                           <input
                             type="email"
                             required
@@ -935,14 +1188,14 @@ function LoginPage() {
                               setTimeout(() => setIsTyping(false), 700);
                             }}
                             placeholder="student@college.edu"
-                            className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-300 bg-slate-50/60 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                            className="w-full h-12 pl-11 pr-4 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100"
                           />
                         </div>
                       </div>
 
                       {/* Inline Error Message */}
                       {error && (
-                        <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 shadow-sm animate-in fade-in">
+                        <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 shadow-sm animate-in fade-in">
                           <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-600" />
                           <span className="leading-relaxed font-medium">{error}</span>
                         </div>
@@ -951,7 +1204,7 @@ function LoginPage() {
                       <button
                         type="submit"
                         disabled={loading || !isConfigured}
-                        className="flex w-full h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+                        className="flex w-full h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#4f46e5] to-[#4338ca] hover:from-[#4338ca] hover:to-[#3730a3] text-sm font-semibold text-white shadow-xl shadow-indigo-600/30 transition-all duration-200 disabled:opacity-50 cursor-pointer"
                       >
                         {loading ? (
                           <RefreshCw className="size-4 animate-spin" />
@@ -968,7 +1221,7 @@ function LoginPage() {
                             setError("");
                             setAuthMode("signin");
                           }}
-                          className="text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                          className="text-xs font-semibold text-[#4338ca] hover:text-[#3730a3] transition-colors cursor-pointer"
                         >
                           ← Back to Sign In
                         </button>
@@ -984,12 +1237,12 @@ function LoginPage() {
               {authMode === "reset" && (
                 <form onSubmit={handleUpdatePasswordSubmit} className="space-y-4">
                   {/* New Password */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700">
                       New Password (min 6 characters)
                     </label>
                     <div className="relative">
-                      <Lock className="size-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <Lock className="size-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
                         type={showNewPassword ? "text" : "password"}
                         required
@@ -1004,12 +1257,12 @@ function LoginPage() {
                           setTimeout(() => setIsTyping(false), 700);
                         }}
                         placeholder="••••••••••••"
-                        className="w-full h-11 pl-10 pr-10 rounded-xl border border-slate-300 bg-slate-50/60 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                        className="w-full h-12 pl-11 pr-11 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100 font-mono"
                       />
                       <button
                         type="button"
                         onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 p-1 rounded-md transition-colors cursor-pointer"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 rounded-lg transition-colors cursor-pointer"
                         aria-label={showNewPassword ? "Hide password" : "Show password"}
                       >
                         {showNewPassword ? (
@@ -1022,12 +1275,12 @@ function LoginPage() {
                   </div>
 
                   {/* Confirm New Password */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700">
                       Confirm New Password
                     </label>
                     <div className="relative">
-                      <Lock className="size-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <Lock className="size-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
                         type={showConfirmPassword ? "text" : "password"}
                         required
@@ -1041,12 +1294,12 @@ function LoginPage() {
                           setTimeout(() => setIsTyping(false), 700);
                         }}
                         placeholder="••••••••••••"
-                        className="w-full h-11 pl-10 pr-10 rounded-xl border border-slate-300 bg-slate-50/60 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                        className="w-full h-12 pl-11 pr-11 rounded-2xl border border-[#dbeafe] bg-[#f0f6ff]/70 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-[#4f46e5] focus:bg-white focus:ring-4 focus:ring-indigo-100 font-mono"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 p-1 rounded-md transition-colors cursor-pointer"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 rounded-lg transition-colors cursor-pointer"
                         aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                       >
                         {showConfirmPassword ? (
@@ -1060,7 +1313,7 @@ function LoginPage() {
 
                   {/* Inline Error Message */}
                   {error && (
-                    <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 shadow-sm animate-in fade-in">
+                    <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 shadow-sm animate-in fade-in">
                       <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-600" />
                       <span className="leading-relaxed font-medium">{error}</span>
                     </div>
@@ -1069,7 +1322,7 @@ function LoginPage() {
                   <button
                     type="submit"
                     disabled={loading || !isConfigured}
-                    className="flex w-full h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-700 hover:to-indigo-700 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+                    className="flex w-full h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-700 hover:to-indigo-700 text-sm font-semibold text-white shadow-xl shadow-emerald-600/30 transition-all duration-200 disabled:opacity-50 cursor-pointer"
                   >
                     {loading ? (
                       <RefreshCw className="size-4 animate-spin" />
@@ -1086,7 +1339,7 @@ function LoginPage() {
                         setError("");
                         setAuthMode("signin");
                       }}
-                      className="text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                      className="text-xs font-semibold text-[#4338ca] hover:text-[#3730a3] transition-colors cursor-pointer"
                     >
                       ← Back to Sign In
                     </button>
@@ -1094,23 +1347,15 @@ function LoginPage() {
                 </form>
               )}
 
-              {/* Supporting Institutional Provisioning Notice */}
-              <div className="pt-2 text-center text-xs text-slate-600 border-t border-slate-100">
-                <span className="inline-flex items-center gap-1.5 text-[11px]">
-                  <ShieldCheck className="size-3.5 text-emerald-600 shrink-0" />
-                  <span>Student accounts provisioned by institutional administrators.</span>
-                </span>
+              {/* Supporting Institutional Provisioning Notice: Green Shield Check */}
+              <div className="pt-2 flex items-center justify-start gap-2 text-xs text-slate-500">
+                <ShieldCheck className="size-4 text-[#10b981] shrink-0 stroke-[2.2]" />
+                <span>Student accounts provisioned by institutional administrators.</span>
               </div>
             </div>
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="relative z-10 w-full max-w-5xl mx-auto flex items-center justify-between pt-2 text-[11px] text-slate-600">
-        <span>© {new Date().getFullYear()} SantoGe Talent Cloud</span>
-        <span>Secure Institutional Authentication</span>
-      </footer>
 
       <Toaster position="bottom-right" theme="light" />
     </div>
